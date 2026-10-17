@@ -48,6 +48,7 @@
 #include "Enhanced/iosPhotoCam.h" // Added
 #include "Enhanced/iosSaber.h" // Added
 #include "Enhanced/iosStance.h" // Added
+#include "Enhanced/iosSaberShape.h" // Added
 // Added: a blade drawn in the colour the player chose for it (iosSaber)
 #define JKPLAYER_DRAW_BLADE(pThing, pLine, pMat, blade) \
     do { iosSaber_BeginBlade((pThing), (pLine), (blade)); rdThing_Draw((pLine), (pMat)); iosSaber_EndBlade(pLine); } while (0)
@@ -1190,8 +1191,16 @@ void jkPlayer_DrawPov()
         // Added: two sabers: each arm in its resting stance (iosStance)
         rdMatrix34 orientR;
         jkPlayer_PovStance(&orient, &orientR);
+        iosSaberShape_SetGuardFacing(1); // Added: a crossguard seen side on (iosSaberShape), to the end of the saber's draw below
         rdThing_Draw(&playerThings[playerThingIdx].povModel, &orientR);
         jkPlayer_DrawPovMirrored(&orient, &orientR); // Added: the second saber's arm
+        {
+            // Added: its hilt's vents, as the first's below
+            rdMatrix34 mirrorHand;
+            if (jkPlayer_GetPovMirrorHand(&mirrorHand))
+                iosSaber_DrawHandHilt(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].polylineThing, &mirrorHand,
+                                      playerThings[playerThingIdx].povModel.model3, 1);
+        }
         // Added: CROSS's hilt vents (iosSaber), part of the hilt: with the hand, lit
         // or not, writing depth as it does (the blade, after, never paints over them)
         if (playerThings[playerThingIdx].povModel.model3 && playerThings[playerThingIdx].povModel.paJointMatrices
@@ -1225,6 +1234,9 @@ void jkPlayer_DrawPov()
         rdCache_Flush(); // Added: force polyline to be underneath model
 #endif
         rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
+#endif
+#ifdef JK_ENHANCED
+        iosSaberShape_SetGuardFacing(0); // Added
 #endif
     }
 }
@@ -1295,6 +1307,7 @@ void jkPlayer_renderSaberWeaponMesh(SithThing *thing)
                 rdThing_Draw(&playerInfo->rd_thing, secondaryMat); // Added
 #ifdef JK_ENHANCED
             iosSaber_DrawHilt(thing, &playerInfo->polylineThing, primaryMat, playerInfo->rd_thing.model3); // Added: CROSS's hilt vents, lit or not
+            if (bSecondHilt) iosSaber_DrawHandHilt(thing, &playerInfo->polylineThing, secondaryMat, playerInfo->rd_thing.model3, 1); // Added: the second hilt's
 #endif
 
             if (thing->jkFlags & JKFLAG_SABERON)
@@ -1320,6 +1333,7 @@ void jkPlayer_renderSaberWeaponMesh(SithThing *thing)
             rdThing_Draw(&playerInfo->rd_thing, secondaryMat); // Added
 #ifdef JK_ENHANCED
         iosSaber_DrawHilt(thing, &playerInfo->polylineThing, primaryMat, playerInfo->rd_thing.model3); // Added: CROSS's hilt vents, lit or not
+        if (bSecondHilt) iosSaber_DrawHandHilt(thing, &playerInfo->polylineThing, secondaryMat, playerInfo->rd_thing.model3, 1); // Added: the second hilt's
 #endif
         
         if (thing->jkFlags & JKFLAG_SABERON)

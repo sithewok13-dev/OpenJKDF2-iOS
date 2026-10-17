@@ -126,14 +126,15 @@ int iosSaberShape_ByName(const char* name)
 // How strong each glow is: a held blade's, and a thrown saber's (its blade a model, a little brighter of its own);
 // CROSS's, held and thrown
 // (FILM's at three strengths, its shimmer; and the beam's core, FILM's own blade: not a glow)
+// (and two crossguards drawn together, each softer)
 enum { IOSSABERSHAPE_GAIN_BLADE = 0, IOSSABERSHAPE_GAIN_THROWN, IOSSABERSHAPE_GAIN_CROSS, IOSSABERSHAPE_GAIN_CROSS_THROWN,
-       IOSSABERSHAPE_GAIN_BLADE_DIM, IOSSABERSHAPE_GAIN_BLADE_BRIGHT, IOSSABERSHAPE_GAIN_CORE, IOSSABERSHAPE_NUM_GAINS };
+       IOSSABERSHAPE_GAIN_BLADE_DIM, IOSSABERSHAPE_GAIN_BLADE_BRIGHT, IOSSABERSHAPE_GAIN_CORE, IOSSABERSHAPE_GAIN_CROSS_PAIR, IOSSABERSHAPE_NUM_GAINS };
 static const float iosSaberShape_aGain[IOSSABERSHAPE_NUM_GAINS] = { 1.15f, 0.85f, 1.35f, 1.15f,
                                                                      1.15f * (1.0f - IOSSABERSHAPE_SHIMMER_GLOW),
-                                                                     1.15f * (1.0f + IOSSABERSHAPE_SHIMMER_GLOW), 0 };
+                                                                     1.15f * (1.0f + IOSSABERSHAPE_SHIMMER_GLOW), 0, 0.95f };
 // (and how far toward white its middle goes: CROSS's stays its colour, stronger)
 static const float iosSaberShape_aWhite[IOSSABERSHAPE_NUM_GAINS] = { IOSSABERSHAPE_GLOW_WHITE, IOSSABERSHAPE_GLOW_WHITE, 22.0f, 22.0f,
-                                                                      IOSSABERSHAPE_GLOW_WHITE, IOSSABERSHAPE_GLOW_WHITE, 0 };
+                                                                      IOSSABERSHAPE_GLOW_WHITE, IOSSABERSHAPE_GLOW_WHITE, 0, 22.0f };
 
 // ------------------------------------------------------------ the glow textures
 
@@ -579,12 +580,15 @@ static iosSaberShapeGlow* iosSaberShape_pGlow = NULL;
 static iosSaberShapeGlow* iosSaberShape_pCore = NULL; // (FILM: its core)
 static int iosSaberShape_bCross = 0;
 static uint32_t iosSaberShape_crossId = 0;
+// (CROSS's glows' width: narrower for each of two crossguards drawn together)
+#define IOSSABERSHAPE_CROSS_PAIR_GLOW 0.72f
+static flex_t iosSaberShape_crossGlow = 1;
 
-void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned char rgb[3], const unsigned char core[3], int form)
+void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned char rgb[3], const unsigned char core[3], int form, int blade)
 {
     iosSaberShape_EndBlade(); // (begun twice with no end between: put back first)
     if (!pLine || !pLine->polyline) return;
-    if (form == IOSSABERSHAPE_FORM_CROSS) {
+    if (form == IOSSABERSHAPE_FORM_CROSS || form == IOSSABERSHAPE_FORM_CROSS_PAIR) {
         // CROSS, whatever the shape chosen: its widths kept as the template's (its
         // own drawn from them, DrawBlade), but no round tip face: it comes to a point
         rdPolyline* l = pLine->polyline;
@@ -593,8 +597,10 @@ void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned 
         iosSaberShape_savedTip = l->tipRadius;
         l->tipRadius = 0;
         iosSaberShape_bCross = 1;
-        iosSaberShape_crossId = pThing ? pThing->idx + 1 : 0;
-        iosSaberShape_pGlow = rgb ? iosSaberShape_Glow(rgb, IOSSABERSHAPE_GAIN_CROSS) : NULL;
+        iosSaberShape_crossId = (pThing ? pThing->idx + 1 : 0) + (uint32_t)(blade > 0 ? blade : 0) * 7919u; // (each blade its own crackle)
+        const int bPair = form == IOSSABERSHAPE_FORM_CROSS_PAIR;
+        iosSaberShape_crossGlow = bPair ? (flex_t)IOSSABERSHAPE_CROSS_PAIR_GLOW : (flex_t)1;
+        iosSaberShape_pGlow = rgb ? iosSaberShape_Glow(rgb, bPair ? IOSSABERSHAPE_GAIN_CROSS_PAIR : IOSSABERSHAPE_GAIN_CROSS) : NULL;
         return;
     }
     if (iosSaberShape_shape != IOSSABERSHAPE_BEAM) return;
@@ -913,7 +919,16 @@ static void iosSaberShape_Spike(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
 }
 
 // The side blades' way out from the blade (camera space): across the hand
-// (its matrix's first axis), square to the blade; 0 if there is none
+// (its matrix's first axis), square to the blade; 0 if there is none. Facing
+// the eye (first person, iosSaberShape_SetGuardFacing): square to the blade
+// and to the line of sight to its hilt, the side nearer the hand's.
+static int iosSaberShape_bGuardFacing = 0;
+
+void iosSaberShape_SetGuardFacing(int bOn)
+{
+    iosSaberShape_bGuardFacing = bOn;
+}
+
 static int iosSaberShape_GuardAxis(const rdMatrix34* pToCam, const rdVector3* pAlong, rdVector3* pOut)
 {
     rdVector3 a = pToCam->rvec;
@@ -921,8 +936,20 @@ static int iosSaberShape_GuardAxis(const rdMatrix34* pToCam, const rdVector3* pA
     a.x -= pAlong->x * d;
     a.y -= pAlong->y * d;
     a.z -= pAlong->z * d;
-    const flex_t m = stdMath_Sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+    flex_t m = stdMath_Sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
     if (m <= (flex_t)0.000001) return 0;
+    if (iosSaberShape_bGuardFacing) {
+        // (the line of sight to the hilt, crossed with the blade; none if the blade points at the eye: as the hand has it)
+        const rdVector3* e = &pToCam->scale;
+        rdVector3 f = { pAlong->y * e->z - pAlong->z * e->y, pAlong->z * e->x - pAlong->x * e->z, pAlong->x * e->y - pAlong->y * e->x };
+        const flex_t fm = stdMath_Sqrt(f.x * f.x + f.y * f.y + f.z * f.z), em = stdMath_Sqrt(e->x * e->x + e->y * e->y + e->z * e->z);
+        if (fm > (flex_t)0.2 * em) {
+            const flex_t k = ((f.x * a.x + f.y * a.y + f.z * a.z) < 0 ? (flex_t)-1 : (flex_t)1) * m / fm;
+            a.x = f.x * k;
+            a.y = f.y * k;
+            a.z = f.z * k;
+        }
+    }
     pOut->x = a.x / m;
     pOut->y = a.y / m;
     pOut->z = a.z / m;
@@ -1133,7 +1160,7 @@ static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
     // the glow round them, a little wider or narrower each frame (the side blades' none at their roots, inside the blade's)
     if (!g) return;
     iosSaberShape_GlowSetBack(1);
-    const flex_t f = 1 + (iosSaberShape_Rand() * 2 - 1) * IOSSABERSHAPE_CROSS_GLOW_FLICKER;
+    const flex_t f = (1 + (iosSaberShape_Rand() * 2 - 1) * IOSSABERSHAPE_CROSS_GLOW_FLICKER) * (bBlade ? iosSaberShape_crossGlow : (flex_t)1);
     const flex_t rg = r * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f;
     iosSaberShape_GlowQuads(pLine, g, texMode, pTip, pBase, rg * IOSSABERSHAPE_CROSS_GLOW_POINT, rg, c, sn, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
     for (int k = 0; bGuards && k < 2; k++)

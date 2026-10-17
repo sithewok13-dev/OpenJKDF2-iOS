@@ -66,16 +66,18 @@ struct SithThing;
 struct rdThing;
 struct rdVector3;
 struct rdMaterial;
-// The blade's own form, its style's (iosSaber): the shape chosen above, or
-// CROSS's whatever that is
-enum { IOSSABERSHAPE_FORM_CHOSEN = 0, IOSSABERSHAPE_FORM_CROSS };
+// The blade's own form, its hilt's (iosSaber): the shape chosen above, or
+// CROSS's whatever that is; CROSS_PAIR, one of two crossguards drawn together
+// (two sabers): its glows a little softer and closer, so where the two cross
+// they don't wash together
+enum { IOSSABERSHAPE_FORM_CHOSEN = 0, IOSSABERSHAPE_FORM_CROSS, IOSSABERSHAPE_FORM_CROSS_PAIR };
 // Round one blade's drawing (iosSaber_BeginBlade/EndBlade): with FILM, the
 // blade made even, to the films' proportions, white hot with its glow put on
 // (rgb: the blade's colour; core: its middle's, NULL or none: white; pThing:
 // whose); nothing with SPIKE; CROSS, its round tip face left out (it comes to
 // a point) and the rest drawn as its own (iosSaberShape_DrawBlade). End puts
-// the widths back.
-void iosSaberShape_BeginBlade(struct SithThing* pThing, struct rdThing* pLine, const unsigned char rgb[3], const unsigned char core[3], int form);
+// the widths back. blade: which of the thing's (0, 1: each crackles its own way).
+void iosSaberShape_BeginBlade(struct SithThing* pThing, struct rdThing* pLine, const unsigned char rgb[3], const unsigned char core[3], int form, int blade);
 void iosSaberShape_EndBlade(void);
 
 // rdPolyline_Draw, once its ends are placed (their depths from the eye): a
@@ -112,6 +114,12 @@ int iosSaberShape_DrawBlade(struct rdThing* pLine, const struct rdMatrix34* pToC
 struct rdFace;
 void iosSaberShape_DrawThrownGlow(struct SithThing* pThing, const struct rdMaterial* pBlade, const unsigned char rgb[3], int form,
                                   const struct rdFace* pSideFace, struct rdMaterial* pSideMat);
+
+// First person (bOn 1, then 0 after): a crossguard's side blades and vents
+// turned round its blade to face the eye, as if the hilt were turned in the
+// hand, so the guard is always seen side on (never end on, one side blade
+// hidden behind the hilt)
+void iosSaberShape_SetGuardFacing(int bOn);
 
 // The level going: the glow textures freed (made again when next drawn)
 void iosSaberShape_FreeWorld(void);

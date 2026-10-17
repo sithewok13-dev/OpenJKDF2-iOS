@@ -83,6 +83,28 @@ void iosSaber_SetColour(int style, int blade, int id);
 // kept is ORIGINAL, the game's green; CLASSIC shows it green again)
 int iosSaber_GetShownColour(int style, int blade);
 
+// ---- hilts: what each hand's saber is. Its blade's shape and the hilt's own
+// parts (iosSaberShape), how it is carried (iosSaberStance) and how it sounds
+// (iosSaberSound) go by it.
+//   NORMAL  the game's own: its blade the shape switch's (SPIKE or FILM),
+//           carried, swung and heard as the game has it
+//   CROSS   a crossguard (as CROSS above): the blade jagged, crackling and
+//           pointed, two short side blades out of vents on the hilt; carried
+//           low, in Kylo Ren's guard; its hum rougher, lower and crackling
+// (more to come, not here yet: IOSSABER_HILT_STAFF, Maul's double-bladed staff;
+// IOSSABER_HILT_FOLD, Dark Rey's folding double saber)
+enum { IOSSABER_HILT_NORMAL = 0, IOSSABER_HILT_CROSS, /* IOSSABER_HILT_STAFF, IOSSABER_HILT_FOLD (reserved) */ IOSSABER_NUM_HILTS };
+// The hilt in a thing's hand (0: right, 1: left) as it is drawn: the style's
+// (CROSS: the right hand's; DUAL: both hands', the test switch below); NORMAL
+// for a hand the style has no saber in, and for anyone whose saber isn't a
+// player's choice (the local player's, or in multiplayer another player's as
+// their game sent it)
+struct SithThing;
+int iosSaber_HandHilt(struct SithThing* pThing, int hand);
+// For testing, until the hilt is a choice of its own: the hilt of the local
+// player's two sabers (DUAL; NORMAL to start)
+void iosSaber_SetTestDualHilt(int hilt);
+
 // ---- the engine's side.
 // Round the drawing of one of a thing's blades (blade 0: the right hand's, 1:
 // the left's): its colour put on, then the game's put back. Nothing changes
@@ -125,6 +147,9 @@ void iosSaber_FreeWorld(void);
 struct rdMatrix34;
 struct rdModel3;
 void iosSaber_DrawHilt(struct SithThing* pThing, struct rdThing* pLine, struct rdMatrix34* pOrient, const struct rdModel3* pHilt);
+// ...the same for either hand's hilt (0: the right, as above; 1: the left, the
+// second saber's)
+void iosSaber_DrawHandHilt(struct SithThing* pThing, struct rdThing* pLine, struct rdMatrix34* pOrient, const struct rdModel3* pHilt, int hand);
 
 void iosSaber_BeginThrown(struct SithThing* pThing);
 void iosSaber_EndThrown(struct SithThing* pThing);
