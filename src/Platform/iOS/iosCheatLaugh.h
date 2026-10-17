@@ -1,12 +1,16 @@
 // Added: entire file. The touch overlay's cheat mode easter egg: the Emperor,
 // once each time cheat mode is switched on (iosTouch: the tray's CHEAT switch
 // off to on, or "sithewok" typed with CHEAT hidden) -- nowhere else. One of
-// three recordings, picked at random, never the one played last time: his
-// laugh, "the dark side", or "unlimited power".
+// the recordings, picked at random, never the one played last time.
 //
-// The recordings are in the app itself (packaging/ios, copied into the bundle
-// by cmake_modules/target_ios_all.cmake), so both apps have them, as the owner
-// gave them.
+// None come with the app: they're the player's own, any audio files (mp3, m4a,
+// aac, wav, caf, aif) in an "Emperor" folder in the app's own folder in the
+// Files app (On My iPhone > OpenJKDF2 > Emperor, or OpenMoTS > Emperor; the
+// folder's name in any case). With none there, cheat mode is silent. A build
+// of your own can still carry them: configured with
+// -DOPENJKDF2_IOS_BUNDLE_EMPEROR=ON, cmake_modules/target_ios_all.cmake copies
+// IOSCHEATLAUGH_NAMES (.mp3, from packaging/ios) into the app, used when the
+// folder has none.
 //
 // Played whole and as it is, once, at the game's sound effects volume (none
 // at 0), alongside the game's own sounds; while one is still playing, another
@@ -21,11 +25,13 @@
 extern "C" {
 #endif
 
-#define IOSCHEATLAUGH_EXT "mp3"
-#define IOSCHEATLAUGH_NAMES { "laughing", "palpatine_dark_side", "palpatine_unlimited_power" }
-#define IOSCHEATLAUGH_NUM 3
+#define IOSCHEATLAUGH_FOLDER "Emperor"
+#define IOSCHEATLAUGH_EXTS { "mp3", "m4a", "aac", "wav", "caf", "aif", "aiff" }
+#define IOSCHEATLAUGH_MAX 16                          // (at most this many of the folder's files are picked from)
+#define IOSCHEATLAUGH_MAX_BYTES (16 * 1024 * 1024)    // (a bigger file isn't read)
+#define IOSCHEATLAUGH_NAMES { "laughing", "palpatine_dark_side", "palpatine_unlimited_power" } // (a build's own)
 
-// One of them, if it can be read and none is already playing. Main thread.
+// One of them, if one can be read and none is already playing. Main thread.
 // 1: playing one now; 0: not (none can be read, sound effects are off, or one is already playing).
 int iosCheatLaugh_Play(float volume);
 
