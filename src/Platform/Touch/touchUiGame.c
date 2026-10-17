@@ -10,6 +10,7 @@
 #include "Enhanced/iosGame.h"
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberShape.h"
+#include "Enhanced/iosSaberThrowJk.h"
 #include "Enhanced/iosCapture.h"
 #include "Enhanced/iosSelfieShots.h"
 #include "Enhanced/iosFreeze.h"
@@ -111,6 +112,8 @@ const touchUiGame touchUiGame_engine = {
     iosSaberShape_Name,
     iosSaberShape_Get,
     iosSaberShape_Set,
+    iosSaberThrowJk_Get,
+    iosSaberThrowJk_Set,
     iosCapture_Request,
     iosCapture_Cancel,
     platServices_SetPhotoBatch,

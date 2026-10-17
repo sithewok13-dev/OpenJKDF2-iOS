@@ -479,7 +479,8 @@ switch the controller off and they come back.
   D-pad. On the saber wheel, A sets the colour, X steps through SINGLE, DUAL
   and CROSS ("style" on the screen), Y which blade a colour goes to, L3
   switches CLASSIC and REFORGED ("look"), D-pad up turns FILM on or off
-  ("film"), and R3 takes the saber in hand ("equip").
+  ("film"), D-pad down turns THROW on or off ("throw", Jedi Knight only), and
+  R3 takes the saber in hand ("equip").
 - **Quick save and quick load** need a short hold (a ring fills at the top of
   the screen), so a stray press never saves or loads.
 - **Controller options** (hold Start): look speed across and up and down,
@@ -549,8 +550,9 @@ Turn on FPS in MENU's tray to see what the app gets (below).
   the mouse or the scroll wheel and click. Right click or Esc cancels. On the
   saber wheel, a click sets the colour, 1 steps through SINGLE, DUAL and CROSS
   ("style" on the screen), 2 which blade a colour goes to, 3 takes the saber
-  in hand ("equip"), 4 switches CLASSIC and REFORGED ("look"), and 5 turns
-  FILM on or off ("film").
+  in hand ("equip"), 4 switches CLASSIC and REFORGED ("look"), 5 turns
+  FILM on or off ("film"), and 6 turns THROW on or off ("throw", Jedi Knight
+  only).
 - **Your own keys and buttons:** Setup > Controls > Keyboard and Setup >
   Controls > Mouse change any of them; the mouse sensitivity is there too.
   Whatever key you put on next/previous power or weapon gets the wheel when
@@ -790,6 +792,11 @@ yet or not (powers you haven't learned are dark):
 - **Right side, red: dark side.** From the top: Throw, Grip, Lightning,
   Destruction, Deadly Sight.
 - **The gap at the bottom** means *cancel*.
+- **Saber Throw** (Jedi Knight, with **THROW** on in the saber wheel, or while
+  `sithewok` is on): at the very top, between Speed and Seeing. The slices
+  get a little narrower to make room, so on most screens the stars are a
+  little smaller, and so are the names Destruct and Deadly Sight. Every power
+  still shows its stars. See [THROW](#the-lightsaber-saber).
 
 **Stars:** under the name of each power you've learned, a row of four stars
 shows its level, one gold star per level (a power at level 2 shows two gold
@@ -953,6 +960,35 @@ cancels, and the game holds still while the wheel is open.
   it. Each throw costs the power's usual Force, and with both thrown she's
   on her fists until one comes back, as in the original. With one saber,
   Saber Throw is exactly the original.
+- **THROW** (Jedi Knight only), an on/off switch at the top right of the
+  saber wheel, gives Kyle Mysteries of the Sith's Saber Throw. Tap it to
+  switch. The wheel stays open, and the app remembers it. It's off to start.
+  - **On:** Saber Throw is on the Force wheel for the whole game, at the top
+    between Speed and Seeing. Pick it there and use it with **FORCE**. Off
+    again, it leaves the wheel, and if it was your power, the power you had
+    before comes back.
+  - **Stars:** it follows Kyle's Jedi rank, one star for every two ranks
+    (rank 1 or 2: one star, up to rank 7 or 8: four). It never uses your
+    stars: it isn't on the star screen between levels, and your ranks,
+    powers, light or dark side and the ending stay as they were.
+  - **Force:** 100, 80, 60 or 40 at one to four stars, as in Mysteries of the
+    Sith, and a full Force bar always throws (at rank 1 the bar holds 50, so
+    one throw empties it). It's neither light nor dark side.
+  - **It needs the lightsaber:** with none (levels 1 to 3, or when a level
+    takes it away), it's dimmed and won't throw.
+  - **The throw:** Kyle throws his saber, which spins out, hits whatever it
+    meets with sparks, and flies back to his hand. With no saber left in his
+    hand he's on his fists until it's back, then draws it again. You can't
+    pick the saber while it's out. Five seconds after the throw it's back
+    whatever happens, and a game saved mid-throw keeps the saber. (An older
+    version of the app loading that game leaves a saber on the floor to pick
+    up.)
+  - **With two sabers, each tap of FORCE throws one,** the right first, then
+    the left, as in Mysteries of the Sith. The thrown saber has your colour,
+    look, FILM and CROSS.
+  - With `sithewok` on, Saber Throw is on the wheel at four stars even with
+    THROW off, and costs no Force. It's never in multiplayer or co-op, and
+    Mysteries of the Sith has no THROW switch (it has its own Saber Throw).
 
 ## Saving and loading
 

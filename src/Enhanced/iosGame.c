@@ -1,6 +1,7 @@
 // Added: entire file. See iosGame.h.
 
 #include "Enhanced/iosGame.h"
+#include "Enhanced/iosSaberThrowJk.h"
 
 #ifdef JK_ENHANCED
 
@@ -337,6 +338,9 @@ int iosGame_GetWeapon(int bin, int* pAmmo, int* pbSelectable)
         sithWeapon_bAutoSwitch |= autoSwitch;
         sithWeapon_bMultiplayerAutoSwitch |= multiAutoSwitch;
     }
+    // (Jedi Knight's saber while it is thrown: not until one is back, iosSaberThrowJk)
+    if (iosSaberThrowJk_WeaponHeldBack(pPlayer, bin))
+        bOk = 0;
     *pbSelectable = bOk;
     return 1;
 }

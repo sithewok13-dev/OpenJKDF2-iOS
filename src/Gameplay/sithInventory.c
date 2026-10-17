@@ -15,6 +15,7 @@
 #include "Main/jkDev.h"
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSaberThrow.h" // Added
+#include "Enhanced/iosSaberThrowJk.h" // Added
 #endif
 
 // MOTS added
@@ -1278,6 +1279,9 @@ int sithInventory_HandleInvSkillKeys(SithThing *player, flex_t deltaSecs)
 #ifdef JK_ENHANCED
                     // Added: Saber Throw with two sabers, a saber a press (iosSaberThrow)
                     if ( Main_bMotsCompat && v16 == 37 && iosSaberThrow_Activate(v1) )
+                        ;
+                    // Added: Jedi Knight's Saber Throw (THROW, iosSaberThrowJk), which no cog of the game's has
+                    else if ( !Main_bMotsCompat && v16 == IOSSABERTHROWJK_BIN && iosSaberThrowJk_Activate(v1) )
                         ;
                     else
 #endif

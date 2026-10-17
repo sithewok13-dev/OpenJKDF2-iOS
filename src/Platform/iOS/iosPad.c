@@ -18,6 +18,7 @@
 #include "World/sithWorld.h"
 #include "World/sithThing.h"
 #include "Enhanced/iosGame.h"
+#include "Enhanced/iosSaberThrowJk.h"
 #include "Platform/Input/inputUi.h" // (iOS: the touch overlay and iosPadPanel; elsewhere: inputOverlay.c)
 
 extern int stdControl_bControllerEscapeKey;
@@ -378,8 +379,9 @@ static void iosPad_SetWheelPrompt(void)
     const char* a = iosPad_ButtonName(SDL_GAMEPAD_BUTTON_SOUTH, 0);
     const char* bb = iosPad_ButtonName(SDL_GAMEPAD_BUTTON_EAST, 0);
     if (iosPad_s.wheelKind == IOSPAD_WHEEL_SABER) {
-        snprintf(t, sizeof(t), "Right stick: colour   %s: set   %s: style   %s: blade   L3: look   D-pad up: film   R3: equip   %s: close",
-                 a, iosPad_ButtonName(SDL_GAMEPAD_BUTTON_WEST, 0), iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0), bb);
+        snprintf(t, sizeof(t), "Right stick: colour   %s: set   %s: style   %s: blade   L3: look   D-pad up: film   %sR3: equip   %s: close",
+                 a, iosPad_ButtonName(SDL_GAMEPAD_BUTTON_WEST, 0), iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0),
+                 iosSaberThrowJk_Offered() ? "D-pad down: throw   " : "", bb);
     }
     else if (iosPad_s.wheelState == IOSPAD_WS_HELD) {
         snprintf(t, sizeof(t), "Right stick: point   Let go of %s: pick   %s: cancel", iosPad_PbName(iosPad_s.wheelBtn, 0), bb);
@@ -507,6 +509,7 @@ static void iosPad_WheelInput(void)
         if (iosPad_Pressed(PB_Y)) inputUi_SaberChip(IOSPAD_CHIP_TARGET);
         if (iosPad_Pressed(PB_LS)) inputUi_SaberChip(IOSPAD_CHIP_LOOK);
         if (iosPad_Pressed(PB_DUP)) inputUi_SaberChip(IOSPAD_CHIP_SHAPE); // (the D-pad's up: free on this wheel)
+        if (iosPad_Pressed(PB_DDOWN)) inputUi_SaberChip(IOSPAD_CHIP_THROW); // (the D-pad's down, likewise; Jedi Knight only)
         if (iosPad_Pressed(PB_RS)) {
             inputUi_SaberChip(IOSPAD_CHIP_EQUIP);
             if (!inputUi_PadWheelIsOpen()) {

@@ -64,15 +64,18 @@ typedef struct {
     int numGroups;
     float sliceDeg; // each slice's width
     float gapDeg;   // between two groups (the gap at the bottom is what is left)
+    float nameMin;  // the smallest a name goes to keep its row (its stars) at their size; 0: 7 pt, as alone
 } inputWheelMap;
 
 // The saber wheel's choices beside the ring: one saber, two or the
 // crossguard, and under them the blade's shape (an on/off switch: FILM on,
 // SPIKE off; iosSaberShape; dim with CROSS, which has its own), which of two
 // blades a colour goes to; and in the middle, the saber in hand and the
-// colours' look (CLASSIC / REFORGED, iosSaber_GetLook)
+// colours' look (CLASSIC / REFORGED, iosSaber_GetLook). In Jedi Knight, single
+// player, THROW at the top right (a switch: Saber Throw on the Force wheel,
+// iosSaberThrowJk).
 enum { INPUTWHEEL_CHIP_SINGLE = 0, INPUTWHEEL_CHIP_DUAL, INPUTWHEEL_CHIP_LEFT, INPUTWHEEL_CHIP_BOTH, INPUTWHEEL_CHIP_RIGHT,
-       INPUTWHEEL_CHIP_EQUIP, INPUTWHEEL_CHIP_LOOK, INPUTWHEEL_CHIP_SHAPE, INPUTWHEEL_CHIP_CROSS, INPUTWHEEL_NUM_CHIPS };
+       INPUTWHEEL_CHIP_EQUIP, INPUTWHEEL_CHIP_LOOK, INPUTWHEEL_CHIP_SHAPE, INPUTWHEEL_CHIP_CROSS, INPUTWHEEL_CHIP_THROW, INPUTWHEEL_NUM_CHIPS };
 // With two blades, the one a colour goes to
 enum { INPUTWHEEL_SABER_RIGHT = 0, INPUTWHEEL_SABER_LEFT = 1, INPUTWHEEL_SABER_BOTH = 2 };
 
@@ -136,8 +139,9 @@ int inputWheel_Close(int slice);
 // colour goes to, EQUIP (the saber in hand: the wheel closes), the look (the
 // other one: the wheel made again in it, still open; remembered by the
 // platform around this, from iosSaber_GetLook), the shape (FILM on or off, the
-// wheel open; remembered the same way, from iosSaberShape_Get). Nothing for
-// one that can't be chosen now.
+// wheel open; remembered the same way, from iosSaberShape_Get), THROW (on or
+// off, the wheel open; remembered the same way, from iosSaberThrowJk_Get).
+// Nothing for one that can't be chosen now.
 void inputWheel_SaberChip(int chip);
 // Whether EQUIP can take the saber now (the player has it and can switch to it)
 int inputWheel_CanEquipSaber(void);

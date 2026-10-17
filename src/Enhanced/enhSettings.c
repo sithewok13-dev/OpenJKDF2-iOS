@@ -8,6 +8,7 @@
 
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberShape.h"
+#include "Enhanced/iosSaberThrowJk.h"
 #include "Enhanced/iosGame.h"
 #include "Main/sithCvar.h"
 #include "General/stdString.h"
@@ -22,6 +23,7 @@ static char enhSettings_saberShape[SITHCVAR_MAX_STRLEN];
 static char enhSettings_aColour[ENHSETTINGS_NUM_COLOURS][SITHCVAR_MAX_STRLEN]; // single; dual right, left; cross
 static int32_t enhSettings_jumpStyle = IOSGAME_JUMP_CLASSIC; // (the desktops' own jump, as before; iOS: STEPS)
 static int32_t enhSettings_bThirdPerson = 0;
+static int32_t enhSettings_bSaberThrow = 0;
 
 static const char* enhSettings_aColourName[ENHSETTINGS_NUM_COLOURS] = { "enh_saberColourSingle", "enh_saberColourDualRight", "enh_saberColourDualLeft",
                                                                      "enh_saberColourCross" };
@@ -34,6 +36,7 @@ typedef struct {
     int aColour[ENHSETTINGS_NUM_COLOURS];
     int jumpStyle;
     int bThirdPerson;
+    int bSaberThrow;
 } enhSettingsState;
 static enhSettingsState enhSettings_synced;
 static int enhSettings_bSynced = 0;
@@ -53,6 +56,7 @@ void enhSettings_StartupCvars(void)
         sithCvar_RegisterStr(enhSettings_aColourName[i], "game", enhSettings_aColour[i], CVARFLAG_GLOBAL);
     sithCvar_RegisterInt("enh_forceJumpStyle", IOSGAME_JUMP_CLASSIC, &enhSettings_jumpStyle, CVARFLAG_GLOBAL);
     sithCvar_RegisterBool("enh_thirdPerson", 0, &enhSettings_bThirdPerson, CVARFLAG_GLOBAL);
+    sithCvar_RegisterBool("enh_saberThrow", 0, &enhSettings_bSaberThrow, CVARFLAG_GLOBAL);
 }
 
 // The cvars, as the gameplay takes them (an unknown name or key: the default)
@@ -71,6 +75,7 @@ static void enhSettings_FromCvars(enhSettingsState* p)
     }
     p->jumpStyle = (enhSettings_jumpStyle >= 0 && enhSettings_jumpStyle < IOSGAME_JUMP_NUM_STYLES) ? enhSettings_jumpStyle : IOSGAME_JUMP_CLASSIC;
     p->bThirdPerson = enhSettings_bThirdPerson ? 1 : 0;
+    p->bSaberThrow = enhSettings_bSaberThrow ? 1 : 0;
 }
 
 static void enhSettings_FromGameplay(enhSettingsState* p)
@@ -85,6 +90,7 @@ static void enhSettings_FromGameplay(enhSettingsState* p)
     }
     p->jumpStyle = iosGame_GetForceJumpStyle();
     p->bThirdPerson = iosGame_IsThirdPerson() ? 1 : 0;
+    p->bSaberThrow = iosSaberThrowJk_Get() ? 1 : 0;
 }
 
 void enhSettings_Sync(void)
@@ -131,6 +137,10 @@ void enhSettings_Sync(void)
         iosGame_SetThirdPerson(c.bThirdPerson);
         s->bThirdPerson = g.bThirdPerson = c.bThirdPerson;
     }
+    if (c.bSaberThrow != s->bSaberThrow) {
+        iosSaberThrowJk_Set(c.bSaberThrow);
+        s->bSaberThrow = g.bSaberThrow = c.bSaberThrow;
+    }
 
     // The gameplay changed (the camera key, a pick made in the game): into the cvar
     for (int i = 0; i < ENHSETTINGS_NUM_COLOURS; i++) {
@@ -159,6 +169,10 @@ void enhSettings_Sync(void)
     if (g.bThirdPerson != s->bThirdPerson) {
         sithCvar_SetBool("enh_thirdPerson", g.bThirdPerson);
         s->bThirdPerson = g.bThirdPerson;
+    }
+    if (g.bSaberThrow != s->bSaberThrow) {
+        sithCvar_SetBool("enh_saberThrow", g.bSaberThrow);
+        s->bSaberThrow = g.bSaberThrow;
     }
 }
 

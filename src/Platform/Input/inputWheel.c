@@ -18,6 +18,7 @@
 #include "Enhanced/iosGame.h"
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberShape.h"
+#include "Enhanced/iosSaberThrowJk.h"
 #include "Platform/platServices.h"
 
 #ifndef M_PI
@@ -91,6 +92,16 @@ static const inputWheelSlice inputWheel_aJkSlices[] = {
     { 21, 1, 123.0f }, { 22, 1, 101.0f }, { 23, 1,  79.0f }, { 24, 1,  57.0f },                    // Jump, Speed, Seeing, Pull
     { 30, 2,  29.0f }, { 31, 2,   7.0f }, { 32, 2, -15.0f }, { 33, 2, -37.0f }, { 34, 2, -59.0f }, // Throw, Grip, Lightning, Destruction, Deadly Sight
 };
+// ...and with Saber Throw on it (THROW or the cheat, iosSaberThrowJk): fifteen,
+// Saber Throw at the top between Speed and Seeing; a little narrower, the gaps
+// between the sides too (the one at the bottom 42.5 degrees, the fourteen's 40),
+// and the names of the ones that need it smaller (down to 6 pt), so that every
+// power keeps its stars, as big as can be
+static const inputWheelSlice inputWheel_aJkThrowSlices[] = {
+    { 29, 0, 238.5f }, { 28, 0, 218.0f }, { 27, 0, 197.5f }, { 26, 0, 177.0f }, { 25, 0, 156.5f }, // Protection, Absorb, Blinding, Persuasion, Healing
+    { 21, 1, 131.0f }, { 22, 1, 110.5f }, { IOSSABERTHROWJK_BIN, 1, 90.0f }, { 23, 1, 69.5f }, { 24, 1, 49.0f }, // Jump, Speed, Saber Throw, Seeing, Pull
+    { 30, 2,  23.5f }, { 31, 2,   3.0f }, { 32, 2, -17.5f }, { 33, 2, -38.0f }, { 34, 2, -58.5f }, // Throw, Grip, Lightning, Destruction, Deadly Sight
+};
 // Mysteries of the Sith: its four tiers, round from the bottom left
 static const inputWheelGroup inputWheel_aMotsGroups[] = {
     { "TIER I",   207.0f, 255, 214, 120 },
@@ -123,6 +134,8 @@ static const inputWheelSlice inputWheel_aMotsWeaponSlices[] = {
 };
 static const inputWheelMap inputWheel_jkForce = { inputWheel_aJkSlices, INPUTWHEEL_COUNT(inputWheel_aJkSlices),
     inputWheel_aJkGroups, INPUTWHEEL_COUNT(inputWheel_aJkGroups), 22.0f, 6.0f };
+static const inputWheelMap inputWheel_jkThrowForce = { inputWheel_aJkThrowSlices, INPUTWHEEL_COUNT(inputWheel_aJkThrowSlices),
+    inputWheel_aJkGroups, INPUTWHEEL_COUNT(inputWheel_aJkGroups), 20.5f, 5.0f, 6.0f };
 static const inputWheelMap inputWheel_motsForce = { inputWheel_aMotsSlices, INPUTWHEEL_COUNT(inputWheel_aMotsSlices),
     inputWheel_aMotsGroups, INPUTWHEEL_COUNT(inputWheel_aMotsGroups), 18.0f, 6.0f };
 static const inputWheelMap inputWheel_jkWeapons = { inputWheel_aJkWeaponSlices, INPUTWHEEL_COUNT(inputWheel_aJkWeaponSlices),
@@ -130,6 +143,7 @@ static const inputWheelMap inputWheel_jkWeapons = { inputWheel_aJkWeaponSlices, 
 static const inputWheelMap inputWheel_motsWeapons = { inputWheel_aMotsWeaponSlices, INPUTWHEEL_COUNT(inputWheel_aMotsWeaponSlices),
     inputWheel_aWeaponGroups, INPUTWHEEL_COUNT(inputWheel_aWeaponGroups), 19.0f, 0.0f };
 typedef char inputWheel_assertSizes[(INPUTWHEEL_COUNT(inputWheel_aJkSlices) <= INPUTWHEEL_MAX
+                                     && INPUTWHEEL_COUNT(inputWheel_aJkThrowSlices) <= INPUTWHEEL_MAX
                                      && INPUTWHEEL_COUNT(inputWheel_aMotsSlices) <= INPUTWHEEL_MAX
                                      && INPUTWHEEL_COUNT(inputWheel_aJkWeaponSlices) <= INPUTWHEEL_MAX
                                      && INPUTWHEEL_COUNT(inputWheel_aMotsWeaponSlices) <= INPUTWHEEL_MAX
@@ -169,7 +183,7 @@ const inputWheelMap* inputWheel_GetMap(int kind, int bMots)
         inputWheel_SetupSaber();
         return &inputWheel_saber;
     }
-    return bMots ? &inputWheel_motsForce : &inputWheel_jkForce;
+    return bMots ? &inputWheel_motsForce : iosSaberThrowJk_OnWheel() ? &inputWheel_jkThrowForce : &inputWheel_jkForce;
 }
 
 float inputWheel_AngleDiff(float a, float b)
@@ -228,6 +242,9 @@ static struct {
     float chipX[INPUTWHEEL_NUM_CHIPS], chipY[INPUTWHEEL_NUM_CHIPS], chipW[INPUTWHEEL_NUM_CHIPS], chipH[INPUTWHEEL_NUM_CHIPS];
     int aChipShown[INPUTWHEEL_NUM_CHIPS];
     int bChipsTight; // (all down one side, closer: INPUTWHEEL_CHIP_TIGHT_GAP)
+    // THROW's spot (its middle) for the screen and the ring it was found for (inputWheel_ThrowSpot)
+    int bThrowFound, bThrowSpot;
+    float throwKey[8], throwX, throwY;
     inputWheelFit aFit[INPUTWHEEL_NUM_KINDS];
 } inputWheel_s = { .hot = -1, .lastHot = -1, .saberTarget = INPUTWHEEL_SABER_BOTH };
 
@@ -283,6 +300,7 @@ int inputWheel_Open(int kind, int bTapMode)
     inputWheel_s.hot = inputWheel_s.lastHot = -1;
     inputWheel_s.bNeedle = 0;
     inputWheel_s.bCancelShown = 0;
+    inputWheel_s.bThrowFound = 0; // (found again: the opener's buttons may be others now)
     iosGame_SetHold(1);
     return 1;
 }
@@ -476,6 +494,12 @@ void inputWheel_SaberChip(int chip)
         // the blade's shape, FILM on or off: the blades drawn in it at once
         iosSaberShape_Toggle();
     }
+    else if (chip == INPUTWHEEL_CHIP_THROW) {
+        // THROW on or off: Saber Throw on the Force wheel (or not) from its next opening
+        // (only while its switch shows: the pad's and keyboard's key too)
+        if (!iosSaberThrowJk_Offered() || !inputWheel_s.aChipShown[INPUTWHEEL_CHIP_THROW]) return;
+        iosSaberThrowJk_Toggle();
+    }
     else return;
     inputWheel_s.bTapMode = 1;
     inputWheel_s.hot = inputWheel_s.lastHot = -1;
@@ -519,7 +543,8 @@ int inputWheel_ChipAt(float x, float y)
     for (int i = 0; i < INPUTWHEEL_NUM_CHIPS; i++) {
         if (!inputWheel_s.aChipShown[i]) continue;
         // (a touch round each; in the close column, no further than halfway to the next)
-        const float dy = (inputWheel_s.bChipsTight && i != INPUTWHEEL_CHIP_EQUIP && i != INPUTWHEEL_CHIP_LOOK) ? INPUTWHEEL_CHIP_TIGHT_GAP * 0.5f : INPUTWHEEL_CHIP_TOUCH;
+        const float dy = (inputWheel_s.bChipsTight && i != INPUTWHEEL_CHIP_EQUIP && i != INPUTWHEEL_CHIP_LOOK && i != INPUTWHEEL_CHIP_THROW)
+                         ? INPUTWHEEL_CHIP_TIGHT_GAP * 0.5f : INPUTWHEEL_CHIP_TOUCH;
         if (fabsf(x - inputWheel_s.chipX[i]) > inputWheel_s.chipW[i] * 0.5f + INPUTWHEEL_CHIP_TOUCH || fabsf(y - inputWheel_s.chipY[i]) > inputWheel_s.chipH[i] * 0.5f + dy)
             continue;
         // (the look's switch: only in the middle, stopping short of where a slice takes a touch, R0 - 4)
@@ -568,8 +593,9 @@ static void inputWheel_RowSize(float* pW, float* pH)
     *pH = INPUTWHEEL_STAR_CELL * k;
 }
 
-// The biggest size (11 pt down to 7) a slice's name (with its row, bRow)
-// fits at somewhere along the slice, as near the middle of the band as it can
+// The biggest size (11 pt down to 7; with its row, bRow, down to the map's
+// nameMin if it has one) a slice's name fits at somewhere along the slice, as
+// near the middle of the band as it can
 static int inputWheel_FitLabel(int i, float s11w, float s11h, int bRow)
 {
     const inputWheelMap* m = inputWheel_s.pMap;
@@ -583,7 +609,8 @@ static int inputWheel_FitLabel(int i, float s11w, float s11h, int bRow)
     F->labelW[i][bRow] = s11w * 7.0f / 11.0f;
     F->labelH[i][bRow] = s11h * 7.0f / 11.0f;
     int bFound = 0;
-    for (float size = 11.0f; size >= 7.0f && !bFound; size -= 0.5f) {
+    const float sizeMin = (bRow && m->nameMin > 0.0f) ? m->nameMin : 7.0f;
+    for (float size = 11.0f; size >= sizeMin - 0.001f && !bFound; size -= 0.5f) {
         const float w = s11w * size / 11.0f, h = s11h * size / 11.0f;
         const float bw = bRow ? INPUTWHEEL_MAX_F(w, rowW) : w;
         const float bh = bRow ? h + INPUTWHEEL_STAR_GAP + rowH : h;
@@ -632,6 +659,16 @@ static void inputWheel_FitLabels(void)
             if (inputWheel_SliceHasRow(i) && !inputWheel_FitLabel(i, aW[i], aH[i], 1)) bAll = 0;
         if (bAll || bLast) break;
     }
+    // (a map that keeps every row, nameMin: one that still doesn't fit at the
+    // smallest has its name at its smallest, in the middle of the band, and its
+    // row under it all the same)
+    for (int i = 0; i < m->numSlices && m->nameMin > 0.0f; i++) {
+        if (!inputWheel_SliceHasRow(i) || F->font[i][1] > 0.0f) continue;
+        F->font[i][1] = m->nameMin;
+        F->labelR[i][1] = inputWheel_s.R0 + (inputWheel_s.R1 - inputWheel_s.R0) * 0.58f;
+        F->labelW[i][1] = aW[i] * m->nameMin / 11.0f;
+        F->labelH[i][1] = aH[i] * m->nameMin / 11.0f;
+    }
 }
 
 static void inputWheel_LayoutChips(const inputWheelScreen* s);
@@ -677,17 +714,16 @@ static void inputWheel_LookChipSize(float R0, float* pW, float* pH, float* pUp)
     *pUp = up;
 }
 
-// The saber wheel's choices: SINGLE, DUAL, CROSS and the shape's switch down
-// the left of the ring, with two blades LEFT, BOTH and RIGHT on its right,
-// EQUIP in the middle under the hint, the look's switch in the middle over the
-// colour's name. Kept clear of the opener's buttons (inputWheel_SetKeepClear):
-// each column moved up or down as little as it can be; where the right has no
-// such place, all seven down the left (a little more apart between the two
-// kinds; closer, where they don't fit so).
-static void inputWheel_LayoutChips(const inputWheelScreen* s)
+// The two columns of the saber wheel's choices as they are laid out for one
+// saber or two (bTwo): each choice's middle (SINGLE, DUAL, CROSS and the
+// shape's switch down the left of the ring, LEFT, BOTH and RIGHT on its
+// right), and whether all seven go down the left closer (*pTight). Kept
+// clear of the opener's buttons (inputWheel_SetKeepClear): each column moved
+// up or down as little as it can be; where the right has no such place, all
+// seven down the left (a little more apart between the two kinds; closer,
+// where they don't fit so).
+static void inputWheel_Columns(const inputWheelScreen* s, int bTwo, float* aX, float* aY, int* pTight)
 {
-    const int bSaber = inputWheel_s.bOpen && inputWheel_s.kind == INPUTWHEEL_SABER;
-    const int bTwo = iosSaber_StyleNumBlades(iosSaber_GetStyle()) >= 2;
     const float cx = inputWheel_s.cx, cy = inputWheel_s.cy;
     float step = INPUTWHEEL_CHIP_H + INPUTWHEEL_CHIP_GAP, kindGap = INPUTWHEEL_CHIP_KIND_GAP;
     float R = inputWheel_s.R1 + INPUTWHEEL_POP + INPUTWHEEL_CHIP_OUT + INPUTWHEEL_CHIP_W * 0.5f;
@@ -696,8 +732,8 @@ static void inputWheel_LayoutChips(const inputWheelScreen* s)
     if (R > maxR) R = maxR;
     float aShift[2] = { 0.0f, 0.0f };
     int bOneColumn = 0;
-    inputWheel_s.bChipsTight = 0;
-    if (bSaber && inputWheel_s.pfnClear) {
+    *pTight = 0;
+    if (inputWheel_s.pfnClear) {
         const float top = INPUTWHEEL_MAX_F(s->inT, 8.0f), bottom = s->h - INPUTWHEEL_MAX_F(s->inB, 8.0f);
         for (int col = 0; col < 2; col++) {
             const int n = col ? 3 : 4;
@@ -722,7 +758,7 @@ static void inputWheel_LayoutChips(const inputWheelScreen* s)
             const float tightHalf = 3.0f * tightStep + INPUTWHEEL_CHIP_H * 0.5f;
             const float tightShift = INPUTWHEEL_MIN(INPUTWHEEL_MAX_F(0.0f, top1 + tightHalf - cy), bottom - tightHalf - cy);
             if (!bFits && bTwo) {
-                inputWheel_s.bChipsTight = 1;
+                *pTight = 1;
                 step = tightStep;
                 kindGap = 0.0f;
             }
@@ -731,6 +767,136 @@ static void inputWheel_LayoutChips(const inputWheelScreen* s)
             if (!bFits && !bTwo) aShift[0] = tightShift - 3.0f * tightStep + (6.0f * step + kindGap) * 0.5f;
         }
     }
+    for (int i = 0; i < INPUTWHEEL_NUM_CHIPS; i++) {
+        aX[i] = cx;
+        aY[i] = cy;
+        if (i == INPUTWHEEL_CHIP_EQUIP || i == INPUTWHEEL_CHIP_LOOK || i == INPUTWHEEL_CHIP_THROW) continue;
+        // (the left column: SINGLE, DUAL, CROSS, the shape; the right: LEFT, BOTH, RIGHT)
+        const int bStyle = i <= INPUTWHEEL_CHIP_DUAL || i == INPUTWHEEL_CHIP_SHAPE || i == INPUTWHEEL_CHIP_CROSS;
+        const int k = i == INPUTWHEEL_CHIP_SHAPE ? 3 : i == INPUTWHEEL_CHIP_CROSS ? 2 : bStyle ? i - INPUTWHEEL_CHIP_SINGLE : i - INPUTWHEEL_CHIP_LEFT;
+        const int n = bStyle ? 4 : 3;
+        if (bOneColumn) {
+            aX[i] = cx - R;
+            const int slot = k + (bStyle ? 0 : 4);
+            aY[i] = cy + aShift[0] + slot * step + (slot >= 4 ? kindGap : 0.0f) - (6.0f * step + kindGap) * 0.5f;
+        }
+        else {
+            aX[i] = cx + (bStyle ? -R : R);
+            aY[i] = cy + aShift[bStyle ? 0 : 1] + (k - (n - 1) * 0.5f) * step;
+        }
+    }
+}
+
+// Whether one of the saber wheel's choices shows with one saber or two (bTwo), but THROW
+static int inputWheel_ChipShownFor(int i, int bTwo)
+{
+    const int bStyle = i <= INPUTWHEEL_CHIP_DUAL || i == INPUTWHEEL_CHIP_SHAPE || i == INPUTWHEEL_CHIP_CROSS;
+    if (i == INPUTWHEEL_CHIP_EQUIP || i == INPUTWHEEL_CHIP_LOOK) return 1;
+    if (i == INPUTWHEEL_CHIP_THROW || (!bStyle && !bTwo)) return 0;
+    if (i == INPUTWHEEL_CHIP_DUAL && !iosSaber_StyleAvailable(IOSSABER_STYLE_DUAL)) return 0;
+    if (i == INPUTWHEEL_CHIP_CROSS && !iosSaber_StyleAvailable(IOSSABER_STYLE_CROSS)) return 0;
+    return 1;
+}
+
+// THROW's spot (its middle; 0 if there is none) as iosTouch.m finds it: the
+// nearest clear one to the ring's upper right (45 degrees, just past the
+// popped slices), on the right half, in whole points (its top left) -- clear
+// of the opener's buttons (inputWheel_SetKeepClear: by more than 4 pt), by 6
+// pt of the popped slices, by 12 pt of every other choice with one saber or
+// two (two sabers' column on the right always counted, so it never moves with
+// the style), on the screen inside its insets and under topClear (a point
+// under: out of reach of the top row's buttons, so it never moves with which
+// of them show). Near ones first, out in rings, no further than
+// INPUTWHEEL_THROW_REACH; the same distance, the higher, then the more to the
+// left. Found once for a screen and a ring.
+#define INPUTWHEEL_THROW_REACH 300
+static int inputWheel_ThrowSpot(const inputWheelScreen* s, float* pX, float* pY)
+{
+    const float key[8] = { s->w, s->h, s->inL, s->inT, s->inR, s->inB, inputWheel_s.R1, inputWheel_s.topClear + (inputWheel_s.pfnClear ? 0.5f : 0.0f) };
+    if (inputWheel_s.bThrowFound && !memcmp(key, inputWheel_s.throwKey, sizeof(key))) {
+        *pX = inputWheel_s.throwX;
+        *pY = inputWheel_s.throwY;
+        return inputWheel_s.bThrowSpot;
+    }
+    const float W = INPUTWHEEL_CHIP_W, H = INPUTWHEEL_CHIP_H;
+    const float cx = inputWheel_s.cx, cy = inputWheel_s.cy;
+    const float left = INPUTWHEEL_MAX_F(s->inL, 8.0f), right = s->w - INPUTWHEEL_MAX_F(s->inR, 8.0f);
+    const float top = INPUTWHEEL_MAX_F(INPUTWHEEL_MAX_F(s->inT, 8.0f), inputWheel_s.topClear > 0.0f ? inputWheel_s.topClear + 1.0f : 0.0f);
+    const float bottom = s->h - INPUTWHEEL_MAX_F(s->inB, 8.0f);
+    const float ringR = inputWheel_s.R1 + INPUTWHEEL_POP + 6.0f;
+    // (the other choices, with one saber and with two)
+    float aL[2 * INPUTWHEEL_NUM_CHIPS], aT[2 * INPUTWHEEL_NUM_CHIPS], aR[2 * INPUTWHEEL_NUM_CHIPS], aB[2 * INPUTWHEEL_NUM_CHIPS];
+    int nOther = 0;
+    for (int bTwo = 0; bTwo < 2; bTwo++) {
+        float aX[INPUTWHEEL_NUM_CHIPS], aY[INPUTWHEEL_NUM_CHIPS];
+        int bTight;
+        inputWheel_Columns(s, bTwo, aX, aY, &bTight);
+        for (int i = 0; i < INPUTWHEEL_NUM_CHIPS; i++) {
+            if (!inputWheel_ChipShownFor(i, bTwo)) continue;
+            float w = W, h = H, x = aX[i], y = aY[i];
+            if (i == INPUTWHEEL_CHIP_EQUIP) y = cy + 34.0f;
+            else if (i == INPUTWHEEL_CHIP_LOOK) {
+                float up;
+                inputWheel_LookChipSize(inputWheel_s.R0, &w, &h, &up);
+                y = cy - up;
+            }
+            aL[nOther] = x - w * 0.5f;
+            aR[nOther] = x + w * 0.5f;
+            aT[nOther] = y - h * 0.5f;
+            aB[nOther] = y + h * 0.5f;
+            nOther++;
+        }
+    }
+    const float d = ringR + hypotf(W, H) * 0.5f;
+    const float ax = cx + d * 0.70710678f, ay = cy - d * 0.70710678f; // (its middle's aim)
+    const float bx = roundf(ax - W * 0.5f), by = roundf(ay - H * 0.5f);
+    const float x0min = INPUTWHEEL_MAX_F(floorf(cx), left), x0max = right - W, y0min = top, y0max = bottom - H;
+    float bestD = -1.0f, bestX = 0.0f, bestY = 0.0f;
+    for (int r = 0; r <= INPUTWHEEL_THROW_REACH; r++) {
+        if (bestD >= 0.0f && bestD <= r - 0.70710678f) break; // (every spot further out is further away)
+        for (int j = -r; j <= r; j++) {
+            const int di = (j == -r || j == r) ? 1 : (r ? 2 * r : 1); // (this ring only: its top and bottom whole, its sides)
+            for (int i = -r; i <= r; i += di) {
+                const float x0 = bx + i, y0 = by + j;
+                if (x0 < x0min || x0 > x0max || y0 < y0min || y0 > y0max) continue;
+                const float dist = hypotf(x0 + W * 0.5f - ax, y0 + H * 0.5f - ay);
+                if (bestD >= 0.0f && (dist > bestD + 1e-4f || (fabsf(dist - bestD) <= 1e-4f && (y0 > bestY || (y0 == bestY && x0 > bestX))))) continue;
+                const float rx = INPUTWHEEL_MAX_F(INPUTWHEEL_MAX_F(x0 - cx, cx - (x0 + W)), 0.0f), ry = INPUTWHEEL_MAX_F(INPUTWHEEL_MAX_F(y0 - cy, cy - (y0 + H)), 0.0f);
+                if (hypotf(rx, ry) <= ringR) continue;
+                int bClear = 1;
+                for (int k = 0; k < nOther && bClear; k++) {
+                    const float gx = INPUTWHEEL_MAX_F(INPUTWHEEL_MAX_F(aL[k] - (x0 + W), x0 - aR[k]), 0.0f);
+                    const float gy = INPUTWHEEL_MAX_F(INPUTWHEEL_MAX_F(aT[k] - (y0 + H), y0 - aB[k]), 0.0f);
+                    bClear = hypotf(gx, gy) >= 12.0f;
+                }
+                if (!bClear || (inputWheel_s.pfnClear && !inputWheel_s.pfnClear(x0, y0, x0 + W, y0 + H))) continue;
+                bestD = dist;
+                bestX = x0;
+                bestY = y0;
+            }
+        }
+    }
+    memcpy(inputWheel_s.throwKey, key, sizeof(key));
+    inputWheel_s.bThrowFound = 1;
+    inputWheel_s.bThrowSpot = bestD >= 0.0f;
+    inputWheel_s.throwX = bestX + W * 0.5f;
+    inputWheel_s.throwY = bestY + H * 0.5f;
+    *pX = inputWheel_s.throwX;
+    *pY = inputWheel_s.throwY;
+    return inputWheel_s.bThrowSpot;
+}
+
+// The saber wheel's choices: the two columns (inputWheel_Columns), EQUIP in
+// the middle under the hint, the look's switch in the middle over the
+// colour's name, and in Jedi Knight THROW at the top right (inputWheel_ThrowSpot)
+static void inputWheel_LayoutChips(const inputWheelScreen* s)
+{
+    const int bSaber = inputWheel_s.bOpen && inputWheel_s.kind == INPUTWHEEL_SABER;
+    const int bTwo = iosSaber_StyleNumBlades(iosSaber_GetStyle()) >= 2;
+    const float cx = inputWheel_s.cx, cy = inputWheel_s.cy;
+    float aX[INPUTWHEEL_NUM_CHIPS], aY[INPUTWHEEL_NUM_CHIPS];
+    inputWheel_s.bChipsTight = 0;
+    inputWheel_Columns(s, bTwo, aX, aY, &inputWheel_s.bChipsTight);
     for (int i = 0; i < INPUTWHEEL_NUM_CHIPS; i++) {
         inputWheel_s.chipW[i] = INPUTWHEEL_CHIP_W;
         inputWheel_s.chipH[i] = INPUTWHEEL_CHIP_H;
@@ -748,22 +914,14 @@ static void inputWheel_LayoutChips(const inputWheelScreen* s)
             inputWheel_s.chipY[i] = cy - up;
             continue;
         }
-        // (the left column: SINGLE, DUAL, CROSS, the shape; the right: LEFT, BOTH, RIGHT)
-        const int bStyle = i <= INPUTWHEEL_CHIP_DUAL || i == INPUTWHEEL_CHIP_SHAPE || i == INPUTWHEEL_CHIP_CROSS;
-        inputWheel_s.aChipShown[i] = bSaber && (bStyle || bTwo) && !(i == INPUTWHEEL_CHIP_DUAL && !iosSaber_StyleAvailable(IOSSABER_STYLE_DUAL))
-                                     && !(i == INPUTWHEEL_CHIP_CROSS && !iosSaber_StyleAvailable(IOSSABER_STYLE_CROSS));
+        if (i == INPUTWHEEL_CHIP_THROW) {
+            inputWheel_s.aChipShown[i] = bSaber && iosSaberThrowJk_Offered() && inputWheel_ThrowSpot(s, &inputWheel_s.chipX[i], &inputWheel_s.chipY[i]);
+            continue;
+        }
+        inputWheel_s.aChipShown[i] = bSaber && inputWheel_ChipShownFor(i, bTwo);
         if (!inputWheel_s.aChipShown[i]) continue;
-        const int k = i == INPUTWHEEL_CHIP_SHAPE ? 3 : i == INPUTWHEEL_CHIP_CROSS ? 2 : bStyle ? i - INPUTWHEEL_CHIP_SINGLE : i - INPUTWHEEL_CHIP_LEFT;
-        const int n = bStyle ? 4 : 3;
-        if (bOneColumn) {
-            inputWheel_s.chipX[i] = cx - R;
-            const int slot = k + (bStyle ? 0 : 4);
-            inputWheel_s.chipY[i] = cy + aShift[0] + slot * step + (slot >= 4 ? kindGap : 0.0f) - (6.0f * step + kindGap) * 0.5f;
-        }
-        else {
-            inputWheel_s.chipX[i] = cx + (bStyle ? -R : R);
-            inputWheel_s.chipY[i] = cy + aShift[bStyle ? 0 : 1] + (k - (n - 1) * 0.5f) * step;
-        }
+        inputWheel_s.chipX[i] = aX[i];
+        inputWheel_s.chipY[i] = aY[i];
     }
 }
 
@@ -845,10 +1003,16 @@ static void inputWheel_DrawStar(float cx, float cy, float k, int bFilled, int bP
 // to the right and gold when on), so it reads as a switch, not a choice
 #define INPUTWHEEL_SWITCH_W 20.0f
 #define INPUTWHEEL_SWITCH_H 12.0f
-static void inputWheel_DrawShapeSwitch(touchUiDrawList* l, float x, float y, float w, int bOn)
+static void inputWheel_DrawShapeSwitch(touchUiDrawList* l, const char* name, float x, float y, float w, int bOn)
 {
     const float tx = x + w * 0.5f - 7.0f - INPUTWHEEL_SWITCH_W; // (the track's left)
-    touchUiDraw_Text(l, "FILM", x - INPUTWHEEL_SWITCH_W * 0.5f - 5.0f, y, 10.0f, 1.0f, touchUi_White(bOn ? 1.0f : 0.75f));
+    float size = 10.0f, tw;
+    // (the name in the middle of the room left of the switch, 4 pt in from the edge and
+    // 2 short of the track, as iosTouch.m's label: smaller if it is long, as THROW is)
+    const float bx = x - w * 0.5f + 4.0f, bw = w - 13.0f - INPUTWHEEL_SWITCH_W;
+    touchUiDraw_MeasureText(name, size, 1.0f, &tw, NULL);
+    if (tw > bw) size = INPUTWHEEL_MAX_F(8.0f, floorf(size * bw / tw * 2.0f) / 2.0f);
+    touchUiDraw_Text(l, name, bx + bw * 0.5f, y, size, 1.0f, touchUi_White(bOn ? 1.0f : 0.75f));
     const touchUiColor gold = touchUi_Rgba(1.0f, 0.85f, 0.3f, 0.95f);
     touchUiDraw_RRect(l, tx, y - INPUTWHEEL_SWITCH_H * 0.5f, INPUTWHEEL_SWITCH_W, INPUTWHEEL_SWITCH_H, INPUTWHEEL_SWITCH_H * 0.5f,
                       bOn ? touchUi_Rgba(1.0f, 0.85f, 0.3f, 0.55f) : touchUi_White(0.18f), 1.0f, bOn ? gold : touchUi_White(0.5f));
@@ -861,7 +1025,7 @@ static void inputWheel_DrawShapeSwitch(touchUiDrawList* l, float x, float y, flo
 // saber to take
 static void inputWheel_DrawChips(void)
 {
-    static const char* const aName[INPUTWHEEL_NUM_CHIPS] = { "SINGLE", "DUAL", "LEFT", "BOTH", "RIGHT", "EQUIP", "", "FILM", "CROSS" };
+    static const char* const aName[INPUTWHEEL_NUM_CHIPS] = { "SINGLE", "DUAL", "LEFT", "BOTH", "RIGHT", "EQUIP", "", "FILM", "CROSS", "THROW" };
     touchUiDrawList* l = inputWheel_pDraw;
     const int st = iosSaber_GetStyle();
     for (int i = 0; i < INPUTWHEEL_NUM_CHIPS; i++) {
@@ -874,6 +1038,10 @@ static void inputWheel_DrawChips(void)
         else if (i == INPUTWHEEL_CHIP_SHAPE) {
             bOn = iosSaberShape_Get() == IOSSABERSHAPE_BEAM;
             alpha = iosSaber_StyleHasCrossguard(st) ? INPUTWHEEL_CHIP_DIM : bOn ? 1.0f : 0.8f;
+        }
+        else if (i == INPUTWHEEL_CHIP_THROW) {
+            bOn = iosSaberThrowJk_Get();
+            alpha = bOn ? 1.0f : 0.8f;
         }
         else {
             if (i == INPUTWHEEL_CHIP_SINGLE) bOn = st == IOSSABER_STYLE_SINGLE;
@@ -890,8 +1058,9 @@ static void inputWheel_DrawChips(void)
             iosSaber_ColourRGB(iosSaber_GetShownColour(st, i == INPUTWHEEL_CHIP_LEFT ? 1 : 0), &r, &g, &b);
             text = touchUi_Rgba((r * 0.7f + 255.0f * 0.3f) / 255.0f, (g * 0.7f + 255.0f * 0.3f) / 255.0f, (b * 0.7f + 255.0f * 0.3f) / 255.0f, 1.0f);
         }
-        // (the shape's switch shows its state on its own switch: its border as an unpicked choice's)
-        const int bLit = bOn && i != INPUTWHEEL_CHIP_SHAPE;
+        // (the switches show their state on their own switch: their border as an unpicked choice's)
+        const int bSwitch = i == INPUTWHEEL_CHIP_SHAPE || i == INPUTWHEEL_CHIP_THROW;
+        const int bLit = bOn && !bSwitch;
         const touchUiColor border = bLit ? touchUi_Rgba(1.0f, 0.85f, 0.3f, 0.95f) : touchUi_White(0.4f);
         const float w = inputWheel_s.chipW[i], h = inputWheel_s.chipH[i];
         const char* name = i == INPUTWHEEL_CHIP_LOOK ? iosSaber_LookName(iosSaber_GetLook()) : aName[i];
@@ -901,7 +1070,7 @@ static void inputWheel_DrawChips(void)
         if (tw > w - 10.0f) size = INPUTWHEEL_MAX_F(8.0f, floorf(size * (w - 10.0f) / tw * 2.0f) / 2.0f);
         l->alpha = alpha;
         touchUiDraw_RRect(l, x - w * 0.5f, y - h * 0.5f, w, h, h * 0.5f, touchUi_Black(0.55f), bLit ? 2.0f : 1.5f, border);
-        if (i == INPUTWHEEL_CHIP_SHAPE) inputWheel_DrawShapeSwitch(l, x, y, w, bOn);
+        if (bSwitch) inputWheel_DrawShapeSwitch(l, aName[i], x, y, w, bOn);
         else touchUiDraw_Text(l, name, x, y, size, 1.0f, text);
         l->alpha = 1.0f;
     }

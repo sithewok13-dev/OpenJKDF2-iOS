@@ -86,6 +86,7 @@ extern "C" {
 #define IOSPAD_CHIP_EQUIP 2  // the saber in hand
 #define IOSPAD_CHIP_LOOK 3   // the colours' other look (CLASSIC / REFORGED)
 #define IOSPAD_CHIP_SHAPE 4  // the blade's shape: FILM on or off (iosSaberShape)
+#define IOSPAD_CHIP_THROW 5  // THROW on or off: Jedi Knight's Saber Throw on the Force wheel (iosSaberThrowJk)
 
 // Hold rings (iosPadPanel_HoldRing)
 #define IOSPAD_RING_NONE 0

@@ -26,6 +26,7 @@ static void jkDev_Custom_HostAddressTick(void); // Added
 #include "Main/jkQuakeConsole.h"
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSaberThrow.h" // Added
+#include "Enhanced/iosSaberThrowJk.h" // Added
 #include "Enhanced/iosGame.h" // Added
 #endif
 #include "stdPlatform.h"
@@ -282,6 +283,7 @@ void jkDev_DrawLog()
 #endif
 #ifdef JK_ENHANCED
     iosSaberThrow_Tick(); // Added: two sabers' Saber Throw, once a frame
+    iosSaberThrowJk_Tick(); // Added: Jedi Knight's Saber Throw (THROW), once a frame
     iosGame_ViewTick(); // Added: the view the player picked (VIEW), kept
 #endif
 #ifdef PLATFORM_ENET
@@ -857,6 +859,12 @@ static SithInventoryItem* jkDev_Custom_Item(SithThing *pPlayer, int bin)
          || pPlayer->actorParams.pPlayer == (SithPlayer *)-136 || !(sithInventory_g_aTypes[bin].flags & SITHINVENTORY_TYPE_REGISTERED) )
         return NULL;
     return &pPlayer->actorParams.pPlayer->aItems[bin];
+}
+
+// Added: whether sithewok's endless Force is on (Jedi Knight's Saber Throw costs nothing then, iosSaberThrowJk)
+int jkDev_Custom_EndlessForceIsOn()
+{
+    return jkDev_bEndlessForce && jkDev_Custom_CheatsAllowed();
 }
 
 // Added: whether the touch overlay's SABER shows: a saber in the inventory, however it came (a cheat's
@@ -1544,6 +1552,10 @@ static void jkDev_Custom_KeepForceFull()
         else if ( pPlayer->actorParams.pPlayer && !(pPlayer->flags & SITH_TF_DEAD) )
         {
             int weapon = (sithWeapon_8BD024 != -1) ? sithWeapon_8BD024 : pPlayer->actorParams.pPlayer->curWeaponID;
+#ifdef JK_ENHANCED
+            if ( weapon == SITHBIN_FISTS && iosSaberThrowJk_OnFists() )
+                weapon = SITHBIN_LIGHTSABER; // (on the fists only while the saber is thrown: the saber kept)
+#endif
             if ( weapon > 0 )
                 jkDev_sithEwokWeapon = weapon;
         }
@@ -1810,6 +1822,9 @@ void jkDev_Custom_SithEwokRestored()
 void jkDev_Custom_GameLoaded()
 {
     jkDev_Custom_SaberThrowForget();
+#ifdef JK_ENHANCED
+    iosSaberThrowJk_GameLoaded(); // (Jedi Knight's: the loaded game's thrown sabers taken away at once)
+#endif
     jkDev_Custom_SithEwokRestored();
     jkDev_sithEwokWeaponBack = -1;
     jkDev_sithEwokPowerBack = -1; // (the loaded game's own power selected)
@@ -1892,6 +1907,7 @@ static void jkDev_Custom_SaberThrowForget()
     jkDev_saberRevokedSecs = -1.0;
 #ifdef JK_ENHANCED
     iosSaberThrow_Reset();
+    iosSaberThrowJk_Reset(); // (Jedi Knight's: its sabers out of the world, all in hand)
 #endif
 }
 

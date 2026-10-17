@@ -24,6 +24,7 @@
 #include "Platform/iOS/iosCinema.h"
 #include "Platform/iOS/iosSaber.h"
 #include "Enhanced/iosSaberShape.h"
+#include "Enhanced/iosSaberThrowJk.h"
 #include "Enhanced/enhTick.h"
 #include "Platform/platServices.h"
 #include "Platform/iOS/iosPad.h"
@@ -197,6 +198,7 @@ extern int jkHud_bChatOpen;
 #define IOSTOUCH_SABERTARGET_DEFAULTS_KEY @"iosTouchSaberTarget"
 #define IOSTOUCH_SABERLOOK_DEFAULTS_KEY @"iosTouchSaberLook" // (by its name: CLASSIC, REFORGED)
 #define IOSTOUCH_SABERSHAPE_DEFAULTS_KEY @"iosTouchSaberShape" // (by its name as kept: SPIKE, BEAM (FILM on the screen); iosSaberShape)
+#define IOSTOUCH_SABERTHROW_DEFAULTS_KEY @"iosTouchSaberThrow" // (THROW, on or off: Jedi Knight's Saber Throw, iosSaberThrowJk)
 // The saber wheel's choices beside the ring: SINGLE, DUAL, CROSS and the
 // blade's shape (FILM, an on/off switch) on its left; with DUAL, which blade a
 // colour goes to (LEFT, BOTH, RIGHT) on its right.
@@ -207,9 +209,11 @@ enum { IOSTOUCH_CHIP_SINGLE = 0, IOSTOUCH_CHIP_DUAL, IOSTOUCH_CHIP_LEFT, IOSTOUC
        IOSTOUCH_CHIP_SHAPE, // (on the left, under CROSS: the blade's shape, FILM on or off -- SPIKE, the game's;
                             // dim while CROSS is picked, which has a shape of its own)
        IOSTOUCH_CHIP_CROSS, // (on the left, under DUAL: one saber with a crossguard)
+       IOSTOUCH_CHIP_THROW, // (at the top right, beside the ring: THROW, a switch, Saber Throw on the Force wheel;
+                            // Jedi Knight's, single player only: iosSaberThrowJk)
        IOSTOUCH_NUM_CHIPS };
-// The shape's switch: a track this big at its right, its knob to the right
-// and gold when FILM is on
+// The shape's switch (and THROW's): a track this big at its right, its knob
+// to the right and gold when FILM (THROW) is on
 #define IOSTOUCH_SWITCH_W 20.0
 #define IOSTOUCH_SWITCH_H 12.0
 #define IOSTOUCH_SABER_CHIP_W 64.0
@@ -525,6 +529,7 @@ typedef struct {
     int numGroups;
     float sliceDeg; // each slice's width
     float gapDeg;   // between two groups (the gap at the bottom is what is left)
+    float nameMin;  // the smallest a name goes to keep its row (its stars) at their size; 0: 7 pt, as alone
 } iosTouchWheelMap;
 
 // Jedi Knight, as its Force screen lays the powers out: the light side down
@@ -540,6 +545,17 @@ static const iosTouchWheelSlice iosTouch_aJkWheelSlices[] = {
     { 29, 0, 239.0f }, { 28, 0, 217.0f }, { 27, 0, 195.0f }, { 26, 0, 173.0f }, { 25, 0, 151.0f }, // Protection, Absorb, Blinding, Persuasion, Healing
     { 21, 1, 123.0f }, { 22, 1, 101.0f }, { 23, 1,  79.0f }, { 24, 1,  57.0f },                    // Jump, Speed, Seeing, Pull
     { 30, 2,  29.0f }, { 31, 2,   7.0f }, { 32, 2, -15.0f }, { 33, 2, -37.0f }, { 34, 2, -59.0f }, // Throw, Grip, Lightning, Destruction, Deadly Sight
+};
+// ...and with Saber Throw on it (THROW, or the sithewok cheat: iosSaberThrowJk),
+// fifteen slices a little narrower (20.5 degrees, 5 between the sides), Saber
+// Throw at the top between Speed and Seeing, the gap at the bottom a little
+// wider (42.5 degrees, the fourteen's 40); the rest in the same order. The
+// names of the ones that need it go smaller (down to 6 pt), so that every
+// power keeps its stars, as big as can be
+static const iosTouchWheelSlice iosTouch_aJkThrowWheelSlices[] = {
+    { 29, 0, 238.5f }, { 28, 0, 218.0f }, { 27, 0, 197.5f }, { 26, 0, 177.0f }, { 25, 0, 156.5f }, // Protection, Absorb, Blinding, Persuasion, Healing
+    { 21, 1, 131.0f }, { 22, 1, 110.5f }, { IOSSABERTHROWJK_BIN, 1, 90.0f }, { 23, 1, 69.5f }, { 24, 1, 49.0f }, // Jump, Speed, Saber Throw, Seeing, Pull
+    { 30, 2,  23.5f }, { 31, 2,   3.0f }, { 32, 2, -17.5f }, { 33, 2, -38.0f }, { 34, 2, -58.5f }, // Throw, Grip, Lightning, Destruction, Deadly Sight
 };
 // Mysteries of the Sith has no light and dark side. It sorts its powers into
 // four tiers instead (jkPlayer_aMotsFpBins), opened at Jedi ranks 1, 2, 5 and
@@ -566,6 +582,10 @@ static const iosTouchWheelSlice iosTouch_aMotsWheelSlices[] = {
 static const iosTouchWheelMap iosTouch_jkWheel = {
     iosTouch_aJkWheelSlices, IOSTOUCH_COUNT(iosTouch_aJkWheelSlices),
     iosTouch_aJkWheelGroups, IOSTOUCH_COUNT(iosTouch_aJkWheelGroups), 22.0f, 6.0f
+};
+static const iosTouchWheelMap iosTouch_jkThrowWheel = {
+    iosTouch_aJkThrowWheelSlices, IOSTOUCH_COUNT(iosTouch_aJkThrowWheelSlices),
+    iosTouch_aJkWheelGroups, IOSTOUCH_COUNT(iosTouch_aJkWheelGroups), 20.5f, 5.0f, 6.0f
 };
 static const iosTouchWheelMap iosTouch_motsWheel = {
     iosTouch_aMotsWheelSlices, IOSTOUCH_COUNT(iosTouch_aMotsWheelSlices),
@@ -608,6 +628,7 @@ static const iosTouchWheelMap iosTouch_motsWeaponWheel = {
     iosTouch_aWeaponGroups, IOSTOUCH_COUNT(iosTouch_aWeaponGroups), 19.0f, 0.0f
 };
 typedef char iosTouch_assertWheelSize[(IOSTOUCH_COUNT(iosTouch_aJkWheelSlices) <= IOSTOUCH_WHEEL_MAX
+                                       && IOSTOUCH_COUNT(iosTouch_aJkThrowWheelSlices) <= IOSTOUCH_WHEEL_MAX
                                        && IOSTOUCH_COUNT(iosTouch_aMotsWheelSlices) <= IOSTOUCH_WHEEL_MAX
                                        && IOSTOUCH_COUNT(iosTouch_aJkWeaponSlices) <= IOSTOUCH_WHEEL_MAX
                                        && IOSTOUCH_COUNT(iosTouch_aMotsWeaponSlices) <= IOSTOUCH_WHEEL_MAX
@@ -1332,6 +1353,9 @@ typedef struct {
     UILabel* shapeName;     // in the shape's switch (aSaberChips[IOSTOUCH_CHIP_SHAPE]): its name,
     UIView* shapeTrack;     // its track
     UIView* shapeKnob;      // and the track's knob
+    UILabel* throwName;     // THROW's switch (aSaberChips[IOSTOUCH_CHIP_THROW]) the same way
+    UIView* throwTrack;
+    UIView* throwKnob;
     int saberChipsTight;    // the choices all down the left, closer (IOSTOUCH_SABER_CHIP_TIGHT_GAP), as last laid out
     UIView* trayBack;       // behind MENU's tray
     UIView* cameraFlash;    // the CAMERA button's white flash, over everything
@@ -1403,6 +1427,8 @@ typedef struct {
 - (void)closeWheelSelecting:(int)slice;
 - (void)refreshWheelLooks;
 - (void)layoutSaberChips;
+- (void)saberColumns:(int)bTwo centres:(CGPoint*)aCentre tight:(int*)pTight;
+- (BOOL)throwChipSpot:(CGPoint*)pOrigin;
 - (void)useSaberChip:(int)chip;
 - (void)endBurst;
 - (void)setShowFps:(int)bShow;
@@ -2018,7 +2044,7 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         wheelCancelLabel.text = @"cancel";
         wheelCancelLabel.layer.zPosition = 2.0;
         [wheelView addSubview:wheelCancelLabel];
-        const char* aChipName[IOSTOUCH_NUM_CHIPS] = { "SINGLE", "DUAL", "LEFT", "BOTH", "RIGHT", "EQUIP", "REFORGED", "", "CROSS" };
+        const char* aChipName[IOSTOUCH_NUM_CHIPS] = { "SINGLE", "DUAL", "LEFT", "BOTH", "RIGHT", "EQUIP", "REFORGED", "", "CROSS", "" };
         for (int i = 0; i < IOSTOUCH_NUM_CHIPS; i++) {
             UILabel* l = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, IOSTOUCH_SABER_CHIP_W, IOSTOUCH_SABER_CHIP_H)];
             l.text = [NSString stringWithUTF8String:aChipName[i]];
@@ -2033,25 +2059,27 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
             aSaberChips[i] = l;
             [wheelView addSubview:l];
         }
-        {
-            // the shape's switch: its name on the left, a small on/off switch on the right
-            UILabel* c = aSaberChips[IOSTOUCH_CHIP_SHAPE];
-            shapeName = [[UILabel alloc] initWithFrame:CGRectMake(4.0, 0.0, IOSTOUCH_SABER_CHIP_W - 13.0 - IOSTOUCH_SWITCH_W, IOSTOUCH_SABER_CHIP_H)];
-            shapeName.text = @"FILM";
-            shapeName.textAlignment = NSTextAlignmentCenter;
-            shapeName.font = [UIFont boldSystemFontOfSize:10];
-            shapeName.adjustsFontSizeToFitWidth = YES;
-            shapeName.minimumScaleFactor = 0.8;
-            shapeName.textColor = [UIColor whiteColor];
-            [c addSubview:shapeName];
-            shapeTrack = [[UIView alloc] initWithFrame:CGRectMake(IOSTOUCH_SABER_CHIP_W - 7.0 - IOSTOUCH_SWITCH_W, (IOSTOUCH_SABER_CHIP_H - IOSTOUCH_SWITCH_H) * 0.5,
-                                                                  IOSTOUCH_SWITCH_W, IOSTOUCH_SWITCH_H)];
-            shapeTrack.layer.cornerRadius = IOSTOUCH_SWITCH_H * 0.5;
-            shapeTrack.layer.borderWidth = 1.0;
-            [c addSubview:shapeTrack];
-            shapeKnob = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, IOSTOUCH_SWITCH_H - 4.0, IOSTOUCH_SWITCH_H - 4.0)];
-            shapeKnob.layer.cornerRadius = (IOSTOUCH_SWITCH_H - 4.0) * 0.5;
-            [shapeTrack addSubview:shapeKnob];
+        for (int k = 0; k < 2; k++) {
+            // the shape's switch and THROW's: the name on the left, a small on/off switch on the right
+            UILabel* c = aSaberChips[k ? IOSTOUCH_CHIP_THROW : IOSTOUCH_CHIP_SHAPE];
+            UILabel* name = [[UILabel alloc] initWithFrame:CGRectMake(4.0, 0.0, IOSTOUCH_SABER_CHIP_W - 13.0 - IOSTOUCH_SWITCH_W, IOSTOUCH_SABER_CHIP_H)];
+            name.text = k ? @"THROW" : @"FILM";
+            name.textAlignment = NSTextAlignmentCenter;
+            name.font = [UIFont boldSystemFontOfSize:10];
+            name.adjustsFontSizeToFitWidth = YES;
+            name.minimumScaleFactor = 0.8;
+            name.textColor = [UIColor whiteColor];
+            [c addSubview:name];
+            UIView* track = [[UIView alloc] initWithFrame:CGRectMake(IOSTOUCH_SABER_CHIP_W - 7.0 - IOSTOUCH_SWITCH_W, (IOSTOUCH_SABER_CHIP_H - IOSTOUCH_SWITCH_H) * 0.5,
+                                                                     IOSTOUCH_SWITCH_W, IOSTOUCH_SWITCH_H)];
+            track.layer.cornerRadius = IOSTOUCH_SWITCH_H * 0.5;
+            track.layer.borderWidth = 1.0;
+            [c addSubview:track];
+            UIView* knob = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, IOSTOUCH_SWITCH_H - 4.0, IOSTOUCH_SWITCH_H - 4.0)];
+            knob.layer.cornerRadius = (IOSTOUCH_SWITCH_H - 4.0) * 0.5;
+            [track addSubview:knob];
+            if (k) { throwName = name; throwTrack = track; throwKnob = knob; }
+            else { shapeName = name; shapeTrack = track; shapeKnob = knob; }
         }
         [self addSubview:wheelView];
         wheelLastHot = -1;
@@ -2841,6 +2869,7 @@ static void iosTouch_PhotosAsked(void)
     NSString* shape = [d stringForKey:IOSTOUCH_SABERSHAPE_DEFAULTS_KEY];
     const int sh = shape ? iosSaberShape_ByName([shape UTF8String]) : -1;
     iosSaberShape_Set(sh >= 0 ? sh : IOSSABERSHAPE_DEFAULT);
+    iosSaberThrowJk_Set([d boolForKey:IOSTOUCH_SABERTHROW_DEFAULTS_KEY]); // (off unless switched on)
     NSString* style = [d stringForKey:IOSTOUCH_SABERSTYLE_DEFAULTS_KEY];
     for (int st = 0; style && st < IOSSABER_NUM_STYLES; st++) {
         if (!strcmp([style UTF8String], iosSaber_StyleName(st))) iosSaber_SetStyle(st);
@@ -2919,6 +2948,12 @@ static int iosTouch_SaberBlade(void)
         iosSaberShape_Toggle();
         [d setObject:[NSString stringWithUTF8String:iosSaberShape_Name(iosSaberShape_Get())] forKey:IOSTOUCH_SABERSHAPE_DEFAULTS_KEY];
     }
+    else if (chip == IOSTOUCH_CHIP_THROW) {
+        // THROW on or off, remembered: Saber Throw on the Force wheel (or not) from its next opening
+        if (aSaberChips[IOSTOUCH_CHIP_THROW].hidden) return;
+        iosSaberThrowJk_Toggle();
+        [d setBool:iosSaberThrowJk_Get() ? YES : NO forKey:IOSTOUCH_SABERTHROW_DEFAULTS_KEY];
+    }
     else if (chip == IOSTOUCH_CHIP_SINGLE || chip == IOSTOUCH_CHIP_DUAL || chip == IOSTOUCH_CHIP_CROSS) {
         iosSaber_SetStyle(chip == IOSTOUCH_CHIP_DUAL ? IOSSABER_STYLE_DUAL : chip == IOSTOUCH_CHIP_CROSS ? IOSSABER_STYLE_CROSS : IOSSABER_STYLE_SINGLE);
         [d setObject:[NSString stringWithUTF8String:iosSaber_StyleName(iosSaber_GetStyle())] forKey:IOSTOUCH_SABERSTYLE_DEFAULTS_KEY];
@@ -2945,7 +2980,7 @@ static int iosTouch_SaberBlade(void)
     if (!iosTouch_bWheelOpen || iosTouch_wheelKind != IOSTOUCH_WHEEL_SABER) return -1;
     for (int i = 0; i < IOSTOUCH_NUM_CHIPS; i++) {
         // (a touch round each; in the close column, no further than halfway to the next)
-        const CGFloat dy = (saberChipsTight && i != IOSTOUCH_CHIP_EQUIP && i != IOSTOUCH_CHIP_LOOK) ? IOSTOUCH_SABER_CHIP_TIGHT_GAP * 0.5 : IOSTOUCH_SABER_CHIP_TOUCH;
+        const CGFloat dy = (saberChipsTight && i != IOSTOUCH_CHIP_EQUIP && i != IOSTOUCH_CHIP_LOOK && i != IOSTOUCH_CHIP_THROW) ? IOSTOUCH_SABER_CHIP_TIGHT_GAP * 0.5 : IOSTOUCH_SABER_CHIP_TOUCH;
         if (aSaberChips[i].hidden || !CGRectContainsPoint(CGRectInset(aSaberChips[i].frame, -IOSTOUCH_SABER_CHIP_TOUCH, -dy), p)) continue;
         // (the look's switch: only in the middle, stopping short of where a slice takes a touch, R0 - 4)
         if (i == IOSTOUCH_CHIP_LOOK && hypot(p.x - iosTouch_wheelCentre.x, p.y - iosTouch_wheelCentre.y) > iosTouch_wheelR0 - 5.0) continue;
@@ -2954,73 +2989,214 @@ static int iosTouch_SaberBlade(void)
     return -1;
 }
 
+// The two columns of the saber wheel's choices beside the ring, as they are
+// laid out for one saber or two (bTwo): each choice's middle (SINGLE, DUAL,
+// CROSS and the shape's switch on the left, LEFT, BOTH and RIGHT on the
+// right), and whether all seven go down the left closer (*pTight). Each
+// column moved up or down, as little as it can be, until clear of every
+// button showing (dimmed under the wheel, but a choice over one is hard to
+// read) and on screen. Where the right has no such place (the smallest
+// screens: JUMP and ACT), the blades' choices go on the left too, under
+// SINGLE, DUAL, CROSS and FILM; where all seven don't fit so between the top
+// row and the bottom, closer together.
+- (void)saberColumns:(int)bTwo centres:(CGPoint*)aCentre tight:(int*)pTight
+{
+    const CGPoint c = iosTouch_wheelCentre;
+    const CGFloat R = iosTouch_wheelR1 + IOSTOUCH_WHEEL_POP + IOSTOUCH_SABER_CHIP_OUT + IOSTOUCH_SABER_CHIP_W * 0.5;
+    CGFloat step = IOSTOUCH_SABER_CHIP_H + IOSTOUCH_SABER_CHIP_GAP, kindGap = IOSTOUCH_SABER_CHIP_KIND_GAP;
+    CGFloat aShift[2] = { 0.0, 0.0 };
+    int bOneColumn = 0;
+    *pTight = 0;
+    const UIEdgeInsets in = self.safeAreaInsets;
+    const CGFloat top = MAX(in.top, 8.0), bottom = self.bounds.size.height - MAX(in.bottom, 8.0);
+    for (int col = 0; col < 2; col++) {
+        const int n = col ? 3 : 4;
+        const CGFloat x = c.x + (col ? R : -R);
+        int bFound = 0;
+        for (int k = 0; k <= 24 && !bFound; k++) {
+            const CGFloat dy = ((k & 1) ? 6.0 : -6.0) * ((k + 1) / 2);
+            const CGFloat y0 = c.y + dy - (n - 1) * 0.5 * step - IOSTOUCH_SABER_CHIP_H * 0.5;
+            const CGFloat y1 = y0 + (n - 1) * step + IOSTOUCH_SABER_CHIP_H;
+            if (y0 < top + 52.0 || y1 > bottom) continue; // (under the top row)
+            int bClear = 1;
+            for (int j = 0; j < IOSTOUCH_NUM_BUTTONS && bClear; j++) {
+                iosTouchButton* bt = &iosTouch_aButtons[j];
+                if (aButtonViews[j].hidden || j == iosTouch_wheelButton) continue;
+                const CGFloat ex = MAX(fabs(bt->x - x) - IOSTOUCH_SABER_CHIP_W * 0.5, 0.0);
+                const CGFloat ey = MAX(MAX(y0 - bt->y, bt->y - y1), 0.0);
+                bClear = sqrt(ex * ex + ey * ey) > bt->radius + 4.0;
+            }
+            if (bClear) {
+                aShift[col] = dy;
+                bFound = 1;
+            }
+        }
+        if (col == 1 && !bFound) bOneColumn = 1;
+    }
+    if (bOneColumn) {
+        // the one column: as near the middle as it fits between the top
+        // row and the bottom. Where all seven don't fit so: with all seven
+        // showing (two sabers), closer; with only the four, as far apart as
+        // ever from where the closer seven start (SINGLE stays put).
+        const int bFits = 6.0 * step + kindGap + IOSTOUCH_SABER_CHIP_H <= bottom - (top + 52.0) + 0.5;
+        const CGFloat tightStep = IOSTOUCH_SABER_CHIP_H + IOSTOUCH_SABER_CHIP_TIGHT_GAP;
+        const CGFloat tightHalf = 3.0 * tightStep + IOSTOUCH_SABER_CHIP_H * 0.5;
+        const CGFloat tightShift = MIN(MAX(0.0, top + 52.0 + tightHalf - c.y), bottom - tightHalf - c.y);
+        if (!bFits && bTwo) {
+            *pTight = 1;
+            step = tightStep;
+            kindGap = 0.0;
+        }
+        const CGFloat half = (6.0 * step + kindGap) * 0.5 + IOSTOUCH_SABER_CHIP_H * 0.5;
+        aShift[0] = MIN(MAX(0.0, top + 52.0 + half - c.y), bottom - half - c.y);
+        if (!bFits && !bTwo) aShift[0] = tightShift - 3.0 * tightStep + (6.0 * step + kindGap) * 0.5;
+    }
+    for (int i = 0; i < IOSTOUCH_NUM_CHIPS; i++) {
+        aCentre[i] = c;
+        if (i == IOSTOUCH_CHIP_EQUIP || i == IOSTOUCH_CHIP_LOOK || i == IOSTOUCH_CHIP_THROW) continue;
+        // (the left column: SINGLE, DUAL, CROSS, the shape; the right: LEFT, BOTH, RIGHT)
+        const int bStyle = i <= IOSTOUCH_CHIP_DUAL || i == IOSTOUCH_CHIP_SHAPE || i == IOSTOUCH_CHIP_CROSS;
+        const int k = i == IOSTOUCH_CHIP_SHAPE ? 3 : i == IOSTOUCH_CHIP_CROSS ? 2 : bStyle ? i - IOSTOUCH_CHIP_SINGLE : i - IOSTOUCH_CHIP_LEFT;
+        const int n = bStyle ? 4 : 3;
+        const int slot = k + (bStyle ? 0 : 4);
+        if (bOneColumn) // (all seven down the left, a little more apart between the two kinds, kept on screen)
+            aCentre[i] = CGPointMake(c.x - R, c.y + aShift[0] + slot * step + (slot >= 4 ? kindGap : 0.0) - (6.0 * step + kindGap) * 0.5);
+        else
+            aCentre[i] = CGPointMake(c.x + (bStyle ? -R : R), c.y + aShift[bStyle ? 0 : 1] + (k - (n - 1) * 0.5) * step);
+    }
+}
+
+// Whether a saber wheel's choice shows with one saber or two (bTwo), but for
+// THROW
+static int iosTouch_SaberChipShown(int i, int bTwo)
+{
+    const int bStyle = i <= IOSTOUCH_CHIP_DUAL || i == IOSTOUCH_CHIP_SHAPE || i == IOSTOUCH_CHIP_CROSS;
+    if (i == IOSTOUCH_CHIP_EQUIP || i == IOSTOUCH_CHIP_LOOK) return 1;
+    if (i == IOSTOUCH_CHIP_THROW || (!bStyle && !bTwo)) return 0;
+    if (i == IOSTOUCH_CHIP_DUAL && !iosSaber_StyleAvailable(IOSSABER_STYLE_DUAL)) return 0;
+    if (i == IOSTOUCH_CHIP_CROSS && !iosSaber_StyleAvailable(IOSSABER_STYLE_CROSS)) return 0;
+    return 1;
+}
+
+// THROW's spot (its frame's top left): the nearest clear one to the ring's
+// upper right (45 degrees, just past the popped slices), on the right half,
+// in whole points -- clear by more than 4 pt of every button showing (the
+// columns' own rule), by 6 pt of the popped slices, by 12 pt of every other
+// choice (their touches, 6 pt round each, never meet) with one saber or two
+// (two sabers' column on the right always counted, so it never moves with
+// the style), and inside the safe area under the top row (out of its
+// buttons' reach, so it never moves with which of them show). Near ones
+// first, out in rings, no further than IOSTOUCH_THROW_REACH; the same
+// distance, the higher, then the more to the left. NO if there is none.
+// Found once for a screen, a ring and the buttons showing (kept till one of
+// them changes).
+#define IOSTOUCH_THROW_REACH 300
+static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch_throwSpot;
+- (BOOL)throwChipSpot:(CGPoint*)pOrigin
+{
+    const CGFloat W = IOSTOUCH_SABER_CHIP_W, H = IOSTOUCH_SABER_CHIP_H;
+    const CGPoint c = iosTouch_wheelCentre;
+    const UIEdgeInsets in = self.safeAreaInsets;
+    CGFloat key[12] = { self.bounds.size.width, self.bounds.size.height, in.left, in.top, in.right, in.bottom, c.x, c.y,
+                        iosTouch_wheelR0, iosTouch_wheelR1, (CGFloat)iosTouch_wheelButton, 0.0 };
+    for (int k = 0; k < IOSTOUCH_NUM_BUTTONS; k++) {
+        UIView* v = aButtonViews[k];
+        if (v.hidden || v.alpha < 0.01 || !v.superview) continue;
+        const iosTouchButton* bt = &iosTouch_aButtons[k];
+        key[11] += (k + 1) * (bt->x * 1.31 + bt->y * 1.73 + bt->radius * 2.17);
+    }
+    if (iosTouch_throwSpot.bValid && !memcmp(key, iosTouch_throwSpot.key, sizeof(key))) {
+        *pOrigin = iosTouch_throwSpot.at;
+        return iosTouch_throwSpot.bFound;
+    }
+    const CGFloat left = MAX(in.left, 8.0), top = MAX(in.top, 8.0) + 53.0; // (the top row's buttons reach 52: 26 down, 22 round, 4 clear)
+    const CGFloat right = self.bounds.size.width - MAX(in.right, 8.0), bottom = self.bounds.size.height - MAX(in.bottom, 8.0);
+    const CGFloat ringR = iosTouch_wheelR1 + IOSTOUCH_WHEEL_POP + 6.0;
+    // the other choices, with one saber and with two
+    CGRect aOther[2 * IOSTOUCH_NUM_CHIPS];
+    int nOther = 0;
+    for (int bTwo = 0; bTwo < 2; bTwo++) {
+        CGPoint aC[IOSTOUCH_NUM_CHIPS];
+        int bTight;
+        [self saberColumns:bTwo centres:aC tight:&bTight];
+        for (int i = 0; i < IOSTOUCH_NUM_CHIPS; i++) {
+            if (!iosTouch_SaberChipShown(i, bTwo)) continue;
+            CGSize sz = CGSizeMake(W, H);
+            CGPoint m = aC[i];
+            if (i == IOSTOUCH_CHIP_EQUIP) m = CGPointMake(c.x, c.y + 34.0);
+            else if (i == IOSTOUCH_CHIP_LOOK) {
+                CGFloat up;
+                iosTouch_LookChipSize(iosTouch_wheelR0, &sz, &up);
+                m = CGPointMake(c.x, c.y - up);
+            }
+            aOther[nOther++] = CGRectMake(m.x - sz.width * 0.5, m.y - sz.height * 0.5, sz.width, sz.height);
+        }
+    }
+    const CGFloat d = ringR + hypot(W, H) * 0.5;
+    const CGFloat ax = c.x + d * M_SQRT1_2, ay = c.y - d * M_SQRT1_2; // (its middle's aim)
+    const CGFloat bx = round(ax - W * 0.5), by = round(ay - H * 0.5);
+    const CGFloat x0min = floor(c.x), x0max = right - W, y0min = top, y0max = bottom - H;
+    CGFloat bestD = -1.0;
+    CGPoint best = CGPointZero;
+    for (int r = 0; r <= IOSTOUCH_THROW_REACH; r++) {
+        if (bestD >= 0.0 && bestD <= r - M_SQRT1_2) break; // (every spot further out is further away)
+        for (int j = -r; j <= r; j++) {
+            const int di = (abs(j) == r) ? 1 : (r ? 2 * r : 1); // (this ring only: its top and bottom whole, its sides)
+            for (int i = -r; i <= r; i += di) {
+                const CGFloat x0 = bx + i, y0 = by + j;
+                if (x0 < x0min || x0 > x0max || y0 < y0min || y0 > y0max || x0 < left) continue;
+                const CGFloat dist = hypot(x0 + W * 0.5 - ax, y0 + H * 0.5 - ay);
+                if (bestD >= 0.0 && (dist > bestD + 1e-6 || (fabs(dist - bestD) <= 1e-6 && (y0 > best.y || (y0 == best.y && x0 > best.x))))) continue;
+                // (the ring)
+                const CGFloat rx = MAX(MAX(x0 - c.x, c.x - (x0 + W)), 0.0), ry = MAX(MAX(y0 - c.y, c.y - (y0 + H)), 0.0);
+                if (hypot(rx, ry) <= ringR) continue;
+                // (the other choices)
+                int bClear = 1;
+                for (int k = 0; k < nOther && bClear; k++) {
+                    const CGRect o = aOther[k];
+                    const CGFloat gx = MAX(MAX(o.origin.x - (x0 + W), x0 - CGRectGetMaxX(o)), 0.0);
+                    const CGFloat gy = MAX(MAX(o.origin.y - (y0 + H), y0 - CGRectGetMaxY(o)), 0.0);
+                    bClear = hypot(gx, gy) >= 12.0;
+                }
+                // (the buttons showing, but the wheel's own)
+                for (int k = 0; k < IOSTOUCH_NUM_BUTTONS && bClear; k++) {
+                    UIView* v = aButtonViews[k];
+                    if (v.hidden || v.alpha < 0.01 || !v.superview || k == iosTouch_wheelButton) continue;
+                    const iosTouchButton* bt = &iosTouch_aButtons[k];
+                    const CGFloat ex = MAX(MAX(x0 - bt->x, bt->x - (x0 + W)), 0.0), ey = MAX(MAX(y0 - bt->y, bt->y - (y0 + H)), 0.0);
+                    bClear = hypot(ex, ey) > bt->radius + 4.0;
+                }
+                if (!bClear) continue;
+                bestD = dist;
+                best = CGPointMake(x0, y0);
+            }
+        }
+    }
+    memcpy(iosTouch_throwSpot.key, key, sizeof(key));
+    iosTouch_throwSpot.bValid = 1;
+    iosTouch_throwSpot.bFound = bestD >= 0.0;
+    iosTouch_throwSpot.at = best;
+    *pOrigin = best;
+    return iosTouch_throwSpot.bFound;
+}
+
 // The saber wheel's choices beside the ring (only on that wheel; the blades'
 // only with two), each lit if it is the one set: SINGLE, DUAL, CROSS and the
 // shape's switch stacked on the left, LEFT, BOTH and RIGHT on the right, each
-// blade's in its colour
+// blade's in its colour; and in Jedi Knight THROW's switch at the top right
 - (void)layoutSaberChips
 {
     const int bSaber = iosTouch_bWheelOpen && iosTouch_wheelKind == IOSTOUCH_WHEEL_SABER;
     const int st = iosSaber_GetStyle();
     const int bTwo = iosSaber_StyleNumBlades(st) >= 2;
     const CGPoint c = iosTouch_wheelCentre;
-    const CGFloat R = iosTouch_wheelR1 + IOSTOUCH_WHEEL_POP + IOSTOUCH_SABER_CHIP_OUT + IOSTOUCH_SABER_CHIP_W * 0.5;
-    CGFloat step = IOSTOUCH_SABER_CHIP_H + IOSTOUCH_SABER_CHIP_GAP, kindGap = IOSTOUCH_SABER_CHIP_KIND_GAP;
-    // Each column moved up or down, as little as it can be, until clear of
-    // every button showing (dimmed under the wheel, but a choice over one is
-    // hard to read) and on screen. Where the right has no such place (the
-    // smallest screens: JUMP and ACT), the blades' choices go on the left
-    // too, under SINGLE, DUAL, CROSS and FILM; where all seven don't fit so
-    // between the top row and the bottom, closer together.
-    CGFloat aShift[2] = { 0.0, 0.0 };
-    int bOneColumn = 0;
+    CGPoint aCentre[IOSTOUCH_NUM_CHIPS];
+    for (int i = 0; i < IOSTOUCH_NUM_CHIPS; i++) aCentre[i] = c;
     saberChipsTight = 0;
-    if (bSaber) {
-        const UIEdgeInsets in = self.safeAreaInsets;
-        const CGFloat top = MAX(in.top, 8.0), bottom = self.bounds.size.height - MAX(in.bottom, 8.0);
-        for (int col = 0; col < 2; col++) {
-            const int n = col ? 3 : 4;
-            const CGFloat x = c.x + (col ? R : -R);
-            int bFound = 0;
-            for (int k = 0; k <= 24 && !bFound; k++) {
-                const CGFloat dy = ((k & 1) ? 6.0 : -6.0) * ((k + 1) / 2);
-                const CGFloat y0 = c.y + dy - (n - 1) * 0.5 * step - IOSTOUCH_SABER_CHIP_H * 0.5;
-                const CGFloat y1 = y0 + (n - 1) * step + IOSTOUCH_SABER_CHIP_H;
-                if (y0 < top + 52.0 || y1 > bottom) continue; // (under the top row)
-                int bClear = 1;
-                for (int j = 0; j < IOSTOUCH_NUM_BUTTONS && bClear; j++) {
-                    iosTouchButton* bt = &iosTouch_aButtons[j];
-                    if (aButtonViews[j].hidden || j == iosTouch_wheelButton) continue;
-                    const CGFloat ex = MAX(fabs(bt->x - x) - IOSTOUCH_SABER_CHIP_W * 0.5, 0.0);
-                    const CGFloat ey = MAX(MAX(y0 - bt->y, bt->y - y1), 0.0);
-                    bClear = sqrt(ex * ex + ey * ey) > bt->radius + 4.0;
-                }
-                if (bClear) {
-                    aShift[col] = dy;
-                    bFound = 1;
-                }
-            }
-            if (col == 1 && !bFound) bOneColumn = 1;
-        }
-        if (bOneColumn) {
-            // the one column: as near the middle as it fits between the top
-            // row and the bottom. Where all seven don't fit so: with all seven
-            // showing (two sabers), closer; with only the four, as far apart as
-            // ever from where the closer seven start (SINGLE stays put).
-            const int bFits = 6.0 * step + kindGap + IOSTOUCH_SABER_CHIP_H <= bottom - (top + 52.0) + 0.5;
-            const CGFloat tightStep = IOSTOUCH_SABER_CHIP_H + IOSTOUCH_SABER_CHIP_TIGHT_GAP;
-            const CGFloat tightHalf = 3.0 * tightStep + IOSTOUCH_SABER_CHIP_H * 0.5;
-            const CGFloat tightShift = MIN(MAX(0.0, top + 52.0 + tightHalf - c.y), bottom - tightHalf - c.y);
-            if (!bFits && bTwo) {
-                saberChipsTight = 1;
-                step = tightStep;
-                kindGap = 0.0;
-            }
-            const CGFloat half = (6.0 * step + kindGap) * 0.5 + IOSTOUCH_SABER_CHIP_H * 0.5;
-            aShift[0] = MIN(MAX(0.0, top + 52.0 + half - c.y), bottom - half - c.y);
-            if (!bFits && !bTwo) aShift[0] = tightShift - 3.0 * tightStep + (6.0 * step + kindGap) * 0.5;
-        }
-    }
+    if (bSaber) [self saberColumns:bTwo centres:aCentre tight:&saberChipsTight];
+    // THROW: where it was found for this screen, and these buttons (it doesn't move with the style)
+    CGPoint throwAt = CGPointZero;
+    const int bThrow = bSaber && iosSaberThrowJk_Offered() && [self throwChipSpot:&throwAt];
     for (int i = 0; i < IOSTOUCH_NUM_CHIPS; i++) {
         UILabel* l = aSaberChips[i];
         if (i == IOSTOUCH_CHIP_EQUIP) {
@@ -3052,18 +3228,27 @@ static int iosTouch_SaberBlade(void)
             l.alpha = 1.0;
             continue;
         }
+        if (i == IOSTOUCH_CHIP_THROW) {
+            // a switch as the shape's is: on, its knob to the right, the track gold
+            l.hidden = !bThrow;
+            if (l.hidden) continue;
+            l.center = CGPointMake(throwAt.x + IOSTOUCH_SABER_CHIP_W * 0.5, throwAt.y + IOSTOUCH_SABER_CHIP_H * 0.5);
+            const int bOn = iosSaberThrowJk_Get();
+            const CGFloat kd = IOSTOUCH_SWITCH_H - 4.0;
+            throwKnob.frame = CGRectMake(bOn ? IOSTOUCH_SWITCH_W - 2.0 - kd : 2.0, 2.0, kd, kd);
+            throwKnob.backgroundColor = [UIColor colorWithWhite:1.0 alpha:bOn ? 1.0 : 0.7];
+            throwTrack.backgroundColor = bOn ? [UIColor colorWithRed:1.0 green:0.85 blue:0.3 alpha:0.55] : [UIColor colorWithWhite:1.0 alpha:0.18];
+            throwTrack.layer.borderColor = bOn ? [UIColor colorWithRed:1.0 green:0.85 blue:0.3 alpha:0.95].CGColor : [UIColor colorWithWhite:1.0 alpha:0.5].CGColor;
+            throwName.alpha = bOn ? 1.0 : 0.75;
+            l.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.4].CGColor;
+            l.layer.borderWidth = 1.5;
+            l.alpha = bOn ? 1.0 : 0.8;
+            continue;
+        }
         // (the left column: SINGLE, DUAL, CROSS, the shape; the right: LEFT, BOTH, RIGHT)
-        const int bStyle = i <= IOSTOUCH_CHIP_DUAL || i == IOSTOUCH_CHIP_SHAPE || i == IOSTOUCH_CHIP_CROSS;
-        l.hidden = !bSaber || (!bStyle && !bTwo) || (i == IOSTOUCH_CHIP_DUAL && !iosSaber_StyleAvailable(IOSSABER_STYLE_DUAL))
-                   || (i == IOSTOUCH_CHIP_CROSS && !iosSaber_StyleAvailable(IOSSABER_STYLE_CROSS));
+        l.hidden = !bSaber || !iosTouch_SaberChipShown(i, bTwo);
         if (l.hidden) continue;
-        const int k = i == IOSTOUCH_CHIP_SHAPE ? 3 : i == IOSTOUCH_CHIP_CROSS ? 2 : bStyle ? i - IOSTOUCH_CHIP_SINGLE : i - IOSTOUCH_CHIP_LEFT;
-        const int n = bStyle ? 4 : 3;
-        const int slot = k + (bStyle ? 0 : 4);
-        if (bOneColumn) // (all seven down the left, a little more apart between the two kinds, kept on screen)
-            l.center = CGPointMake(c.x - R, c.y + aShift[0] + slot * step + (slot >= 4 ? kindGap : 0.0) - (6.0 * step + kindGap) * 0.5);
-        else
-            l.center = CGPointMake(c.x + (bStyle ? -R : R), c.y + aShift[bStyle ? 0 : 1] + (k - (n - 1) * 0.5) * step);
+        l.center = aCentre[i];
         int bOn;
         if (i == IOSTOUCH_CHIP_SHAPE) {
             // a switch: on (FILM) its knob to the right, the track gold; dim with CROSS
@@ -3593,8 +3778,9 @@ static int iosTouch_WheelSliceHasRow(int i)
     return iosTouch_wheelKind != IOSTOUCH_WHEEL_WEAPONS || iosTouch_pWheelMap->aSlices[i].group != 0;
 }
 
-// Fits a slice's label inside it: the biggest size (11pt down to 7pt) at which
-// it fits somewhere along the slice, as near the middle of the band as it can
+// Fits a slice's label inside it: the biggest size (11pt down to 7pt; with its
+// row, down to the map's nameMin if it has one) at which it fits somewhere
+// along the slice, as near the middle of the band as it can
 // go at that size (s11: its size at 11pt; text width goes with font size). With
 // bRow, the label and the row under it (wheelRowSize) are fitted as one block,
 // so neither crosses the slice's edges. Returns whether it fitted.
@@ -3611,7 +3797,8 @@ static int iosTouch_WheelSliceHasRow(int i)
     F->labelR[i][bRow] = R0 + (R1 - R0) * 0.58;
     F->labelSize[i][bRow] = CGSizeMake(s11.width * 7.0 / 11.0, s11.height * 7.0 / 11.0);
     int bFound = 0;
-    for (CGFloat size = 11.0; size >= 7.0 && !bFound; size -= 0.5) {
+    CGFloat sizeMin = (bRow && m->nameMin > 0.0f) ? m->nameMin : 7.0;
+    for (CGFloat size = 11.0; size >= sizeMin - 0.001 && !bFound; size -= 0.5) {
         CGFloat w = s11.width * size / 11.0, h = s11.height * size / 11.0;
         CGFloat bw = bRow ? MAX(w, row.width) : w;
         CGFloat bh = bRow ? h + IOSTOUCH_WHEEL_STAR_GAP + row.height : h;
@@ -3640,7 +3827,8 @@ static int iosTouch_WheelSliceHasRow(int i)
 
 // Fits every slice's label, alone and with its row. The row is one size all
 // round the wheel: the biggest, in steps of 5% down to IOSTOUCH_WHEEL_STAR_MIN
-// of full size for the stars (Jedi Knight's slices take them full size;
+// of full size for the stars (Jedi Knight's fourteen take them full size on
+// most screens, its fifteen with Saber Throw a step or two smaller;
 // Mysteries of the Sith's narrower ones need them smaller), or
 // IOSTOUCH_WHEEL_AMMO_MIN for the ammo counts, at which every slice's row
 // fits. A weapon with no ammo has no row: its label is only fitted alone.
@@ -3666,6 +3854,15 @@ static int iosTouch_WheelSliceHasRow(int i)
             if (iosTouch_WheelSliceHasRow(i) && ![self fitWheelLabel:i size:aS11[i] row:1]) bAll = 0;
         }
         if (bAll || bLast) break; // else the ones that don't fit go without
+    }
+    // (a map that keeps every row, nameMin: one that still doesn't fit at the
+    // smallest has its name at its smallest, in the middle of the band, and its
+    // row under it all the same)
+    for (int i = 0; i < m->numSlices && m->nameMin > 0.0f; i++) {
+        if (!iosTouch_WheelSliceHasRow(i) || F->font[i][1] > 0.0) continue;
+        F->font[i][1] = m->nameMin;
+        F->labelR[i][1] = iosTouch_wheelR0 + (iosTouch_wheelR1 - iosTouch_wheelR0) * 0.58;
+        F->labelSize[i][1] = CGSizeMake(aS11[i].width * m->nameMin / 11.0, aS11[i].height * m->nameMin / 11.0);
     }
 }
 
@@ -4100,7 +4297,7 @@ static void iosTouch_ReadWheelSlices(int kind)
         iosTouch_SetupSaberWheel(); // (the game's own colour, as it is now)
         iosTouch_pWheelMap = &iosTouch_saberWheel;
     }
-    else iosTouch_pWheelMap = bMots ? &iosTouch_motsWheel : &iosTouch_jkWheel;
+    else iosTouch_pWheelMap = bMots ? &iosTouch_motsWheel : iosSaberThrowJk_OnWheel() ? &iosTouch_jkThrowWheel : &iosTouch_jkWheel;
     iosTouch_ReadWheelSlices(kind);
     for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
         iosTouchSlot* s = &iosTouch_aSlots[i];
@@ -5578,6 +5775,9 @@ void iosTouch_PadSaberChip(int chip)
     }
     else if (chip == IOSPAD_CHIP_SHAPE) {
         [iosTouch_pOverlay useSaberChip:IOSTOUCH_CHIP_SHAPE];
+    }
+    else if (chip == IOSPAD_CHIP_THROW) {
+        [iosTouch_pOverlay useSaberChip:IOSTOUCH_CHIP_THROW]; // (nothing where it isn't offered: hidden)
     }
     iosTouch_padSlot = -1;
     if (iosTouch_bWheelOpen) [iosTouch_pOverlay refreshWheelLooks];
