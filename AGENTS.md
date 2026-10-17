@@ -31,7 +31,7 @@ Read the relevant project documentation and inspect existing implementations bef
 
 ## Public distribution
 - This project requires users to provide their own legally obtained game assets. Do not add original game data to the repository or distributable IPAs.
-- Do not bundle third-party film dialogue, music, or other copyrighted audio into public releases without an explicit rights/distribution decision from the owner. Audio import and public bundling have been discussed but **not finally decided**.
+- Do not bundle third-party film dialogue, music, or other copyrighted audio into public releases. The owner decided: the Emperor's clips for cheat mode are not in the app; it plays the player's own from the Files app (see `src/Platform/iOS/iosCheatLaugh.h`).
 - Keep source attribution and applicable upstream licensing intact.
 
 ## Scope discipline

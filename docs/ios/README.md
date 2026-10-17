@@ -1257,9 +1257,9 @@ it away).
 ### Cheat mode: the CHEAT button
 
 Hold **MENU** and tap **CHEAT** in the tray. A **CHEAT** button with the **red
-Sith emblem** appears on the top row, `sithewok` goes on, and the Emperor
-greets you: his laugh, "the dark side", or "unlimited power", picked at
-random (never the same one twice in a row). Then:
+Sith emblem** appears on the top row and `sithewok` goes on. If you've added
+your own sound clips (see [Your own Emperor](#your-own-emperor) below), the
+Emperor greets you with one of them. Then:
 
 - **Hold CHEAT** for half a second (a ring fills) to switch `sithewok` off
   (the emblem goes grey) or on again (red). A tap does nothing, so you can't
@@ -1274,6 +1274,22 @@ random (never the same one twice in a row). Then:
   you open the app: hold CHEAT to switch it on.
 - The Emperor plays at the game's sound effects volume, so turn that down if
   you'd rather not hear him.
+
+#### Your own Emperor
+
+The app doesn't come with any sound clips. To hear one when cheat mode goes
+on, add your own:
+
+1. Open the **Files** app and go to *On My iPhone > OpenJKDF2* (*OpenMoTS* for
+   Mysteries of the Sith).
+2. Make a folder called **`Emperor`** there (long-press an empty spot >
+   *New Folder*).
+3. Put your clips in it: mp3, m4a, aac, wav, caf or aif files, any names, up
+   to 16 MB each. The app picks one at random each time (never the same one
+   twice in a row), from the first 16 by name.
+
+Clips you add while the game is running count from the next time cheat mode
+goes on. With the folder empty or missing, cheat mode is silent.
 
 ### sithewok's catches in Jedi Knight
 

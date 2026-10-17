@@ -88,6 +88,22 @@ macro(postcompile_ios)
         set(IOS_EMBED_PROFILE_CMD)
     endif()
 
+    # The Emperor's recordings for cheat mode (iosCheatLaugh.m) don't come with
+    # the app: the player adds their own in the Files app. A build of your own
+    # can carry them: put laughing.mp3, palpatine_dark_side.mp3 and
+    # palpatine_unlimited_power.mp3 in packaging/ios and configure with
+    # -DOPENJKDF2_IOS_BUNDLE_EMPEROR=ON. Never for a public release.
+    option(OPENJKDF2_IOS_BUNDLE_EMPEROR "Copy the Emperor's recordings from packaging/ios into the app (a build of your own only)" OFF)
+    set(IOS_EMPEROR_CMD)
+    if(OPENJKDF2_IOS_BUNDLE_EMPEROR)
+        foreach(IOS_EMPEROR_NAME laughing palpatine_dark_side palpatine_unlimited_power)
+            if(EXISTS ${PROJECT_SOURCE_DIR}/packaging/ios/${IOS_EMPEROR_NAME}.mp3)
+                list(APPEND IOS_EMPEROR_CMD
+                    COMMAND cp ${PROJECT_SOURCE_DIR}/packaging/ios/${IOS_EMPEROR_NAME}.mp3 ${BUNDLE}/${IOS_EMPEROR_NAME}.mp3)
+            endif()
+        endforeach()
+    endif()
+
     # The build number (CFBundleVersion). CI sets IOS_BUNDLE_VERSION to its run
     # number, so every build has a new one: AltStore and SideStore tell an
     # app's versions apart by version plus build number, and the version
@@ -115,10 +131,9 @@ macro(postcompile_ios)
         COMMAND cp ${PROJECT_SOURCE_DIR}/packaging/icon-256.png ${BUNDLE}/AppIcon.png
         # The CAMERA button's burst tick (iosTouch.m); made for this port
         COMMAND cp ${PROJECT_SOURCE_DIR}/packaging/ios/burst_tick.wav ${BUNDLE}/burst_tick.wav
-        # The Emperor when cheat mode is switched on (iosCheatLaugh.m: one of the three), as the owner gave them
-        COMMAND cp ${PROJECT_SOURCE_DIR}/packaging/ios/laughing.mp3 ${BUNDLE}/laughing.mp3
-        COMMAND cp ${PROJECT_SOURCE_DIR}/packaging/ios/palpatine_dark_side.mp3 ${BUNDLE}/palpatine_dark_side.mp3
-        COMMAND cp ${PROJECT_SOURCE_DIR}/packaging/ios/palpatine_unlimited_power.mp3 ${BUNDLE}/palpatine_unlimited_power.mp3
+        # (no recordings of the Emperor: cheat mode plays the player's own, see iosCheatLaugh.h; a build of
+        # your own can carry them with OPENJKDF2_IOS_BUNDLE_EMPEROR)
+        ${IOS_EMPEROR_CMD}
 
         # ANGLE. Both frameworks ship: the app links libGLESv2 for the gl* entry
         # points and libEGL for context/surface management, and libEGL resolves
