@@ -155,8 +155,10 @@ Tick what works, note what doesn't (a photo of the screen helps).
       RIGHT on the right choose which blade a colour goes to) and CROSS (one
       saber with a crossguard: a jagged, crackling blade that comes to a
       point, two short blades out of small metal vents either side of the
-      hilt, a strong glow; only the main blade hits). EQUIP puts the saber in
-      your hand.
+      hilt, a strong glow; only the main blade hits; carried low between
+      swings, in Kylo Ren's guard, the swing itself the game's own; its hum
+      lower, rough and crackling, with a sputter as it ignites). EQUIP puts
+      the saber in your hand.
       The gap at the bottom (or a tap off the wheel) closes it. A slide from
       SABER opens it to slide to a colour.
 - [ ] CLASSIC / REFORGED (at the top of the saber wheel's middle): a tap

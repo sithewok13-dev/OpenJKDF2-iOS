@@ -925,6 +925,20 @@ cancels, and the game holds still while the wheel is open.
   saber thrown from CROSS gets the glow, the vents and the two short blades
   too. Only the look changes: the main blade hits as usual, and the vents and
   the short side blades don't hit anything.
+  - **Kylo Ren's low guard:** between swings Kyle (or Mara) carries a CROSS
+    saber low, the hand by the hip and the blade angled down and out to the
+    side, the free hand hanging, standing, walking, running, crouching and
+    jumping alike. In first person the blade is tipped out to the side, and
+    the crossguard always faces you side on. A swing starts from the guard
+    and is the game's own swing exactly (the same reach, timing and
+    damage), and he settles back into the guard after. Blocks, Force powers
+    and drawing or putting the saber away play as the game has them.
+  - **Its sound:** the hum is rougher and lower than a plain saber's, never
+    quite steady, and it crackles, with a sputter as it ignites; its swings
+    and switching off are a little lower too. It's made from the game's own
+    saber sounds, and plain sabers sound as they always did.
+  - In multiplayer, other players who pick CROSS on this build are carried
+    and heard the same way on your screen.
 - **Two sabers fight for real:** the second blade strikes, deals damage and
   throws sparks like the first. In first person both arms move, and between
   swings he holds the two sabers casually, hands apart and a little low,
