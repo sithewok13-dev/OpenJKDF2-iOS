@@ -79,6 +79,10 @@ int iosSaberThrowJk_Activate(struct SithThing* pPlayer);
 int iosSaberThrowJk_WeaponHeldBack(struct SithThing* pThing, int bin);
 // A new level or a load: our sabers out of the world, all in hand
 void iosSaberThrowJk_Reset(void);
+// A game about to be read (sithGamesave_RestoreFile, before its inventory):
+// the on-fists mark in the power's item cleared, so only the save's own counts
+// (a game saved without the power has none)
+void iosSaberThrowJk_GameLoading(void);
 // A game loaded (after the reset): its sabers of ours taken away at once, and
 // the saber in hand again if it was saved soon after a throw left him on his fists
 void iosSaberThrowJk_GameLoaded(void);

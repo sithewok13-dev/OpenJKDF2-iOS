@@ -1867,7 +1867,7 @@ static void test_saber_throw(void)
         const inputWheelMap* m15 = inputWheel_GetOpenMap();
         const float gap15 = 360.0f - m15->numSlices * m15->sliceDeg - 2.0f * m15->gapDeg;
         CHECK(touchUi_IsWheelOpen() && n == 15 && i37 == iSp + 1 && i37 == iSe - 1 && fabsf(deg - 90.0f) < 0.01f && m15->sliceDeg == 20.5f && m15->gapDeg == 5.0f
-              && gap15 >= 40.0f && m15->nameMin == 6.0f);
+              && gap15 >= 40.0f && m15->nameMin == 6.5f);
         CHECK(inputWheel_IsPickable(i37)); // (learned: its stars, 3 here)
         touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
         polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);

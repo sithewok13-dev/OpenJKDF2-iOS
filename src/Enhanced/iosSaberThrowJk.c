@@ -628,6 +628,13 @@ void iosSaberThrowJk_Tick(void)
         p->actorParams.flags &= ~IOSSABERTHROWJK_AUTOBLOCK;
 }
 
+void iosSaberThrowJk_GameLoading(void)
+{
+    SithPlayer* pl = sithPlayer_g_pLocalPlayer;
+    if (Main_bMotsCompat || iosSaberThrowJk_bForeign || !pl) return; // (bin 37 not ours)
+    pl->aItems[IOSSABERTHROWJK_BIN].field_4 = 0;
+}
+
 // A game loaded (after the reset): the sabers of ours it had flying taken away at
 // once, before the game moves them; on his fists because of a throw, as it was
 // saved soon after one, the saber in hand again

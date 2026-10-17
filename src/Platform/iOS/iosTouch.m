@@ -550,7 +550,7 @@ static const iosTouchWheelSlice iosTouch_aJkWheelSlices[] = {
 // fifteen slices a little narrower (20.5 degrees, 5 between the sides), Saber
 // Throw at the top between Speed and Seeing, the gap at the bottom a little
 // wider (42.5 degrees, the fourteen's 40); the rest in the same order. The
-// names of the ones that need it go smaller (down to 6 pt), so that every
+// names of the ones that need it go smaller (down to 6.5 pt), so that every
 // power keeps its stars, as big as can be
 static const iosTouchWheelSlice iosTouch_aJkThrowWheelSlices[] = {
     { 29, 0, 238.5f }, { 28, 0, 218.0f }, { 27, 0, 197.5f }, { 26, 0, 177.0f }, { 25, 0, 156.5f }, // Protection, Absorb, Blinding, Persuasion, Healing
@@ -585,7 +585,7 @@ static const iosTouchWheelMap iosTouch_jkWheel = {
 };
 static const iosTouchWheelMap iosTouch_jkThrowWheel = {
     iosTouch_aJkThrowWheelSlices, IOSTOUCH_COUNT(iosTouch_aJkThrowWheelSlices),
-    iosTouch_aJkWheelGroups, IOSTOUCH_COUNT(iosTouch_aJkWheelGroups), 20.5f, 5.0f, 6.0f
+    iosTouch_aJkWheelGroups, IOSTOUCH_COUNT(iosTouch_aJkWheelGroups), 20.5f, 5.0f, 6.5f
 };
 static const iosTouchWheelMap iosTouch_motsWheel = {
     iosTouch_aMotsWheelSlices, IOSTOUCH_COUNT(iosTouch_aMotsWheelSlices),

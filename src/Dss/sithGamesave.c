@@ -38,6 +38,7 @@
 #include "stdPlatform.h"
 #include "jk.h"
 #include "Main/jkDev.h"
+#include "Enhanced/iosSaberThrowJk.h" // Added
 
 #ifdef TARGET_DREAMCAST
 // Added: set while a load re-runs sithOpenPostProcess() so its re-save doesn't push
@@ -261,6 +262,9 @@ int sithGamesave_RestoreFile(char *fpath)
         goto load_fail;
     }
 LABEL_11:
+#ifdef JK_ENHANCED
+    iosSaberThrowJk_GameLoading(); // Added: Jedi Knight's Saber Throw: the mark a throw left in its item, only as the save has it
+#endif
     sithSoundMixer_Reset();
     sithSurface_Startup3();
     sithEvent_Reset();

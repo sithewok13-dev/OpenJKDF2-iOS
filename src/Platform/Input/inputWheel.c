@@ -95,7 +95,7 @@ static const inputWheelSlice inputWheel_aJkSlices[] = {
 // ...and with Saber Throw on it (THROW or the cheat, iosSaberThrowJk): fifteen,
 // Saber Throw at the top between Speed and Seeing; a little narrower, the gaps
 // between the sides too (the one at the bottom 42.5 degrees, the fourteen's 40),
-// and the names of the ones that need it smaller (down to 6 pt), so that every
+// and the names of the ones that need it smaller (down to 6.5 pt), so that every
 // power keeps its stars, as big as can be
 static const inputWheelSlice inputWheel_aJkThrowSlices[] = {
     { 29, 0, 238.5f }, { 28, 0, 218.0f }, { 27, 0, 197.5f }, { 26, 0, 177.0f }, { 25, 0, 156.5f }, // Protection, Absorb, Blinding, Persuasion, Healing
@@ -135,7 +135,7 @@ static const inputWheelSlice inputWheel_aMotsWeaponSlices[] = {
 static const inputWheelMap inputWheel_jkForce = { inputWheel_aJkSlices, INPUTWHEEL_COUNT(inputWheel_aJkSlices),
     inputWheel_aJkGroups, INPUTWHEEL_COUNT(inputWheel_aJkGroups), 22.0f, 6.0f };
 static const inputWheelMap inputWheel_jkThrowForce = { inputWheel_aJkThrowSlices, INPUTWHEEL_COUNT(inputWheel_aJkThrowSlices),
-    inputWheel_aJkGroups, INPUTWHEEL_COUNT(inputWheel_aJkGroups), 20.5f, 5.0f, 6.0f };
+    inputWheel_aJkGroups, INPUTWHEEL_COUNT(inputWheel_aJkGroups), 20.5f, 5.0f, 6.5f };
 static const inputWheelMap inputWheel_motsForce = { inputWheel_aMotsSlices, INPUTWHEEL_COUNT(inputWheel_aMotsSlices),
     inputWheel_aMotsGroups, INPUTWHEEL_COUNT(inputWheel_aMotsGroups), 18.0f, 6.0f };
 static const inputWheelMap inputWheel_jkWeapons = { inputWheel_aJkWeaponSlices, INPUTWHEEL_COUNT(inputWheel_aJkWeaponSlices),
