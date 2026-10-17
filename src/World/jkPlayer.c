@@ -48,6 +48,7 @@
 #include "Enhanced/iosPhotoCam.h" // Added
 #include "Enhanced/iosSaber.h" // Added
 #include "Enhanced/iosStance.h" // Added
+#include "Enhanced/iosSaberStance.h" // Added
 #include "Enhanced/iosSaberShape.h" // Added
 // Added: a blade drawn in the colour the player chose for it (iosSaber)
 #define JKPLAYER_DRAW_BLADE(pThing, pLine, pMat, blade) \
@@ -1049,6 +1050,7 @@ static void jkPlayer_DrawPovMirrored(rdMatrix34* pOrient, const rdMatrix34* pOri
             rdMatrix_Multiply34(&placed, &mirror, &hand);
             mirror = placed;
         }
+        iosSaberStance_PovPlace(pActor, pPov, 1, &pPast->aJoint[rhand].scale, &mirror); // (a crossguard's low guard, iosSaberStance)
     }
     rdMatrix34 aSaved[JKPLAYER_POV_ECHO_NODES];
     for (int i = 0; i < numNodes; i++)
@@ -1192,6 +1194,8 @@ void jkPlayer_DrawPov()
         rdMatrix34 orientR;
         jkPlayer_PovStance(&orient, &orientR);
         iosSaberShape_SetGuardFacing(1); // Added: a crossguard seen side on (iosSaberShape), to the end of the saber's draw below
+        // Added: a crossguard saber's low guard (iosSaberStance)
+        iosSaberStance_PovPlace(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].povModel, 0, NULL, &orientR);
         rdThing_Draw(&playerThings[playerThingIdx].povModel, &orientR);
         jkPlayer_DrawPovMirrored(&orient, &orientR); // Added: the second saber's arm
         {
