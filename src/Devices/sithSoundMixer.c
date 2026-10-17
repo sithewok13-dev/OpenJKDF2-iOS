@@ -16,6 +16,7 @@
 #include "jk.h"
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSaberSound.h" // Added
+void iosSaberSound_Reset(void); // Added (iosSaberSound.c): what it keeps of the sounds playing, forgotten
 #endif
 
 int sithSoundMixer_Startup()
@@ -167,6 +168,9 @@ int sithSoundMixer_Open()
 
 void sithSoundMixer_Close()
 {
+#ifdef JK_ENHANCED
+    iosSaberSound_Reset(); // Added: a crossguard saber's sounds and their things, forgotten with the level
+#endif
     if (!sithSoundMixer_bOpened)
         return;
 
@@ -215,6 +219,9 @@ void sithSoundMixer_ClearAll()
     sithSoundMixer_hCurAmbientChannel = 0;
     sithSoundMixer_dword_836BFC = 0;
     sithSoundMixer_pCurSector = 0;
+#ifdef JK_ENHANCED
+    iosSaberSound_Reset(); // Added: as every channel is cleared
+#endif
 }
 
 void sithSoundMixer_StopAll()
@@ -601,6 +608,9 @@ void sithSoundMixer_Reset()
     sithSoundMixer_hCurAmbientChannel = 0;
     sithSoundMixer_pCurSector = 0;
     sithSoundMixer_dword_836BFC = 0;
+#ifdef JK_ENHANCED
+    iosSaberSound_Reset(); // Added: a game loaded, before its saved sounds play again
+#endif
 }
 
 void sithSoundMixer_SetPitch(sithPlayingSound *sound, flex_t pitch, flex_t changetime)
