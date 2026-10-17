@@ -62,8 +62,8 @@
 #define IOSSABERSOUND_SPARE_CHANNELS 4
 // (the game's clock seen up to this far back is no load: a sound started from the
 // controls, as a saber throw is, has the frame's time, and the game's steps after
-// it start from a frame earlier, sithMain_Tick)
-#define IOSSABERSOUND_CLOCK_SLACK_MS 250
+// it start from a frame earlier, sithMain_Tick: a frame of up to SITHTIME_MAXDELTA)
+#define IOSSABERSOUND_CLOCK_SLACK_MS (SITHTIME_MAXDELTA + 50)
 
 // The game's saber sounds, by name (both games' saber cogs': LtSaberLp01.WAV
 // the hum, LtSaberOn01, LtSaberOff01, LtSaberSwing01-08), and the hit sounds
@@ -419,6 +419,17 @@ void iosSaberSound_Tick(void)
         }
         iosSaberSound_TickSaber(s, now, real);
     }
+}
+
+// A level closed or opened, a game loaded (sithSoundMixer_Close, _Reset, _ClearAll):
+// all it keeps of the sounds playing and their things forgotten, as the mixer
+// stops or clears every channel (the clock's jumps, above, only a fallback)
+void iosSaberSound_Reset(void)
+{
+    memset(iosSaberSound_aSaber, 0, sizeof(iosSaberSound_aSaber));
+    memset(iosSaberSound_aCrackles, 0, sizeof(iosSaberSound_aCrackles));
+    memset(iosSaberSound_aFading, 0, sizeof(iosSaberSound_aFading));
+    iosSaberSound_nextFading = 0;
 }
 
 int iosSaberSound_IsStarting(void)
