@@ -18,7 +18,7 @@
 #define TU_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define TU_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define TU_COUNT(a) ((int)(sizeof(a) / sizeof((a)[0])))
-#define TU_SABER_KEPT (3 + TOUCHUI_SABER_MAX_STYLES * 2) // (tu_SaberKept: style, look, shape, every style's two colours)
+#define TU_SABER_KEPT (4 + TOUCHUI_SABER_MAX_STYLES * 2) // (tu_SaberKept: style, look, shape, THROW, every style's two colours)
 
 // ------------------------------------------------------------ the numbers (iosTouch.m's)
 
@@ -310,7 +310,7 @@ static struct {
     double prevTickNow;
     // the saber
     int bShowSaber;
-    int aSaberKept[TU_SABER_KEPT]; // (the saber's style, look, shape and colours as last saved: tu_SaberKeptChanged)
+    int aSaberKept[TU_SABER_KEPT]; // (the saber's style, look, shape, THROW and colours as last saved: tu_SaberKeptChanged)
 
     // the wheel
     // (opened by a finger: inputWheel.c's then; the pad's and the keys'
@@ -365,16 +365,17 @@ static int tu_SaberTargetToWheel(int t);
 
 // ------------------------------------------------------------ settings
 
-// The saber's choices as they are now (style, look, shape, each style's
-// blades' colours: 3 + style * 2 + blade)
+// The saber's choices as they are now (style, look, shape, THROW, each
+// style's blades' colours: 4 + style * 2 + blade)
 static void tu_SaberKept(int a[TU_SABER_KEPT])
 {
     a[0] = G(SaberGetStyle) ? tu.game->SaberGetStyle() : 0;
     a[1] = G(SaberGetLook) ? tu.game->SaberGetLook() : 0;
     a[2] = G(SaberGetShape) ? tu.game->SaberGetShape() : 0;
+    a[3] = G(SaberGetThrow) ? tu.game->SaberGetThrow() : 0;
     for (int st = 0; st < TOUCHUI_SABER_MAX_STYLES; st++) {
         const int bStyle = G(SaberStyleName) && tu.game->SaberStyleName(st);
-        for (int b = 0; b < 2; b++) a[3 + st * 2 + b] = (bStyle && G(SaberGetColour)) ? tu.game->SaberGetColour(st, b) : 0;
+        for (int b = 0; b < 2; b++) a[4 + st * 2 + b] = (bStyle && G(SaberGetColour)) ? tu.game->SaberGetColour(st, b) : 0;
     }
 }
 
@@ -411,6 +412,7 @@ static void tu_SaveSettings(void)
         const char* name = tu.game->SaberShapeName(tu.game->SaberGetShape());
         if (name) fprintf(f, "saberShape=%s\n", name);
     }
+    if (G(SaberGetThrow)) fprintf(f, "saberThrow=%d\n", tu.game->SaberGetThrow() ? 1 : 0);
     if (G(SaberStyleName) && G(SaberStyleNumBlades) && G(SaberGetColour) && G(SaberColourKey)) {
         for (int st = TOUCHUI_SABER_SINGLE; st < TOUCHUI_SABER_MAX_STYLES && tu.game->SaberStyleName(st); st++) {
             const char* name = tu.game->SaberStyleName(st);
@@ -464,6 +466,9 @@ static void tu_LoadSettings(void)
         else if (!strcmp(k, "freeze")) tu.bFreezeOn = n != 0;
         else if (!strcmp(k, "saberTarget"))
             tu.saberTarget = (n == TOUCHUI_CHIP_LEFT || n == TOUCHUI_CHIP_RIGHT) ? n : TOUCHUI_CHIP_BOTH;
+        else if (!strcmp(k, "saberThrow")) {
+            if (G(SaberSetThrow)) tu.game->SaberSetThrow(n != 0);
+        }
         else if (!strncmp(k, "saber", 5)) {
             // the saber's: a key or a name, the line's end trimmed
             char* v = eq + 1;
@@ -1607,6 +1612,7 @@ static void tu_SaberTargetFromShared(void)
 // (the overlay's choices are the shared wheel's, by number)
 typedef char tu_assertChips[((int)TOUCHUI_CHIP_EQUIP == (int)INPUTWHEEL_CHIP_EQUIP && (int)TOUCHUI_CHIP_LOOK == (int)INPUTWHEEL_CHIP_LOOK
                              && (int)TOUCHUI_CHIP_SHAPE == (int)INPUTWHEEL_CHIP_SHAPE && (int)TOUCHUI_CHIP_CROSS == (int)INPUTWHEEL_CHIP_CROSS
+                             && (int)TOUCHUI_CHIP_THROW == (int)INPUTWHEEL_CHIP_THROW
                              && (int)TOUCHUI_NUM_CHIPS == (int)INPUTWHEEL_NUM_CHIPS) ? 1 : -1];
 static void tu_UseSaberChip(int chip)
 {

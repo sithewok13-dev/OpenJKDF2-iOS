@@ -4,6 +4,7 @@
 
 #include "Enhanced/iosSaberThrow.h"
 #include "Enhanced/iosSaber.h"
+#include "Enhanced/iosSaberThrowJk.h"
 
 #include "Cog/sithCog.h"
 #include "Cog/sithCogParse.h"
@@ -92,6 +93,7 @@ void iosSaberThrow_Reset(void)
 
 int iosSaberThrow_HandsInHand(void)
 {
+    if (!Main_bMotsCompat) return iosSaberThrowJk_HandsInHand(); // (Jedi Knight's own: iosSaberThrowJk)
     if (!iosSaberThrow_Player()) return 3;
     return (iosSaberThrow_aHand[0].state == IOSSABERTHROW_IN_HAND ? 1 : 0)
          | (iosSaberThrow_aHand[1].state == IOSSABERTHROW_IN_HAND ? 2 : 0);
@@ -364,6 +366,7 @@ static int iosSaberThrow_OneBladeStyle(void)
 
 int iosSaberThrow_ThrownColour(SithThing* pThing)
 {
+    if (!Main_bMotsCompat) return iosSaberThrowJk_ThrownColour(pThing);
     if (!pThing || pThing->type != SITH_THING_WEAPON) return -1;
     SithThing* p = iosSaberThrow_Player();
     if (!p) return -1;
@@ -383,6 +386,7 @@ int iosSaberThrow_ThrownColour(SithThing* pThing)
 
 int iosSaberThrow_ThrownStyle(SithThing* pThing)
 {
+    if (!Main_bMotsCompat) return iosSaberThrowJk_ThrownStyle(pThing);
     if (iosSaberThrow_ThrownColour(pThing) < 0) return -1;
     for (int k = 0; k < 2; k++) {
         if (iosSaberThrow_aFlyColour[k].thingIdx == pThing->idx && iosSaberThrow_aFlyColour[k].signature == pThing->signature)

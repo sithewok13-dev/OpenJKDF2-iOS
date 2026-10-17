@@ -26,6 +26,7 @@
 #include "SDL2_helper.h"
 #include "jk.h"
 #include "Main/jkPlayerLook.h" // (other players' sabers, in multiplayer)
+#include "Main/Main.h"
 
 // ------------------------------------------------------------ the colours
 
@@ -475,10 +476,83 @@ static void iosSaber_SwapThrownBlade(rdModel3* m, rdMaterial* from, rdMaterial* 
     }
 }
 
+// Jedi Knight's thrown saber (iosSaberThrowJk: the level's cut +force_saber,
+// sab0.3do), whose blade is its second material, a plain green stand-in: drawn
+// as the held blade is, in the colour and look it was thrown in -- the held
+// blade's own side material (the game's own colour: the player's blade as the
+// game has it) -- each of its faces across the middle half of that (white in
+// the middle, the colour at its edges), as a held blade is seen across
+#define IOSSABER_THROWN_MAX_UVS 64
+static rdMesh* iosSaber_pThrownUVMesh = NULL; // (its UVs as they were, while it is drawn)
+static rdVector2 iosSaber_aThrownUV[IOSSABER_THROWN_MAX_UVS];
+
+static int iosSaber_TexSize(const rdMaterial* pMat, int* pW, int* pH)
+{
+    const rdTexinfo* ti = pMat && pMat->num_texinfo ? pMat->texinfos[0] : NULL;
+    const tVBuffer* v = ti && ti->texture_ptr ? ti->texture_ptr->texture_struct[0] : NULL;
+    if (!v || v->format.width <= 0 || v->format.height <= 0) return 0;
+    *pW = (int)v->format.width;
+    *pH = (int)v->format.height;
+    return 1;
+}
+
+static void iosSaber_BeginThrownJk(SithThing* pThing, int id)
+{
+    iosSaber_pThrownUVMesh = NULL;
+    if (id < IOSSABER_COLOUR_GAME || id >= IOSSABER_NUM_COLOURS || pThing->renderData.type != RD_THING_MODEL3) return;
+    rdModel3* m = pThing->renderData.model3;
+    if (!m || m->sizeMaterials < 2 || !m->aMaterials || !m->aMaterials[1] || !m->numGeos) return;
+    rdMaterial* pBlade = m->aMaterials[1];
+    rdMaterial* pMat = NULL;
+    if (id == IOSSABER_COLOUR_GAME) {
+        SithThing* p = sithPlayer_g_pLocalPlayerThing;
+        pMat = p && p->playerInfo ? p->playerInfo->polyline.face.material : NULL;
+    }
+    else {
+        rdMaterial* aMat = iosSaber_Load(id);
+        pMat = aMat ? &aMat[IOSSABER_SIDE] : NULL;
+    }
+    int w0, h0, w1, h1;
+    if (!pMat || pMat == pBlade || !iosSaber_TexSize(pBlade, &w0, &h0) || !iosSaber_TexSize(pMat, &w1, &h1)) return;
+    iosSaber_pThrownModel = m;
+    iosSaber_pThrownBlade = pBlade;
+    iosSaber_pThrownDrawn = pMat;
+    iosSaber_SwapThrownBlade(m, pBlade, pMat);
+    // (the blade's own UVs, its stand-in's width across each face: the middle half of the held one's)
+    rdGeoset* gs = &m->aGeos[0];
+    for (uint32_t k = 0; k < gs->numMeshes && !iosSaber_pThrownUVMesh; k++) {
+        rdMesh* mesh = &gs->aMeshes[k];
+        if (!mesh->aTexVerticies || mesh->numUVs <= 0 || mesh->numUVs > IOSSABER_THROWN_MAX_UVS) continue;
+        int bAny = 0;
+        for (int f = 0; f < mesh->numFaces && !bAny; f++) bAny = mesh->faces[f].material == pMat && mesh->faces[f].vertexUVIdx;
+        if (!bAny) continue;
+        memcpy(iosSaber_aThrownUV, mesh->aTexVerticies, sizeof(rdVector2) * mesh->numUVs);
+        iosSaber_pThrownUVMesh = mesh;
+        static unsigned char aDone[IOSSABER_THROWN_MAX_UVS];
+        memset(aDone, 0, sizeof(aDone));
+        for (int f = 0; f < mesh->numFaces; f++) {
+            const rdFace* face = &mesh->faces[f];
+            if (face->material != pMat || !face->vertexUVIdx) continue;
+            for (uint32_t v = 0; v < face->numVertices; v++) {
+                const int idx = face->vertexUVIdx[v];
+                if (idx < 0 || idx >= mesh->numUVs || aDone[idx]) continue;
+                aDone[idx] = 1;
+                rdVector2* uv = &mesh->aTexVerticies[idx];
+                uv->x = (flex_t)w1 * (flex_t)0.25 + uv->x * ((flex_t)w1 * (flex_t)0.5) / (flex_t)w0;
+                uv->y = uv->y * (flex_t)h1 / (flex_t)h0;
+            }
+        }
+    }
+}
+
 void iosSaber_BeginThrown(SithThing* pThing)
 {
     iosSaber_pThrownModel = NULL;
     const int id = iosSaberThrow_ThrownColour(pThing);
+    if (!Main_bMotsCompat) {
+        iosSaber_BeginThrownJk(pThing, id);
+        return;
+    }
     if (id <= IOSSABER_COLOUR_GAME || pThing->renderData.type != RD_THING_MODEL3) return;
     rdModel3* m = pThing->renderData.model3;
     if (!m || m->sizeMaterials < 1 || !m->aMaterials || !m->aMaterials[0]) return;
@@ -522,10 +596,11 @@ void iosSaber_EndThrown(SithThing* pThing)
             const unsigned char* rgb = NULL;
             const rdMaterial* pBlade = NULL;
             if (iosSaber_pThrownModel) {
-                rgb = iosSaber_Row(iosSaber_look, id)->edge;
+                // (the game's own colour, Jedi Knight's: the player's blade's, by its material)
+                rgb = id == IOSSABER_COLOUR_GAME ? iosSaber_SwatchOf(iosSaber_pThrownDrawn) : iosSaber_Row(iosSaber_look, id)->edge;
                 pBlade = iosSaber_pThrownDrawn;
             }
-            else if (pThing->renderData.type == RD_THING_MODEL3 && pThing->renderData.model3
+            else if (Main_bMotsCompat && pThing->renderData.type == RD_THING_MODEL3 && pThing->renderData.model3
                      && pThing->renderData.model3->sizeMaterials >= 1 && pThing->renderData.model3->aMaterials) {
                 pBlade = pThing->renderData.model3->aMaterials[0];
                 rgb = iosSaber_ThrownSwatchOf(pBlade);
@@ -543,6 +618,10 @@ void iosSaber_EndThrown(SithThing* pThing)
         }
     }
     if (!iosSaber_pThrownModel) return;
+    if (iosSaber_pThrownUVMesh) {
+        memcpy(iosSaber_pThrownUVMesh->aTexVerticies, iosSaber_aThrownUV, sizeof(rdVector2) * iosSaber_pThrownUVMesh->numUVs);
+        iosSaber_pThrownUVMesh = NULL;
+    }
     iosSaber_SwapThrownBlade(iosSaber_pThrownModel, iosSaber_pThrownDrawn, iosSaber_pThrownBlade);
     iosSaber_pThrownModel = NULL;
 }

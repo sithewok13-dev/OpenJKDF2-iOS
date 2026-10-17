@@ -125,6 +125,9 @@ typedef struct touchUiGame {
     const char* (*SaberShapeName)(int shape);
     int (*SaberGetShape)(void);
     void (*SaberSetShape)(int shape);
+    // THROW, on or off (iosSaberThrowJk: Jedi Knight's Saber Throw on the Force wheel)
+    int (*SaberGetThrow)(void);
+    void (*SaberSetThrow)(int bOn);
 
     // The camera (Enhanced/iosCapture, iosSelfieShots, iosFreeze, iosCinema
     // and platServices): their answers as theirs (TOUCHUI_CAPTURE_*,
@@ -175,9 +178,10 @@ enum { TOUCHUI_GYRO_OFF = 0, TOUCHUI_GYRO_TOUCH, TOUCHUI_GYRO_ALWAYS };
 enum { TOUCHUI_HAPTIC_TICK = 1, TOUCHUI_HAPTIC_TAP = 2 };
 enum { TOUCHUI_WHEEL_FORCE = 0, TOUCHUI_WHEEL_WEAPONS, TOUCHUI_WHEEL_SABER };
 // The saber wheel's choices beside the ring (the blade's shape, FILM on or
-// off, under SINGLE, DUAL and CROSS), and in its middle (EQUIP, the colours' look)
+// off, under SINGLE, DUAL and CROSS; THROW at the top right, Jedi Knight's),
+// and in its middle (EQUIP, the colours' look)
 enum { TOUCHUI_CHIP_SINGLE = 0, TOUCHUI_CHIP_DUAL, TOUCHUI_CHIP_LEFT, TOUCHUI_CHIP_BOTH, TOUCHUI_CHIP_RIGHT, TOUCHUI_CHIP_EQUIP,
-       TOUCHUI_CHIP_LOOK, TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_CROSS, TOUCHUI_NUM_CHIPS };
+       TOUCHUI_CHIP_LOOK, TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_CROSS, TOUCHUI_CHIP_THROW, TOUCHUI_NUM_CHIPS };
 
 // Once, before anything else. The settings file (key=value lines) is read
 // now, if there is one, and written whenever a remembered setting changes.

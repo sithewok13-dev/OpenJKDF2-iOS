@@ -16,6 +16,10 @@
 //
 // What is out and where is in memory only: a new level, a load or a new
 // player puts both sabers back in hand (the inventory is the game's, saved).
+//
+// Jedi Knight has a Saber Throw of its own making (iosSaberThrowJk, with two
+// sabers too): the drawing's questions here (which sabers are in hand, a
+// thrown saber's colour and style) are its answers there.
 
 #ifndef _PLATFORM_IOS_IOSSABERTHROW_H
 #define _PLATFORM_IOS_IOSSABERTHROW_H

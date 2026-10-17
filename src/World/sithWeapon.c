@@ -25,6 +25,13 @@
 #include "General/stdMath.h"
 #include "jk.h"
 #include "Platform/iOS/iosKbMouse.h" // Added: the mouse wheel's weapon steps (iOS)
+#ifdef JK_ENHANCED
+#include "Enhanced/iosSaberThrowJk.h" // Added
+// Added: a weapon that can't be picked for now: Jedi Knight's saber while it is thrown (iosSaberThrowJk)
+#define SITHWEAPON_HELD_BACK(pThing, bin) iosSaberThrowJk_WeaponHeldBack(pThing, bin)
+#else
+#define SITHWEAPON_HELD_BACK(pThing, bin) 0
+#endif
 
 // MOTS added
 int sithWeapon_mots_5a3258 = -1;
@@ -923,6 +930,8 @@ int sithWeapon_SelectWeapon(SithThing *pThing, int typeId, int a3)
     v4 = sithInventory_GetCurrentWeapon(pThing);
     if ( typeId == v4 || sithInventory_GetInventory(pThing, typeId) == 0.0 || !sithInventory_IsInventoryAvailable(pThing, typeId) || sithWeapon_8BD024 != -1 )
         return 0;
+    if ( SITHWEAPON_HELD_BACK(pThing, typeId) ) // Added
+        return 0;
     v5 = sithInventory_GetType(typeId)->cog;
     if ( v5 )
     {
@@ -1583,7 +1592,8 @@ void sithWeapon_SelectNextWeapon(SithThing* pThing)
         if ( v11 == -1 )
             v11 = sithInventory_FindNextTypeID(pThing, 0, ITEMINFO_WEAPON);
         v12 = sithInventory_GetInventoryType(pThing, v11);
-        if ( sithCog_SendMessageEx(v12->cog, SITH_MESSAGE_AUTOSELECT, 0, 0, SENDERTYPE_THING, pThing->idx, 0, 0.0, 0.0, 0.0, 0.0) == -1.0 )
+        if ( sithCog_SendMessageEx(v12->cog, SITH_MESSAGE_AUTOSELECT, 0, 0, SENDERTYPE_THING, pThing->idx, 0, 0.0, 0.0, 0.0, 0.0) == -1.0
+             || SITHWEAPON_HELD_BACK(pThing, v11) ) // Added
         {
             do
             {
@@ -1592,7 +1602,8 @@ void sithWeapon_SelectNextWeapon(SithThing* pThing)
                     v11 = sithInventory_FindNextTypeID(pThing, 0, ITEMINFO_WEAPON);
                 v13 = sithInventory_GetInventoryType(pThing, v11);
             }
-            while ( sithCog_SendMessageEx(v13->cog, SITH_MESSAGE_AUTOSELECT, 0, 0, SENDERTYPE_THING, pThing->idx, 0, 0.0, 0.0, 0.0, 0.0) == -1.0 );
+            while ( sithCog_SendMessageEx(v13->cog, SITH_MESSAGE_AUTOSELECT, 0, 0, SENDERTYPE_THING, pThing->idx, 0, 0.0, 0.0, 0.0, 0.0) == -1.0
+                    || SITHWEAPON_HELD_BACK(pThing, v11) ); // Added
         }
         sithWeapon_SelectWeapon(pThing, v11, 0);
     }
@@ -1643,7 +1654,8 @@ void sithWeapon_SelectPreviousWeapon(SithThing* pThing)
             v15 = sithInventory_FindPreviousTypeID(pThing, 0, ITEMINFO_WEAPON);
         
         v16 = sithInventory_GetInventoryType(pThing, v15);
-        if ( sithCog_SendMessageEx(v16->cog, SITH_MESSAGE_AUTOSELECT, 0, 0, SENDERTYPE_THING, pThing->idx, 0, 0.0, 0.0, 0.0, 0.0) == -1.0 )
+        if ( sithCog_SendMessageEx(v16->cog, SITH_MESSAGE_AUTOSELECT, 0, 0, SENDERTYPE_THING, pThing->idx, 0, 0.0, 0.0, 0.0, 0.0) == -1.0
+             || SITHWEAPON_HELD_BACK(pThing, v15) ) // Added
         {
             do
             {
@@ -1652,7 +1664,8 @@ void sithWeapon_SelectPreviousWeapon(SithThing* pThing)
                     v15 = sithInventory_FindPreviousTypeID(pThing, 0, ITEMINFO_WEAPON);
                 v17 = sithInventory_GetInventoryType(pThing, v15);
             }
-            while ( sithCog_SendMessageEx(v17->cog, SITH_MESSAGE_AUTOSELECT, 0, 0, SENDERTYPE_THING, pThing->idx, 0, 0.0, 0.0, 0.0, 0.0) == -1.0 );
+            while ( sithCog_SendMessageEx(v17->cog, SITH_MESSAGE_AUTOSELECT, 0, 0, SENDERTYPE_THING, pThing->idx, 0, 0.0, 0.0, 0.0, 0.0) == -1.0
+                    || SITHWEAPON_HELD_BACK(pThing, v15) ); // Added
         }
         sithWeapon_SelectWeapon(pThing, v15, 0);
     }

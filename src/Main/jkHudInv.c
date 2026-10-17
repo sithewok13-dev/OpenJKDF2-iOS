@@ -13,6 +13,9 @@
 #include "Platform/std3D.h"
 #include "World/jkPlayer.h"
 #include "jk.h"
+#ifdef JK_ENHANCED
+#include "Enhanced/iosSaberThrowJk.h" // Added
+#endif
 
 #if defined(TARGET_IOS) || defined(TOUCHUI_ENABLED)
 #include "Platform/iOS/iosSafeArea.h" // Added
@@ -781,6 +784,9 @@ int jkHudInv_InitItems()
     SithInventoryType *v5; // eax
 
     _sprintf(std_g_genBuffer, "misc\\%s", "items.dat");
+#ifdef JK_ENHANCED
+    iosSaberThrowJk_ItemsLoading(); // Added: Jedi Knight's Saber Throw let go, before the items (and the HUD's powers) are read
+#endif
     if (!jkHudInv_ItemDatLoad(std_g_genBuffer))
         return 0;
 
@@ -906,7 +912,8 @@ void jkHudInv_LoadItemRes()
                 v4 = stdBitmap_Load(a1, 0, 0);
                 sithInventory_g_aTypes[j].hudBitmap = v4;
 #ifndef RDMATERIAL_MINIMIZE_STRUCTS
-                stdBitmap_ConvertColorFormat(&Video_format.format, v4);
+                if ( v4 ) // Added: an item or power with no icon of its own (Jedi Knight's Saber Throw, iosSaberThrowJk): the default one is drawn
+                    stdBitmap_ConvertColorFormat(&Video_format.format, v4);
 #endif
             }
         }

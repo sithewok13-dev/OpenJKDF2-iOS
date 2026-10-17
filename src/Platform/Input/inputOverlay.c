@@ -270,6 +270,9 @@ void inputUi_SaberChip(int chip)
     else if (chip == IOSPAD_CHIP_SHAPE) {
         inputWheel_SaberChip(INPUTWHEEL_CHIP_SHAPE);
     }
+    else if (chip == IOSPAD_CHIP_THROW) {
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_THROW); // (nothing where it isn't offered)
+    }
     if (inputWheel_IsOpen()) inputWheel_Point(-1, 0, 0.0f);
     inputOverlay_OutsideWheelIsOpen();
 }

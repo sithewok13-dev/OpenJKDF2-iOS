@@ -19,6 +19,7 @@
 #include "World/sithThing.h"
 #include "stdPlatform.h"
 #include "Enhanced/iosGame.h"
+#include "Enhanced/iosSaberThrowJk.h"
 #include "Platform/iOS/iosPad.h"
 #include "Platform/Input/inputUi.h" // (iOS: the touch overlay and iosPadPanel; elsewhere: inputOverlay.c)
 
@@ -181,7 +182,8 @@ static void iosKbMouse_SetWheelPrompt(void)
 {
     char t[256];
     if (iosKbMouse_s.wheelKind == IOSPAD_WHEEL_SABER)
-        snprintf(t, sizeof(t), "Mouse: colour   Click: set   1: style   2: blade   3: equip   4: look   5: film   Esc: close");
+        snprintf(t, sizeof(t), "Mouse: colour   Click: set   1: style   2: blade   3: equip   4: look   5: film   %sEsc: close",
+                 iosSaberThrowJk_Offered() ? "6: throw   " : "");
     else if (iosKbMouse_s.wheelState == IOSKBM_WS_HELD)
         snprintf(t, sizeof(t), "Mouse: point   Let go of %s: pick   Right click or Esc: cancel", iosKbMouse_KeyName(iosKbMouse_s.wheelKey));
     else
@@ -331,6 +333,7 @@ static void iosKbMouse_WheelInput(void)
         if (iosKbMouse_Pressed(SDL_SCANCODE_3)) inputUi_SaberChip(IOSPAD_CHIP_EQUIP);
         if (iosKbMouse_Pressed(SDL_SCANCODE_4)) inputUi_SaberChip(IOSPAD_CHIP_LOOK);
         if (iosKbMouse_Pressed(SDL_SCANCODE_5)) inputUi_SaberChip(IOSPAD_CHIP_SHAPE);
+        if (iosKbMouse_Pressed(SDL_SCANCODE_6)) inputUi_SaberChip(IOSPAD_CHIP_THROW); // (Jedi Knight only)
         if (!inputUi_KbmWheelIsOpen()) {
             iosKbMouse_WheelReset();
             return;

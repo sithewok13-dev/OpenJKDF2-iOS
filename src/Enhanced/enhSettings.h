@@ -3,7 +3,7 @@
 
 // Added: entire file. Where the enhanced gameplay's choices are kept: the
 // saber style and each blade's colour, Force Jump's style, first or third
-// person.
+// person, THROW.
 //
 // The gameplay itself always holds the current ones (iosSaber_GetStyle,
 // iosSaber_GetColour, iosGame_IsThirdPerson...), which shared code reads.
@@ -25,6 +25,8 @@
 //       enh_forceJumpStyle        0 smooth, 1 steps, 2 classic (IOSGAME_JUMP_*;
 //                                 classic by default, the desktops' own jump)
 //       enh_thirdPerson           0 or 1
+//       enh_saberThrow            0 (the default) or 1: THROW, Jedi Knight's
+//                                 Saber Throw on the Force wheel (iosSaberThrowJk)
 //     A cvar changed (the console, the file) is applied; a choice changed in
 //     the game (the camera key...) is written back, to be saved with the rest.
 
