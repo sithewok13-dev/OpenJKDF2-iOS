@@ -2,7 +2,7 @@
 #define _ENHANCED_ENHSETTINGS_H
 
 // Added: entire file. Where the enhanced gameplay's choices are kept: the
-// saber style and each blade's colour, Force Jump's style, first or third
+// saber style and hilt and each blade's colour, Force Jump's style, first or third
 // person, THROW.
 //
 // The gameplay itself always holds the current ones (iosSaber_GetStyle,
@@ -13,7 +13,12 @@
 //     here runs there, so no setting moves and none is lost;
 //   - elsewhere as global cvars, kept in openjkdf2_cvars.json and settable
 //     from the console:
-//       enh_saberStyle            SINGLE, DUAL or CROSS
+//       enh_saberStyle            SINGLE or DUAL (CROSS, kept by builds before
+//                                 the hilts: SINGLE with the CROSS hilt, and
+//                                 their enh_saberColourCross SINGLE's colour;
+//                                 that one is then emptied, and not saved)
+//       enh_saberHilt             NORMAL (the default) or CROSS: both hands'
+//                                 hilt (iosSaber)
 //       enh_saberLook             REFORGED (the default) or CLASSIC: how the
 //                                 blades' colours are drawn (iosSaber)
 //       enh_saberShape            SPIKE (the default) or BEAM (FILM on the screen, and taken too): the blades'
@@ -21,7 +26,6 @@
 //       enh_saberColourSingle     a colour key (iosSaber: "red", "lightblue"...),
 //       enh_saberColourDualRight  "game" for the game's own
 //       enh_saberColourDualLeft
-//       enh_saberColourCross
 //       enh_forceJumpStyle        0 smooth, 1 steps, 2 classic (IOSGAME_JUMP_*;
 //                                 classic by default, the desktops' own jump)
 //       enh_thirdPerson           0 or 1

@@ -26,8 +26,8 @@
 // Remembered by the platform by its name, as the look is (iOS: NSUserDefaults
 // iosTouchSaberShape; elsewhere the cvar enh_saberShape, enhSettings).
 //
-// A style can have a blade shape of its own, whatever the choice above
-// (iosSaber's CROSS, a form here):
+// A hilt can have a blade shape of its own, whatever the choice above
+// (iosSaber's CROSS hilt, a form here):
 //
 //   CROSS  a blade with a crossguard: its edges jagged, moved about each frame
 //          of the game's clock so it crackles (still while the game is), a

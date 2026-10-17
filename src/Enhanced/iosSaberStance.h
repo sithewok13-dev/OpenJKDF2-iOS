@@ -20,7 +20,8 @@
 // then.
 //
 // For the local player, and in multiplayer for other players whose games
-// sent a CROSS style (the style already sent, jkPlayerLook).
+// sent the CROSS hilt (the look already sent, jkPlayerLook: a build before the
+// hilts sends its CROSS, one saber).
 
 #ifndef _ENHANCED_IOSSABERSTANCE_H
 #define _ENHANCED_IOSSABERSTANCE_H

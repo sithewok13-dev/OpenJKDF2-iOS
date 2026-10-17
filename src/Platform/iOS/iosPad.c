@@ -379,8 +379,8 @@ static void iosPad_SetWheelPrompt(void)
     const char* a = iosPad_ButtonName(SDL_GAMEPAD_BUTTON_SOUTH, 0);
     const char* bb = iosPad_ButtonName(SDL_GAMEPAD_BUTTON_EAST, 0);
     if (iosPad_s.wheelKind == IOSPAD_WHEEL_SABER) {
-        snprintf(t, sizeof(t), "Right stick: colour   %s: set   %s: style   %s: blade   L3: look   D-pad up: film   %sR3: equip   %s: close",
-                 a, iosPad_ButtonName(SDL_GAMEPAD_BUTTON_WEST, 0), iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0),
+        snprintf(t, sizeof(t), "Right stick: colour   %s: set   %s: style   %s: hilt   %s: blade   L3: look   D-pad up: film   %sR3: equip   %s: close",
+                 a, iosPad_ButtonName(SDL_GAMEPAD_BUTTON_WEST, 0), iosPad_PbName(PB_LB, 0), iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0),
                  iosSaberThrowJk_Offered() ? "D-pad down: throw   " : "", bb);
     }
     else if (iosPad_s.wheelState == IOSPAD_WS_HELD) {
@@ -506,6 +506,7 @@ static void iosPad_WheelInput(void)
     if (iosPad_Pressed(PB_DRIGHT)) { inputUi_WheelStep(1); iosPad_s.bWheelAimed = 1; }
     if (bSaber) {
         if (iosPad_Pressed(PB_X)) inputUi_SaberChip(IOSPAD_CHIP_STYLE);
+        if (iosPad_Pressed(PB_LB)) inputUi_SaberChip(IOSPAD_CHIP_HILT); // (LB: free on this wheel)
         if (iosPad_Pressed(PB_Y)) inputUi_SaberChip(IOSPAD_CHIP_TARGET);
         if (iosPad_Pressed(PB_LS)) inputUi_SaberChip(IOSPAD_CHIP_LOOK);
         if (iosPad_Pressed(PB_DUP)) inputUi_SaberChip(IOSPAD_CHIP_SHAPE); // (the D-pad's up: free on this wheel)

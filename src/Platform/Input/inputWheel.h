@@ -21,7 +21,7 @@
 // Every power has a fixed slice of the Force wheel, learned or not (those
 // are dimmed); every weapon its slot on the weapon wheel, in the number key
 // order, with its ammo count; every blade colour its slice on the saber
-// wheel, with the choices beside it (one saber, two or the crossguard, which
+// wheel, with the choices beside it (one saber or two, the hilt, which
 // blade, take the saber). The gap at the bottom cancels. A learned power's level shows as
 // four stars, filled one per level.
 //
@@ -67,15 +67,16 @@ typedef struct {
     float nameMin;  // the smallest a name goes to keep its row (its stars) at their size; 0: 7 pt, as alone
 } inputWheelMap;
 
-// The saber wheel's choices beside the ring: one saber, two or the
-// crossguard, and under them the blade's shape (an on/off switch: FILM on,
-// SPIKE off; iosSaberShape; dim with CROSS, which has its own), which of two
-// blades a colour goes to; and in the middle, the saber in hand and the
+// The saber wheel's choices beside the ring: one saber or two, HILT (the
+// hilt picked, by its name: a tap for the next, iosSaber_NextHilt), and under
+// them the blade's shape (an on/off switch: FILM on, SPIKE off; iosSaberShape;
+// dim with a hilt whose blades have their own, iosSaber_HiltKeepsShape: CROSS),
+// which of two blades a colour goes to; and in the middle, the saber in hand and the
 // colours' look (CLASSIC / REFORGED, iosSaber_GetLook). In Jedi Knight, single
 // player, THROW at the top right (a switch: Saber Throw on the Force wheel,
 // iosSaberThrowJk).
 enum { INPUTWHEEL_CHIP_SINGLE = 0, INPUTWHEEL_CHIP_DUAL, INPUTWHEEL_CHIP_LEFT, INPUTWHEEL_CHIP_BOTH, INPUTWHEEL_CHIP_RIGHT,
-       INPUTWHEEL_CHIP_EQUIP, INPUTWHEEL_CHIP_LOOK, INPUTWHEEL_CHIP_SHAPE, INPUTWHEEL_CHIP_CROSS, INPUTWHEEL_CHIP_THROW, INPUTWHEEL_NUM_CHIPS };
+       INPUTWHEEL_CHIP_EQUIP, INPUTWHEEL_CHIP_LOOK, INPUTWHEEL_CHIP_SHAPE, INPUTWHEEL_CHIP_HILT, INPUTWHEEL_CHIP_THROW, INPUTWHEEL_NUM_CHIPS };
 // With two blades, the one a colour goes to
 enum { INPUTWHEEL_SABER_RIGHT = 0, INPUTWHEEL_SABER_LEFT = 1, INPUTWHEEL_SABER_BOTH = 2 };
 
@@ -135,8 +136,9 @@ int inputWheel_IsPickable(int slice);
 // -1 closes the saber wheel too.
 int inputWheel_Close(int slice);
 
-// The saber wheel's choices (INPUTWHEEL_CHIP_*): SINGLE / DUAL / CROSS, the blade a
-// colour goes to, EQUIP (the saber in hand: the wheel closes), the look (the
+// The saber wheel's choices (INPUTWHEEL_CHIP_*): SINGLE / DUAL, HILT (the next
+// hilt, the wheel open; remembered by the platform around this, from
+// iosSaber_GetHilt), the blade a colour goes to, EQUIP (the saber in hand: the wheel closes), the look (the
 // other one: the wheel made again in it, still open; remembered by the
 // platform around this, from iosSaber_GetLook), the shape (FILM on or off, the
 // wheel open; remembered the same way, from iosSaberShape_Get), THROW (on or

@@ -182,7 +182,7 @@ static void iosKbMouse_SetWheelPrompt(void)
 {
     char t[256];
     if (iosKbMouse_s.wheelKind == IOSPAD_WHEEL_SABER)
-        snprintf(t, sizeof(t), "Mouse: colour   Click: set   1: style   2: blade   3: equip   4: look   5: film   %sEsc: close",
+        snprintf(t, sizeof(t), "Mouse: colour   Click: set   1: style   7: hilt   2: blade   3: equip   4: look   5: film   %sEsc: close",
                  iosSaberThrowJk_Offered() ? "6: throw   " : "");
     else if (iosKbMouse_s.wheelState == IOSKBM_WS_HELD)
         snprintf(t, sizeof(t), "Mouse: point   Let go of %s: pick   Right click or Esc: cancel", iosKbMouse_KeyName(iosKbMouse_s.wheelKey));
@@ -334,6 +334,7 @@ static void iosKbMouse_WheelInput(void)
         if (iosKbMouse_Pressed(SDL_SCANCODE_4)) inputUi_SaberChip(IOSPAD_CHIP_LOOK);
         if (iosKbMouse_Pressed(SDL_SCANCODE_5)) inputUi_SaberChip(IOSPAD_CHIP_SHAPE);
         if (iosKbMouse_Pressed(SDL_SCANCODE_6)) inputUi_SaberChip(IOSPAD_CHIP_THROW); // (Jedi Knight only)
+        if (iosKbMouse_Pressed(SDL_SCANCODE_7)) inputUi_SaberChip(IOSPAD_CHIP_HILT);
         if (!inputUi_KbmWheelIsOpen()) {
             iosKbMouse_WheelReset();
             return;

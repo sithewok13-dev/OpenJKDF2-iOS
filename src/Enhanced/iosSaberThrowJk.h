@@ -92,11 +92,12 @@ int iosSaberThrowJk_OnFists(void);
 
 // For the drawing (iosSaberThrow's, which asks this in Jedi Knight): which
 // sabers are in hand (bit 0 the right, bit 1 the left; 3 with nothing out),
-// and a thrown saber of ours: the colour (the SABER wheel's id) and style
-// it was thrown in, or -1
+// and a thrown saber of ours: the colour (the SABER wheel's id), style and
+// hilt (its hand's) it was thrown in, or -1
 int iosSaberThrowJk_HandsInHand(void);
 int iosSaberThrowJk_ThrownColour(struct SithThing* pThing);
 int iosSaberThrowJk_ThrownStyle(struct SithThing* pThing);
+int iosSaberThrowJk_ThrownHilt(struct SithThing* pThing);
 
 #ifdef __cplusplus
 }

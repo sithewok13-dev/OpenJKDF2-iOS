@@ -194,21 +194,23 @@ extern int jkHud_bChatOpen;
 // lifted or slid off sooner, nothing); one a press, its ring filling meanwhile
 #define IOSTOUCH_BACTA_HOLD 0.3
 #define IOSTOUCH_SABERSTYLE_DEFAULTS_KEY @"iosTouchSaberStyle"
+#define IOSTOUCH_SABERHILT_DEFAULTS_KEY @"iosTouchSaberHilt" // (by its name: NORMAL, CROSS...; iosSaber)
 #define IOSTOUCH_SABERCOLOUR_DEFAULTS_KEY @"iosTouchSaberColour" // + style name + blade number
 #define IOSTOUCH_SABERTARGET_DEFAULTS_KEY @"iosTouchSaberTarget"
 #define IOSTOUCH_SABERLOOK_DEFAULTS_KEY @"iosTouchSaberLook" // (by its name: CLASSIC, REFORGED)
 #define IOSTOUCH_SABERSHAPE_DEFAULTS_KEY @"iosTouchSaberShape" // (by its name as kept: SPIKE, BEAM (FILM on the screen); iosSaberShape)
 #define IOSTOUCH_SABERTHROW_DEFAULTS_KEY @"iosTouchSaberThrow" // (THROW, on or off: Jedi Knight's Saber Throw, iosSaberThrowJk)
-// The saber wheel's choices beside the ring: SINGLE, DUAL, CROSS and the
-// blade's shape (FILM, an on/off switch) on its left; with DUAL, which blade a
+// The saber wheel's choices beside the ring: SINGLE, DUAL, HILT (the hilt
+// picked, by its name: a tap for the next) and the blade's shape (FILM, an
+// on/off switch) on its left; with DUAL, which blade a
 // colour goes to (LEFT, BOTH, RIGHT) on its right.
 // Each IOSTOUCH_SABER_CHIP_W by _H, this far out from the ring and apart.
 enum { IOSTOUCH_CHIP_SINGLE = 0, IOSTOUCH_CHIP_DUAL, IOSTOUCH_CHIP_LEFT, IOSTOUCH_CHIP_BOTH, IOSTOUCH_CHIP_RIGHT,
        IOSTOUCH_CHIP_EQUIP, // (in the middle: the saber in hand, as it is set; lit while the player has it)
        IOSTOUCH_CHIP_LOOK,  // (in the middle, over the colour's name: the colours' look, CLASSIC or REFORGED)
-       IOSTOUCH_CHIP_SHAPE, // (on the left, under CROSS: the blade's shape, FILM on or off -- SPIKE, the game's;
-                            // dim while CROSS is picked, which has a shape of its own)
-       IOSTOUCH_CHIP_CROSS, // (on the left, under DUAL: one saber with a crossguard)
+       IOSTOUCH_CHIP_SHAPE, // (on the left, under HILT: the blade's shape, FILM on or off -- SPIKE, the game's;
+                            // dim while the hilt's blades have a shape of their own, CROSS's)
+       IOSTOUCH_CHIP_HILT,  // (on the left, under DUAL: the hilt, NORMAL, CROSS...: a tap for the next, with either style)
        IOSTOUCH_CHIP_THROW, // (at the top right, beside the ring: THROW, a switch, Saber Throw on the Force wheel;
                             // Jedi Knight's, single player only: iosSaberThrowJk)
        IOSTOUCH_NUM_CHIPS };
@@ -225,7 +227,7 @@ enum { IOSTOUCH_CHIP_SINGLE = 0, IOSTOUCH_CHIP_DUAL, IOSTOUCH_CHIP_LEFT, IOSTOUC
 // touch this far round each, so no two choices' touches meet: the iPhone mini's Display Zoom)
 #define IOSTOUCH_SABER_CHIP_TIGHT_GAP 6.0
 #define IOSTOUCH_SABER_CHIP_TOUCH 6.0
-#define IOSTOUCH_SABER_CHIP_DIM 0.4 // (the shape's switch while CROSS is picked: it doesn't change that blade)
+#define IOSTOUCH_SABER_CHIP_DIM 0.4 // (the shape's switch while CROSS is the hilt: it doesn't change those blades)
 // The look's switch: this big at most, its middle this far over the wheel's,
 // smaller to keep it inside the middle on a small wheel (inputWheel.c's the same)
 #define IOSTOUCH_SABER_LOOK_W 76.0
@@ -2044,7 +2046,7 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         wheelCancelLabel.text = @"cancel";
         wheelCancelLabel.layer.zPosition = 2.0;
         [wheelView addSubview:wheelCancelLabel];
-        const char* aChipName[IOSTOUCH_NUM_CHIPS] = { "SINGLE", "DUAL", "LEFT", "BOTH", "RIGHT", "EQUIP", "REFORGED", "", "CROSS", "" };
+        const char* aChipName[IOSTOUCH_NUM_CHIPS] = { "SINGLE", "DUAL", "LEFT", "BOTH", "RIGHT", "EQUIP", "REFORGED", "", "NORMAL", "" };
         for (int i = 0; i < IOSTOUCH_NUM_CHIPS; i++) {
             UILabel* l = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, IOSTOUCH_SABER_CHIP_W, IOSTOUCH_SABER_CHIP_H)];
             l.text = [NSString stringWithUTF8String:aChipName[i]];
@@ -2056,6 +2058,11 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
             l.clipsToBounds = YES;
             l.layer.zPosition = 2.0;
             l.hidden = YES;
+            if (i == IOSTOUCH_CHIP_HILT) {
+                // (its name as the hilt's: kept inside, smaller if one is long)
+                l.adjustsFontSizeToFitWidth = YES;
+                l.minimumScaleFactor = 0.8;
+            }
             aSaberChips[i] = l;
             [wheelView addSubview:l];
         }
@@ -2850,11 +2857,25 @@ static void iosTouch_PhotosAsked(void)
     [self setShowCheat:0];
 }
 
-// The style and each blade's colour, as last picked (by name: a colour that
-// is no more is the game's own)
+// The style, the hilt and each blade's colour, as last picked (by name: a
+// colour that is no more is the game's own). A style kept by a build before
+// the hilts that is a hilt's name (CROSS): SINGLE with that hilt, and that
+// style's own colour SINGLE's, so the saber is as it was -- kept so at once
+// (its own colour's key left as it was: an older build finds it there)
 - (void)loadSaberChoices
 {
     NSUserDefaults* d = [NSUserDefaults standardUserDefaults];
+    NSString* kept = [d stringForKey:IOSTOUCH_SABERSTYLE_DEFAULTS_KEY];
+    int movedHilt = IOSSABER_HILT_NORMAL;
+    if (kept && iosSaber_StyleByName([kept UTF8String], &movedHilt) >= 0 && movedHilt != IOSSABER_HILT_NORMAL) {
+        const int st = iosSaber_StyleByName([kept UTF8String], NULL);
+        // (none kept for it: it was never picked, the game's own)
+        NSString* v = [d stringForKey:[NSString stringWithFormat:@"%@.%@.0", IOSTOUCH_SABERCOLOUR_DEFAULTS_KEY, kept]];
+        [d setObject:(v ? v : [NSString stringWithUTF8String:iosSaber_ColourKey(IOSSABER_COLOUR_GAME)])
+              forKey:[NSString stringWithFormat:@"%@.%s.0", IOSTOUCH_SABERCOLOUR_DEFAULTS_KEY, iosSaber_StyleName(st)]];
+        [d setObject:[NSString stringWithUTF8String:iosSaber_HiltName(movedHilt)] forKey:IOSTOUCH_SABERHILT_DEFAULTS_KEY];
+        [d setObject:[NSString stringWithUTF8String:iosSaber_StyleName(st)] forKey:IOSTOUCH_SABERSTYLE_DEFAULTS_KEY];
+    }
     for (int st = 0; st < IOSSABER_NUM_STYLES; st++) {
         for (int b = 0; b < iosSaber_StyleNumBlades(st); b++) {
             NSString* key = [NSString stringWithFormat:@"%@.%s.%d", IOSTOUCH_SABERCOLOUR_DEFAULTS_KEY, iosSaber_StyleName(st), b];
@@ -2874,6 +2895,9 @@ static void iosTouch_PhotosAsked(void)
     for (int st = 0; style && st < IOSSABER_NUM_STYLES; st++) {
         if (!strcmp([style UTF8String], iosSaber_StyleName(st))) iosSaber_SetStyle(st);
     }
+    NSString* hilt = [d stringForKey:IOSTOUCH_SABERHILT_DEFAULTS_KEY];
+    const int h = hilt ? iosSaber_HiltByName([hilt UTF8String]) : IOSSABER_HILT_NORMAL;
+    iosSaber_SetHilt(iosSaber_HiltAvailable(h) ? h : IOSSABER_HILT_NORMAL); // (one this build hasn't, or not available yet: NORMAL)
     if ([d objectForKey:IOSTOUCH_SABERTARGET_DEFAULTS_KEY]) {
         const NSInteger t = [d integerForKey:IOSTOUCH_SABERTARGET_DEFAULTS_KEY];
         if (t >= IOSTOUCH_SABER_RIGHT && t <= IOSTOUCH_SABER_BOTH) iosTouch_saberTarget = (int)t;
@@ -2910,10 +2934,10 @@ static int iosTouch_SaberBlade(void)
     return iosGame_GetWeapon(iosGame_IsMots() ? 131 : 10, &ammo, &bSelectable) && bSelectable;
 }
 
-// One of the saber wheel's choices tapped: one saber, two or the crossguard
-// (each keeps its own colours), or which of the two a colour goes to -- the
-// wheel stays open, to tap a colour; or EQUIP, the saber in hand, the wheel
-// closed.
+// One of the saber wheel's choices tapped: one saber or two (each keeps its
+// own colours), HILT (the next hilt), or which of the two a colour goes to --
+// the wheel stays open, to tap a colour; or EQUIP, the saber in hand, the
+// wheel closed.
 
 - (void)useSaberChip:(int)chip
 {
@@ -2954,10 +2978,17 @@ static int iosTouch_SaberBlade(void)
         iosSaberThrowJk_Toggle();
         [d setBool:iosSaberThrowJk_Get() ? YES : NO forKey:IOSTOUCH_SABERTHROW_DEFAULTS_KEY];
     }
-    else if (chip == IOSTOUCH_CHIP_SINGLE || chip == IOSTOUCH_CHIP_DUAL || chip == IOSTOUCH_CHIP_CROSS) {
-        iosSaber_SetStyle(chip == IOSTOUCH_CHIP_DUAL ? IOSSABER_STYLE_DUAL : chip == IOSTOUCH_CHIP_CROSS ? IOSSABER_STYLE_CROSS : IOSSABER_STYLE_SINGLE);
+    else if (chip == IOSTOUCH_CHIP_SINGLE || chip == IOSTOUCH_CHIP_DUAL) {
+        iosSaber_SetStyle(chip == IOSTOUCH_CHIP_DUAL ? IOSSABER_STYLE_DUAL : IOSSABER_STYLE_SINGLE);
         [d setObject:[NSString stringWithUTF8String:iosSaber_StyleName(iosSaber_GetStyle())] forKey:IOSTOUCH_SABERSTYLE_DEFAULTS_KEY];
         [self refreshSaberIcons];
+    }
+    else if (chip == IOSTOUCH_CHIP_HILT) {
+        // the next hilt, remembered: the blades drawn with it at once (only one: nothing)
+        const int next = iosSaber_NextHilt(iosSaber_GetHilt());
+        if (next == iosSaber_GetHilt()) return;
+        iosSaber_SetHilt(next);
+        [d setObject:[NSString stringWithUTF8String:iosSaber_HiltName(iosSaber_GetHilt())] forKey:IOSTOUCH_SABERHILT_DEFAULTS_KEY];
     }
     else {
         iosTouch_saberTarget = chip == IOSTOUCH_CHIP_LEFT ? IOSTOUCH_SABER_LEFT : chip == IOSTOUCH_CHIP_RIGHT ? IOSTOUCH_SABER_RIGHT : IOSTOUCH_SABER_BOTH;
@@ -2991,13 +3022,13 @@ static int iosTouch_SaberBlade(void)
 
 // The two columns of the saber wheel's choices beside the ring, as they are
 // laid out for one saber or two (bTwo): each choice's middle (SINGLE, DUAL,
-// CROSS and the shape's switch on the left, LEFT, BOTH and RIGHT on the
+// HILT and the shape's switch on the left, LEFT, BOTH and RIGHT on the
 // right), and whether all seven go down the left closer (*pTight). Each
 // column moved up or down, as little as it can be, until clear of every
 // button showing (dimmed under the wheel, but a choice over one is hard to
 // read) and on screen. Where the right has no such place (the smallest
 // screens: JUMP and ACT), the blades' choices go on the left too, under
-// SINGLE, DUAL, CROSS and FILM; where all seven don't fit so between the top
+// SINGLE, DUAL, HILT and FILM; where all seven don't fit so between the top
 // row and the bottom, closer together.
 - (void)saberColumns:(int)bTwo centres:(CGPoint*)aCentre tight:(int*)pTight
 {
@@ -3054,9 +3085,9 @@ static int iosTouch_SaberBlade(void)
     for (int i = 0; i < IOSTOUCH_NUM_CHIPS; i++) {
         aCentre[i] = c;
         if (i == IOSTOUCH_CHIP_EQUIP || i == IOSTOUCH_CHIP_LOOK || i == IOSTOUCH_CHIP_THROW) continue;
-        // (the left column: SINGLE, DUAL, CROSS, the shape; the right: LEFT, BOTH, RIGHT)
-        const int bStyle = i <= IOSTOUCH_CHIP_DUAL || i == IOSTOUCH_CHIP_SHAPE || i == IOSTOUCH_CHIP_CROSS;
-        const int k = i == IOSTOUCH_CHIP_SHAPE ? 3 : i == IOSTOUCH_CHIP_CROSS ? 2 : bStyle ? i - IOSTOUCH_CHIP_SINGLE : i - IOSTOUCH_CHIP_LEFT;
+        // (the left column: SINGLE, DUAL, HILT, the shape; the right: LEFT, BOTH, RIGHT)
+        const int bStyle = i <= IOSTOUCH_CHIP_DUAL || i == IOSTOUCH_CHIP_SHAPE || i == IOSTOUCH_CHIP_HILT;
+        const int k = i == IOSTOUCH_CHIP_SHAPE ? 3 : i == IOSTOUCH_CHIP_HILT ? 2 : bStyle ? i - IOSTOUCH_CHIP_SINGLE : i - IOSTOUCH_CHIP_LEFT;
         const int n = bStyle ? 4 : 3;
         const int slot = k + (bStyle ? 0 : 4);
         if (bOneColumn) // (all seven down the left, a little more apart between the two kinds, kept on screen)
@@ -3070,11 +3101,11 @@ static int iosTouch_SaberBlade(void)
 // THROW
 static int iosTouch_SaberChipShown(int i, int bTwo)
 {
-    const int bStyle = i <= IOSTOUCH_CHIP_DUAL || i == IOSTOUCH_CHIP_SHAPE || i == IOSTOUCH_CHIP_CROSS;
+    const int bStyle = i <= IOSTOUCH_CHIP_DUAL || i == IOSTOUCH_CHIP_SHAPE || i == IOSTOUCH_CHIP_HILT;
     if (i == IOSTOUCH_CHIP_EQUIP || i == IOSTOUCH_CHIP_LOOK) return 1;
     if (i == IOSTOUCH_CHIP_THROW || (!bStyle && !bTwo)) return 0;
     if (i == IOSTOUCH_CHIP_DUAL && !iosSaber_StyleAvailable(IOSSABER_STYLE_DUAL)) return 0;
-    if (i == IOSTOUCH_CHIP_CROSS && !iosSaber_StyleAvailable(IOSSABER_STYLE_CROSS)) return 0;
+    if (i == IOSTOUCH_CHIP_HILT && iosSaber_NextHilt(IOSSABER_HILT_NORMAL) == IOSSABER_HILT_NORMAL) return 0; // (one hilt only: nothing to pick)
     return 1;
 }
 
@@ -3181,8 +3212,9 @@ static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch
 }
 
 // The saber wheel's choices beside the ring (only on that wheel; the blades'
-// only with two), each lit if it is the one set: SINGLE, DUAL, CROSS and the
-// shape's switch stacked on the left, LEFT, BOTH and RIGHT on the right, each
+// only with two), each lit if it is the one set: SINGLE, DUAL, HILT (its
+// name, lit for any hilt but the game's own) and the shape's switch stacked
+// on the left, LEFT, BOTH and RIGHT on the right, each
 // blade's in its colour; and in Jedi Knight THROW's switch at the top right
 - (void)layoutSaberChips
 {
@@ -3245,14 +3277,14 @@ static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch
             l.alpha = bOn ? 1.0 : 0.8;
             continue;
         }
-        // (the left column: SINGLE, DUAL, CROSS, the shape; the right: LEFT, BOTH, RIGHT)
+        // (the left column: SINGLE, DUAL, HILT, the shape; the right: LEFT, BOTH, RIGHT)
         l.hidden = !bSaber || !iosTouch_SaberChipShown(i, bTwo);
         if (l.hidden) continue;
         l.center = aCentre[i];
         int bOn;
         if (i == IOSTOUCH_CHIP_SHAPE) {
-            // a switch: on (FILM) its knob to the right, the track gold; dim with CROSS
-            // (its blade has its own shape: the switch still works, for the others' blades)
+            // a switch: on (FILM) its knob to the right, the track gold; dim with the CROSS hilt
+            // (its blades have their own shape: the switch still works, for the others' blades)
             bOn = iosSaberShape_Get() == IOSSABERSHAPE_BEAM;
             const CGFloat kd = IOSTOUCH_SWITCH_H - 4.0;
             shapeKnob.frame = CGRectMake(bOn ? IOSTOUCH_SWITCH_W - 2.0 - kd : 2.0, 2.0, kd, kd);
@@ -3263,7 +3295,12 @@ static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch
         }
         else if (i == IOSTOUCH_CHIP_SINGLE) bOn = st == IOSSABER_STYLE_SINGLE;
         else if (i == IOSTOUCH_CHIP_DUAL) bOn = st == IOSSABER_STYLE_DUAL;
-        else if (i == IOSTOUCH_CHIP_CROSS) bOn = st == IOSSABER_STYLE_CROSS;
+        else if (i == IOSTOUCH_CHIP_HILT) {
+            // the hilt's name; lit for any but the game's own
+            const char* name = iosSaber_HiltName(iosSaber_GetHilt());
+            l.text = [NSString stringWithUTF8String:name ? name : ""];
+            bOn = iosSaber_GetHilt() != IOSSABER_HILT_NORMAL;
+        }
         else bOn = (i == IOSTOUCH_CHIP_LEFT && iosTouch_saberTarget == IOSTOUCH_SABER_LEFT)
                    || (i == IOSTOUCH_CHIP_BOTH && iosTouch_saberTarget == IOSTOUCH_SABER_BOTH)
                    || (i == IOSTOUCH_CHIP_RIGHT && iosTouch_saberTarget == IOSTOUCH_SABER_RIGHT);
@@ -3272,7 +3309,7 @@ static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch
         l.layer.borderColor = bLit ? [UIColor colorWithRed:1.0 green:0.85 blue:0.3 alpha:0.95].CGColor
                                    : [UIColor colorWithWhite:1.0 alpha:0.4].CGColor;
         l.layer.borderWidth = bLit ? 2.0 : 1.5;
-        l.alpha = (i == IOSTOUCH_CHIP_SHAPE && iosSaber_StyleHasCrossguard(st)) ? IOSTOUCH_SABER_CHIP_DIM : bOn ? 1.0 : 0.8;
+        l.alpha = (i == IOSTOUCH_CHIP_SHAPE && iosSaber_HiltKeepsShape(iosSaber_GetHilt())) ? IOSTOUCH_SABER_CHIP_DIM : bOn ? 1.0 : 0.8;
         if (i == IOSTOUCH_CHIP_LEFT || i == IOSTOUCH_CHIP_RIGHT) {
             unsigned char r, g, b;
             iosSaber_ColourRGB(iosSaber_GetShownColour(st, i == IOSTOUCH_CHIP_LEFT ? 1 : 0), &r, &g, &b);
@@ -5752,13 +5789,16 @@ void iosTouch_PadSaberChip(int chip)
 {
     if (!iosTouch_OutsideWheelIsOpen() || iosTouch_wheelKind != IOSTOUCH_WHEEL_SABER) return;
     if (chip == IOSPAD_CHIP_STYLE) {
-        // the next style, as they sit: SINGLE, DUAL, CROSS, round again (those that can be picked)
+        // the next style, as they sit: SINGLE, DUAL, round again (those that can be picked)
         const int cur = iosSaber_GetStyle();
         int next = cur;
         for (int k = 1; k <= IOSSABER_NUM_STYLES && next == cur; k++)
             if (iosSaber_StyleAvailable((cur + k) % IOSSABER_NUM_STYLES)) next = (cur + k) % IOSSABER_NUM_STYLES;
         if (next == cur) return;
-        [iosTouch_pOverlay useSaberChip:(next == IOSSABER_STYLE_DUAL ? IOSTOUCH_CHIP_DUAL : next == IOSSABER_STYLE_CROSS ? IOSTOUCH_CHIP_CROSS : IOSTOUCH_CHIP_SINGLE)];
+        [iosTouch_pOverlay useSaberChip:(next == IOSSABER_STYLE_DUAL ? IOSTOUCH_CHIP_DUAL : IOSTOUCH_CHIP_SINGLE)];
+    }
+    else if (chip == IOSPAD_CHIP_HILT) {
+        [iosTouch_pOverlay useSaberChip:IOSTOUCH_CHIP_HILT]; // (the next hilt, as HILT's tap)
     }
     else if (chip == IOSPAD_CHIP_TARGET) {
         if (iosSaber_StyleNumBlades(iosSaber_GetStyle()) < 2) return;

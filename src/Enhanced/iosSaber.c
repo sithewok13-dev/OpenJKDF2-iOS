@@ -230,23 +230,19 @@ void iosSaber_ColourRGB(int id, unsigned char* pR, unsigned char* pG, unsigned c
 
 // ------------------------------------------------------------ the styles
 
-// A style: its blades, each on a hand, and whether the blade is drawn with a
-// crossguard (its side blades drawn with it, in its colour, iosSaberShape: no
-// blade of their own). (In time, more: a double-bladed hilt's other end would
-// add where on the hilt and which way it points, and a hilt of its own.)
+// A style: its blades, each on a hand. (What each saber is, its hilt, is the
+// player's other choice, below.)
 enum { IOSSABER_HAND_RIGHT = 0, IOSSABER_HAND_LEFT };
 typedef struct {
     const char* name;
     int numBlades;
     int aHand[IOSSABER_MAX_BLADES];
     int bAvailable;
-    int bCrossguard;
 } iosSaberStyle;
 
 static const iosSaberStyle iosSaber_aStyles[IOSSABER_NUM_STYLES] = {
-    [IOSSABER_STYLE_SINGLE] = { "SINGLE", 1, { IOSSABER_HAND_RIGHT }, 1, 0 },
-    [IOSSABER_STYLE_DUAL]   = { "DUAL",   2, { IOSSABER_HAND_RIGHT, IOSSABER_HAND_LEFT }, 1, 0 },
-    [IOSSABER_STYLE_CROSS]  = { "CROSS",  1, { IOSSABER_HAND_RIGHT }, 1, 1 },
+    [IOSSABER_STYLE_SINGLE] = { "SINGLE", 1, { IOSSABER_HAND_RIGHT }, 1 },
+    [IOSSABER_STYLE_DUAL]   = { "DUAL",   2, { IOSSABER_HAND_RIGHT, IOSSABER_HAND_LEFT }, 1 },
 };
 
 static int iosSaber_style = IOSSABER_STYLE_SINGLE;
@@ -267,9 +263,16 @@ int iosSaber_StyleNumBlades(int style)
     return (style >= 0 && style < IOSSABER_NUM_STYLES) ? iosSaber_aStyles[style].numBlades : 0;
 }
 
-int iosSaber_StyleHasCrossguard(int style)
+int iosSaber_StyleByName(const char* name, int* pHilt)
 {
-    return (style >= 0 && style < IOSSABER_NUM_STYLES) ? iosSaber_aStyles[style].bCrossguard : 0;
+    if (!name) return -1;
+    for (int st = 0; st < IOSSABER_NUM_STYLES; st++)
+        if (!strcmp(name, iosSaber_aStyles[st].name)) return st;
+    // (CROSS, one saber with a crossguard, was a style before it was a hilt)
+    const int hilt = iosSaber_HiltByName(name);
+    if (hilt <= IOSSABER_HILT_NORMAL) return -1;
+    if (pHilt) *pHilt = hilt;
+    return IOSSABER_STYLE_SINGLE;
 }
 
 int iosSaber_GetStyle(void)
@@ -295,11 +298,61 @@ void iosSaber_SetColour(int style, int blade, int id)
     iosSaber_aColour[style][blade] = id;
 }
 
-static int iosSaber_testDualHilt = IOSSABER_HILT_NORMAL;
+// ------------------------------------------------------------ the hilts
 
-void iosSaber_SetTestDualHilt(int hilt)
+typedef struct {
+    const char* name;
+    int bAvailable;
+    int bKeepsShape; // (its blades' shape its own, whatever the shape's switch)
+} iosSaberHilt;
+
+static const iosSaberHilt iosSaber_aHilts[IOSSABER_NUM_HILTS] = {
+    [IOSSABER_HILT_NORMAL] = { "NORMAL", 1, 0 },
+    [IOSSABER_HILT_CROSS]  = { "CROSS",  1, 1 },
+    [IOSSABER_HILT_STAFF]  = { "STAFF",  0, 0 },
+    [IOSSABER_HILT_FOLD]   = { "FOLD",   0, 0 },
+};
+
+static int iosSaber_hilt = IOSSABER_HILT_NORMAL;
+
+int iosSaber_HiltAvailable(int hilt)
 {
-    if (hilt >= 0 && hilt < IOSSABER_NUM_HILTS) iosSaber_testDualHilt = hilt;
+    return hilt >= 0 && hilt < IOSSABER_NUM_HILTS && iosSaber_aHilts[hilt].bAvailable;
+}
+
+const char* iosSaber_HiltName(int hilt)
+{
+    return (hilt >= 0 && hilt < IOSSABER_NUM_HILTS) ? iosSaber_aHilts[hilt].name : NULL;
+}
+
+int iosSaber_HiltByName(const char* name)
+{
+    for (int h = 0; name && h < IOSSABER_NUM_HILTS; h++)
+        if (!strcmp(name, iosSaber_aHilts[h].name)) return h;
+    return -1;
+}
+
+int iosSaber_HiltKeepsShape(int hilt)
+{
+    return (hilt >= 0 && hilt < IOSSABER_NUM_HILTS) ? iosSaber_aHilts[hilt].bKeepsShape : 0;
+}
+
+int iosSaber_GetHilt(void)
+{
+    return iosSaber_hilt;
+}
+
+void iosSaber_SetHilt(int hilt)
+{
+    if (iosSaber_HiltAvailable(hilt)) iosSaber_hilt = hilt;
+}
+
+int iosSaber_NextHilt(int hilt)
+{
+    if (hilt < 0 || hilt >= IOSSABER_NUM_HILTS) hilt = IOSSABER_HILT_NORMAL;
+    for (int k = 1; k < IOSSABER_NUM_HILTS; k++)
+        if (iosSaber_HiltAvailable((hilt + k) % IOSSABER_NUM_HILTS)) return (hilt + k) % IOSSABER_NUM_HILTS;
+    return hilt;
 }
 
 int iosSaber_GetShownColour(int style, int blade)
@@ -598,8 +651,8 @@ static const unsigned char* iosSaber_ThrownSwatchOf(const rdMaterial* pMat)
 void iosSaber_EndThrown(SithThing* pThing)
 {
     // its glow (iosSaberShape), in the colour it is drawn in: the one put on, or the game's own;
-    // thrown with a crossguard (CROSS), its side blades too, as the held blade's side
-    const int bCross = pThing && iosSaber_StyleHasCrossguard(iosSaberThrow_ThrownStyle(pThing));
+    // thrown with a crossguard (the CROSS hilt, from either hand), its side blades too, as the held blade's side
+    const int bCross = pThing && iosSaberThrow_ThrownHilt(pThing) == IOSSABER_HILT_CROSS;
     if (pThing && (bCross || iosSaberShape_Get() == IOSSABERSHAPE_BEAM)) {
         const int id = iosSaberThrow_ThrownColour(pThing);
         if (id >= IOSSABER_COLOUR_GAME && id < IOSSABER_NUM_COLOURS) {
@@ -644,7 +697,7 @@ static int iosSaber_HiltInHand(SithThing* pThing, const rdModel3* pHilt)
     return pHilt && (!__strnicmp(pHilt->filename, "sabv", 4) || !__strcmpi(pHilt->filename, "sabg.3do"));
 }
 
-static int iosSaber_LookOf(SithThing* pThing, int* pStyle, int aId[IOSSABER_MAX_BLADES]); // (below)
+static int iosSaber_LookOf(SithThing* pThing, int* pStyle, int* pHilt, int aId[IOSSABER_MAX_BLADES]); // (below)
 
 void iosSaber_DrawHilt(SithThing* pThing, rdThing* pLine, rdMatrix34* pOrient, const rdModel3* pHilt)
 {
@@ -687,18 +740,21 @@ static int iosSaber_IsPlayers(SithThing* pThing)
 }
 
 // A thing's saber as its player chose it: the local player's own, or in multiplayer
-// another player's as their game sent it (jkPlayerLook); 0 for anyone else
-static int iosSaber_LookOf(SithThing* pThing, int* pStyle, int aId[IOSSABER_MAX_BLADES])
+// another player's as their game sent it (jkPlayerLook: a style or hilt this game
+// hasn't, SINGLE or NORMAL); 0 for anyone else
+static int iosSaber_LookOf(SithThing* pThing, int* pStyle, int* pHilt, int aId[IOSSABER_MAX_BLADES])
 {
     if (iosSaber_IsPlayers(pThing)) {
         *pStyle = iosSaber_style;
+        *pHilt = iosSaber_hilt;
         for (int b = 0; b < IOSSABER_MAX_BLADES; b++) aId[b] = iosSaber_GetShownColour(iosSaber_style, b);
         return 1;
     }
 #ifdef QOL_IMPROVEMENTS
     const jkPlayerLook* pLook = jkPlayerLook_ForThing(pThing);
     if (pLook) {
-        *pStyle = (pLook->style >= 0 && pLook->style < IOSSABER_NUM_STYLES && iosSaber_StyleAvailable(pLook->style)) ? pLook->style : IOSSABER_STYLE_SINGLE;
+        *pStyle = iosSaber_StyleAvailable(pLook->style) ? pLook->style : IOSSABER_STYLE_SINGLE;
+        *pHilt = iosSaber_HiltAvailable(pLook->hilt) ? pLook->hilt : IOSSABER_HILT_NORMAL;
         for (int b = 0; b < IOSSABER_MAX_BLADES; b++) {
             const int id = (b < JKPLAYERLOOK_MAX_BLADES && pLook->aColourKey[b][0]) ? iosSaber_ColourByKey(pLook->aColourKey[b]) : -1;
             aId[b] = id < 0 ? IOSSABER_COLOUR_GAME : id;
@@ -711,8 +767,8 @@ static int iosSaber_LookOf(SithThing* pThing, int* pStyle, int aId[IOSSABER_MAX_
 
 int iosSaber_HasSecondBlade(SithThing* pThing)
 {
-    int style, aId[IOSSABER_MAX_BLADES];
-    if (!iosSaber_LookOf(pThing, &style, aId) || iosSaber_aStyles[style].numBlades < 2) return 0;
+    int style, hilt, aId[IOSSABER_MAX_BLADES];
+    if (!iosSaber_LookOf(pThing, &style, &hilt, aId) || iosSaber_aStyles[style].numBlades < 2) return 0;
     // (the player's own: not in a selfie, which poses the player with one hand on the phone and the other
     // free, or showing off the one weapon; and both in hand: one thrown, the other is held as one saber,
     // iosSaberThrow)
@@ -723,14 +779,10 @@ int iosSaber_HasSecondBlade(SithThing* pThing)
 
 int iosSaber_HandHilt(SithThing* pThing, int hand)
 {
-    int style, aId[IOSSABER_MAX_BLADES];
-    if (hand < 0 || hand >= IOSSABER_MAX_BLADES || !iosSaber_LookOf(pThing, &style, aId)) return IOSSABER_HILT_NORMAL;
-    const iosSaberStyle* st = &iosSaber_aStyles[style];
-    if (hand >= st->numBlades) return IOSSABER_HILT_NORMAL;
-    if (st->bCrossguard) return IOSSABER_HILT_CROSS;
-    // (two sabers: the test switch's, the player's own; another player's game doesn't send one yet)
-    if (style == IOSSABER_STYLE_DUAL && iosSaber_IsPlayers(pThing)) return iosSaber_testDualHilt;
-    return IOSSABER_HILT_NORMAL;
+    int style, hilt, aId[IOSSABER_MAX_BLADES];
+    if (hand < 0 || hand >= IOSSABER_MAX_BLADES || !iosSaber_LookOf(pThing, &style, &hilt, aId)) return IOSSABER_HILT_NORMAL;
+    // (both hands alike: each one the style has a saber in)
+    return hand < iosSaber_aStyles[style].numBlades ? hilt : IOSSABER_HILT_NORMAL;
 }
 
 // (the blade's width as it was, while it is drawn shimmering: two sabers)
@@ -746,8 +798,8 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
         iosSaber_pWidthLine->tipRadius = iosSaber_savedTip;
         iosSaber_pWidthLine = NULL;
     }
-    int style, aId[IOSSABER_MAX_BLADES];
-    if (!pLine || !pLine->polyline || !iosSaber_LookOf(pThing, &style, aId)) return;
+    int style, hilt, aId[IOSSABER_MAX_BLADES];
+    if (!pLine || !pLine->polyline || !iosSaber_LookOf(pThing, &style, &hilt, aId)) return;
     // two sabers: each blade's width shimmers a little, out of step with the other (iosStance; the
     // player's own)
     if (iosSaber_IsPlayers(pThing) && iosSaber_HasSecondBlade(pThing)) {
@@ -768,7 +820,7 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
         id = aId[1];
     rdMaterial* aMat = id == IOSSABER_COLOUR_GAME ? NULL : iosSaber_Load(id);
     // its shape (iosSaberShape), whatever the colour: its glow in the blade's own colour (the
-    // look's edge colour; the game's own blade's, by its material); the crossguard's, CROSS
+    // look's edge colour; the game's own blade's, by its material); the crossguard's, the CROSS hilt
     const unsigned char* rgb = aMat ? iosSaber_Row(iosSaber_look, id)->edge : iosSaber_SwatchOf(pLine->polyline->face.material);
     // (the hand's hilt's; two crossguards drawn together, each a little softer)
     int form = IOSSABERSHAPE_FORM_CHOSEN;

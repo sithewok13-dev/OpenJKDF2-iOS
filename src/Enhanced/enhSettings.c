@@ -17,20 +17,24 @@
 
 // The cvars' own copies (linked)
 static char enhSettings_saberStyle[SITHCVAR_MAX_STRLEN];
+static char enhSettings_saberHilt[SITHCVAR_MAX_STRLEN];
 static char enhSettings_saberLook[SITHCVAR_MAX_STRLEN];
 static char enhSettings_saberShape[SITHCVAR_MAX_STRLEN];
-#define ENHSETTINGS_NUM_COLOURS 4
-static char enhSettings_aColour[ENHSETTINGS_NUM_COLOURS][SITHCVAR_MAX_STRLEN]; // single; dual right, left; cross
+#define ENHSETTINGS_NUM_COLOURS 3
+static char enhSettings_aColour[ENHSETTINGS_NUM_COLOURS][SITHCVAR_MAX_STRLEN]; // single; dual right, left
 static int32_t enhSettings_jumpStyle = IOSGAME_JUMP_CLASSIC; // (the desktops' own jump, as before; iOS: STEPS)
 static int32_t enhSettings_bThirdPerson = 0;
 static int32_t enhSettings_bSaberThrow = 0;
 
-static const char* enhSettings_aColourName[ENHSETTINGS_NUM_COLOURS] = { "enh_saberColourSingle", "enh_saberColourDualRight", "enh_saberColourDualLeft",
-                                                                     "enh_saberColourCross" };
+static const char* enhSettings_aColourName[ENHSETTINGS_NUM_COLOURS] = { "enh_saberColourSingle", "enh_saberColourDualRight", "enh_saberColourDualLeft" };
+// (builds before the hilts: CROSS a style, with a colour of its own: read from
+// the file only to be moved, then emptied, so it is saved no more)
+static char enhSettings_oldCrossColour[SITHCVAR_MAX_STRLEN];
 
 // What was last made the same both ways (cvars and gameplay), to tell which changed
 typedef struct {
     int style;
+    int hilt;
     int look;
     int shape;
     int aColour[ENHSETTINGS_NUM_COLOURS];
@@ -43,17 +47,37 @@ static int enhSettings_bSynced = 0;
 
 static void enhSettings_ColourSlot(int i, int* pStyle, int* pBlade)
 {
-    *pStyle = i == 0 ? IOSSABER_STYLE_SINGLE : i == 3 ? IOSSABER_STYLE_CROSS : IOSSABER_STYLE_DUAL;
+    *pStyle = i == 0 ? IOSSABER_STYLE_SINGLE : IOSSABER_STYLE_DUAL;
     *pBlade = i == 2 ? 1 : 0;
+}
+
+// A style kept as builds before the hilts kept CROSS (enh_saberStyle "CROSS",
+// from the file or the console): SINGLE with the CROSS hilt, and the colour
+// CROSS had (enh_saberColourCross, from the file) SINGLE's, so the saber is
+// as it was. That old colour is emptied either way: not saved again.
+static void enhSettings_MoveToHilts(void)
+{
+    int hilt = IOSSABER_HILT_NORMAL;
+    const int st = iosSaber_StyleByName(enhSettings_saberStyle, &hilt);
+    if (st >= 0 && hilt != IOSSABER_HILT_NORMAL) {
+        if (enhSettings_oldCrossColour[0] && iosSaber_ColourByKey(enhSettings_oldCrossColour) >= 0)
+            sithCvar_SetStr(enhSettings_aColourName[0], enhSettings_oldCrossColour);
+        sithCvar_SetStr("enh_saberHilt", iosSaber_HiltName(hilt));
+        sithCvar_SetStr("enh_saberStyle", iosSaber_StyleName(st));
+    }
+    if (enhSettings_oldCrossColour[0]) sithCvar_SetStr("enh_saberColourCross", "");
 }
 
 void enhSettings_StartupCvars(void)
 {
     sithCvar_RegisterStr("enh_saberStyle", "SINGLE", enhSettings_saberStyle, CVARFLAG_GLOBAL);
+    sithCvar_RegisterStr("enh_saberHilt", iosSaber_HiltName(IOSSABER_HILT_NORMAL), enhSettings_saberHilt, CVARFLAG_GLOBAL);
     sithCvar_RegisterStr("enh_saberLook", iosSaber_LookName(IOSSABER_LOOK_REFORGED), enhSettings_saberLook, CVARFLAG_GLOBAL);
     sithCvar_RegisterStr("enh_saberShape", iosSaberShape_Name(IOSSABERSHAPE_DEFAULT), enhSettings_saberShape, CVARFLAG_GLOBAL);
     for (int i = 0; i < ENHSETTINGS_NUM_COLOURS; i++)
         sithCvar_RegisterStr(enhSettings_aColourName[i], "game", enhSettings_aColour[i], CVARFLAG_GLOBAL);
+    // (empty, its default, isn't saved)
+    sithCvar_RegisterStr("enh_saberColourCross", "", enhSettings_oldCrossColour, CVARFLAG_GLOBAL | CVARFLAG_UPDATABLE_DEFAULT);
     sithCvar_RegisterInt("enh_forceJumpStyle", IOSGAME_JUMP_CLASSIC, &enhSettings_jumpStyle, CVARFLAG_GLOBAL);
     sithCvar_RegisterBool("enh_thirdPerson", 0, &enhSettings_bThirdPerson, CVARFLAG_GLOBAL);
     sithCvar_RegisterBool("enh_saberThrow", 0, &enhSettings_bSaberThrow, CVARFLAG_GLOBAL);
@@ -65,6 +89,8 @@ static void enhSettings_FromCvars(enhSettingsState* p)
     p->style = IOSSABER_STYLE_SINGLE;
     for (int st = 0; st < IOSSABER_NUM_STYLES; st++)
         if (!strcmp(enhSettings_saberStyle, iosSaber_StyleName(st))) p->style = st;
+    const int hilt = iosSaber_HiltByName(enhSettings_saberHilt);
+    p->hilt = iosSaber_HiltAvailable(hilt) ? hilt : IOSSABER_HILT_NORMAL;
     const int look = iosSaber_LookByName(enhSettings_saberLook);
     p->look = look >= 0 ? look : IOSSABER_LOOK_REFORGED;
     const int shape = iosSaberShape_ByName(enhSettings_saberShape);
@@ -81,6 +107,7 @@ static void enhSettings_FromCvars(enhSettingsState* p)
 static void enhSettings_FromGameplay(enhSettingsState* p)
 {
     p->style = iosSaber_GetStyle();
+    p->hilt = iosSaber_GetHilt();
     p->look = iosSaber_GetLook();
     p->shape = iosSaberShape_Get();
     for (int i = 0; i < ENHSETTINGS_NUM_COLOURS; i++) {
@@ -96,6 +123,7 @@ static void enhSettings_FromGameplay(enhSettingsState* p)
 void enhSettings_Sync(void)
 {
     enhSettingsState c, g;
+    enhSettings_MoveToHilts();
     enhSettings_FromCvars(&c);
     if (!enhSettings_bSynced) {
         // (the first time: the saved ones into the gameplay)
@@ -120,6 +148,10 @@ void enhSettings_Sync(void)
     if (c.style != s->style) {
         iosSaber_SetStyle(c.style);
         s->style = g.style = c.style;
+    }
+    if (c.hilt != s->hilt) {
+        iosSaber_SetHilt(c.hilt);
+        s->hilt = g.hilt = c.hilt;
     }
     if (c.look != s->look) {
         iosSaber_SetLook(c.look);
@@ -153,6 +185,10 @@ void enhSettings_Sync(void)
     if (g.style != s->style) {
         sithCvar_SetStr("enh_saberStyle", iosSaber_StyleName(g.style));
         s->style = g.style;
+    }
+    if (g.hilt != s->hilt) {
+        sithCvar_SetStr("enh_saberHilt", iosSaber_HiltName(g.hilt));
+        s->hilt = g.hilt;
     }
     if (g.look != s->look) {
         sithCvar_SetStr("enh_saberLook", iosSaber_LookName(g.look));

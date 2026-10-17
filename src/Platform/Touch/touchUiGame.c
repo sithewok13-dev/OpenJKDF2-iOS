@@ -114,6 +114,10 @@ const touchUiGame touchUiGame_engine = {
     iosSaberShape_Set,
     iosSaberThrowJk_Get,
     iosSaberThrowJk_Set,
+    iosSaber_HiltName,
+    iosSaber_HiltAvailable,
+    iosSaber_GetHilt,
+    iosSaber_SetHilt,
     iosCapture_Request,
     iosCapture_Cancel,
     platServices_SetPhotoBatch,
@@ -138,6 +142,7 @@ typedef char touchUiGame_assertNumbers[(TOUCHUI_CAPTURE_CLEAN == IOSCAPTURE_CLEA
                                         && TOUCHUI_CAPTURE_SELFIE == IOSCAPTURE_MODE_SELFIE && TOUCHUI_PHOTOMODE_STARTED == IOSSELFIESHOTS_STARTED
                                         && TOUCHUI_PHOTOMODE_BUSY == IOSCINEMA_BUSY && TOUCHUI_MODE_SELFIE == PLATSERVICES_MODE_SELFIE
                                         && TOUCHUI_MODE_CINEMA == PLATSERVICES_MODE_CINEMA && TOUCHUI_SABER_DUAL == IOSSABER_STYLE_DUAL
-                                        && TOUCHUI_SABER_CROSS == IOSSABER_STYLE_CROSS && IOSSABER_NUM_STYLES <= TOUCHUI_SABER_MAX_STYLES) ? 1 : -1];
+                                        && IOSSABER_NUM_STYLES <= TOUCHUI_SABER_MAX_STYLES && (int)TOUCHUI_HILT_NORMAL == (int)IOSSABER_HILT_NORMAL
+                                        && (int)IOSSABER_NUM_HILTS <= (int)TOUCHUI_SABER_MAX_HILTS) ? 1 : -1];
 
 #endif // TOUCHUI_ENABLED

@@ -88,6 +88,7 @@ typedef struct {
     double secThrown;
     int colour;         // the SABER wheel's id it was thrown in
     int style;          // and the style (iosSaber's)
+    int hilt;           // and its hand's hilt (iosSaber's)
 } iosSaberThrowJkHand;
 
 static int iosSaberThrowJk_bOn = 0;          // THROW
@@ -444,6 +445,7 @@ static int iosSaberThrowJk_Throw(SithThing* p, int hand, int bDual)
     h->secThrown = sithTime_g_secGameTime;
     h->style = bDual ? IOSSABER_STYLE_DUAL : (iosSaber_StyleNumBlades(style) == 1 ? style : IOSSABER_STYLE_SINGLE);
     h->colour = iosSaber_GetShownColour(h->style, bDual ? hand : 0);
+    h->hilt = iosSaber_HandHilt(p, bDual ? hand : 0);
     iosSaberThrowJk_secLast = sithTime_g_secGameTime;
     iosSaberThrowJk_pPlayer = p;
 
@@ -675,6 +677,12 @@ int iosSaberThrowJk_ThrownStyle(SithThing* pThing)
 {
     const iosSaberThrowJkHand* h = iosSaberThrowJk_HandOf(pThing);
     return h ? h->style : -1;
+}
+
+int iosSaberThrowJk_ThrownHilt(SithThing* pThing)
+{
+    const iosSaberThrowJkHand* h = iosSaberThrowJk_HandOf(pThing);
+    return h ? h->hilt : -1;
 }
 
 #endif // JK_ENHANCED

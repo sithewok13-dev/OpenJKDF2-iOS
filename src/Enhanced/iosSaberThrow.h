@@ -19,7 +19,7 @@
 //
 // Jedi Knight has a Saber Throw of its own making (iosSaberThrowJk, with two
 // sabers too): the drawing's questions here (which sabers are in hand, a
-// thrown saber's colour and style) are its answers there.
+// thrown saber's colour, style and hilt) are its answers there.
 
 #ifndef _PLATFORM_IOS_IOSSABERTHROW_H
 #define _PLATFORM_IOS_IOSSABERTHROW_H
@@ -62,8 +62,11 @@ void iosSaberThrow_Reset(void);
 // SABER wheel's id) it is thrown in, or -1 to leave it as the game made it
 int iosSaberThrow_ThrownColour(SithThing* pThing);
 // And the style it is thrown from (iosSaber's: DUAL for each of two sabers;
-// the game's own throw, the one-blade style in hand, SINGLE or CROSS), or -1
+// the game's own throw, the one-blade style in hand, SINGLE), or -1
 int iosSaberThrow_ThrownStyle(SithThing* pThing);
+// And its hilt (iosSaber's IOSSABER_HILT_*: its hand's as it was thrown;
+// the game's own throw, the saber in hand's), or -1
+int iosSaberThrow_ThrownHilt(SithThing* pThing);
 
 #ifdef __cplusplus
 }

@@ -63,7 +63,7 @@
 #define INPUTWHEEL_CHIP_KIND_GAP 8.0f
 #define INPUTWHEEL_CHIP_TIGHT_GAP 6.0f
 #define INPUTWHEEL_CHIP_TOUCH 6.0f
-#define INPUTWHEEL_CHIP_DIM 0.4f // (the shape's switch while CROSS is picked: it doesn't change that blade)
+#define INPUTWHEEL_CHIP_DIM 0.4f // (the shape's switch while CROSS is the hilt: it doesn't change those blades)
 // The look's switch, at the top of the middle (over the colour's name, as
 // EQUIP is under the hint): this big at most, smaller to keep inside the
 // middle on a small wheel
@@ -474,10 +474,16 @@ void inputWheel_SaberChip(int chip)
         if (bin != iosGame_GetCurWeapon()) iosGame_SelectWeapon(bin);
         return;
     }
-    if (chip == INPUTWHEEL_CHIP_SINGLE || chip == INPUTWHEEL_CHIP_DUAL || chip == INPUTWHEEL_CHIP_CROSS) {
-        const int st = chip == INPUTWHEEL_CHIP_DUAL ? IOSSABER_STYLE_DUAL : chip == INPUTWHEEL_CHIP_CROSS ? IOSSABER_STYLE_CROSS : IOSSABER_STYLE_SINGLE;
+    if (chip == INPUTWHEEL_CHIP_SINGLE || chip == INPUTWHEEL_CHIP_DUAL) {
+        const int st = chip == INPUTWHEEL_CHIP_DUAL ? IOSSABER_STYLE_DUAL : IOSSABER_STYLE_SINGLE;
         if (!iosSaber_StyleAvailable(st)) return;
         iosSaber_SetStyle(st);
+    }
+    else if (chip == INPUTWHEEL_CHIP_HILT) {
+        // the next hilt (with either style): the blades drawn with it at once
+        const int next = iosSaber_NextHilt(iosSaber_GetHilt());
+        if (next == iosSaber_GetHilt()) return;
+        iosSaber_SetHilt(next);
     }
     else if (chip >= INPUTWHEEL_CHIP_LEFT && chip <= INPUTWHEEL_CHIP_RIGHT) {
         if (iosSaber_StyleNumBlades(iosSaber_GetStyle()) < 2) return;
@@ -715,7 +721,7 @@ static void inputWheel_LookChipSize(float R0, float* pW, float* pH, float* pUp)
 }
 
 // The two columns of the saber wheel's choices as they are laid out for one
-// saber or two (bTwo): each choice's middle (SINGLE, DUAL, CROSS and the
+// saber or two (bTwo): each choice's middle (SINGLE, DUAL, HILT and the
 // shape's switch down the left of the ring, LEFT, BOTH and RIGHT on its
 // right), and whether all seven go down the left closer (*pTight). Kept
 // clear of the opener's buttons (inputWheel_SetKeepClear): each column moved
@@ -771,9 +777,9 @@ static void inputWheel_Columns(const inputWheelScreen* s, int bTwo, float* aX, f
         aX[i] = cx;
         aY[i] = cy;
         if (i == INPUTWHEEL_CHIP_EQUIP || i == INPUTWHEEL_CHIP_LOOK || i == INPUTWHEEL_CHIP_THROW) continue;
-        // (the left column: SINGLE, DUAL, CROSS, the shape; the right: LEFT, BOTH, RIGHT)
-        const int bStyle = i <= INPUTWHEEL_CHIP_DUAL || i == INPUTWHEEL_CHIP_SHAPE || i == INPUTWHEEL_CHIP_CROSS;
-        const int k = i == INPUTWHEEL_CHIP_SHAPE ? 3 : i == INPUTWHEEL_CHIP_CROSS ? 2 : bStyle ? i - INPUTWHEEL_CHIP_SINGLE : i - INPUTWHEEL_CHIP_LEFT;
+        // (the left column: SINGLE, DUAL, HILT, the shape; the right: LEFT, BOTH, RIGHT)
+        const int bStyle = i <= INPUTWHEEL_CHIP_DUAL || i == INPUTWHEEL_CHIP_SHAPE || i == INPUTWHEEL_CHIP_HILT;
+        const int k = i == INPUTWHEEL_CHIP_SHAPE ? 3 : i == INPUTWHEEL_CHIP_HILT ? 2 : bStyle ? i - INPUTWHEEL_CHIP_SINGLE : i - INPUTWHEEL_CHIP_LEFT;
         const int n = bStyle ? 4 : 3;
         if (bOneColumn) {
             aX[i] = cx - R;
@@ -790,11 +796,11 @@ static void inputWheel_Columns(const inputWheelScreen* s, int bTwo, float* aX, f
 // Whether one of the saber wheel's choices shows with one saber or two (bTwo), but THROW
 static int inputWheel_ChipShownFor(int i, int bTwo)
 {
-    const int bStyle = i <= INPUTWHEEL_CHIP_DUAL || i == INPUTWHEEL_CHIP_SHAPE || i == INPUTWHEEL_CHIP_CROSS;
+    const int bStyle = i <= INPUTWHEEL_CHIP_DUAL || i == INPUTWHEEL_CHIP_SHAPE || i == INPUTWHEEL_CHIP_HILT;
     if (i == INPUTWHEEL_CHIP_EQUIP || i == INPUTWHEEL_CHIP_LOOK) return 1;
     if (i == INPUTWHEEL_CHIP_THROW || (!bStyle && !bTwo)) return 0;
     if (i == INPUTWHEEL_CHIP_DUAL && !iosSaber_StyleAvailable(IOSSABER_STYLE_DUAL)) return 0;
-    if (i == INPUTWHEEL_CHIP_CROSS && !iosSaber_StyleAvailable(IOSSABER_STYLE_CROSS)) return 0;
+    if (i == INPUTWHEEL_CHIP_HILT && iosSaber_NextHilt(IOSSABER_HILT_NORMAL) == IOSSABER_HILT_NORMAL) return 0; // (one hilt only: nothing to pick)
     return 1;
 }
 
@@ -1025,7 +1031,7 @@ static void inputWheel_DrawShapeSwitch(touchUiDrawList* l, const char* name, flo
 // saber to take
 static void inputWheel_DrawChips(void)
 {
-    static const char* const aName[INPUTWHEEL_NUM_CHIPS] = { "SINGLE", "DUAL", "LEFT", "BOTH", "RIGHT", "EQUIP", "", "FILM", "CROSS", "THROW" };
+    static const char* const aName[INPUTWHEEL_NUM_CHIPS] = { "SINGLE", "DUAL", "LEFT", "BOTH", "RIGHT", "EQUIP", "", "FILM", "", "THROW" };
     touchUiDrawList* l = inputWheel_pDraw;
     const int st = iosSaber_GetStyle();
     for (int i = 0; i < INPUTWHEEL_NUM_CHIPS; i++) {
@@ -1037,7 +1043,7 @@ static void inputWheel_DrawChips(void)
         else if (i == INPUTWHEEL_CHIP_LOOK) alpha = 1.0f;
         else if (i == INPUTWHEEL_CHIP_SHAPE) {
             bOn = iosSaberShape_Get() == IOSSABERSHAPE_BEAM;
-            alpha = iosSaber_StyleHasCrossguard(st) ? INPUTWHEEL_CHIP_DIM : bOn ? 1.0f : 0.8f;
+            alpha = iosSaber_HiltKeepsShape(iosSaber_GetHilt()) ? INPUTWHEEL_CHIP_DIM : bOn ? 1.0f : 0.8f;
         }
         else if (i == INPUTWHEEL_CHIP_THROW) {
             bOn = iosSaberThrowJk_Get();
@@ -1046,7 +1052,7 @@ static void inputWheel_DrawChips(void)
         else {
             if (i == INPUTWHEEL_CHIP_SINGLE) bOn = st == IOSSABER_STYLE_SINGLE;
             else if (i == INPUTWHEEL_CHIP_DUAL) bOn = st == IOSSABER_STYLE_DUAL;
-            else if (i == INPUTWHEEL_CHIP_CROSS) bOn = st == IOSSABER_STYLE_CROSS;
+            else if (i == INPUTWHEEL_CHIP_HILT) bOn = iosSaber_GetHilt() != IOSSABER_HILT_NORMAL; // (lit: not the game's own)
             else bOn = (i == INPUTWHEEL_CHIP_LEFT && inputWheel_s.saberTarget == INPUTWHEEL_SABER_LEFT)
                        || (i == INPUTWHEEL_CHIP_BOTH && inputWheel_s.saberTarget == INPUTWHEEL_SABER_BOTH)
                        || (i == INPUTWHEEL_CHIP_RIGHT && inputWheel_s.saberTarget == INPUTWHEEL_SABER_RIGHT);
@@ -1063,7 +1069,8 @@ static void inputWheel_DrawChips(void)
         const int bLit = bOn && !bSwitch;
         const touchUiColor border = bLit ? touchUi_Rgba(1.0f, 0.85f, 0.3f, 0.95f) : touchUi_White(0.4f);
         const float w = inputWheel_s.chipW[i], h = inputWheel_s.chipH[i];
-        const char* name = i == INPUTWHEEL_CHIP_LOOK ? iosSaber_LookName(iosSaber_GetLook()) : aName[i];
+        const char* name = i == INPUTWHEEL_CHIP_LOOK ? iosSaber_LookName(iosSaber_GetLook()) : i == INPUTWHEEL_CHIP_HILT ? iosSaber_HiltName(iosSaber_GetHilt()) : aName[i];
+        if (!name) name = "";
         float size = 11.0f, tw;
         // (the look's name kept inside its switch: smaller on a small wheel)
         touchUiDraw_MeasureText(name, size, 1.0f, &tw, NULL);

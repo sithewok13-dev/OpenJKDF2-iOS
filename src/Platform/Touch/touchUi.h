@@ -31,7 +31,8 @@
 //     (PHOTO, SELFIES 1/3/5, FREEZE ON/OFF); none of it in multiplayer (the
 //     engine says no, as on iOS);
 //   - SABER (once the saber is had, or with sithewok on): the saber wheel, every
-//     blade colour, SINGLE, DUAL or CROSS and the FILM switch under them, which
+//     blade colour, SINGLE or DUAL, HILT (NORMAL, CROSS: a tap for the next)
+//     and the FILM switch under them, which
 //     blade a colour goes to (LEFT, BOTH, RIGHT), the look (CLASSIC, REFORGED)
 //     and EQUIP; a tap or a hold opens it to tap, a slide to slide.
 //
@@ -128,6 +129,12 @@ typedef struct touchUiGame {
     // THROW, on or off (iosSaberThrowJk: Jedi Knight's Saber Throw on the Force wheel)
     int (*SaberGetThrow)(void);
     void (*SaberSetThrow)(int bOn);
+    // the hilt, both hands' (iosSaber: NORMAL, CROSS..., kept by its name; NULL past the last),
+    // only one available picked
+    const char* (*SaberHiltName)(int hilt);
+    int (*SaberHiltAvailable)(int hilt);
+    int (*SaberGetHilt)(void);
+    void (*SaberSetHilt)(int hilt);
 
     // The camera (Enhanced/iosCapture, iosSelfieShots, iosFreeze, iosCinema
     // and platServices): their answers as theirs (TOUCHUI_CAPTURE_*,
@@ -157,8 +164,10 @@ enum { TOUCHUI_CAPTURE_PHOTO = 0, TOUCHUI_CAPTURE_BURST = 1, TOUCHUI_CAPTURE_SEL
 enum { TOUCHUI_PHOTOMODE_BUSY = -1, TOUCHUI_PHOTOMODE_CANT = 0, TOUCHUI_PHOTOMODE_STARTED = 1 };
 // The photo modes that end by themselves (platServices_PhotoModeEnded's)
 enum { TOUCHUI_MODE_SELFIE = 1, TOUCHUI_MODE_CINEMA = 2 };
-// The saber's styles (iosSaber's; SaberStyleName is NULL past the last)
-enum { TOUCHUI_SABER_SINGLE = 0, TOUCHUI_SABER_DUAL = 1, TOUCHUI_SABER_CROSS = 2, TOUCHUI_SABER_MAX_STYLES = 8 };
+// The saber's styles (iosSaber's; SaberStyleName is NULL past the last) and
+// hilts (SaberHiltName likewise)
+enum { TOUCHUI_SABER_SINGLE = 0, TOUCHUI_SABER_DUAL = 1, TOUCHUI_SABER_MAX_STYLES = 8 };
+enum { TOUCHUI_HILT_NORMAL = 0, TOUCHUI_SABER_MAX_HILTS = 8 };
 
 // The buttons (for the tests, and the engine's queries)
 enum {
@@ -177,11 +186,12 @@ enum {
 enum { TOUCHUI_GYRO_OFF = 0, TOUCHUI_GYRO_TOUCH, TOUCHUI_GYRO_ALWAYS };
 enum { TOUCHUI_HAPTIC_TICK = 1, TOUCHUI_HAPTIC_TAP = 2 };
 enum { TOUCHUI_WHEEL_FORCE = 0, TOUCHUI_WHEEL_WEAPONS, TOUCHUI_WHEEL_SABER };
-// The saber wheel's choices beside the ring (the blade's shape, FILM on or
-// off, under SINGLE, DUAL and CROSS; THROW at the top right, Jedi Knight's),
-// and in its middle (EQUIP, the colours' look)
+// The saber wheel's choices beside the ring (HILT, the hilt picked: a tap for
+// the next; the blade's shape, FILM on or off, under SINGLE, DUAL and HILT;
+// THROW at the top right, Jedi Knight's), and in its middle (EQUIP, the
+// colours' look)
 enum { TOUCHUI_CHIP_SINGLE = 0, TOUCHUI_CHIP_DUAL, TOUCHUI_CHIP_LEFT, TOUCHUI_CHIP_BOTH, TOUCHUI_CHIP_RIGHT, TOUCHUI_CHIP_EQUIP,
-       TOUCHUI_CHIP_LOOK, TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_CROSS, TOUCHUI_CHIP_THROW, TOUCHUI_NUM_CHIPS };
+       TOUCHUI_CHIP_LOOK, TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_HILT, TOUCHUI_CHIP_THROW, TOUCHUI_NUM_CHIPS };
 
 // Once, before anything else. The settings file (key=value lines) is read
 // now, if there is one, and written whenever a remembered setting changes.

@@ -64,9 +64,9 @@ static int iosSaberThrow_pendingHand = -1;       // a throw due (tapped again wi
 static double iosSaberThrow_secPending = 0.0;
 static SithThing* iosSaberThrow_pPlayer = NULL;  // the player it is all for (another: everything back)
 static int iosSaberThrow_bGiving = 0;            // (giving the saber back itself: not a catch)
-// The colour each saber thrown last flies in, kept through a reset (the cheat's saber taken back in
-// mid-flight: it flies on in its colour till it strikes)
-static struct { int thingIdx; uint32_t signature; int colour; } iosSaberThrow_aFlyColour[2] = { { -1, 0, 0 }, { -1, 0, 0 } };
+// The colour (and hilt) each saber thrown last flies in, kept through a reset (the cheat's saber taken
+// back in mid-flight: it flies on in its colour till it strikes)
+static struct { int thingIdx; uint32_t signature; int colour; int hilt; } iosSaberThrow_aFlyColour[2] = { { -1, 0, 0, 0 }, { -1, 0, 0, 0 } };
 
 static SithThing* iosSaberThrow_Player(void)
 {
@@ -223,6 +223,7 @@ static int iosSaberThrow_Throw(SithThing* p, int hand)
     iosSaberThrow_aFlyColour[hand].thingIdx = pSaber->idx;
     iosSaberThrow_aFlyColour[hand].signature = pSaber->signature;
     iosSaberThrow_aFlyColour[hand].colour = h->colour;
+    iosSaberThrow_aFlyColour[hand].hilt = iosSaber_HandHilt(p, hand);
     iosSaberThrow_secLast = sithTime_g_secGameTime;
 
     // both thrown: as the game's own throw leaves her, the saber out of the
@@ -357,7 +358,7 @@ void iosSaberThrow_Tick(void)
     }
 }
 
-// (the game's own throw: the saber in hand, of the one-blade style picked -- SINGLE or CROSS)
+// (the game's own throw: the saber in hand, of the one-blade style picked -- SINGLE)
 static int iosSaberThrow_OneBladeStyle(void)
 {
     const int st = iosSaber_GetStyle();
@@ -393,6 +394,18 @@ int iosSaberThrow_ThrownStyle(SithThing* pThing)
             return IOSSABER_STYLE_DUAL;
     }
     return iosSaberThrow_OneBladeStyle();
+}
+
+int iosSaberThrow_ThrownHilt(SithThing* pThing)
+{
+    if (!Main_bMotsCompat) return iosSaberThrowJk_ThrownHilt(pThing);
+    if (iosSaberThrow_ThrownColour(pThing) < 0) return -1;
+    for (int k = 0; k < 2; k++) {
+        if (iosSaberThrow_aFlyColour[k].thingIdx == pThing->idx && iosSaberThrow_aFlyColour[k].signature == pThing->signature)
+            return iosSaberThrow_aFlyColour[k].hilt;
+    }
+    // (the game's own throw: the saber in hand's, as it is now)
+    return iosSaber_HandHilt(iosSaberThrow_Player(), 0);
 }
 
 #endif // JK_ENHANCED

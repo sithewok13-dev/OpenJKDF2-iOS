@@ -18,7 +18,7 @@
 #define TU_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define TU_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define TU_COUNT(a) ((int)(sizeof(a) / sizeof((a)[0])))
-#define TU_SABER_KEPT (4 + TOUCHUI_SABER_MAX_STYLES * 2) // (tu_SaberKept: style, look, shape, THROW, every style's two colours)
+#define TU_SABER_KEPT (5 + TOUCHUI_SABER_MAX_STYLES * 2) // (tu_SaberKept: style, look, shape, THROW, every style's two colours, hilt)
 
 // ------------------------------------------------------------ the numbers (iosTouch.m's)
 
@@ -310,7 +310,8 @@ static struct {
     double prevTickNow;
     // the saber
     int bShowSaber;
-    int aSaberKept[TU_SABER_KEPT]; // (the saber's style, look, shape, THROW and colours as last saved: tu_SaberKeptChanged)
+    int aSaberKept[TU_SABER_KEPT]; // (the saber's style, look, shape, THROW, colours and hilt as last saved: tu_SaberKeptChanged)
+    int bSettingsMoved;            // (the file read was kept by a build before the hilts: CROSS a style)
 
     // the wheel
     // (opened by a finger: inputWheel.c's then; the pad's and the keys'
@@ -366,7 +367,7 @@ static int tu_SaberTargetToWheel(int t);
 // ------------------------------------------------------------ settings
 
 // The saber's choices as they are now (style, look, shape, THROW, each
-// style's blades' colours: 4 + style * 2 + blade)
+// style's blades' colours: 4 + style * 2 + blade; the hilt, last)
 static void tu_SaberKept(int a[TU_SABER_KEPT])
 {
     a[0] = G(SaberGetStyle) ? tu.game->SaberGetStyle() : 0;
@@ -377,6 +378,15 @@ static void tu_SaberKept(int a[TU_SABER_KEPT])
         const int bStyle = G(SaberStyleName) && tu.game->SaberStyleName(st);
         for (int b = 0; b < 2; b++) a[4 + st * 2 + b] = (bStyle && G(SaberGetColour)) ? tu.game->SaberGetColour(st, b) : 0;
     }
+    a[4 + TOUCHUI_SABER_MAX_STYLES * 2] = G(SaberGetHilt) ? tu.game->SaberGetHilt() : 0;
+}
+
+// A hilt by its name (only one available), or -1
+static int tu_SaberHiltByName(const char* name)
+{
+    for (int h = 0; G(SaberHiltName) && h < TOUCHUI_SABER_MAX_HILTS && tu.game->SaberHiltName(h); h++)
+        if (!strcmp(tu.game->SaberHiltName(h), name)) return (G(SaberHiltAvailable) && tu.game->SaberHiltAvailable(h)) ? h : -1;
+    return -1;
 }
 
 // Whether they changed since last saved: a pad or the keys (the shared wheel)
@@ -399,10 +409,14 @@ static void tu_SaveSettings(void)
             tu.bThirdPerson, tu.jumpStyle, tu.bSwapped);
     fprintf(f, "showCamera=%d\ncameraKinds=%d\nselfieShots=%d\nfreeze=%d\nsaberTarget=%d\n", tu.bShowCamera, tu.cameraKinds,
             tu.selfieShots, tu.bFreezeOn, tu.saberTarget);
-    // the saber: the style by its name, each blade's colour of each style by its key
+    // the saber: the style and hilt by their names, each blade's colour of each style by its key
     if (G(SaberGetStyle) && G(SaberStyleName)) {
         const char* name = tu.game->SaberStyleName(tu.game->SaberGetStyle());
         if (name) fprintf(f, "saberStyle=%s\n", name);
+    }
+    if (G(SaberGetHilt) && G(SaberHiltName)) {
+        const char* name = tu.game->SaberHiltName(tu.game->SaberGetHilt());
+        if (name) fprintf(f, "saberHilt=%s\n", name);
     }
     if (G(SaberGetLook) && G(SaberLookName)) {
         const char* name = tu.game->SaberLookName(tu.game->SaberGetLook());
@@ -441,6 +455,11 @@ static void tu_LoadSettings(void)
     FILE* f = fopen(tu.settingsPath, "r");
     if (!f) return;
     char line[128];
+    // (a style kept by builds before the hilts that is a hilt's name -- CROSS --: SINGLE with that
+    // hilt, and that style's own colour SINGLE's, so the saber is as it was; a colour kept for a
+    // style this build hasn't, its name and colour, for that)
+    char movedStyle[32] = "", oldStyle[32] = "";
+    int oldColour = -1;
     while (fgets(line, sizeof(line), f)) {
         char* eq = strchr(line, '=');
         if (!eq) continue;
@@ -474,10 +493,22 @@ static void tu_LoadSettings(void)
             char* v = eq + 1;
             v[strcspn(v, "\r\n")] = 0;
             if (!strcmp(k, "saberStyle") && G(SaberStyleName) && G(SaberSetStyle)) {
+                int bStyle = 0;
                 for (int st = TOUCHUI_SABER_SINGLE; st < TOUCHUI_SABER_MAX_STYLES && tu.game->SaberStyleName(st); st++) {
                     const char* name = tu.game->SaberStyleName(st);
-                    if (name && !strcmp(name, v)) tu.game->SaberSetStyle(st);
+                    if (name && !strcmp(name, v)) { tu.game->SaberSetStyle(st); bStyle = 1; }
                 }
+                const int hilt = bStyle ? -1 : tu_SaberHiltByName(v);
+                if (hilt > TOUCHUI_HILT_NORMAL && G(SaberSetHilt)) {
+                    tu.game->SaberSetStyle(TOUCHUI_SABER_SINGLE);
+                    tu.game->SaberSetHilt(hilt);
+                    snprintf(movedStyle, sizeof(movedStyle), "%s", v);
+                    tu.bSettingsMoved = 1;
+                }
+            }
+            else if (!strcmp(k, "saberHilt") && G(SaberSetHilt)) {
+                const int hilt = tu_SaberHiltByName(v); // (one this build hasn't, or not available yet: NORMAL)
+                tu.game->SaberSetHilt(hilt >= 0 ? hilt : TOUCHUI_HILT_NORMAL);
             }
             else if (!strcmp(k, "saberLook") && G(SaberLookName) && G(SaberSetLook)) {
                 for (int lk = 0; tu.game->SaberLookName(lk); lk++)
@@ -489,6 +520,19 @@ static void tu_LoadSettings(void)
             }
             else if (!strncmp(k, "saberColour.", 12) && G(SaberStyleName) && G(SaberSetColour) && G(SaberColourByKey)) {
                 const char* dot = strrchr(k, '.');
+                if (dot && atoi(dot + 1) == 0 && dot - (k + 12) > 0 && dot - (k + 12) < (int)sizeof(oldStyle)) {
+                    char name[32];
+                    memcpy(name, k + 12, dot - (k + 12));
+                    name[dot - (k + 12)] = 0;
+                    int bKnown = 0; // (a style of this build's: below)
+                    for (int st = TOUCHUI_SABER_SINGLE; st < TOUCHUI_SABER_MAX_STYLES && tu.game->SaberStyleName(st); st++)
+                        if (!strcmp(name, tu.game->SaberStyleName(st))) bKnown = 1;
+                    if (!bKnown) {
+                        const int id = tu.game->SaberColourByKey(v);
+                        snprintf(oldStyle, sizeof(oldStyle), "%s", name);
+                        oldColour = id >= 0 ? id : 0;
+                    }
+                }
                 for (int st = TOUCHUI_SABER_SINGLE; dot && st < TOUCHUI_SABER_MAX_STYLES && tu.game->SaberStyleName(st); st++) {
                     const char* name = tu.game->SaberStyleName(st);
                     if (!name || strlen(name) != (size_t)(dot - (k + 12)) || strncmp(k + 12, name, dot - (k + 12))) continue;
@@ -499,6 +543,7 @@ static void tu_LoadSettings(void)
         }
     }
     fclose(f);
+    if (movedStyle[0] && !strcmp(movedStyle, oldStyle) && oldColour >= 0 && G(SaberSetColour)) tu.game->SaberSetColour(TOUCHUI_SABER_SINGLE, 0, oldColour);
     if (tu.gyroMode != TOUCHUI_GYRO_OFF) tu.gyroLastMode = tu.gyroMode;
 }
 
@@ -1604,14 +1649,14 @@ static void tu_SaberTargetFromShared(void)
     tu_SaveSettings();
 }
 
-// One of the saber wheel's choices tapped: one saber, two or the crossguard
-// (each keeps its own colours), which of the two a colour goes to, the colours' look (the
+// One of the saber wheel's choices tapped: one saber or two (each keeps its
+// own colours), HILT (the next hilt), which of the two a colour goes to, the colours' look (the
 // wheel made again in it), or the blade's shape (FILM on or off) -- the wheel
 // stays open to tap a colour; or EQUIP:
 // the saber in hand, the wheel closed
 // (the overlay's choices are the shared wheel's, by number)
 typedef char tu_assertChips[((int)TOUCHUI_CHIP_EQUIP == (int)INPUTWHEEL_CHIP_EQUIP && (int)TOUCHUI_CHIP_LOOK == (int)INPUTWHEEL_CHIP_LOOK
-                             && (int)TOUCHUI_CHIP_SHAPE == (int)INPUTWHEEL_CHIP_SHAPE && (int)TOUCHUI_CHIP_CROSS == (int)INPUTWHEEL_CHIP_CROSS
+                             && (int)TOUCHUI_CHIP_SHAPE == (int)INPUTWHEEL_CHIP_SHAPE && (int)TOUCHUI_CHIP_HILT == (int)INPUTWHEEL_CHIP_HILT
                              && (int)TOUCHUI_CHIP_THROW == (int)INPUTWHEEL_CHIP_THROW
                              && (int)TOUCHUI_NUM_CHIPS == (int)INPUTWHEEL_NUM_CHIPS) ? 1 : -1];
 static void tu_UseSaberChip(int chip)
@@ -2628,6 +2673,7 @@ void touchUi_Init(const touchUiGame* pGame, const char* pSettingsPath)
     snprintf(tu.fpsText, sizeof(tu.fpsText), "-- FPS");
     if (pSettingsPath) snprintf(tu.settingsPath, sizeof(tu.settingsPath), "%s", pSettingsPath);
     tu_LoadSettings();
+    if (tu.bSettingsMoved) tu_SaveSettings(); // (kept as this build keeps them at once: CROSS a hilt)
     tu_SaberKept(tu.aSaberKept);
     touchUi_ShareSaberTarget();
     if (G(SetCheatShown)) tu.game->SetCheatShown(tu.bShowCheat);

@@ -10,7 +10,7 @@
 // its ignition and switching off a little lower, and its swings too.
 //
 // For the local player, and in multiplayer for other players whose games
-// sent a CROSS style (their hum comes as the game sends it; the crackle is
+// sent the CROSS hilt (their hum comes as the game sends it; the crackle is
 // added here). Other sabers sound exactly as the game has them. The extra
 // sounds are this game's only: never sent to other players or kept in a
 // save, and heard by no one in the game (the AI hears the saber as the game
