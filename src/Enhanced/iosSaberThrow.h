@@ -64,6 +64,8 @@ int iosSaberThrow_ThrownColour(SithThing* pThing);
 // And the style it is thrown from (iosSaber's: DUAL for each of two sabers;
 // the game's own throw, the one-blade style in hand, SINGLE or CROSS), or -1
 int iosSaberThrow_ThrownStyle(SithThing* pThing);
+// And which saber it is (0: the right one, or the one saber; 1: the left), or -1
+int iosSaberThrow_ThrownHand(SithThing* pThing);
 
 #ifdef __cplusplus
 }

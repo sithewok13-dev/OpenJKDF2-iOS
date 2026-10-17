@@ -114,12 +114,31 @@ int iosSaberShape_DrawBlade(struct rdThing* pLine, const struct rdMatrix34* pToC
 struct rdFace;
 void iosSaberShape_DrawThrownGlow(struct SithThing* pThing, const struct rdMaterial* pBlade, const unsigned char rgb[3], int form,
                                   const struct rdFace* pSideFace, struct rdMaterial* pSideMat);
+// A thrown saber model's blade (the faces with pBlade, its first geoset's): its
+// long axis in its mesh's own space, pA the end at its hilt, pB its tip, and
+// which of the other two axes it is wider across (0 x, 1 y, 2 z); 0 if none
+struct rdModel3;
+int iosSaberShape_ThrownAxis(const struct rdModel3* m, const struct rdMaterial* pBlade, struct rdVector3* pA, struct rdVector3* pB, int* pAcross);
 
 // First person (bOn 1, then 0 after): a crossguard's side blades and vents
 // turned round its blade to face the eye, as if the hilt were turned in the
 // hand, so the guard is always seen side on (never end on, one side blade
 // hidden behind the hilt)
 void iosSaberShape_SetGuardFacing(int bOn);
+// The metal hilt parts are made of, by kind: CROSS's vents' (TUBE, CLAMP,
+// HOLE), and STAFF's and FOLD's hilts' (iosSaberStaff): SILVER, BLACK, RED,
+// DARK (grey). MetalsReady makes them if need be (0: they can't be);
+// MetalPoly draws one flat face of a part, camera space (aCorner, n of them
+// round its outside, at most IOSSABERSHAPE_METAL_MAX_CORNERS; aUV each
+// corner's, 0..1), as the vents' faces are: solid, shaded by which way it
+// faces a light above and in front of the eye, left out facing away; drawn
+// as pLine's blade is (its texture mode), so with the hand in first person
+enum { IOSSABERSHAPE_METAL_TUBE = 0, IOSSABERSHAPE_METAL_CLAMP, IOSSABERSHAPE_METAL_HOLE,
+       IOSSABERSHAPE_METAL_SILVER, IOSSABERSHAPE_METAL_BLACK, IOSSABERSHAPE_METAL_RED, IOSSABERSHAPE_METAL_DARK, IOSSABERSHAPE_NUM_METALS };
+#define IOSSABERSHAPE_METAL_MAX_CORNERS 12
+struct rdVector2;
+int iosSaberShape_MetalsReady(void);
+void iosSaberShape_MetalPoly(struct rdThing* pLine, int kind, const struct rdVector3* aCorner, const struct rdVector2* aUV, int n);
 
 // The level going: the glow textures freed (made again when next drawn)
 void iosSaberShape_FreeWorld(void);

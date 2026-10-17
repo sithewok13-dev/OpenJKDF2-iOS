@@ -3,6 +3,7 @@
 #ifdef JK_ENHANCED
 
 #include "Enhanced/iosSaberThrowJk.h"
+#include "Enhanced/iosSaberFold.h"
 #include "Enhanced/iosSaber.h"
 
 #include "Cog/sithCog.h"
@@ -446,6 +447,7 @@ static int iosSaberThrowJk_Throw(SithThing* p, int hand, int bDual)
     h->colour = iosSaber_GetShownColour(h->style, bDual ? hand : 0);
     iosSaberThrowJk_secLast = sithTime_g_secGameTime;
     iosSaberThrowJk_pPlayer = p;
+    iosSaberFold_Released(hand, t); // (FOLD: thrown folded or open)
 
     if (iosSaberThrowJk_HandsInHand() == 0) iosSaberThrowJk_PutAway(p);
     return 1;
@@ -675,6 +677,12 @@ int iosSaberThrowJk_ThrownStyle(SithThing* pThing)
 {
     const iosSaberThrowJkHand* h = iosSaberThrowJk_HandOf(pThing);
     return h ? h->style : -1;
+}
+
+int iosSaberThrowJk_ThrownHand(SithThing* pThing)
+{
+    const iosSaberThrowJkHand* h = iosSaberThrowJk_HandOf(pThing);
+    return h ? (int)(h - iosSaberThrowJk_aHand) : -1;
 }
 
 #endif // JK_ENHANCED

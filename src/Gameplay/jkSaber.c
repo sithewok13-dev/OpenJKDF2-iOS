@@ -11,6 +11,7 @@
 #include "Dss/sithMulti.h"
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSaber.h" // Added
+#include "Enhanced/iosSaberStaff.h" // Added
 #endif
 #include "World/sithWeapon.h" // Added
 #include "Gameplay/sithInventory.h" // Added
@@ -100,11 +101,16 @@ void jkSaber_Draw(rdMatrix34 *posRotMat)
 
         jkSaber_PolylineRand(&playerThings[playerThingIdx].polylineThing);
 #ifdef JK_ENHANCED
+        // Added: STAFF and FOLD (iosSaberStaff): both blades where the saber is held, each fading near the eye
+        if (!iosSaberStaff_DrawPovBlades(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].polylineThing,
+                                         playerThings[playerThingIdx].povModel.model3, &playerThings[playerThingIdx].povModel.paJointMatrices[5], 0, 0))
+        {
         iosSaber_BeginBlade(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].polylineThing, 0); // Added: in the player's colour
 #endif
         rdThing_Draw(&playerThings[playerThingIdx].polylineThing, &playerThings[playerThingIdx].povModel.paJointMatrices[5]); // aaaaa hardcoded K_Rhand
 #ifdef JK_ENHANCED
         iosSaber_EndBlade(&playerThings[playerThingIdx].polylineThing);
+        }
 #endif
         
         // Added: Dual sabers
@@ -125,7 +131,25 @@ void jkSaber_Draw(rdMatrix34 *posRotMat)
             }
             rdMatrix34 mirrorHand;
             if (jkPlayer_GetPovMirrorHand(&mirrorHand)) // Added: the mirrored arm's hand (the player's two-saber style)
+            {
+#ifdef JK_ENHANCED
+                // Added: STAFF and FOLD (iosSaberStaff): their own way, each blade begun there
+                if (iosSaberStaff_IsDouble(iosSaberStaff_HiltOf(playerThings[playerThingIdx].actorThing, 1)))
+                {
+                    iosSaber_EndBlade(&playerThings[playerThingIdx].polylineThing);
+                    if (!iosSaberStaff_DrawPovBlades(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].polylineThing,
+                                                     playerThings[playerThingIdx].povModel.model3, &mirrorHand, 1, 1))
+                    {
+                        iosSaber_BeginBlade(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].polylineThing, 1);
+                        rdThing_Draw(&playerThings[playerThingIdx].polylineThing, &mirrorHand);
+                        iosSaber_EndBlade(&playerThings[playerThingIdx].polylineThing);
+                    }
+                    iosSaber_BeginBlade(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].polylineThing, 1); // (ended below)
+                }
+                else
+#endif
                 rdThing_Draw(&playerThings[playerThingIdx].polylineThing, &mirrorHand);
+            }
             else if (lhand >= 0 && lhand < pPov->numHNodes)
                 rdThing_Draw(&playerThings[playerThingIdx].polylineThing, &playerThings[playerThingIdx].povModel.paJointMatrices[lhand]); // K_Lhand
 #ifdef JK_ENHANCED
@@ -582,6 +606,9 @@ void jkSaber_Enable(SithThing *pThing, flex_t damage, flex_t bladeLength, flex_t
     pThing->playerInfo->saberCollideInfo.bladeLength = bladeLength;
     pThing->playerInfo->saberCollideInfo.stunDelay = stunDelay;
     pThing->playerInfo->saberCollideInfo.field_1A4 = 1;
+#ifdef JK_ENHANCED
+    iosSaberStaff_Swing(pThing); // Added: a swing (STAFF's and FOLD's carry, FOLD's AUTO: iosSaberStaff)
+#endif
     pThing->playerInfo->saberCollideInfo.numDamagedThings = 0;
     pThing->playerInfo->saberCollideInfo.numDamagedSurfaces = 0;
 

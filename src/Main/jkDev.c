@@ -27,6 +27,8 @@ static void jkDev_Custom_HostAddressTick(void); // Added
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSaberThrow.h" // Added
 #include "Enhanced/iosSaberThrowJk.h" // Added
+#include "Enhanced/iosSaberFold.h" // Added
+#include "Enhanced/iosSaberStaff.h" // Added
 #include "Enhanced/iosGame.h" // Added
 #endif
 #include "stdPlatform.h"
@@ -284,6 +286,8 @@ void jkDev_DrawLog()
 #ifdef JK_ENHANCED
     iosSaberThrow_Tick(); // Added: two sabers' Saber Throw, once a frame
     iosSaberThrowJk_Tick(); // Added: Jedi Knight's Saber Throw (THROW), once a frame
+    iosSaberFold_Tick(); // Added: FOLD's folding (its AUTO, snaps, throws), once a frame
+    iosSaberStaff_Tick(); // Added: STAFF's and FOLD's spin, when it is due
     iosGame_ViewTick(); // Added: the view the player picked (VIEW), kept
 #endif
 #ifdef PLATFORM_ENET
@@ -1908,6 +1912,7 @@ static void jkDev_Custom_SaberThrowForget()
 #ifdef JK_ENHANCED
     iosSaberThrow_Reset();
     iosSaberThrowJk_Reset(); // (Jedi Knight's: its sabers out of the world, all in hand)
+    iosSaberFold_Reset(); // (FOLD: in hand, folded with AUTO on)
 #endif
 }
 

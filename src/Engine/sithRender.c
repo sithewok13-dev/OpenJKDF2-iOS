@@ -39,6 +39,7 @@
 #include "Enhanced/iosFreeze.h" // Added
 #include "Enhanced/iosSaber.h" // Added
 #include "Enhanced/iosSaberShape.h" // Added
+#include "Enhanced/iosSaberStaff.h" // Added
 // Added: the photo camera (the selfie, Action Freeze) only looks: what it sees
 // isn't sighted, seen on the map, marked as on screen, or flashed (iosPhotoCam)
 #define SITHRENDER_PHOTO_LOOKING() iosPhotoCam_IsActive()
@@ -3061,11 +3062,15 @@ int sithRender_RenderThing(SithThing *pThing)
 #endif
 
 #ifdef JK_ENHANCED
+    // Added: a thrown STAFF or FOLD drawn as two, spinning flat (iosSaberStaff); any other as ever
+    if (!iosSaberStaff_DrawThrown(pThing, &ret))
+    {
     iosSaber_BeginThrown(pThing); // Added: a thrown saber in its colour
 #endif
     ret = rdThing_Draw(&pThing->renderData, &pThing->orient);
 #ifdef JK_ENHANCED
     iosSaber_EndThrown(pThing);
+    }
 #endif
     rdVector_Zero3(&pThing->orient.scale);
     if (sithRender_pExtraThingRenderFunc && (pThing->flags & SITH_TF_RENDERWEAPON)) {

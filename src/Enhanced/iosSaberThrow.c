@@ -5,6 +5,7 @@
 #include "Enhanced/iosSaberThrow.h"
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberThrowJk.h"
+#include "Enhanced/iosSaberFold.h"
 
 #include "Cog/sithCog.h"
 #include "Cog/sithCogParse.h"
@@ -224,6 +225,7 @@ static int iosSaberThrow_Throw(SithThing* p, int hand)
     iosSaberThrow_aFlyColour[hand].signature = pSaber->signature;
     iosSaberThrow_aFlyColour[hand].colour = h->colour;
     iosSaberThrow_secLast = sithTime_g_secGameTime;
+    iosSaberFold_Released(hand, pSaber); // (FOLD: thrown folded or open)
 
     // both thrown: as the game's own throw leaves her, the saber out of the
     // inventory and her fists in hand -- without the saber's put-away (the
@@ -393,6 +395,17 @@ int iosSaberThrow_ThrownStyle(SithThing* pThing)
             return IOSSABER_STYLE_DUAL;
     }
     return iosSaberThrow_OneBladeStyle();
+}
+
+int iosSaberThrow_ThrownHand(SithThing* pThing)
+{
+    if (!Main_bMotsCompat) return iosSaberThrowJk_ThrownHand(pThing);
+    if (iosSaberThrow_ThrownColour(pThing) < 0) return -1;
+    for (int k = 0; k < 2; k++) {
+        if (iosSaberThrow_aFlyColour[k].thingIdx == pThing->idx && iosSaberThrow_aFlyColour[k].signature == pThing->signature)
+            return k;
+    }
+    return 0; // (the game's own throw: the one saber)
 }
 
 #endif // JK_ENHANCED

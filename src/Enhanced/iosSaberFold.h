@@ -1,0 +1,100 @@
+// Added: entire file. FOLD, Dark Rey's folding double saber (iosSaber's
+// IOSSABER_HILT_FOLD; drawn by iosSaberStaff): two hilts hinged at their
+// pommels, folded (both halves side by side, the blades parallel and close,
+// held by one hilt, swung as the game's own one saber) or open (a straight
+// staff, a blade out of each end, held as STAFF is). Here: whether each one
+// is folded or open, and the snap between (0.3 s, the free half swinging out
+// sideways and down through half a turn round the hinge, with a mechanical
+// click made from the game's own sounds).
+//
+// The local player's:
+//  - It ignites folded (lit, picked, a new level, a load, a death).
+//  - AUTO (on to start): the first swing opens it, and it folds again once
+//    5 s have gone by without one (never before a swing). Off: it changes
+//    only when the player flips it, and stays as they left it (lit again, a
+//    new level, a load: kept, the platform keeping it with the AUTO switch).
+//  - A flip always wins: folded by hand, it stays folded (AUTO opening it no
+//    more) until 5 s go by without a swing; opened by hand, it stays open
+//    until a swing and then 5 s without one.
+//  - Two FOLD sabers (DUAL) fold and open together.
+//  - Thrown (Mysteries of the Sith's throw, and Jedi Knight's, iosSaberThrow):
+//    thrown open, it flies open; thrown folded, it leaves the hand folded and
+//    snaps open 0.25 s after (clear of the thrower), with the click; two are
+//    each their own. Caught with AUTO on: open (it was open in flight), and
+//    AUTO folds it 5 s after if no swing comes; AUTO off: as it was thrown
+//    (snapping shut on the catch). A throw is not a swing.
+// Other players' (multiplayer): as their game sends it (iosSaberFold_SetOpenBits,
+// the look's trailing flags byte, jkPlayerLook); folded until then.
+//
+// Only how it looks: it strikes as the game's own saber whatever it is (the
+// second blade never strikes), and the game is sent nothing of it but the look.
+
+#ifndef _ENHANCED_IOSSABERFOLD_H
+#define _ENHANCED_IOSSABERFOLD_H
+
+#ifdef JK_ENHANCED
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct SithThing;
+
+#define IOSSABERFOLD_SNAP_MS 300          // (the snap: open from folded, or back)
+#define IOSSABERFOLD_CALM_MS 5000         // (AUTO folds it this long after the last swing)
+#define IOSSABERFOLD_THROWN_SNAP_MS 250   // (thrown folded: it snaps open this long after it leaves the hand)
+
+// ---- for the overlays (touch, pad, keyboard)
+// Whether the local player has a FOLD saber lit in hand now (either hand's),
+// so SABER's tap flips it (iosSaberFold_Flip) instead of opening the wheel
+int iosSaberFold_CanFlip(void);
+// The local player's FOLD sabers flipped (both together): folded to open, or
+// open to folded; 0 if there is none to flip (iosSaberFold_CanFlip)
+int iosSaberFold_Flip(void);
+// AUTO (see above), remembered by the platform
+int iosSaberFold_GetAuto(void);
+void iosSaberFold_SetAuto(int bOn);
+// With AUTO off, how the player left it (1: open), for the platform to keep
+// and give back at start; with AUTO on, whatever it is now
+int iosSaberFold_GetHeldOpen(void);
+void iosSaberFold_SetHeldOpen(int bOpen);
+// Whether a thing's saber in that hand (0: the right, 1: the left) is open or
+// opening (its look, for the SABER icon); 0 for a folded one, and for any
+// other saber. Changes are seen by asking again (the icon compares).
+int iosSaberFold_IsOpen(struct SithThing* pThing, int hand);
+
+// ---- for drawing (iosSaberStaff)
+// How far open a thing's saber is now (saber 0: the right's, 1: the left's; 0
+// folded .. 1 open), eased, by the game's clock
+float iosSaberFold_OpenFraction(struct SithThing* pThing, int saber);
+// A saber of the local player's out on a throw (saber 0, 1, as above): how
+// far open it is (not out: as in the hand), and the hilt it was thrown with
+// (-1: none out)
+float iosSaberFold_ThrownOpenFraction(int saber);
+int iosSaberFold_ThrownHilt(int saber);
+
+// ---- multiplayer (the look's flags, jkPlayerLook): bit 0 the right FOLD
+// open (where it is going), bit 1 the left; another player's set as their
+// game sent it (each saber snapping there, on our clock, as it changes)
+int iosSaberFold_OpenBits(struct SithThing* pThing);
+void iosSaberFold_SetOpenBits(struct SithThing* pThing, int bits);
+
+// ---- the engine's side
+// Once a frame (jkDev, after the throws'): AUTO, the snaps, throws and catches
+void iosSaberFold_Tick(void);
+// A swing begun (jkSaber_Enable, through iosSaberStaff_Swing)
+void iosSaberFold_Swing(struct SithThing* pThing);
+// A saber of the local player's thrown (the throw's own code, as it leaves
+// the hand: saber 0 the right, 1 the left; pSaber the thing flying)
+void iosSaberFold_Released(int saber, struct SithThing* pSaber);
+// A new level or a load (jkDev, with the throws' reset): every saber in hand,
+// folded with AUTO on (as the player left it with AUTO off)
+void iosSaberFold_Reset(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // JK_ENHANCED
+
+#endif // _ENHANCED_IOSSABERFOLD_H

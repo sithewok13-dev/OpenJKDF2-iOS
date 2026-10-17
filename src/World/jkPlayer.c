@@ -50,6 +50,7 @@
 #include "Enhanced/iosStance.h" // Added
 #include "Enhanced/iosSaberStance.h" // Added
 #include "Enhanced/iosSaberShape.h" // Added
+#include "Enhanced/iosSaberStaff.h" // Added
 // Added: a blade drawn in the colour the player chose for it (iosSaber)
 #define JKPLAYER_DRAW_BLADE(pThing, pLine, pMat, blade) \
     do { iosSaber_BeginBlade((pThing), (pLine), (blade)); rdThing_Draw((pLine), (pMat)); iosSaber_EndBlade(pLine); } while (0)
@@ -1062,7 +1063,9 @@ static void jkPlayer_DrawPovMirrored(rdMatrix34* pOrient, const rdMatrix34* pOri
     rdVector_Neg3Acc(&jkPlayer_povMirrorHand.rvec); // (the blade's own frame turned, not mirrored: the same blade)
     jkPlayer_bPovMirrorHand = 1;
     rdModel3_bMirrored = 1;
+    iosSaberStaff_BeginPovHand(pActor, pPov, 1); // (STAFF and FOLD: the game's hilt left out, iosSaberStaff)
     rdThing_Draw(pPov, &mirror);
+    iosSaberStaff_EndPovHand();
     rdModel3_bMirrored = 0;
     for (int i = 0; i < numNodes; i++)
         pPov->paJointMatrices[i] = aSaved[i];
@@ -1196,22 +1199,35 @@ void jkPlayer_DrawPov()
         iosSaberShape_SetGuardFacing(1); // Added: a crossguard seen side on (iosSaberShape), to the end of the saber's draw below
         // Added: a crossguard saber's low guard (iosSaberStance)
         iosSaberStance_PovPlace(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].povModel, 0, NULL, &orientR);
+        iosSaberStaff_BeginPovHand(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].povModel, 0); // Added: STAFF and FOLD: the game's hilt left out (iosSaberStaff)
         rdThing_Draw(&playerThings[playerThingIdx].povModel, &orientR);
+        iosSaberStaff_EndPovHand();
         jkPlayer_DrawPovMirrored(&orient, &orientR); // Added: the second saber's arm
         {
-            // Added: its hilt's vents, as the first's below
-            rdMatrix34 mirrorHand;
+            // Added: its hilt's vents, as the first's below; STAFF's and FOLD's hilt
+            rdMatrix34 mirrorHand, held;
             if (jkPlayer_GetPovMirrorHand(&mirrorHand))
+            {
                 iosSaber_DrawHandHilt(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].polylineThing, &mirrorHand,
                                       playerThings[playerThingIdx].povModel.model3, 1);
+                if (iosSaberStaff_HeldFrame(playerThings[playerThingIdx].actorThing, 1, 1, playerThings[playerThingIdx].povModel.model3, &mirrorHand, &held))
+                    iosSaberStaff_DrawHilt(playerThings[playerThingIdx].actorThing, 1, 1, &playerThings[playerThingIdx].polylineThing, &held);
+            }
         }
         // Added: CROSS's hilt vents (iosSaber), part of the hilt: with the hand, lit
-        // or not, writing depth as it does (the blade, after, never paints over them)
+        // or not, writing depth as it does (the blade, after, never paints over them);
+        // STAFF's and FOLD's hilt (iosSaberStaff), where it is held
         if (playerThings[playerThingIdx].povModel.model3 && playerThings[playerThingIdx].povModel.paJointMatrices
             && playerThings[playerThingIdx].povModel.model3->numHNodes > 5)
+        {
             iosSaber_DrawHilt(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].polylineThing,
                               &playerThings[playerThingIdx].povModel.paJointMatrices[5], // (K_Rhand, as jkSaber_Draw)
                               playerThings[playerThingIdx].povModel.model3);
+            rdMatrix34 held;
+            if (iosSaberStaff_HeldFrame(playerThings[playerThingIdx].actorThing, 0, 1, playerThings[playerThingIdx].povModel.model3,
+                                        &playerThings[playerThingIdx].povModel.paJointMatrices[5], &held))
+                iosSaberStaff_DrawHilt(playerThings[playerThingIdx].actorThing, 0, 1, &playerThings[playerThingIdx].polylineThing, &held);
+        }
 #else
         rdThing_Draw(&playerThings[playerThingIdx].povModel, &orient);
         jkPlayer_DrawPovMirrored(&orient, &orient); // Added: the second saber's arm
@@ -1244,6 +1260,19 @@ void jkPlayer_DrawPov()
 #endif
     }
 }
+
+#ifdef JK_ENHANCED
+// Added: STAFF's and FOLD's second blades (iosSaberStaff), each hand's that is one, from where it is held
+static void jkPlayer_DrawSecondBlades(SithThing *thing, rdMatrix34 *pHeld0, rdMatrix34 *pHeld1, int bStaff0, int bStaff1)
+{
+    rdThing* pLine = &thing->playerInfo->polylineThing;
+    rdMatrix34 second;
+    if (bStaff0 && iosSaberStaff_SecondBlade(thing, 0, 0, pHeld0, &second) && !JKPLAYER_SELFIE_HIDES_BLADE(&second, pLine))
+        JKPLAYER_DRAW_BLADE(thing, pLine, &second, 0);
+    if (bStaff1 && iosSaberStaff_SecondBlade(thing, 1, 0, pHeld1, &second) && !JKPLAYER_SELFIE_HIDES_BLADE(&second, pLine))
+        JKPLAYER_DRAW_BLADE(thing, pLine, &second, 1);
+}
+#endif
 
 void jkPlayer_renderSaberWeaponMesh(SithThing *thing)
 {
@@ -1280,8 +1309,16 @@ void jkPlayer_renderSaberWeaponMesh(SithThing *thing)
 #ifdef JK_ENHANCED
     // Added: the player's second saber (iosSaber) has a hilt of its own
     const int bSecondHilt = bDual && iosSaber_HasSecondBlade(thing);
+    // Added: STAFF and FOLD (iosSaberStaff): a hand's saber drawn where it is held (turned in the
+    // hand), with a hilt of its own instead of the game's, and its second blade after the first
+    rdMatrix34 aHeld[2];
+    const int bStaff0 = iosSaberStaff_HeldFrame(thing, 0, 0, playerInfo->rd_thing.model3, primaryMat, &aHeld[0]);
+    const int bStaff1 = bSecondHilt && iosSaberStaff_HeldFrame(thing, 1, 0, playerInfo->rd_thing.model3, secondaryMat, &aHeld[1]);
+    if (bStaff0) primaryMat = &aHeld[0];
+    if (bStaff1) secondaryMat = &aHeld[1];
 #else
     const int bSecondHilt = 0;
+    const int bStaff0 = 0, bStaff1 = 0;
 #endif
 
     if (thing->jkFlags & JKFLAG_PERSUASION)
@@ -1305,13 +1342,15 @@ void jkPlayer_renderSaberWeaponMesh(SithThing *thing)
             thing->orient.scale.z = 0.0;
             thing->renderData.curGeoMode = oldGeoMode;
 
-            if (playerInfo->rd_thing.model3)
+            if (playerInfo->rd_thing.model3 && !bStaff0)
                 rdThing_Draw(&playerInfo->rd_thing, primaryMat);
-            if (playerInfo->rd_thing.model3 && bSecondHilt)
+            if (playerInfo->rd_thing.model3 && bSecondHilt && !bStaff1)
                 rdThing_Draw(&playerInfo->rd_thing, secondaryMat); // Added
 #ifdef JK_ENHANCED
             iosSaber_DrawHilt(thing, &playerInfo->polylineThing, primaryMat, playerInfo->rd_thing.model3); // Added: CROSS's hilt vents, lit or not
             if (bSecondHilt) iosSaber_DrawHandHilt(thing, &playerInfo->polylineThing, secondaryMat, playerInfo->rd_thing.model3, 1); // Added: the second hilt's
+            if (bStaff0) iosSaberStaff_DrawHilt(thing, 0, 0, &playerInfo->polylineThing, primaryMat); // Added: STAFF's or FOLD's own
+            if (bStaff1) iosSaberStaff_DrawHilt(thing, 1, 0, &playerInfo->polylineThing, secondaryMat);
 #endif
 
             if (thing->jkFlags & JKFLAG_SABERON)
@@ -1321,6 +1360,9 @@ void jkPlayer_renderSaberWeaponMesh(SithThing *thing)
                 if (!JKPLAYER_SELFIE_HIDES_BLADE(primaryMat, &playerInfo->polylineThing)) JKPLAYER_DRAW_BLADE(thing, &playerInfo->polylineThing, primaryMat, 0);
                 if (bDual) // Added: or the player's two-blade style; only where there is a second hand
                     if (!JKPLAYER_SELFIE_HIDES_BLADE(secondaryMat, &playerInfo->polylineThing)) JKPLAYER_DRAW_BLADE(thing, &playerInfo->polylineThing, secondaryMat, 1);
+#ifdef JK_ENHANCED
+                jkPlayer_DrawSecondBlades(thing, primaryMat, secondaryMat, bStaff0, bStaff1); // Added: STAFF's and FOLD's
+#endif
             }
         }
         else
@@ -1331,13 +1373,15 @@ void jkPlayer_renderSaberWeaponMesh(SithThing *thing)
     }
     else if ( thing->renderData.curGeoMode > RD_GEOMETRY_NONE)
     {
-        if (playerInfo->rd_thing.model3)
+        if (playerInfo->rd_thing.model3 && !bStaff0)
             rdThing_Draw(&playerInfo->rd_thing, primaryMat);
-        if (playerInfo->rd_thing.model3 && bSecondHilt)
+        if (playerInfo->rd_thing.model3 && bSecondHilt && !bStaff1)
             rdThing_Draw(&playerInfo->rd_thing, secondaryMat); // Added
 #ifdef JK_ENHANCED
         iosSaber_DrawHilt(thing, &playerInfo->polylineThing, primaryMat, playerInfo->rd_thing.model3); // Added: CROSS's hilt vents, lit or not
         if (bSecondHilt) iosSaber_DrawHandHilt(thing, &playerInfo->polylineThing, secondaryMat, playerInfo->rd_thing.model3, 1); // Added: the second hilt's
+        if (bStaff0) iosSaberStaff_DrawHilt(thing, 0, 0, &playerInfo->polylineThing, primaryMat); // Added: STAFF's or FOLD's own
+        if (bStaff1) iosSaberStaff_DrawHilt(thing, 1, 0, &playerInfo->polylineThing, secondaryMat);
 #endif
         
         if (thing->jkFlags & JKFLAG_SABERON)
@@ -1347,6 +1391,9 @@ void jkPlayer_renderSaberWeaponMesh(SithThing *thing)
             if (!JKPLAYER_SELFIE_HIDES_BLADE(primaryMat, &playerInfo->polylineThing)) JKPLAYER_DRAW_BLADE(thing, &playerInfo->polylineThing, primaryMat, 0);
             if (bDual) // Added
                 if (!JKPLAYER_SELFIE_HIDES_BLADE(secondaryMat, &playerInfo->polylineThing)) JKPLAYER_DRAW_BLADE(thing, &playerInfo->polylineThing, secondaryMat, 1);
+#ifdef JK_ENHANCED
+            jkPlayer_DrawSecondBlades(thing, primaryMat, secondaryMat, bStaff0, bStaff1); // Added: STAFF's and FOLD's
+#endif
         }
     }
 }

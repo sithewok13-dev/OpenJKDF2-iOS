@@ -91,9 +91,14 @@ int iosSaber_GetShownColour(int style, int blade);
 //   CROSS   a crossguard (as CROSS above): the blade jagged, crackling and
 //           pointed, two short side blades out of vents on the hilt; carried
 //           low, in Kylo Ren's guard; its hum rougher, lower and crackling
-// (more to come, not here yet: IOSSABER_HILT_STAFF, Maul's double-bladed staff;
-// IOSSABER_HILT_FOLD, Dark Rey's folding double saber)
-enum { IOSSABER_HILT_NORMAL = 0, IOSSABER_HILT_CROSS, /* IOSSABER_HILT_STAFF, IOSSABER_HILT_FOLD (reserved) */ IOSSABER_NUM_HILTS };
+//   STAFF   Darth Maul's double-bladed saber: two hilts end to end, a blade
+//           out of each (iosSaberStaff)
+//   FOLD    Dark Rey's folding double saber: two hilts hinged at their
+//           pommels, folded side by side or open into a staff (iosSaberStaff,
+//           iosSaberFold)
+// (STAFF and FOLD: drawn, carried and thrown, not yet the player's choice:
+// iosSaberStaff_SetTestHilt)
+enum { IOSSABER_HILT_NORMAL = 0, IOSSABER_HILT_CROSS, IOSSABER_HILT_STAFF, IOSSABER_HILT_FOLD, IOSSABER_NUM_HILTS };
 // The hilt in a thing's hand (0: right, 1: left) as it is drawn: the style's
 // (CROSS: the right hand's; DUAL: both hands', the test switch below); NORMAL
 // for a hand the style has no saber in, and for anyone whose saber isn't a
