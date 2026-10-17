@@ -149,11 +149,14 @@ static rdMaterial* iosSaberStaff_HiltMaterial(const rdModel3* m)
     return NULL;
 }
 
-// The game's hilt's length (its faces' reach down the blade), measured once a model
+// The game's hilt's length (its faces' reach down the blade), measured once a model (forgotten with
+// the level: iosSaberStaff_FreeWorld)
+static const rdModel3* iosSaberStaff_apMeasured[4];
+static flex_t iosSaberStaff_aLen[4];
 static flex_t iosSaberStaff_MeasureLength(const rdModel3* m, flex_t dflt)
 {
-    static const rdModel3* apDone[4];
-    static flex_t aLen[4];
+    const rdModel3** apDone = iosSaberStaff_apMeasured;
+    flex_t* aLen = iosSaberStaff_aLen;
     static int next = 0;
     if (!m || !m->numGeos) return dflt;
     for (int i = 0; i < 4; i++) if (apDone[i] == m) return aLen[i];
@@ -937,9 +940,10 @@ float iosSaberStaff_Weight(int what)
 
 // The game's thrown saber's blade (its model's: the end at its hilt A, its tip B, the axis it is wider
 // across), found once a model
+static const rdModel3* iosSaberStaff_apThrownAxis[4];
 static int iosSaberStaff_ThrownAxis(const rdModel3* m, rdVector3* pA, rdVector3* pB, int* pAcross)
 {
-    static const rdModel3* apDone[4];
+    const rdModel3** apDone = iosSaberStaff_apThrownAxis;
     static rdVector3 aA[4], aB[4];
     static int aAcross[4], aOk[4], next = 0;
     for (int i = 0; i < 4; i++) {
@@ -1011,6 +1015,16 @@ static int iosSaberStaff_ThrownOrient(SithThing* pThing, int copy, float f, rdMa
     o.scale.z = at.z - oP.z;
     *pIo = o;
     return 1;
+}
+
+void iosSaberStaff_FreeWorld(void)
+{
+    memset(iosSaberStaff_apMeasured, 0, sizeof(iosSaberStaff_apMeasured));
+    memset(iosSaberStaff_apThrownAxis, 0, sizeof(iosSaberStaff_apThrownAxis));
+    for (int i = 0; i < IOSSABERSTAFF_SLOTS; i++) {
+        iosSaberStaff_aSlot[i].pThing = NULL;
+        iosSaberStaff_aSlot[i].pModel = NULL;
+    }
 }
 
 int iosSaberStaff_DrawThrown(SithThing* pThing, int* pRet)

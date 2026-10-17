@@ -95,6 +95,8 @@ void iosSaberStaff_PoseArms(struct rdThing* pRdThing);
 void iosSaberStaff_Swing(struct SithThing* pThing);
 // Once a frame (jkDev): the spin, when it is due
 void iosSaberStaff_Tick(void);
+// The level going (iosSaber_FreeWorld): what was found in its models forgotten
+void iosSaberStaff_FreeWorld(void);
 // Whether a thing is doing anything but carrying its saber (the third person
 // puppet: a swing, a block, a hit taken, a Force power, the saber drawn or put
 // away; the game counting a swing's hits), as this module goes by
