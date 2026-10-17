@@ -529,6 +529,7 @@ typedef struct {
     int numGroups;
     float sliceDeg; // each slice's width
     float gapDeg;   // between two groups (the gap at the bottom is what is left)
+    float nameMin;  // the smallest a name goes to keep its row (its stars) at their size; 0: 7 pt, as alone
 } iosTouchWheelMap;
 
 // Jedi Knight, as its Force screen lays the powers out: the light side down
@@ -546,12 +547,15 @@ static const iosTouchWheelSlice iosTouch_aJkWheelSlices[] = {
     { 30, 2,  29.0f }, { 31, 2,   7.0f }, { 32, 2, -15.0f }, { 33, 2, -37.0f }, { 34, 2, -59.0f }, // Throw, Grip, Lightning, Destruction, Deadly Sight
 };
 // ...and with Saber Throw on it (THROW, or the sithewok cheat: iosSaberThrowJk),
-// fifteen slices a little narrower, Saber Throw at the top between Speed and
-// Seeing, the gap at the bottom a little wider; the rest in the same order
+// fifteen slices a little narrower (20.5 degrees, 5 between the sides), Saber
+// Throw at the top between Speed and Seeing, the gap at the bottom a little
+// wider (42.5 degrees, the fourteen's 40); the rest in the same order. The
+// names of the ones that need it go smaller (down to 6 pt), so that every
+// power keeps its stars, as big as can be
 static const iosTouchWheelSlice iosTouch_aJkThrowWheelSlices[] = {
-    { 29, 0, 236.0f }, { 28, 0, 216.0f }, { 27, 0, 196.0f }, { 26, 0, 176.0f }, { 25, 0, 156.0f }, // Protection, Absorb, Blinding, Persuasion, Healing
-    { 21, 1, 130.0f }, { 22, 1, 110.0f }, { IOSSABERTHROWJK_BIN, 1, 90.0f }, { 23, 1, 70.0f }, { 24, 1, 50.0f }, // Jump, Speed, Saber Throw, Seeing, Pull
-    { 30, 2,  24.0f }, { 31, 2,   4.0f }, { 32, 2, -16.0f }, { 33, 2, -36.0f }, { 34, 2, -56.0f }, // Throw, Grip, Lightning, Destruction, Deadly Sight
+    { 29, 0, 238.5f }, { 28, 0, 218.0f }, { 27, 0, 197.5f }, { 26, 0, 177.0f }, { 25, 0, 156.5f }, // Protection, Absorb, Blinding, Persuasion, Healing
+    { 21, 1, 131.0f }, { 22, 1, 110.5f }, { IOSSABERTHROWJK_BIN, 1, 90.0f }, { 23, 1, 69.5f }, { 24, 1, 49.0f }, // Jump, Speed, Saber Throw, Seeing, Pull
+    { 30, 2,  23.5f }, { 31, 2,   3.0f }, { 32, 2, -17.5f }, { 33, 2, -38.0f }, { 34, 2, -58.5f }, // Throw, Grip, Lightning, Destruction, Deadly Sight
 };
 // Mysteries of the Sith has no light and dark side. It sorts its powers into
 // four tiers instead (jkPlayer_aMotsFpBins), opened at Jedi ranks 1, 2, 5 and
@@ -581,7 +585,7 @@ static const iosTouchWheelMap iosTouch_jkWheel = {
 };
 static const iosTouchWheelMap iosTouch_jkThrowWheel = {
     iosTouch_aJkThrowWheelSlices, IOSTOUCH_COUNT(iosTouch_aJkThrowWheelSlices),
-    iosTouch_aJkWheelGroups, IOSTOUCH_COUNT(iosTouch_aJkWheelGroups), 20.0f, 6.0f
+    iosTouch_aJkWheelGroups, IOSTOUCH_COUNT(iosTouch_aJkWheelGroups), 20.5f, 5.0f, 6.0f
 };
 static const iosTouchWheelMap iosTouch_motsWheel = {
     iosTouch_aMotsWheelSlices, IOSTOUCH_COUNT(iosTouch_aMotsWheelSlices),
@@ -3080,10 +3084,13 @@ static int iosTouch_SaberChipShown(int i, int bTwo)
 // columns' own rule), by 6 pt of the popped slices, by 12 pt of every other
 // choice (their touches, 6 pt round each, never meet) with one saber or two
 // (two sabers' column on the right always counted, so it never moves with
-// the style), and inside the safe area under the top row. Near ones first,
-// out in rings; the same distance, the higher, then the more to the left.
-// NO if there is none. Found once for a screen, a ring and the buttons
-// showing (kept till one of them changes).
+// the style), and inside the safe area under the top row (out of its
+// buttons' reach, so it never moves with which of them show). Near ones
+// first, out in rings, no further than IOSTOUCH_THROW_REACH; the same
+// distance, the higher, then the more to the left. NO if there is none.
+// Found once for a screen, a ring and the buttons showing (kept till one of
+// them changes).
+#define IOSTOUCH_THROW_REACH 300
 static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch_throwSpot;
 - (BOOL)throwChipSpot:(CGPoint*)pOrigin
 {
@@ -3102,7 +3109,7 @@ static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch
         *pOrigin = iosTouch_throwSpot.at;
         return iosTouch_throwSpot.bFound;
     }
-    const CGFloat left = MAX(in.left, 8.0), top = MAX(in.top, 8.0) + 52.0;
+    const CGFloat left = MAX(in.left, 8.0), top = MAX(in.top, 8.0) + 53.0; // (the top row's buttons reach 52: 26 down, 22 round, 4 clear)
     const CGFloat right = self.bounds.size.width - MAX(in.right, 8.0), bottom = self.bounds.size.height - MAX(in.bottom, 8.0);
     const CGFloat ringR = iosTouch_wheelR1 + IOSTOUCH_WHEEL_POP + 6.0;
     // the other choices, with one saber and with two
@@ -3129,14 +3136,13 @@ static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch
     const CGFloat ax = c.x + d * M_SQRT1_2, ay = c.y - d * M_SQRT1_2; // (its middle's aim)
     const CGFloat bx = round(ax - W * 0.5), by = round(ay - H * 0.5);
     const CGFloat x0min = floor(c.x), x0max = right - W, y0min = top, y0max = bottom - H;
-    const int maxRing = (int)(self.bounds.size.width + self.bounds.size.height);
     CGFloat bestD = -1.0;
     CGPoint best = CGPointZero;
-    for (int r = 0; r <= maxRing; r++) {
+    for (int r = 0; r <= IOSTOUCH_THROW_REACH; r++) {
         if (bestD >= 0.0 && bestD <= r - M_SQRT1_2) break; // (every spot further out is further away)
         for (int j = -r; j <= r; j++) {
-            for (int i = -r; i <= r; i++) {
-                if (abs(i) != r && abs(j) != r) continue; // (this ring only)
+            const int di = (abs(j) == r) ? 1 : (r ? 2 * r : 1); // (this ring only: its top and bottom whole, its sides)
+            for (int i = -r; i <= r; i += di) {
                 const CGFloat x0 = bx + i, y0 = by + j;
                 if (x0 < x0min || x0 > x0max || y0 < y0min || y0 > y0max || x0 < left) continue;
                 const CGFloat dist = hypot(x0 + W * 0.5 - ax, y0 + H * 0.5 - ay);
@@ -3772,8 +3778,9 @@ static int iosTouch_WheelSliceHasRow(int i)
     return iosTouch_wheelKind != IOSTOUCH_WHEEL_WEAPONS || iosTouch_pWheelMap->aSlices[i].group != 0;
 }
 
-// Fits a slice's label inside it: the biggest size (11pt down to 7pt) at which
-// it fits somewhere along the slice, as near the middle of the band as it can
+// Fits a slice's label inside it: the biggest size (11pt down to 7pt; with its
+// row, down to the map's nameMin if it has one) at which it fits somewhere
+// along the slice, as near the middle of the band as it can
 // go at that size (s11: its size at 11pt; text width goes with font size). With
 // bRow, the label and the row under it (wheelRowSize) are fitted as one block,
 // so neither crosses the slice's edges. Returns whether it fitted.
@@ -3790,7 +3797,8 @@ static int iosTouch_WheelSliceHasRow(int i)
     F->labelR[i][bRow] = R0 + (R1 - R0) * 0.58;
     F->labelSize[i][bRow] = CGSizeMake(s11.width * 7.0 / 11.0, s11.height * 7.0 / 11.0);
     int bFound = 0;
-    for (CGFloat size = 11.0; size >= 7.0 && !bFound; size -= 0.5) {
+    CGFloat sizeMin = (bRow && m->nameMin > 0.0f) ? m->nameMin : 7.0;
+    for (CGFloat size = 11.0; size >= sizeMin - 0.001 && !bFound; size -= 0.5) {
         CGFloat w = s11.width * size / 11.0, h = s11.height * size / 11.0;
         CGFloat bw = bRow ? MAX(w, row.width) : w;
         CGFloat bh = bRow ? h + IOSTOUCH_WHEEL_STAR_GAP + row.height : h;
@@ -3819,7 +3827,8 @@ static int iosTouch_WheelSliceHasRow(int i)
 
 // Fits every slice's label, alone and with its row. The row is one size all
 // round the wheel: the biggest, in steps of 5% down to IOSTOUCH_WHEEL_STAR_MIN
-// of full size for the stars (Jedi Knight's slices take them full size;
+// of full size for the stars (Jedi Knight's fourteen take them full size on
+// most screens, its fifteen with Saber Throw a step or two smaller;
 // Mysteries of the Sith's narrower ones need them smaller), or
 // IOSTOUCH_WHEEL_AMMO_MIN for the ammo counts, at which every slice's row
 // fits. A weapon with no ammo has no row: its label is only fitted alone.
@@ -3845,6 +3854,15 @@ static int iosTouch_WheelSliceHasRow(int i)
             if (iosTouch_WheelSliceHasRow(i) && ![self fitWheelLabel:i size:aS11[i] row:1]) bAll = 0;
         }
         if (bAll || bLast) break; // else the ones that don't fit go without
+    }
+    // (a map that keeps every row, nameMin: one that still doesn't fit at the
+    // smallest has its name at its smallest, in the middle of the band, and its
+    // row under it all the same)
+    for (int i = 0; i < m->numSlices && m->nameMin > 0.0f; i++) {
+        if (!iosTouch_WheelSliceHasRow(i) || F->font[i][1] > 0.0) continue;
+        F->font[i][1] = m->nameMin;
+        F->labelR[i][1] = iosTouch_wheelR0 + (iosTouch_wheelR1 - iosTouch_wheelR0) * 0.58;
+        F->labelSize[i][1] = CGSizeMake(aS11[i].width * m->nameMin / 11.0, aS11[i].height * m->nameMin / 11.0);
     }
 }
 

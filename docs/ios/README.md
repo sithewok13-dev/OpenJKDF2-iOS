@@ -794,7 +794,9 @@ yet or not (powers you haven't learned are dark):
 - **The gap at the bottom** means *cancel*.
 - **Saber Throw** (Jedi Knight, with **THROW** on in the saber wheel, or while
   `sithewok` is on): at the very top, between Speed and Seeing. The slices
-  get a little narrower to make room. See [THROW](#the-lightsaber-saber).
+  get a little narrower to make room, so on most screens the stars are a
+  little smaller, and so are the names Destruct and Deadly Sight. Every power
+  still shows its stars. See [THROW](#the-lightsaber-saber).
 
 **Stars:** under the name of each power you've learned, a row of four stars
 shows its level, one gold star per level (a power at level 2 shows two gold
@@ -978,7 +980,9 @@ cancels, and the game holds still while the wheel is open.
     meets with sparks, and flies back to his hand. With no saber left in his
     hand he's on his fists until it's back, then draws it again. You can't
     pick the saber while it's out. Five seconds after the throw it's back
-    whatever happens, and a game saved mid-throw keeps the saber.
+    whatever happens, and a game saved mid-throw keeps the saber. (An older
+    version of the app loading that game leaves a saber on the floor to pick
+    up.)
   - **With two sabers, each tap of FORCE throws one,** the right first, then
     the left, as in Mysteries of the Sith. The thrown saber has your colour,
     look, FILM and CROSS.

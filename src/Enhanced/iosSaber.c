@@ -483,8 +483,10 @@ static void iosSaber_SwapThrownBlade(rdModel3* m, rdMaterial* from, rdMaterial* 
 // game has it) -- each of its faces across the middle half of that (white in
 // the middle, the colour at its edges), as a held blade is seen across
 #define IOSSABER_THROWN_MAX_UVS 64
-static rdMesh* iosSaber_pThrownUVMesh = NULL; // (its UVs as they were, while it is drawn)
-static rdVector2 iosSaber_aThrownUV[IOSSABER_THROWN_MAX_UVS];
+#define IOSSABER_THROWN_MAX_MESHES 8 // (its blade's meshes, in each of the model's levels of detail)
+static int iosSaber_numThrownUVMeshes = 0;
+static rdMesh* iosSaber_apThrownUVMesh[IOSSABER_THROWN_MAX_MESHES]; // (their UVs as they were, while it is drawn)
+static rdVector2 iosSaber_aThrownUV[IOSSABER_THROWN_MAX_MESHES][IOSSABER_THROWN_MAX_UVS];
 
 static int iosSaber_TexSize(const rdMaterial* pMat, int* pW, int* pH)
 {
@@ -498,7 +500,7 @@ static int iosSaber_TexSize(const rdMaterial* pMat, int* pW, int* pH)
 
 static void iosSaber_BeginThrownJk(SithThing* pThing, int id)
 {
-    iosSaber_pThrownUVMesh = NULL;
+    iosSaber_numThrownUVMeshes = 0;
     if (id < IOSSABER_COLOUR_GAME || id >= IOSSABER_NUM_COLOURS || pThing->renderData.type != RD_THING_MODEL3) return;
     rdModel3* m = pThing->renderData.model3;
     if (!m || m->sizeMaterials < 2 || !m->aMaterials || !m->aMaterials[1] || !m->numGeos) return;
@@ -518,16 +520,17 @@ static void iosSaber_BeginThrownJk(SithThing* pThing, int id)
     iosSaber_pThrownBlade = pBlade;
     iosSaber_pThrownDrawn = pMat;
     iosSaber_SwapThrownBlade(m, pBlade, pMat);
-    // (the blade's own UVs, its stand-in's width across each face: the middle half of the held one's)
-    rdGeoset* gs = &m->aGeos[0];
-    for (uint32_t k = 0; k < gs->numMeshes && !iosSaber_pThrownUVMesh; k++) {
-        rdMesh* mesh = &gs->aMeshes[k];
+    // (the blade's own UVs, its stand-in's width across each face: the middle half of the held
+    // one's; in every level of detail the blade is swapped in, as SwapThrownBlade)
+    for (uint32_t g = 0; g < m->numGeos && g < 4; g++)
+    for (uint32_t k = 0; k < m->aGeos[g].numMeshes && iosSaber_numThrownUVMeshes < IOSSABER_THROWN_MAX_MESHES; k++) {
+        rdMesh* mesh = &m->aGeos[g].aMeshes[k];
         if (!mesh->aTexVerticies || mesh->numUVs <= 0 || mesh->numUVs > IOSSABER_THROWN_MAX_UVS) continue;
         int bAny = 0;
         for (int f = 0; f < mesh->numFaces && !bAny; f++) bAny = mesh->faces[f].material == pMat && mesh->faces[f].vertexUVIdx;
         if (!bAny) continue;
-        memcpy(iosSaber_aThrownUV, mesh->aTexVerticies, sizeof(rdVector2) * mesh->numUVs);
-        iosSaber_pThrownUVMesh = mesh;
+        memcpy(iosSaber_aThrownUV[iosSaber_numThrownUVMeshes], mesh->aTexVerticies, sizeof(rdVector2) * mesh->numUVs);
+        iosSaber_apThrownUVMesh[iosSaber_numThrownUVMeshes++] = mesh;
         static unsigned char aDone[IOSSABER_THROWN_MAX_UVS];
         memset(aDone, 0, sizeof(aDone));
         for (int f = 0; f < mesh->numFaces; f++) {
@@ -618,10 +621,9 @@ void iosSaber_EndThrown(SithThing* pThing)
         }
     }
     if (!iosSaber_pThrownModel) return;
-    if (iosSaber_pThrownUVMesh) {
-        memcpy(iosSaber_pThrownUVMesh->aTexVerticies, iosSaber_aThrownUV, sizeof(rdVector2) * iosSaber_pThrownUVMesh->numUVs);
-        iosSaber_pThrownUVMesh = NULL;
-    }
+    for (int k = 0; k < iosSaber_numThrownUVMeshes; k++)
+        memcpy(iosSaber_apThrownUVMesh[k]->aTexVerticies, iosSaber_aThrownUV[k], sizeof(rdVector2) * iosSaber_apThrownUVMesh[k]->numUVs);
+    iosSaber_numThrownUVMeshes = 0;
     iosSaber_SwapThrownBlade(iosSaber_pThrownModel, iosSaber_pThrownDrawn, iosSaber_pThrownBlade);
     iosSaber_pThrownModel = NULL;
 }

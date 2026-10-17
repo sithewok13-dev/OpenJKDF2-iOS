@@ -1552,6 +1552,10 @@ static void jkDev_Custom_KeepForceFull()
         else if ( pPlayer->actorParams.pPlayer && !(pPlayer->flags & SITH_TF_DEAD) )
         {
             int weapon = (sithWeapon_8BD024 != -1) ? sithWeapon_8BD024 : pPlayer->actorParams.pPlayer->curWeaponID;
+#ifdef JK_ENHANCED
+            if ( weapon == SITHBIN_FISTS && iosSaberThrowJk_OnFists() )
+                weapon = SITHBIN_LIGHTSABER; // (on the fists only while the saber is thrown: the saber kept)
+#endif
             if ( weapon > 0 )
                 jkDev_sithEwokWeapon = weapon;
         }
@@ -1818,6 +1822,9 @@ void jkDev_Custom_SithEwokRestored()
 void jkDev_Custom_GameLoaded()
 {
     jkDev_Custom_SaberThrowForget();
+#ifdef JK_ENHANCED
+    iosSaberThrowJk_GameLoaded(); // (Jedi Knight's: the loaded game's thrown sabers taken away at once)
+#endif
     jkDev_Custom_SithEwokRestored();
     jkDev_sithEwokWeaponBack = -1;
     jkDev_sithEwokPowerBack = -1; // (the loaded game's own power selected)

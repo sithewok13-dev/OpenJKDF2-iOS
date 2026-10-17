@@ -36,7 +36,8 @@
 // drawn in the colour, look and shape of the one thrown (iosSaber).
 //
 // What is out and where is in memory only: a new level or a load takes our
-// sabers out of the world and leaves them in hand.
+// sabers out of the world and leaves them in hand (back in his hand, if a throw
+// had left him on his fists: the power's item keeps that in a saved game).
 
 #ifndef _ENHANCED_IOSSABERTHROWJK_H
 #define _ENHANCED_IOSSABERTHROWJK_H
@@ -63,8 +64,10 @@ int iosSaberThrowJk_Offered(void);
 int iosSaberThrowJk_OnWheel(void);
 
 // jkHudInv_InitItems, before the game's items are read: the power let go
-// (registered again, after them, once a level runs)
+// (registered again, after them, once a level runs); and after: whether they
+// have a bin 37 of their own (a mod's), when none of this is offered
 void iosSaberThrowJk_ItemsLoading(void);
+void iosSaberThrowJk_ItemsLoaded(void);
 // Once a frame: the power kept as THROW and the cheat say, the sabers out
 // on their way, the one due next thrown
 void iosSaberThrowJk_Tick(void);
@@ -76,6 +79,12 @@ int iosSaberThrowJk_Activate(struct SithThing* pPlayer);
 int iosSaberThrowJk_WeaponHeldBack(struct SithThing* pThing, int bin);
 // A new level or a load: our sabers out of the world, all in hand
 void iosSaberThrowJk_Reset(void);
+// A game loaded (after the reset): its sabers of ours taken away at once, and
+// the saber in hand again if it was saved soon after a throw left him on his fists
+void iosSaberThrowJk_GameLoaded(void);
+// Whether he is on his fists only because of a throw (sithewok keeps the saber
+// for the next level, not the fists)
+int iosSaberThrowJk_OnFists(void);
 
 // For the drawing (iosSaberThrow's, which asks this in Jedi Knight): which
 // sabers are in hand (bit 0 the right, bit 1 the left; 3 with nothing out),

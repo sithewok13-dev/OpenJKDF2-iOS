@@ -64,6 +64,7 @@ typedef struct {
     int numGroups;
     float sliceDeg; // each slice's width
     float gapDeg;   // between two groups (the gap at the bottom is what is left)
+    float nameMin;  // the smallest a name goes to keep its row (its stars) at their size; 0: 7 pt, as alone
 } inputWheelMap;
 
 // The saber wheel's choices beside the ring: one saber, two or the

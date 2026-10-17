@@ -55,9 +55,14 @@
 #define IOSSABERTHROWJK_STAGGER 0.25
 #define IOSSABERTHROWJK_LEFT_OFFSET -0.03f
 #define IOSSABERTHROWJK_TURN_DEG 6.0f
-// The game's own sounds: a swing as it is thrown, the hum as it flies
-#define IOSSABERTHROWJK_THROW_SOUND "LtSaberSwing01.wav"
-#define IOSSABERTHROWJK_HUM_SOUND "LtSaberLp01.wav"
+// The game's own sounds: a swing as it is thrown, the hum as it flies. In lower
+// case, as the game reads the cogs' (their names are looked up as they are
+// written): the saber cog's own, not copies of them
+#define IOSSABERTHROWJK_THROW_SOUND "ltsaberswing01.wav"
+#define IOSSABERTHROWJK_HUM_SOUND "ltsaberlp01.wav"
+// A game saved this soon after a throw left Kyle on his fists (the saber flying,
+// struck, or caught and on its way to his hand) has it in his hand again, loaded
+#define IOSSABERTHROWJK_ONFISTS_SECS 8.0
 // The saber cog's timers (weap_saber.cog): 0 lights the blade once it is drawn, 1
 // puts its autoblock back on after a swing
 #define IOSSABERTHROWJK_SABER_TIMERS 2
@@ -94,9 +99,8 @@ static int iosSaberThrowJk_pendingHand = -1;         // a second saber due (pres
 static double iosSaberThrowJk_secPending = 0.0;
 static SithThing* iosSaberThrowJk_pPlayer = NULL;    // the player it is all for (another: everything back)
 static int iosSaberThrowJk_bSweep = 0;               // after a reset: a loaded game's sabers of ours taken away
-static SithWorld* iosSaberThrowJk_pSoundWorld = NULL;
-static sithSound* iosSaberThrowJk_pThrowSound = NULL;
-static sithSound* iosSaberThrowJk_pHumSound = NULL;
+static int iosSaberThrowJk_bForeign = 0;             // a bin 37 in the game's items (a mod's): none of this
+static int iosSaberThrowJk_bOnFists = 0;             // a throw put him on his fists: the saber in hand again once one is back
 
 int iosSaberThrowJk_Get(void)
 {
@@ -114,9 +118,11 @@ void iosSaberThrowJk_Toggle(void)
 }
 
 // Whether a mod's own items have a bin 37: then it is theirs, and none of this
+// (decided as the items are read, iosSaberThrowJk_ItemsLoaded: a loaded game
+// marks every bin it has registered, ours too)
 static int iosSaberThrowJk_Foreign(void)
 {
-    return !iosSaberThrowJk_bRegistered && (sithInventory_g_aTypes[IOSSABERTHROWJK_BIN].flags & SITHINVENTORY_TYPE_REGISTERED);
+    return iosSaberThrowJk_bForeign;
 }
 
 int iosSaberThrowJk_Offered(void)
@@ -141,16 +147,16 @@ static SithThing* iosSaberThrowJk_Player(void)
 
 // ------------------------------------------------------------ the power
 
+// (in full, over the bare mark a loaded game may have left)
 static void iosSaberThrowJk_Register(void)
 {
-    if (iosSaberThrowJk_bRegistered || (sithInventory_g_aTypes[IOSSABERTHROWJK_BIN].flags & SITHINVENTORY_TYPE_REGISTERED)) return;
+    if (iosSaberThrowJk_bForeign || iosSaberThrowJk_bRegistered) return;
     sithInventory_RegisterType(IOSSABERTHROWJK_BIN, NULL, "f_saberthrow", 0.0, 4.0, IOSSABERTHROWJK_POWER_FLAGS);
     iosSaberThrowJk_bRegistered = 1;
 }
 
-static void iosSaberThrowJk_Unregister(void)
+static void iosSaberThrowJk_Clear(void)
 {
-    if (!iosSaberThrowJk_bRegistered) return;
     SithInventoryType* t = &sithInventory_g_aTypes[IOSSABERTHROWJK_BIN];
     t->flags = 0;
     t->cog = NULL;
@@ -158,9 +164,22 @@ static void iosSaberThrowJk_Unregister(void)
     iosSaberThrowJk_bRegistered = 0;
 }
 
+// (ours, or the bare mark of a game saved with it on)
+static void iosSaberThrowJk_Unregister(void)
+{
+    if (iosSaberThrowJk_bForeign) return;
+    if (iosSaberThrowJk_bRegistered || (sithInventory_g_aTypes[IOSSABERTHROWJK_BIN].flags & SITHINVENTORY_TYPE_REGISTERED)) iosSaberThrowJk_Clear();
+}
+
 void iosSaberThrowJk_ItemsLoading(void)
 {
-    iosSaberThrowJk_Unregister();
+    iosSaberThrowJk_Clear();
+    iosSaberThrowJk_bForeign = 0;
+}
+
+void iosSaberThrowJk_ItemsLoaded(void)
+{
+    iosSaberThrowJk_bForeign = (sithInventory_g_aTypes[IOSSABERTHROWJK_BIN].flags & SITHINVENTORY_TYPE_REGISTERED) ? 1 : 0;
 }
 
 // Its stars now: Kyle's Jedi rank halved, rounded up (4 with the cheat)
@@ -199,29 +218,23 @@ static void iosSaberThrowJk_SyncPower(SithThing* p)
     if (pl->curPower > 0 && pl->curPower != IOSSABERTHROWJK_BIN) iosSaberThrowJk_lastOtherPower = pl->curPower; // (the one to go back to)
     const int bShown = iosSaberThrowJk_OnWheel();
     if (bShown) iosSaberThrowJk_Register();
-    if (!iosSaberThrowJk_bRegistered) {
-        // (not on the wheel: not picked either, as in a game saved with it picked)
-        if (pl->curPower == IOSSABERTHROWJK_BIN && !iosSaberThrowJk_Foreign()) iosSaberThrowJk_PowerBack(p);
-        return;
-    }
+    else iosSaberThrowJk_Unregister(); // (a game saved with it on, loaded with it off, too)
     const int stars = bShown ? iosSaberThrowJk_Stars(p) : 0;
     const int bUsable = bShown && stars > 0 && iosSaberThrowJk_HasSaber(p);
     SithInventoryItem* it = &pl->aItems[IOSSABERTHROWJK_BIN];
     if (it->amount != (flex_t)stars) it->amount = (flex_t)stars;
     if (bUsable) it->state |= SITHINVENTORY_ITEM_AVAILABLE;
     else it->state &= ~(SITHINVENTORY_ITEM_AVAILABLE | SITHINVENTORY_ITEM_ACTIVATED);
+    // (not on the wheel, or dimmed there: not picked either, as in a game saved with it picked)
     if (pl->curPower == IOSSABERTHROWJK_BIN && !bUsable) iosSaberThrowJk_PowerBack(p);
-    if (!bShown) iosSaberThrowJk_Unregister();
 }
 
 // ------------------------------------------------------------ the sabers
 
-static void iosSaberThrowJk_Sounds(void)
+// A sound of the game's, looked up each time (a level's own go with it)
+static sithSound* iosSaberThrowJk_Sound(const char* pName)
 {
-    if (iosSaberThrowJk_pSoundWorld == sithWorld_g_pCurrentWorld) return;
-    iosSaberThrowJk_pSoundWorld = sithWorld_g_pCurrentWorld;
-    iosSaberThrowJk_pThrowSound = sithSound_Load(IOSSABERTHROWJK_THROW_SOUND, 0);
-    iosSaberThrowJk_pHumSound = sithSound_Load(IOSSABERTHROWJK_HUM_SOUND, 0);
+    return sithSound_Load((char*)pName, 0);
 }
 
 int iosSaberThrowJk_HandsInHand(void)
@@ -271,6 +284,20 @@ int iosSaberThrowJk_WeaponHeldBack(SithThing* pThing, int bin)
     return bin == IOSSABERTHROWJK_BIN_SABER && pThing && pThing == iosSaberThrowJk_Player() && iosSaberThrowJk_HandsInHand() == 0;
 }
 
+// Whether a throw left him on his fists: kept in memory (over a new level) and in
+// the power's own item, which a saved game keeps (the time, in its spare field)
+static void iosSaberThrowJk_SetOnFists(SithThing* p, int bOn)
+{
+    iosSaberThrowJk_bOnFists = bOn;
+    if (p && p->actorParams.pPlayer)
+        p->actorParams.pPlayer->aItems[IOSSABERTHROWJK_BIN].field_4 = bOn ? (int32_t)(sithTime_g_secGameTime * 1000.0) + 1 : 0;
+}
+
+int iosSaberThrowJk_OnFists(void)
+{
+    return iosSaberThrowJk_bOnFists && iosSaberThrowJk_Player();
+}
+
 // The saber cog's timers (lighting the blade once drawn, the autoblock back on)
 // dropped, as its put-away's own would have them
 static void iosSaberThrowJk_KillSaberTimers(void)
@@ -300,12 +327,14 @@ static void iosSaberThrowJk_PutAway(SithThing* p)
 {
     rdPuppet* pPov = p->playerInfo ? p->playerInfo->povModel.puppet : NULL;
     for (int k = 0; pPov && k < 4; k++) sithPuppet_StopKey(pPov, k, 0.0);
-    if (iosSaberThrowJk_pHumSound) {
-        sithPlayingSound* s = sithSoundMixer_GetSoundFromIdx(sithSoundMixer_GetThingSoundIdx(p, iosSaberThrowJk_pHumSound));
-        if (s && (s->sound || s->pSoundBuf)) {
-            sithSoundMixer_FadeVolume(s, 0.0, 0.5);
-            s->flags |= SITHSOUNDFLAG_FADING;
-        }
+    // (the saber's hum on him, by its name whatever its case: the cog's, and any other)
+    for (int i = 0; i < sithSoundMixer_numSoundsAvailable; i++) {
+        sithPlayingSound* s = &sithSoundMixer_aPlayingSounds[i];
+        if (s->thing != p || !s->sound || !(s->flags & SITHSOUNDFLAG_LOOP) || (s->flags & SITHSOUNDFLAG_FADING)
+            || __strcmpi(s->sound->sound_fname, IOSSABERTHROWJK_HUM_SOUND))
+            continue;
+        sithSoundMixer_FadeVolume(s, 0.0, 0.5);
+        s->flags |= SITHSOUNDFLAG_FADING;
     }
     iosSaberThrowJk_KillSaberTimers();
     p->actorParams.flags &= ~IOSSABERTHROWJK_AUTOBLOCK;
@@ -315,6 +344,7 @@ static void iosSaberThrowJk_PutAway(SithThing* p)
     sithWeapon_SetMountWait(p, 0.0);
     sithInventory_SetCurrentWeapon(p, 0);
     sithWeapon_SelectWeapon(p, IOSSABERTHROWJK_BIN_FISTS, 0);
+    iosSaberThrowJk_SetOnFists(p, 1);
 }
 
 // The saber flying: harmless (on its way back: no damage, nothing made where
@@ -330,8 +360,8 @@ static void iosSaberThrowJk_Harmless(SithThing* t)
 
 static void iosSaberThrowJk_Hum(SithThing* t)
 {
-    if (iosSaberThrowJk_pHumSound)
-        sithSoundMixer_PlaySoundThing(iosSaberThrowJk_pHumSound, t, 1.0, 0.5, 2.5, SITHSOUNDFLAG_LOOP | SITHSOUNDFLAG_FOLLOWSTHING);
+    sithSound* pHum = iosSaberThrowJk_Sound(IOSSABERTHROWJK_HUM_SOUND);
+    if (pHum) sithSoundMixer_PlaySoundThing(pHum, t, 1.0, 0.5, 2.5, SITHSOUNDFLAG_LOOP | SITHSOUNDFLAG_FOLLOWSTHING);
 }
 
 // The rules for a throw now (Mysteries of the Sith's): alive; the saber in hand,
@@ -368,11 +398,10 @@ static int iosSaberThrowJk_Throw(SithThing* p, int hand, int bDual)
 {
     if (!iosSaberThrowJk_CanThrow(p)) return 0;
     SithThing* pTpl = sithTemplate_GetTemplate(IOSSABERTHROWJK_TEMPLATE);
-    iosSaberThrowJk_Sounds();
 
     // (the left saber from a little to the left, its path turned a little)
     rdVector3 offset = { hand ? IOSSABERTHROWJK_LEFT_OFFSET : 0.0f, 0.0f, 0.0f }, zero = { 0.0f, 0.0f, 0.0f };
-    SithThing* t = sithWeapon_FireProjectile(p, pTpl, iosSaberThrowJk_pThrowSound, iosSaberThrowJk_Move(p), &offset, &zero, 1.0, 0, 10.0, 10.0, 0);
+    SithThing* t = sithWeapon_FireProjectile(p, pTpl, iosSaberThrowJk_Sound(IOSSABERTHROWJK_THROW_SOUND), iosSaberThrowJk_Move(p), &offset, &zero, 1.0, 0, 10.0, 10.0, 0);
     if (!t) return 0;
 
     // the cost, unless the game's surges or the cheat's endless Force are on (as for
@@ -466,8 +495,8 @@ static void iosSaberThrowJk_Back(SithThing* p, int hand)
         sithWeapon_SelectWeapon(p, IOSSABERTHROWJK_BIN_SABER, 0);
 }
 
-// After a reset: sabers of ours a loaded game had flying, taken away, the saber
-// in hand again if the game was saved with it out
+// After a reset: sabers of ours a loaded game had flying, taken away (the saber
+// in hand again, if he is on his fists: iosSaberThrowJk_HandBack)
 static void iosSaberThrowJk_Sweep(SithThing* p)
 {
     SithWorld* w = sithWorld_g_pCurrentWorld;
@@ -479,9 +508,27 @@ static void iosSaberThrowJk_Sweep(SithThing* p)
         sithThing_DestroyThing(t);
         n++;
     }
-    SithPlayer* pl = p->actorParams.pPlayer;
-    if (n && pl->curWeaponID == IOSSABERTHROWJK_BIN_FISTS && sithWeapon_8BD024 == -1 && iosSaberThrowJk_HasSaber(p))
-        sithWeapon_SelectWeapon(p, IOSSABERTHROWJK_BIN_SABER, 0);
+    if (n) iosSaberThrowJk_SetOnFists(p, 1);
+}
+
+// On his fists only because of a throw (or a game loaded, or a level begun, so):
+// the saber in his hand again once one is back, as soon as it can be; it in his
+// hand, or another weapon picked meanwhile, and that's that
+static void iosSaberThrowJk_HandBack(SithThing* p)
+{
+    static double secTried = -100.0;
+    if (!iosSaberThrowJk_bOnFists || sithWeapon_8BD024 != -1 || (p->flags & SITH_TF_DEAD)) return; // (a weapon on its way: when it is in hand)
+    const int cur = p->actorParams.pPlayer->curWeaponID;
+    if (cur == IOSSABERTHROWJK_BIN_SABER || (cur > 0 && cur != IOSSABERTHROWJK_BIN_FISTS)) {
+        iosSaberThrowJk_SetOnFists(p, 0);
+        return;
+    }
+    // (nothing in hand yet, as a level begins; no saber back yet; none had)
+    if (cur != IOSSABERTHROWJK_BIN_FISTS || !iosSaberThrowJk_HandsInHand() || !iosSaberThrowJk_HasSaber(p)) return;
+    const double now = sithTime_g_secGameTime;
+    if (now >= secTried && now - secTried < 0.5) return; // (refused: tried again in a while)
+    secTried = now;
+    sithWeapon_SelectWeapon(p, IOSSABERTHROWJK_BIN_SABER, 0);
 }
 
 // One saber on its way: out until it strikes or has flown its time, then back
@@ -523,7 +570,6 @@ static void iosSaberThrowJk_Fly(SithThing* p, int hand, double now)
             t->physicsParams.angularVelocity.x = t->physicsParams.angularVelocity.z = 0.0;
             t->physicsParams.angularVelocity.y = IOSSABERTHROWJK_SPIN;
             if (t->flags & SITH_TF_EMITLIGHT) t->light = IOSSABERTHROWJK_LIGHT;
-            iosSaberThrowJk_Sounds();
             iosSaberThrowJk_Hum(t);
             h->thingIdx = t->idx;
             h->signature = t->signature;
@@ -576,9 +622,28 @@ void iosSaberThrowJk_Tick(void)
     for (int k = 0; k < 2; k++) {
         if (iosSaberThrowJk_aHand[k].state != IOSSABERTHROWJK_IN_HAND) iosSaberThrowJk_Fly(p, k, now);
     }
+    iosSaberThrowJk_HandBack(p);
     // (no saber in hand: its autoblock stays off, should a timer of the saber's put it on)
     if (iosSaberThrowJk_HandsInHand() == 0 && p->actorParams.pPlayer->curWeaponID != IOSSABERTHROWJK_BIN_SABER)
         p->actorParams.flags &= ~IOSSABERTHROWJK_AUTOBLOCK;
+}
+
+// A game loaded (after the reset): the sabers of ours it had flying taken away at
+// once, before the game moves them; on his fists because of a throw, as it was
+// saved soon after one, the saber in hand again
+void iosSaberThrowJk_GameLoaded(void)
+{
+    iosSaberThrowJk_bOnFists = 0; // (the game before's)
+    SithThing* p = iosSaberThrowJk_Player();
+    if (!p || iosSaberThrowJk_bForeign) return; // (the first tick sweeps)
+    SithInventoryItem* it = &p->actorParams.pPlayer->aItems[IOSSABERTHROWJK_BIN];
+    const double secMark = (it->field_4 - 1) / 1000.0, now = sithTime_g_secGameTime;
+    if (it->field_4 > 0 && now >= secMark - 0.001 && now - secMark <= IOSSABERTHROWJK_ONFISTS_SECS) iosSaberThrowJk_bOnFists = 1;
+    else it->field_4 = 0;
+    iosSaberThrowJk_pPlayer = p;
+    iosSaberThrowJk_bSweep = 0;
+    iosSaberThrowJk_Sweep(p);
+    iosSaberThrowJk_SyncPower(p);
 }
 
 // ------------------------------------------------------------ drawing

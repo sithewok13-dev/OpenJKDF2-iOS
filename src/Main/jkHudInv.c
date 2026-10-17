@@ -789,6 +789,9 @@ int jkHudInv_InitItems()
 #endif
     if (!jkHudInv_ItemDatLoad(std_g_genBuffer))
         return 0;
+#ifdef JK_ENHANCED
+    iosSaberThrowJk_ItemsLoaded(); // Added: whether the items have a bin 37 of their own (a mod's)
+#endif
 
     sithInventory_KeybindInit();
     v1 = 0;

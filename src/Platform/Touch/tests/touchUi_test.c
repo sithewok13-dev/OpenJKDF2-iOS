@@ -1570,6 +1570,7 @@ static void test_saber_look(void)
 }
 
 static int drawnText(const char* t);
+static int drawnTextAt(const char* t, float* pX, float* pY, float* pSize);
 // The saber wheel's shape switch (FILM on or off), under SINGLE and DUAL
 static int chipsClear(float W, float H, float l, float t, float r, float b, const char* what)
 {
@@ -1801,6 +1802,17 @@ static void test_saber_throw(void)
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
     touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
     CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_THROW, &tx, &ty) && tx > cx && ty < cy && fg.bThrow == 0 && drawnText("THROW") && drawnText("FILM"));
+    g_case = "throw: the switches' names (THROW smaller, FILM) in the middle of the room left of the switch, 4 pt in from the edge, short of the track, as on iOS";
+    {
+        float nx = 0.0f, ny = 0.0f, ns = 0.0f, nw = 0.0f, fx = 0.0f, fy = 0.0f, fsz = 0.0f, fw = 0.0f, fcx = 0.0f, fcy = 0.0f;
+        const int bName = drawnTextAt("THROW", &nx, &ny, &ns) && drawnTextAt("FILM", &fx, &fy, &fsz) && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &fcx, &fcy);
+        touchUiDraw_MeasureText("THROW", ns, 1.0f, &nw, NULL);
+        touchUiDraw_MeasureText("FILM", fsz, 1.0f, &fw, NULL);
+        const float boxL = tx - 32.0f + 4.0f, boxR = tx + 32.0f - 7.0f - 20.0f - 2.0f; // (the room: 4 pt in, 2 short of the track)
+        printf("  THROW's name: %.1f pt, %.1f..%.1f in the room %.1f..%.1f; FILM's %.1f pt, its middle %.1f from its chip's\n", ns, nx - nw * 0.5f, nx + nw * 0.5f, boxL, boxR, fsz, fx - fcx);
+        CHECK(bName && ns >= 8.0f && ns < 10.0f && nx - nw * 0.5f >= boxL - 0.01f && nx + nw * 0.5f <= boxR + 0.01f && fabsf(nx - (boxL + boxR) * 0.5f) < 0.01f
+              && fsz == 10.0f && fabsf(fx - (fcx - 12.5f)) < 0.01f);
+    }
     g_case = "throw: tapped: on, one tick, the wheel stays open (to tap), the game still held, remembered; again: off";
     g_platTicks = 0;
     down(2, tx, ty); up(2, tx, ty);
@@ -1838,7 +1850,7 @@ static void test_saber_throw(void)
         polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
         down(2, px, py); up(2, px, py);
     }
-    g_case = "throw: THROW on: 15 slices, SABER THROW at the top (90) between SPEED and SEEING, the gap at the bottom cancels, a tick a slice";
+    g_case = "throw: THROW on: 15 slices of 20.5 degrees, 5 between the sides (the gap at the bottom 42.5, at least the 14's 40), SABER THROW at the top (90) between SPEED and SEEING, the gap cancels, a tick a slice";
     fg.bThrow = 1;
     fg.aPowerLevel[37] = 3;
     down(1, wx, wy); wait(0.35); up(1, wx, wy);
@@ -1852,7 +1864,10 @@ static void test_saber_throw(void)
             if (bin == 23) iSe = k;
         }
         touchUi_GetWheelSlice(37, &deg);
-        CHECK(touchUi_IsWheelOpen() && n == 15 && i37 == iSp + 1 && i37 == iSe - 1 && fabsf(deg - 90.0f) < 0.01f && inputWheel_GetOpenMap()->sliceDeg == 20.0f);
+        const inputWheelMap* m15 = inputWheel_GetOpenMap();
+        const float gap15 = 360.0f - m15->numSlices * m15->sliceDeg - 2.0f * m15->gapDeg;
+        CHECK(touchUi_IsWheelOpen() && n == 15 && i37 == iSp + 1 && i37 == iSe - 1 && fabsf(deg - 90.0f) < 0.01f && m15->sliceDeg == 20.5f && m15->gapDeg == 5.0f
+              && gap15 >= 40.0f && m15->nameMin == 6.0f);
         CHECK(inputWheel_IsPickable(i37)); // (learned: its stars, 3 here)
         touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
         polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
@@ -1911,6 +1926,24 @@ static void test_saber_throw(void)
         inputWheel_SaberChip(INPUTWHEEL_CHIP_THROW);
         CHECK(bMots && bMotsPad && bMulti && fg.bThrow == 0);
         if (inputWheel_IsOpen()) inputWheel_Close(-1);
+        tick();
+    }
+    g_case = "throw: no room for THROW (offered, but not shown): the pad's and keyboard's key do nothing either";
+    {
+        // (a screen with the right half all inset: THROW nowhere to go)
+        setup();
+        fg.bSaberBtn = 1;
+        tick();
+        touchUi_SetScreen(852, 393, 0, 0, 440, 21);
+        tick();
+        bxy(TOUCHUI_BTN_SABER, &sx, &sy);
+        down(1, sx, sy); wait(0.1); up(1, sx, sy);
+        const int bHidden = touchUi_IsWheelOpen() && !touchUi_GetSaberChip(TOUCHUI_CHIP_THROW, NULL, NULL) && iosSaberThrowJk_Offered();
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_THROW);
+        printf("  no room: wheel open %d, THROW shown %d, THROW after the key %d\n", touchUi_IsWheelOpen(), touchUi_GetSaberChip(TOUCHUI_CHIP_THROW, NULL, NULL), fg.bThrow);
+        CHECK(bHidden && fg.bThrow == 0);
+        if (inputWheel_IsOpen()) inputWheel_Close(-1);
+        touchUi_SetScreen(852, 393, 59, 0, 59, 21);
         tick();
     }
     // where it goes, on phones and tablets: one spot in every style, clear of everything
@@ -2223,6 +2256,18 @@ static void test_shared_wheel(void)
 }
 
 // Whether the overlay draws a text
+// The first drawn text that says t: where (its middle) and how big
+static int drawnTextAt(const char* t, float* pX, float* pY, float* pSize)
+{
+    const touchUiDrawList* l = touchUi_Draw(T);
+    for (int i = 0; i < l->numItems; i++)
+        if (l->aItems[i].type == TOUCHUI_DRAW_TEXT && !strcmp(l->aPool + l->aItems[i].text, t)) {
+            *pX = l->aItems[i].x0; *pY = l->aItems[i].y0; *pSize = l->aItems[i].size;
+            return 1;
+        }
+    return 0;
+}
+
 static int drawnText(const char* t)
 {
     const touchUiDrawList* l = touchUi_Draw(T);
