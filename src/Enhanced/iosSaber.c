@@ -295,6 +295,13 @@ void iosSaber_SetColour(int style, int blade, int id)
     iosSaber_aColour[style][blade] = id;
 }
 
+static int iosSaber_testDualHilt = IOSSABER_HILT_NORMAL;
+
+void iosSaber_SetTestDualHilt(int hilt)
+{
+    if (hilt >= 0 && hilt < IOSSABER_NUM_HILTS) iosSaber_testDualHilt = hilt;
+}
+
 int iosSaber_GetShownColour(int style, int blade)
 {
     const int id = iosSaber_GetColour(style, blade);
@@ -641,9 +648,14 @@ static int iosSaber_LookOf(SithThing* pThing, int* pStyle, int aId[IOSSABER_MAX_
 
 void iosSaber_DrawHilt(SithThing* pThing, rdThing* pLine, rdMatrix34* pOrient, const rdModel3* pHilt)
 {
-    int style, aId[IOSSABER_MAX_BLADES];
-    if (!pThing || !pLine || !pLine->polyline || !pOrient || !iosSaber_LookOf(pThing, &style, aId)) return;
-    if (!iosSaber_StyleHasCrossguard(style) || !iosSaber_HiltInHand(pThing, pHilt)) return;
+    iosSaber_DrawHandHilt(pThing, pLine, pOrient, pHilt, 0);
+}
+
+void iosSaber_DrawHandHilt(SithThing* pThing, rdThing* pLine, rdMatrix34* pOrient, const rdModel3* pHilt, int hand)
+{
+    if (!pThing || !pLine || !pLine->polyline || !pOrient) return;
+    if (iosSaber_HandHilt(pThing, hand) != IOSSABER_HILT_CROSS || !iosSaber_HiltInHand(pThing, pHilt)) return;
+    if (hand && !iosSaber_HasSecondBlade(pThing)) return; // (the left's: only with its own hilt drawn)
     iosSaberShape_DrawVents(pLine, pOrient);
 }
 
@@ -709,6 +721,18 @@ int iosSaber_HasSecondBlade(SithThing* pThing)
     return 1;
 }
 
+int iosSaber_HandHilt(SithThing* pThing, int hand)
+{
+    int style, aId[IOSSABER_MAX_BLADES];
+    if (hand < 0 || hand >= IOSSABER_MAX_BLADES || !iosSaber_LookOf(pThing, &style, aId)) return IOSSABER_HILT_NORMAL;
+    const iosSaberStyle* st = &iosSaber_aStyles[style];
+    if (hand >= st->numBlades) return IOSSABER_HILT_NORMAL;
+    if (st->bCrossguard) return IOSSABER_HILT_CROSS;
+    // (two sabers: the test switch's, the player's own; another player's game doesn't send one yet)
+    if (style == IOSSABER_STYLE_DUAL && iosSaber_IsPlayers(pThing)) return iosSaber_testDualHilt;
+    return IOSSABER_HILT_NORMAL;
+}
+
 // (the blade's width as it was, while it is drawn shimmering: two sabers)
 static rdPolyline* iosSaber_pWidthLine = NULL;
 static flex_t iosSaber_savedBase, iosSaber_savedTip;
@@ -746,8 +770,12 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
     // its shape (iosSaberShape), whatever the colour: its glow in the blade's own colour (the
     // look's edge colour; the game's own blade's, by its material); the crossguard's, CROSS
     const unsigned char* rgb = aMat ? iosSaber_Row(iosSaber_look, id)->edge : iosSaber_SwatchOf(pLine->polyline->face.material);
+    // (the hand's hilt's; two crossguards drawn together, each a little softer)
+    int form = IOSSABERSHAPE_FORM_CHOSEN;
+    if (iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_CROSS)
+        form = (iosSaber_HasSecondBlade(pThing) && iosSaber_HandHilt(pThing, !blade) == IOSSABER_HILT_CROSS) ? IOSSABERSHAPE_FORM_CROSS_PAIR : IOSSABERSHAPE_FORM_CROSS;
     iosSaberShape_BeginBlade(pThing, pLine, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge, aMat ? iosSaber_Row(iosSaber_look, id)->core : NULL,
-                             st->bCrossguard ? IOSSABERSHAPE_FORM_CROSS : IOSSABERSHAPE_FORM_CHOSEN);
+                             form, blade);
     if (!aMat) return;
     rdPolyline* l = pLine->polyline;
     iosSaber_pSavedSide = l->face.material;

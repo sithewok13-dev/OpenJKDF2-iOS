@@ -14,6 +14,9 @@
 #include "Dss/sithDSSThing.h"
 #include "General/stdMath.h"
 #include "jk.h"
+#ifdef JK_ENHANCED
+#include "Enhanced/iosSaberSound.h" // Added
+#endif
 
 int sithSoundMixer_Startup()
 {
@@ -417,7 +420,19 @@ sithPlayingSound* sithSoundMixer_PlaySoundPos(sithSound *hSnd, rdVector3 *pos, S
     return NULL;
 }
 
+#ifdef JK_ENHANCED
+// Added: a crossguard saber's own sounds (iosSaberSound), put on once the game's is playing
+static sithPlayingSound* sithSoundMixer_PlaySoundThingRaw(sithSound *hSnd, SithThing *pThing, flex_t volume, flex_t minRadius, flex_t maxRadius, int playflags);
 sithPlayingSound* sithSoundMixer_PlaySoundThing(sithSound *hSnd, SithThing *pThing, flex_t volume, flex_t minRadius, flex_t maxRadius, int playflags)
+{
+    sithPlayingSound* pPlaying = sithSoundMixer_PlaySoundThingRaw(hSnd, pThing, volume, minRadius, maxRadius, playflags);
+    iosSaberSound_Played(pPlaying, hSnd, pThing, playflags);
+    return pPlaying;
+}
+static sithPlayingSound* sithSoundMixer_PlaySoundThingRaw(sithSound *hSnd, SithThing *pThing, flex_t volume, flex_t minRadius, flex_t maxRadius, int playflags)
+#else
+sithPlayingSound* sithSoundMixer_PlaySoundThing(sithSound *hSnd, SithThing *pThing, flex_t volume, flex_t minRadius, flex_t maxRadius, int playflags)
+#endif
 {
     sithPlayingSound *v11; // esi
     int v12; // eax
@@ -463,7 +478,11 @@ sithPlayingSound* sithSoundMixer_PlaySoundThing(sithSound *hSnd, SithThing *pThi
                 return 0;
             pThing->actorParams.field_1BC = sithTime_g_msecGameTime + hSnd->sound_len;
         }
-        if ( pThing == sithPlayer_g_pLocalPlayerThing || pThing->moveType == SITH_MT_PATH || pThing->type == SITH_THING_PLAYER) // Added: third comparison, co-op
+        if ( (pThing == sithPlayer_g_pLocalPlayerThing || pThing->moveType == SITH_MT_PATH || pThing->type == SITH_THING_PLAYER) // Added: third comparison, co-op
+#ifdef JK_ENHANCED
+             && !iosSaberSound_IsStarting() // Added: a crossguard's own sounds, heard by no one in the game
+#endif
+           )
         {
             sithAIAwareness_CreateTransmittingEvent(pThing->sector, &pThing->position, 0, maxRadius * 0.6, pThing);
         }
@@ -858,6 +877,9 @@ void sithSoundMixer_Update(flex_t deltaSecs)
         }
     }
     //printf("--- %u\n", sithSoundMixer_activeChannels);
+#ifdef JK_ENHANCED
+    iosSaberSound_Tick(); // Added: a crossguard saber's crackle
+#endif
     rdVector_Scale3(&tmp, &sithCamera_g_pCurCamera->lookPos, 10.0);
     stdSound_SetPositionOrientation(&tmp, &sithCamera_g_pCurCamera->orient.lvec, &sithCamera_g_pCurCamera->orient.uvec);
 }
@@ -1065,6 +1087,9 @@ void sithSoundMixer_SyncSounds()
     for (int i = 0; i < SITH_MIXER_NUMPLAYINGSOUNDS; i++)
     {
         sithPlayingSound* iter = &sithSoundMixer_aPlayingSounds[i];
+#ifdef JK_ENHANCED
+        if (iosSaberSound_IsOwn(iter)) continue; // Added: a crossguard's own sounds (iosSaberSound) are this game's only
+#endif
         if (iter != sithSoundMixer_hCurAmbientChannel)
         {
             sithSound* pSound = iter->sound;

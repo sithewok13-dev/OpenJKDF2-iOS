@@ -10,6 +10,7 @@
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSelfie.h" // Added
 #include "Enhanced/iosSaber.h" // Added
+#include "Enhanced/iosSaberStance.h" // Added
 #endif
 
 // Un-inlined: Clear track node flags with bounds check (added in Grim Fandango).
@@ -391,6 +392,10 @@ void rdPuppet_BuildJointMatrices(rdThing *prdThing, rdMatrix34 *pPlacement)
 
 accumulate_finalize:
     rdThing_AccumulateMatrices(prdThing, model->aHierarchyNodes, pPlacement);
+#ifdef JK_ENHANCED
+    // Added: a crossguard saber held low (iosSaberStance), once the body is put together
+    iosSaberStance_PoseArms(prdThing);
+#endif
     prdThing->rdFrameNum = rdroid_frameTrue;
 }
 
