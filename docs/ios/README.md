@@ -908,8 +908,8 @@ cancels, and the game holds still while the wheel is open.
     the sparks show where a hit lands. That's the same with FILM on or off.
   - It works with every colour, ORIGINAL included, in both CLASSIC and
     REFORGED. It shows in first and third person, with two sabers, in selfies
-    and Action Freeze. In Mysteries of the Sith a thrown saber gets the glow
-    too.
+    and Action Freeze. A thrown saber gets the glow too (Saber Throw in
+    Mysteries of the Sith, and THROW in Jedi Knight).
   - It's a setting for your own screen. It changes your blade, and in
     multiplayer the blades of players whose game sends their saber choice
     (except a CROSS, which keeps its own). Enemy Jedi (the bosses) and
@@ -928,10 +928,11 @@ cancels, and the game holds still while the wheel is open.
   blades coming out of two small dark metal vents either side of the top of
   the hilt, and a strong glow in the blade's colour (on a bright wall it only
   tints). It works with every colour, in both CLASSIC and REFORGED, and shows
-  in first and third person and in Action Freeze. In Mysteries of the Sith a
-  saber thrown from CROSS gets the glow, the vents and the two short blades
-  too. Only the look changes: the main blade hits as usual, and the vents and
-  the short side blades don't hit anything.
+  in first and third person and in Action Freeze. A saber thrown from CROSS
+  (Saber Throw in Mysteries of the Sith, THROW in Jedi Knight) gets the glow,
+  the vents and the two short blades too. Only the look changes: the main
+  blade hits as usual, and the vents and the short side blades don't hit
+  anything.
   - **Kylo Ren's low guard:** between swings Kyle (or Mara) carries a CROSS
     saber low, the hand by the hip and the blade angled down and out to the
     side, the free hand hanging, standing, walking, running, crouching and

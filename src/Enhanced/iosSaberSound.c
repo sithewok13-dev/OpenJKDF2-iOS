@@ -60,6 +60,10 @@
 #define IOSSABERSOUND_SWING_CRACKLE 0.5f
 // (none of its own started while the game's sounds have fewer than this many channels free)
 #define IOSSABERSOUND_SPARE_CHANNELS 4
+// (the game's clock seen up to this far back is no load: a sound started from the
+// controls, as a saber throw is, has the frame's time, and the game's steps after
+// it start from a frame earlier, sithMain_Tick)
+#define IOSSABERSOUND_CLOCK_SLACK_MS 250
 
 // The game's saber sounds, by name (both games' saber cogs': LtSaberLp01.WAV
 // the hum, LtSaberOn01, LtSaberOff01, LtSaberSwing01-08), and the hit sounds
@@ -195,6 +199,7 @@ typedef struct {
     uint32_t nextWander, nextCrackle, nextSputter;
     int burst;              // crackles still to come close together (igniting, a sputter, switching off)
     uint32_t nextBurst;
+    int bOffBurst;          // (switching off's: they outlast the hum)
     sithSound* pEchoSound;  // the ignition again, lower, from its time
     uint32_t echoMs, echoCutMs;
     iosSaberSoundCh echo;
@@ -273,6 +278,7 @@ void iosSaberSound_Played(sithPlayingSound* pPlaying, sithSound* pSound, SithThi
         s->minR = pPlaying->anonymous_5;
         s->maxR = pPlaying->maxPosition;
         s->bCross = 0;
+        s->bOffBurst = 0;
         if (bCross) iosSaberSound_Roughen(s, now, 0.0f);
         break;
     case IOSSABERSOUND_ON:
@@ -288,6 +294,7 @@ void iosSaberSound_Played(sithPlayingSound* pPlaying, sithSound* pSound, SithThi
         sithSoundMixer_SetPitch(pPlaying, IOSSABERSOUND_OFF_PITCH, 0.0f);
         s->burst = IOSSABERSOUND_OFF_CRACKLES;
         s->nextBurst = iosSaberSound_After(now, 20, 60);
+        s->bOffBurst = 1;
         s->pEchoSound = NULL;
         break;
     case IOSSABERSOUND_SWING:
@@ -302,19 +309,28 @@ void iosSaberSound_Played(sithPlayingSound* pPlaying, sithSound* pSound, SithThi
     s->lastMs = now;
 }
 
+// The game's hum gone, or fading out (switched off, thrown): the copy under it
+// with it, and the crackles still to come and the ignition's echo (not those of
+// switching off, which outlast it)
+static void iosSaberSound_HumGone(iosSaberSoundSaber* s, float sec)
+{
+    iosSaberSound_FadeOut(&s->growl, sec);
+    s->hum.p = NULL;
+    s->bCross = 0;
+    if (s->bOffBurst) return;
+    s->burst = 0;
+    s->pEchoSound = NULL;
+    iosSaberSound_FadeOut(&s->echo, 0.1f);
+}
+
 static void iosSaberSound_TickSaber(iosSaberSoundSaber* s, uint32_t now, uint32_t real)
 {
     SithThing* t = s->pThing;
-    // the game's hum gone, or fading out (switched off): the copy under it with it
     if (s->hum.p) {
         if (!iosSaberSound_Alive(&s->hum)) {
-            iosSaberSound_FadeOut(&s->growl, 0.05f);
-            s->hum.p = NULL;
-            s->bCross = 0;
+            iosSaberSound_HumGone(s, 0.05f);
         } else if (s->hum.p->flags & SITHSOUNDFLAG_FADING) {
-            iosSaberSound_FadeOut(&s->growl, 0.5f);
-            s->hum.p = NULL;
-            s->bCross = 0;
+            iosSaberSound_HumGone(s, 0.5f);
         } else if (!s->hum.refid) {
             s->hum.refid = s->hum.p->refid;
         }
@@ -385,8 +401,9 @@ void iosSaberSound_Tick(void)
     for (int i = 0; i < IOSSABERSOUND_SLOTS; i++) {
         iosSaberSoundSaber* s = &iosSaberSound_aSaber[i];
         if (!s->pThing) continue;
-        // (the clock gone back or far on, a load or a new level: what was going is forgotten)
-        if (s->bTimed && (now < s->lastMs || now - s->lastMs > 2000)) {
+        // (the clock gone back or far on, a load or a new level: what was going is forgotten;
+        // a frame back is the game's own, IOSSABERSOUND_CLOCK_SLACK_MS)
+        if (s->bTimed && (now < s->lastMs ? s->lastMs - now > IOSSABERSOUND_CLOCK_SLACK_MS : now - s->lastMs > 2000)) {
             iosSaberSound_FadeOut(&s->growl, 0.05f);
             iosSaberSound_FadeOut(&s->echo, 0.05f);
             memset(s, 0, sizeof(*s));
