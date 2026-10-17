@@ -152,13 +152,17 @@ Tick what works, note what doesn't (a photo of the screen helps).
 - [ ] SABER (once you have the lightsaber, or with the cheat on): a tap opens
       the saber wheel: tap a colour (ORIGINAL is the game's own).
       On the left: SINGLE (one saber), DUAL (two sabers; then LEFT / BOTH /
-      RIGHT on the right choose which blade a colour goes to) and CROSS (one
-      saber with a crossguard: a jagged, crackling blade that comes to a
-      point, two short blades out of small metal vents either side of the
-      hilt, a strong glow; only the main blade hits; carried low between
-      swings, in Kylo Ren's guard, the swing itself the game's own; its hum
-      lower, rough and crackling, with a sputter as it ignites). EQUIP puts
-      the saber in your hand.
+      RIGHT on the right choose which blade a colour goes to) and HILT,
+      which shows the hilt you have; a tap goes to the next, NORMAL (the
+      game's own) or CROSS (a crossguard: a jagged, crackling blade that
+      comes to a point, two short blades out of small metal vents either
+      side of the hilt, a strong glow; only the main blade hits; carried
+      low between swings, in Kylo Ren's guard, the swing itself the game's
+      own; its hum lower, rough and crackling, with a sputter as it
+      ignites), and the wheel stays open. The hilt goes with SINGLE or DUAL
+      (DUAL with CROSS: two crossguards). A CROSS picked on an earlier
+      build comes back as SINGLE with the CROSS hilt, in the same colour.
+      EQUIP puts the saber in your hand.
       The gap at the bottom (or a tap off the wheel) closes it. A slide from
       SABER opens it to slide to a colour.
 - [ ] CLASSIC / REFORGED (at the top of the saber wheel's middle): a tap
@@ -169,7 +173,7 @@ Tick what works, note what doesn't (a photo of the screen helps).
       changes at once. In Jedi Knight a green you kept shows as ORIGINAL
       while REFORGED is on, and other players see it as ORIGINAL too.
 - [ ] FILM (it was called BEAM; an on/off switch under SINGLE, DUAL and
-      CROSS): a tap turns the film look on or off, and the wheel stays open.
+      HILT): a tap turns the film look on or off, and the wheel stays open.
       Off (to start): the game's blade, narrowing to a point. On: a blade as
       in the films, as long as the game's own and slim to the films'
       proportions, even with a rounded end, a white-hot core, its colour at
@@ -179,14 +183,16 @@ Tick what works, note what doesn't (a photo of the screen helps).
       blade (a normal swing a quarter further than the blade it draws, the
       strongest attacks up to two and a half times as far). It's for your own screen:
       your blade, and players whose game sends their saber choice (not
-      enemy Jedi). It doesn't change CROSS, which keeps its own blade: the
-      switch is dimmed while CROSS is picked. A pad's D-pad up and the 5
-      key do the same while the saber wheel is open; a pad's X and the 1 key
-      step through SINGLE, DUAL and CROSS.
+      enemy Jedi). It doesn't change the CROSS hilt, which keeps its own
+      blade: the switch is dimmed while your hilt is CROSS. A pad's D-pad up
+      and the 5 key do the same while the saber wheel is open; a pad's X and
+      the 1 key switch SINGLE and DUAL; a pad's LB and the 7 key go to the
+      next hilt.
 - [ ] Use a keyboard, mouse or controller: the buttons hide; touch the screen
       and they come back.
 - [ ] Quit and start again: GYRO, SENS, FPS, CHEAT, VIEW, CONTROLS, the
-      camera options and the saber's colours, style, look and FILM are kept.
+      camera options and the saber's colours, style, hilt, look and FILM
+      are kept, also when picked with a pad or the keys.
 
 **Start up**
 - [ ] Both icons appear; each starts its own game (Jedi Knight / MotS).

@@ -476,8 +476,9 @@ switch the controller off and they come back.
   the right stick at a power or weapon and let go of the button to pick it.
   Point at the gap at the bottom, or press B, to cancel. If you open it without
   pointing anywhere, it stays open: point and press A, or step round with the
-  D-pad. On the saber wheel, A sets the colour, X steps through SINGLE, DUAL
-  and CROSS ("style" on the screen), Y which blade a colour goes to, L3
+  D-pad. On the saber wheel, A sets the colour, X switches SINGLE and DUAL
+  ("style" on the screen), LB steps through the hilts ("hilt"), Y which
+  blade a colour goes to, L3
   switches CLASSIC and REFORGED ("look"), D-pad up turns FILM on or off
   ("film"), D-pad down turns THROW on or off ("throw", Jedi Knight only), and
   R3 takes the saber in hand ("equip").
@@ -548,11 +549,11 @@ Turn on FPS in MENU's tray to see what the app gets (below).
   Move the mouse toward a power or weapon and let go of the key to pick it.
   If you let go without pointing anywhere, the wheel stays open: point with
   the mouse or the scroll wheel and click. Right click or Esc cancels. On the
-  saber wheel, a click sets the colour, 1 steps through SINGLE, DUAL and CROSS
-  ("style" on the screen), 2 which blade a colour goes to, 3 takes the saber
-  in hand ("equip"), 4 switches CLASSIC and REFORGED ("look"), 5 turns
-  FILM on or off ("film"), and 6 turns THROW on or off ("throw", Jedi Knight
-  only).
+  saber wheel, a click sets the colour, 1 switches SINGLE and DUAL ("style"
+  on the screen), 7 steps through the hilts ("hilt"), 2 which blade a colour
+  goes to, 3 takes the saber in hand ("equip"), 4 switches CLASSIC and
+  REFORGED ("look"), 5 turns FILM on or off ("film"), and 6 turns THROW on
+  or off ("throw", Jedi Knight only).
 - **Your own keys and buttons:** Setup > Controls > Keyboard and Setup >
   Controls > Mouse change any of them; the mouse sensitivity is there too.
   Whatever key you put on next/previous power or weapon gets the wheel when
@@ -889,11 +890,11 @@ cancels, and the game holds still while the wheel is open.
     ORIGINAL while REFORGED is on, and is shown to other players as
     ORIGINAL too. Switch back to CLASSIC and it's green again.
 - **FILM** (it was called BEAM), an on/off switch under SINGLE, DUAL and
-  CROSS, picks the blade's look. Tap it to switch. The wheel stays open, and
+  HILT, picks the blade's look. Tap it to switch. The wheel stays open, and
   the blade in your hand changes at once. The app remembers it (a BEAM you
-  set before stays on). CROSS keeps its own blade whatever FILM says, so the
-  switch is dimmed while CROSS is picked (it still works, for other players'
-  blades and for SINGLE and DUAL).
+  set before stays on). The CROSS hilt keeps its own blade whatever FILM
+  says, so the switch is dimmed while your hilt is CROSS (it still works,
+  for other players' blades and for the NORMAL hilt).
   - **Off** (the default): the game's own blade, which narrows to a point.
   - **On:** a blade as in the films, as long as the game's own (switching
     doesn't change the length) and slim to the films' proportions, the same
@@ -921,21 +922,29 @@ cancels, and the game holds still while the wheel is open.
   the wheel.
 - **EQUIP**, in the middle of the wheel, closes it and puts the lightsaber in
   your hand. It's dim while you don't have the saber.
-- **SINGLE, DUAL or CROSS**, beside the wheel: one saber, one in each hand,
-  or one saber with a crossguard. With DUAL, **LEFT**, **BOTH** and **RIGHT**
-  choose which blade a colour goes to. Each style keeps its own colours.
-- **CROSS:** a jagged blade that crackles and comes to a point, two short
-  blades coming out of two small dark metal vents either side of the top of
-  the hilt, and a strong glow in the blade's colour (on a bright wall it only
-  tints). It works with every colour, in both CLASSIC and REFORGED, and shows
-  in first and third person and in Action Freeze. A saber thrown from CROSS
-  (Saber Throw in Mysteries of the Sith, THROW in Jedi Knight) gets the glow,
-  the vents and the two short blades too. Only the look changes: the main
-  blade hits as usual, and the vents and the short side blades don't hit
-  anything.
+- **SINGLE or DUAL**, beside the wheel: one saber, or one in each hand.
+  With DUAL, **LEFT**, **BOTH** and **RIGHT** choose which blade a colour
+  goes to. Each keeps its own colours.
+- **HILT**, under DUAL, picks what your sabers are, and it goes with SINGLE
+  or DUAL alike (with DUAL, both sabers get it). It shows the hilt you have.
+  Tap it for the next one: **NORMAL** (the game's own saber) or **CROSS**
+  (a crossguard). The wheel stays open, the saber in your hand changes at
+  once, and the app remembers it. If you picked CROSS before this version,
+  you now have SINGLE with the CROSS hilt, in the same colour.
+- **The CROSS hilt:** a jagged blade that crackles and comes to a point,
+  two short blades coming out of two small dark metal vents either side of
+  the top of the hilt, and a strong glow in the blade's colour (on a bright
+  wall it only tints). It works with every colour, in both CLASSIC and
+  REFORGED, and shows in first and third person and in Action Freeze. With
+  DUAL you hold two of them, one in each hand. A thrown CROSS saber (Saber Throw in Mysteries
+  of the Sith, THROW in Jedi Knight, each of the two with DUAL) gets the
+  glow, the vents and the two short blades too. Only the look changes: the
+  main blade hits as usual, and the vents and the short side blades don't
+  hit anything.
   - **Kylo Ren's low guard:** between swings Kyle (or Mara) carries a CROSS
     saber low, the hand by the hip and the blade angled down and out to the
-    side, the free hand hanging, standing, walking, running, crouching and
+    side, the free hand hanging (with two, both sabers low, the hands
+    further apart), standing, walking, running, crouching and
     jumping alike. In first person the blade is tipped out to the side, and
     the crossguard always faces you side on. A swing starts from the guard
     and is the game's own swing exactly (the same reach, timing and
@@ -945,8 +954,9 @@ cancels, and the game holds still while the wheel is open.
     quite steady, and it crackles, with a sputter as it ignites; its swings
     and switching off are a little lower too. It's made from the game's own
     saber sounds, and plain sabers sound as they always did.
-  - In multiplayer, other players who pick CROSS on this build are carried
-    and heard the same way on your screen.
+  - In multiplayer, other players who pick the CROSS hilt on this build (or
+    CROSS on an earlier one) are carried and heard the same way on your
+    screen.
 - **Two sabers fight for real:** the second blade strikes, deals damage and
   throws sparks like the first. In first person both arms move, and between
   swings he holds the two sabers casually, hands apart and a little low,
@@ -964,7 +974,7 @@ cancels, and the game holds still while the wheel is open.
 - **Only the look changes,** and only in your own single-player game: the
   saber's damage, your saves and the levels are untouched. The colours show
   in first and third person, in selfies and in Action Freeze. The app
-  remembers your colours and style.
+  remembers your colours, style and hilt.
 - A lightsaber that only `sithewok` gave you goes away again when the cheat
   goes off (see [Cheats](#cheats)). One the game gave you stays.
 - **Saber Throw** (Mysteries of the Sith): a thrown saber flies in its own
@@ -1000,7 +1010,7 @@ cancels, and the game holds still while the wheel is open.
     up.)
   - **With two sabers, each tap of FORCE throws one,** the right first, then
     the left, as in Mysteries of the Sith. The thrown saber has your colour,
-    look, FILM and CROSS.
+    look, FILM and hilt.
   - With `sithewok` on, Saber Throw is on the wheel at four stars even with
     THROW off, and costs no Force. It's never in multiplayer or co-op, and
     Mysteries of the Sith has no THROW switch (it has its own Saber Throw).
@@ -1147,8 +1157,11 @@ Things to know:
 ### Your lightsaber in multiplayer
 
 Other players see your saber as you set it on the SABER wheel: its colour,
-and two sabers or CROSS if you chose them. Players on a build from before
-CROSS (v0.8-beta2 and older) see a CROSS as one plain saber in its colour.
+two sabers if you chose them, and your hilt. Players on a build from before
+the HILT button see one saber with the CROSS hilt as their CROSS, and two
+sabers with the CROSS hilt as two plain sabers. Players on a build from
+before CROSS (v0.8-beta2 and older) see a CROSS as one plain saber in its
+colour.
 CLASSIC or REFORGED changes how you see every saber on your screen, yours
 and theirs. FILM is for your screen too:
 it changes your blade and theirs as you see them. One thing reaches other
