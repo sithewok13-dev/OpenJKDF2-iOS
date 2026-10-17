@@ -133,3 +133,8 @@ AGENTS.md
 .blocksds
 packaging/dreamcast/disc/*
 CLAUDE.md
+
+# The Emperor's recordings for a build of your own (OPENJKDF2_IOS_BUNDLE_EMPEROR): never committed
+packaging/ios/laughing.mp3
+packaging/ios/palpatine_dark_side.mp3
+packaging/ios/palpatine_unlimited_power.mp3
