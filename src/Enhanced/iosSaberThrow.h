@@ -67,6 +67,8 @@ int iosSaberThrow_ThrownStyle(SithThing* pThing);
 // And its hilt (iosSaber's IOSSABER_HILT_*: its hand's as it was thrown;
 // the game's own throw, the saber in hand's), or -1
 int iosSaberThrow_ThrownHilt(SithThing* pThing);
+// And which saber it is (0: the right one, or the one saber; 1: the left), or -1
+int iosSaberThrow_ThrownHand(SithThing* pThing);
 
 #ifdef __cplusplus
 }

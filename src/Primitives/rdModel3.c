@@ -1661,6 +1661,14 @@ void rdModel3_DrawMesh(rdMesh *pMesh, rdMatrix34 *orient)
 
     for (int i = 0; i < pMesh->numFaces; i++)
     {
+#ifdef JK_ENHANCED
+        // Added: one material's faces left out (a hilt of the player's own drawn in its place, iosSaberStaff)
+        if ( rdModel3_pSkipMaterial && face->material == rdModel3_pSkipMaterial )
+        {
+            ++face;
+            continue;
+        }
+#endif
         int flags = 0;
         flex_t normalCheck = (localCamera.y - pCurMesh->aVertices[*face->vertexPosIdx].y) * face->normal.y
            + (localCamera.x - pCurMesh->aVertices[*face->vertexPosIdx].x) * face->normal.x
@@ -1896,6 +1904,10 @@ int rdModel3_DrawFace(rdFace *pFace, int lightFlags)
 
 // Added: models drawn now go through a mirroring matrix (rdModel3_DrawFace)
 int rdModel3_bMirrored = 0;
+#ifdef JK_ENHANCED
+// Added: this material's faces left out of models drawn now (rdModel3_DrawMesh)
+rdMaterial* rdModel3_pSkipMaterial = NULL;
+#endif
 
 // Added: Data preloading
 void rdModel3_EnsureMaterialData(rdThing *pRdThing) {

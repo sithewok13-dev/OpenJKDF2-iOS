@@ -11,6 +11,7 @@
 #include "Enhanced/iosSelfie.h" // Added
 #include "Enhanced/iosSaber.h" // Added
 #include "Enhanced/iosSaberStance.h" // Added
+#include "Enhanced/iosSaberStaff.h" // Added
 #endif
 
 // Un-inlined: Clear track node flags with bounds check (added in Grim Fandango).
@@ -388,6 +389,8 @@ void rdPuppet_BuildJointMatrices(rdThing *prdThing, rdMatrix34 *pPlacement)
 #ifdef JK_ENHANCED
     // Added: the player's two-saber style: the left arm as the right arm was a moment ago, mirrored (iosSaber)
     iosSaber_PoseArms(prdThing);
+    // Added: STAFF's left hand on the staff, or let go (iosSaberStaff)
+    iosSaberStaff_PoseArms(prdThing);
 #endif
 
 accumulate_finalize:

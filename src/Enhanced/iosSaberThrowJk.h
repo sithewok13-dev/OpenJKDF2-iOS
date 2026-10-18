@@ -98,6 +98,7 @@ int iosSaberThrowJk_HandsInHand(void);
 int iosSaberThrowJk_ThrownColour(struct SithThing* pThing);
 int iosSaberThrowJk_ThrownStyle(struct SithThing* pThing);
 int iosSaberThrowJk_ThrownHilt(struct SithThing* pThing);
+int iosSaberThrowJk_ThrownHand(struct SithThing* pThing); // (0 the right saber or the one, 1 the left; -1)
 
 #ifdef __cplusplus
 }

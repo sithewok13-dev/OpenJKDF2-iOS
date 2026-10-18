@@ -4,6 +4,7 @@
 #include "Enhanced/iosStance.h"
 #include "Enhanced/iosSaberThrow.h"
 #include "Enhanced/iosSaberShape.h"
+#include "Enhanced/iosSaberStaff.h"
 #include "Primitives/rdModel3.h"
 
 #ifdef JK_ENHANCED
@@ -727,6 +728,7 @@ void iosSaber_FreeWorld(void)
         }
     }
     iosSaberShape_FreeWorld();
+    iosSaberStaff_FreeWorld(); // (STAFF's and FOLD's, as below)
     // (the arms' joints found again for the next level's model, even one at the same address)
     iosSaber_ForgetArms();
 }
