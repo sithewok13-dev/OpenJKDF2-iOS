@@ -205,8 +205,9 @@ Tick what works, note what doesn't (a photo of the screen helps).
       your blade, and players whose game sends their saber choice (not
       enemy Jedi). It doesn't change the CROSS hilt, which keeps its own
       blade: the switch is dimmed while every hilt you hold is CROSS.
-- [ ] A pad or the keys on the open saber wheel (pad / key): D-pad left and
-      right step through the colours, A sets one; Y / 2 the next card or
+- [ ] A pad or the keys on the open saber wheel (pad / key): the right stick
+      or D-pad right points at a colour, A sets it (D-pad left, which opens
+      the wheel, closes it); Y / 2 the next card or
       blade (RIGHT, its blades, LEFT, its blades); X / 1 add or take away the
       second saber; LB / 7 the picked card's HILT; RB / 8 SAME COLOUR; LT / 9
       SAME HILT; RT / 0 AUTO (with a FOLD in hand); D-pad up / 5 FILM; D-pad
