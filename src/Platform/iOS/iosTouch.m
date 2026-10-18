@@ -753,12 +753,13 @@ typedef struct {
     int bFlyDone;         // JUMP, ACT: this press has switched sithewok's flight or noclip, or can't (it moved). The tray's LEVEL: no level pick on this press (it moved, or no level can be picked)
     int levelPick;        // the tray's LEVEL: the level number on show (sithewok's level pick), or 0
     int randomHold;       // ROLE_WHEEL: went down on the saber wheel's RANDOM, 1 while it may still tap or hold; 2 done (held, or slid off)
+    int bSaberAgain;      // SABER: down soon after the lift of a tap that flipped the right hand's of two FOLDs, with nothing on SABER between (a tap: the left's)
 } iosTouchSlot;
 
 static iosTouchSlot iosTouch_aSlots[IOSTOUCH_MAX_TOUCHES];
 static int iosTouch_levelToLoad; // the tray's LEVEL pick, lifted: loaded at the next tick (as quick load)
 static double iosTouch_tJumpTapUp = -1.0; // when the last quick tap on JUMP lifted (by the touch's clock), for the double tap that lands
-static double iosTouch_tSaberTapUp = -1.0; // ...on SABER, flipping the right hand's of two FOLDs (by the touch's clock): the left's next
+static double iosTouch_tSaberTapUp = -1.0; // ...on SABER, flipping the right hand's of two FOLDs (by the touch's clock): the left's next (-1: anything else since)
 static int iosTouch_aButtonHeld[IOSTOUCH_NUM_BUTTONS];
 static unsigned char iosTouch_aKeyDown[IOSTOUCH_NUM_SCANCODES];
 // One-off presses waiting to be read, and the one being read right now
@@ -3440,6 +3441,14 @@ static CGRect IOSTouch_CardPartFrame(CGRect r, int part, int bLinked)
     return best;
 }
 
+// (a finger held on RANDOM still on it: as near as QUICK SAVE's held finger
+// stays on its button, IOSTOUCH_TOUCH_SLOP round it, whatever is beside it)
+- (int)onRandom:(CGPoint)p
+{
+    UILabel* c = aSaberChips[IOSTOUCH_CHIP_RANDOM];
+    return !c.hidden && CGRectContainsPoint(CGRectInset(c.frame, -IOSTOUCH_TOUCH_SLOP, -IOSTOUCH_TOUCH_SLOP), p);
+}
+
 // The saber wheel's parts, laid out (hiltmock's design) for how many sabers
 // there are now: each one's frame, and whether it shows. EQUIP and the look
 // in the middle; THROW where it was found (throwChipSpot); the RIGHT card
@@ -3492,13 +3501,17 @@ static CGRect IOSTouch_CardPartFrame(CGRect r, int part, int bLinked)
         // second tap never lands on an AUTO that a FOLD brought); where that
         // is off the screen (it never has been on a phone or an iPad), right
         // of AUTO's spot; where neither fits, not here to touch (a pad and
-        // the keys still have it). (Nothing else moved for it.)
+        // the keys still have it). (Nothing else moved for it.) A pad's or
+        // the keys' wheel: over their prompt along the bottom (two lines at
+        // most), as far as it goes (on 320 pt tall screens: not shown, the
+        // prompt naming its button and key)
         const CGRect a = aFrame[IOSTOUCH_CHIP_AUTO];
         const CGFloat right = self.bounds.size.width - MAX(in.right, 8.0);
+        const CGFloat under = iosTouch_bPadWheel ? bottom - iosPadPanel_PromptReach() - IOSTOUCH_SABER_SWITCH_GAP : bottom;
         CGRect r = CGRectMake(a.origin.x, CGRectGetMaxY(a) + IOSTOUCH_SABER_SWITCH_GAP, SW, SH);
-        if (CGRectGetMaxY(r) > bottom) r = CGRectMake(CGRectGetMaxX(a) + IOSTOUCH_SABER_SWITCH_GAP, a.origin.y, SW, SH);
+        if (CGRectGetMaxY(r) > under) r = CGRectMake(CGRectGetMaxX(a) + IOSTOUCH_SABER_SWITCH_GAP, a.origin.y, SW, SH);
         aFrame[IOSTOUCH_CHIP_RANDOM] = r;
-        aShown[IOSTOUCH_CHIP_RANDOM] = CGRectGetMaxY(r) <= bottom && CGRectGetMaxX(r) <= right;
+        aShown[IOSTOUCH_CHIP_RANDOM] = CGRectGetMaxY(r) <= under && CGRectGetMaxX(r) <= right;
     }
     aFrame[IOSTOUCH_CHIP_CARD_L] = aFrame[IOSTOUCH_CHIP_PLUS] = CGRectMake(xl, y, W, H);
     aShown[IOSTOUCH_CHIP_CARD_L] = bTwo;
@@ -4870,6 +4883,7 @@ static void iosTouch_ReadWheelSlices(int kind)
 - (void)openWheel:(int)kind button:(int)button tapMode:(int)bTapMode
 {
     [self setTrayOpen:0];
+    iosTouch_tSaberTapUp = -1.0; // (a SABER tap after it is no second tap)
     int bMots = iosGame_IsMots();
     iosTouch_wheelKind = kind;
     iosTouch_wheelButton = button;
@@ -5121,6 +5135,11 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             else {
                 s->role = ROLE_BUTTON;
                 iosTouch_aButtonHeld[s->button]++;
+                if (s->button == BTN_SABER) {
+                    // (a second tap only straight after one that flipped: a slide, a hold, a wheel between, none)
+                    s->bSaberAgain = iosTouch_tSaberTapUp >= 0.0 && s->tDownTouch - iosTouch_tSaberTapUp < IOSSABERWHEEL_TAP_AGAIN_SECS;
+                    iosTouch_tSaberTapUp = -1.0;
+                }
             }
         }
         else if (s->button >= 0) {
@@ -5241,9 +5260,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             // RANDOM slid off (at any of the places UIKit merged into this
             // move, too): nothing, not even back on, as QUICK SAVE
             if (s->role == ROLE_WHEEL && s->randomHold == 1) {
-                int bOff = [self saberChipAt:p] != IOSTOUCH_CHIP_RANDOM;
+                int bOff = ![self onRandom:p];
                 for (UITouch* c in [event coalescedTouchesForTouch:t]) {
-                    if ([self saberChipAt:[c locationInView:self]] != IOSTOUCH_CHIP_RANDOM) bOff = 1;
+                    if (![self onRandom:[c locationInView:self]]) bOff = 1;
                 }
                 if (bOff) s->randomHold = 2;
             }
@@ -5321,7 +5340,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 // having seen it yet), the hold's; went off already, slid
                 // off, or slid on from elsewhere, nothing (nor anything under
                 // it now: the wheel stays as it is)
-                if (s->randomHold == 1 && !bCancelled && [self saberChipAt:p] == IOSTOUCH_CHIP_RANDOM)
+                if (s->randomHold == 1 && !bCancelled && [self onRandom:p])
                     [self useSaberChip:(t.timestamp - s->tDownTouch >= IOSTOUCH_RANDOM_HOLD ? IOSTOUCH_CHIP_RANDOM_COLOURS : IOSTOUCH_CHIP_RANDOM)];
             }
             else if (s->role == ROLE_WHEEL && iosTouch_bWheelOpen && bCancelled) {
@@ -5383,11 +5402,11 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                     // open, the click with its snap; a slide or a hold still
                     // opens the wheel): with one in each hand the right one, and
                     // a second tap soon after (down within
-                    // IOSSABERWHEEL_TAP_AGAIN_SECS of this one's lift) the left
-                    // one too; else, having no key, a tap opens its wheel, to
-                    // tap a colour
+                    // IOSSABERWHEEL_TAP_AGAIN_SECS of this one's lift, nothing
+                    // else on SABER between) the left one too; else, having no
+                    // key, a tap opens its wheel, to tap a colour
                     if (iosSaberWheel_TapFlips()) {
-                        const int r = iosSaberWheel_TapFlip(iosTouch_tSaberTapUp >= 0.0 && s->tDownTouch - iosTouch_tSaberTapUp < IOSSABERWHEEL_TAP_AGAIN_SECS);
+                        const int r = iosSaberWheel_TapFlip(s->bSaberAgain);
                         if (r) [cameraTap impactOccurred];
                         iosTouch_tSaberTapUp = r == 2 ? t.timestamp : -1.0;
                         [self refreshSaberIcons];

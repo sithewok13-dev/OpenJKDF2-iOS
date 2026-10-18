@@ -2813,6 +2813,19 @@ static void test_saber_cards(void)
     wait(0.5); SABER_TAP(); wait(0.1); down(1, sx, sy); move(1, sx, sy + 10.5f);
     CHECK(touchUi_IsWheelOpen() && fg.foldFlips == 10 && !fg.bFoldOpen && !fg.bFoldOpenL);
     up(1, sx, sy + 10.5f); tapColour(-1);
+    g_case = "SABER, a FOLD in each hand: a tap, a quick slide opening the wheel to pick a colour, then a tap, all within 0.35 s of the first lift: the right one again, never the left";
+    {
+        float cx, cy, r0, r1, px, py;
+        wait(0.5); SABER_TAP(); wait(0.02);
+        down(1, sx, sy); move(1, sx, sy + 10.5f);
+        const int bOpened = touchUi_IsWheelOpen();
+        touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
+        polar(cx, cy, 0.0f, (r0 + r1) * 0.5f, &px, &py);
+        move(1, px, py); wait(0.02); up(1, px, py);
+        if (touchUi_IsWheelOpen()) tapColour(-1);
+        wait(0.05); SABER_TAP();
+        CHECK(bOpened && !touchUi_IsWheelOpen() && fg.foldFlips == 12 && !fg.bFoldOpen && !fg.bFoldOpenL);
+    }
     g_case = "SABER, one FOLD (the left hand's, a NORMAL in the right): every tap flips it, quick ones too";
     fg.aHilt[0] = 0; fg.foldFlips = 0;
     wait(0.5); SABER_TAP(); wait(0.1); SABER_TAP(); wait(0.1); SABER_TAP();
@@ -3595,6 +3608,31 @@ static void test_saber_random(void)
         const int bCleared = !inputWheel_IsOpen();
         printf("  random pad: shut %d tap %d hold %d ring parts at half %d\n", bShut, bTap, bHold, nGold);
         CHECK(bShut && bTap && bHold && nGold >= 2 && bCleared);
+    }
+    g_case = "random: a pad's or the keys' wheel: RANDOM over their prompt (two lines, 50 pt, and 6 pt more) or not shown (320 pt tall), clear of the rest; their RANDOM works either way";
+    {
+        static const struct { float w, h, l, b; int bShown; } aS[] = { { 568, 320, 0, 0, 0 }, { 693, 320, 44, 21, 0 }, { 640, 300, 0, 0, 1 }, { 640, 360, 0, 0, 1 },
+                                                                      { 852, 393, 59, 21, 1 }, { 640, 480, 0, 0, 1 } };
+        int bOk = 1;
+        for (int k = 0; k < (int)(sizeof(aS) / sizeof(aS[0])); k++)
+            for (int st = 0; st < 6; st++) {
+                setup(); fg.bSaberBtn = 1; saberState(st); tick();
+                touchUi_SetShown(0); tick();
+                inputWheel_Open(INPUTWHEEL_SABER, 1);
+                inputWheelScreen scr = { aS[k].w, aS[k].h, aS[k].l, 0, aS[k].l, aS[k].b };
+                inputWheel_Layout(&scr);
+                char what[80];
+                snprintf(what, sizeof what, "pad %.0fx%.0f %s", aS[k].w, aS[k].h, g_aStateName[st]);
+                float rc[4];
+                const int bShown = chipRect(TOUCHUI_CHIP_RANDOM, rc);
+                if (bShown != aS[k].bShown || (bShown && rc[1] + rc[3] > aS[k].h - fmaxf(aS[k].b, 8.0f) - 56.0f + 0.01f)) { printf("  %s: RANDOM %s\n", what, bShown ? "under the prompt" : "not shown"); bOk = 0; }
+                if (!layoutClear(aS[k].w, aS[k].h, aS[k].l, 0, aS[k].l, aS[k].b, 0, what)) bOk = 0;
+                randomLook a;
+                randomTake(&a);
+                if (!inputWheel_SaberChip(INPUTWHEEL_CHIP_RANDOM) || !randomChanged(&a, 1, 1)) { printf("  %s: their RANDOM did nothing\n", what); bOk = 0; }
+                inputWheel_Close(-1);
+            }
+        CHECK(bOk);
     }
 }
 

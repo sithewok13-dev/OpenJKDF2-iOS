@@ -24,8 +24,10 @@ void iosPadPanel_Refresh(void);
 // (0..1); IOSPAD_RING_NONE hides it
 void iosPadPanel_HoldRing(int kind, float progress);
 
-// A line of button prompts along the bottom of the screen (NULL: none)
+// A line of button prompts along the bottom of the screen (NULL: none), and
+// how far over the bottom (the safe area's) it reaches at most, on two lines
 void iosPadPanel_SetPrompt(const char* pText);
+float iosPadPanel_PromptReach(void);
 
 // Whether a view is one of these (void*: a UIView*), and those shown put
 // back on top of the overlay (which keeps itself above what SDL adds)

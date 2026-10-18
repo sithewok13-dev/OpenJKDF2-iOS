@@ -1088,13 +1088,18 @@ static int inputWheel_ThrowSpot(const inputWheelScreen* s, float* pX, float* pY)
 
 // (RANDOM at a box's top left: in the safe area, under the opener's top row,
 // INPUTWHEEL_RANDOM_RING beyond the popped ring -- as the cards and their
-// switches, by the buttons the opener hides while the saber wheel is open)
+// switches, by the buttons the opener hides while the saber wheel is open;
+// opened by a pad or the keys (no opener keeping things clear), over their
+// prompt along the bottom as it is beside the ring, on two lines:
+// inputOverlay.c's 28 pt and a line's 16 more, 6 pt up)
 #define INPUTWHEEL_RANDOM_RING 14.0f
+#define INPUTWHEEL_PROMPT_REACH 50.0f
 static int inputWheel_RandomFits(const inputWheelScreen* s, float x, float y)
 {
     const float w = INPUTWHEEL_CHIP_W, h = INPUTWHEEL_CHIP_H;
     const float left = INPUTWHEEL_MAX_F(s->inL, 8.0f), right = s->w - INPUTWHEEL_MAX_F(s->inR, 8.0f);
-    const float top = INPUTWHEEL_MAX_F(INPUTWHEEL_MAX_F(s->inT, 8.0f), inputWheel_s.topClear), bottom = s->h - INPUTWHEEL_MAX_F(s->inB, 8.0f);
+    const float top = INPUTWHEEL_MAX_F(INPUTWHEEL_MAX_F(s->inT, 8.0f), inputWheel_s.topClear);
+    const float bottom = s->h - INPUTWHEEL_MAX_F(s->inB, 8.0f) - (inputWheel_s.pfnClear ? 0.0f : INPUTWHEEL_PROMPT_REACH + INPUTWHEEL_SWITCH_GAP);
     if (x < left || x + w > right || y < top || y + h > bottom) return 0;
     const float cx = inputWheel_s.cx, cy = inputWheel_s.cy;
     const float nx = INPUTWHEEL_MAX_F(x, INPUTWHEEL_MIN(cx, x + w)), ny = INPUTWHEEL_MAX_F(y, INPUTWHEEL_MIN(cy, y + h));

@@ -41,9 +41,10 @@
 #define TU_CLUSTER_GAP 30.0f
 #define TU_TOUCH_SLOP 6.0f
 #define TU_WHEEL_XSCALE 0.82f // (the labels' font: bold, condensed, as the wheels')
-// A button's label is as big as fits its round, TU_LABEL_MARGIN inside its
-// border (FORCE's: inside the force meter's ring), down to TU_LABEL_MIN
-// (iosTouch.m's IOSTOUCH_LABEL_MIN, _MARGIN): tu_DrawLabel
+// FORCE's label and the tray's CONTROLS (the ones whose ends ran past the
+// round) are as big as fits it, TU_LABEL_MARGIN inside the border (FORCE's:
+// inside the force meter's ring), down to TU_LABEL_MIN (iosTouch.m's
+// IOSTOUCH_LABEL_MIN, _MARGIN): tu_DrawRoundLabel
 #define TU_LABEL_MIN 8.0f
 #define TU_LABEL_MARGIN 1.5f
 #define TU_WHEEL_POP 10.0f // (as inputWheel.c's: a finger this far past the ring still points)
@@ -235,6 +236,7 @@ typedef struct {
     int levelPick;
     int bSwipe;         // CAMERA slid on its way to Action Freeze or the cinematic burst: not a tap, nor a hold
     int randomHold;     // ROLE_WHEEL: went down on the saber wheel's RANDOM, 1 while it may still tap or hold; 2 done (held, or slid off)
+    int bSaberAgain;    // SABER: down soon after the lift of a tap that flipped the right hand's of two FOLDs, with nothing on SABER between (a tap: the left's)
 } tuSlot;
 
 static struct {
@@ -263,7 +265,7 @@ static struct {
     int haptics;
     int levelToLoad;
     double tJumpTapUp;
-    double tSaberTapUp; // when the last tap on SABER that flipped the right hand's of two FOLDs lifted (the left's next)
+    double tSaberTapUp; // when the last tap on SABER that flipped the right hand's of two FOLDs lifted (the left's next; -1: anything else since)
 
     // layout
     int bLayoutGauge;
@@ -1950,6 +1952,11 @@ static void tu_TouchDown(long long id, float px, float py, double t)
         else {
             s->role = ROLE_BUTTON;
             tu.aButtonHeld[s->button]++;
+            if (s->button == BTN_SABER) {
+                // (a second tap only straight after one that flipped: a slide, a hold, a wheel between, none)
+                s->bSaberAgain = tu.tSaberTapUp >= 0.0 && s->tDown - tu.tSaberTapUp < IOSSABERWHEEL_TAP_AGAIN_SECS;
+                tu.tSaberTapUp = -1.0;
+            }
         }
     }
     else if (s->button >= 0) {
@@ -2132,10 +2139,10 @@ static void tu_TouchUp(tuSlot* s, float px, float py, double t, int bCancelled)
             // SABER has no key: a tap opens its wheel, to tap a colour; with a
             // FOLD lit in hand it flips it instead (the click comes with the snap):
             // with one in each hand the right one, and a second tap soon after
-            // the left one too (a double tap flips both)
+            // (nothing else on SABER between) the left one too (a double tap flips both)
             if (!iosSaberWheel_TapFlips()) tu_OpenWheelFrom(s, 1);
             else {
-                const int r = iosSaberWheel_TapFlip(tu.tSaberTapUp >= 0.0 && s->tDown - tu.tSaberTapUp < IOSSABERWHEEL_TAP_AGAIN_SECS);
+                const int r = iosSaberWheel_TapFlip(s->bSaberAgain);
                 if (r) tu_Haptic(TOUCHUI_HAPTIC_TAP);
                 tu.tSaberTapUp = r == 2 ? t : -1.0;
             }
@@ -2281,6 +2288,7 @@ void touchUi_Tick(double known, double now)
 {
     // (the saber's choices picked with a pad or the keys, the overlay up or hidden: remembered)
     if (tu.game && tu_SaberKeptChanged()) tu_SaveSettings();
+    if (inputWheel_IsOpen()) tu.tSaberTapUp = -1.0; // (a wheel up, the touch's or a pad's: a SABER tap after it is no second tap)
     if (!tu.bShown) return;
     if (tu.bWheelOpen && !inputWheel_IsOpen()) tu_WheelClosed(); // (closed from outside: only in case)
     const double dt = tu.prevTickNow > 0.0 ? now - tu.prevTickNow : 0.0;
@@ -2886,12 +2894,21 @@ static float tu_FontSize(const char* label, float radius)
     return radius >= 40 ? 16.0f : (radius >= 25 ? 13.0f : 10.0f);
 }
 
-// A label in a button's circle, as big as it fits the round, not the square
-// (iosTouch.m's IOSTouch_FitRound): at most size, down to TU_LABEL_MIN, its
-// widest line's ends inside radius R of the middle. One that doesn't fit at
-// the smallest goes condensed (the wheels' xscale), as big as that fits; one
-// that still doesn't is narrowed further at the smallest (to 0.6 at most).
-static void tu_DrawLabel(const char* text, float x, float y, float size, float xscale, float R, touchUiColor c)
+// A label in a button's circle, shrunk to fit its width (to 0.6 of its size)
+static void tu_DrawLabel(const char* text, float x, float y, float size, float xscale, float maxW, touchUiColor c)
+{
+    float w;
+    touchUiDraw_MeasureText(text, size, xscale, &w, NULL);
+    if (w > maxW && w > 0.0f) size *= TU_MAX(0.6f, maxW / w);
+    touchUiDraw_Text(&tu_draw, text, x, y, size, xscale, c);
+}
+
+// ...or as big as it fits the round, not the square (iosTouch.m's
+// IOSTouch_FitRound): at most size, down to TU_LABEL_MIN, its widest line's
+// ends inside radius R of the middle. One that doesn't fit at the smallest
+// goes condensed (the wheels' xscale), as big as that fits; one that still
+// doesn't is narrowed further at the smallest (to 0.6 at most).
+static void tu_DrawRoundLabel(const char* text, float x, float y, float size, float xscale, float R, touchUiColor c)
 {
     int lines = 1;
     for (const char* p = text; *p; p++) lines += *p == '\n';
@@ -3157,10 +3174,11 @@ static void tu_DrawButton(int i)
             tu_DrawSaberIcon(b->x, b->y, b->radius, k == IOSSABER_HAND_LEFT, ic.aHand[k].hilt, ic.aHand[k].bOpen, aRgb);
         }
     }
-    else if (label[0]) {
+    else if (label[0] && (i == BTN_FORCE || i == BTN_TRAYCTRL)) {
         // (inside the 1.5 pt border; FORCE's inside the force meter's ring, whose inside is 4 pt in)
-        tu_DrawLabel(label, b->x, b->y, size, xscale, b->radius - (i == BTN_FORCE ? 4.0f : 1.5f) - TU_LABEL_MARGIN, text);
+        tu_DrawRoundLabel(label, b->x, b->y, size, xscale, b->radius - (i == BTN_FORCE ? 4.0f : 1.5f) - TU_LABEL_MARGIN, text);
     }
+    else if (label[0]) tu_DrawLabel(label, b->x, b->y, size, xscale, 2.0f * b->radius, text);
 
     // sithewok's own uses of JUMP and ACT, named under their labels
     if (tu.bCheatOn && (i == BTN_JUMP || i == BTN_ACT)) {

@@ -339,6 +339,11 @@ void iosPadPanel_SetPrompt(const char* pText)
     }
 }
 
+float iosPadPanel_PromptReach(void)
+{
+    return (float)(IOSPADPANEL_PROMPT_GAP + IOSPADPANEL_PROMPT_H2);
+}
+
 int iosPadPanel_LoadInt(const char* pKey, int valDefault)
 {
     @autoreleasepool {
