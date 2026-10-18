@@ -186,8 +186,10 @@ static struct {
     float accelT, accelMult;
     // the player's health as last seen (vibration when hurt)
     SithThing* pHealthThing; float lastHealth;
-    // the saber wheel's prompt as last set (iosPad_SaberPromptState)
+    // the saber wheel's prompt as last set (iosPad_SaberPromptState); Back on
+    // it (RANDOM): 1 held since tRandom, 2 its hold gone off
     int saberPrompt;
+    int randomState; double tRandom;
 } iosPad_s;
 
 static int iosPad_IsGameplay(void)
@@ -398,12 +400,14 @@ static void iosPad_SetWheelPrompt(void)
         // and LT with two sabers, RT with a FOLD, D-pad down where THROW is)
         const int st = iosPad_SaberPromptState(), bTwo = st & 1;
         char y[48] = "", x[48] = "", same[96] = "", aut[48] = "";
+        char rnd[48];
+        snprintf(rnd, sizeof(rnd), "%s: random   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_BACK, 0));
         if (st & 4) snprintf(y, sizeof(y), "%s: pick   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0));
         if (bTwo || (st & 2)) snprintf(x, sizeof(x), "%s: %s   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_WEST, 0), bTwo ? "one saber" : "2nd saber");
         if (bTwo) snprintf(same, sizeof(same), "%s: same colour   %s: same hilt   ", iosPad_PbName(PB_RB, 0), iosPad_PbName(PB_LT, 0));
         if (st & 8) snprintf(aut, sizeof(aut), "%s: auto open   ", iosPad_PbName(PB_RT, 0));
-        snprintf(t, sizeof(t), "Right stick: colour   %s: set   %s%s: hilt   %s%s%sD-pad up: film   %sL3: look   R3: equip   %s: close",
-                 a, y, iosPad_PbName(PB_LB, 0), x, same, aut, (st & 16) ? "D-pad down: saber throw   " : "", bb);
+        snprintf(t, sizeof(t), "Right stick: colour   %s: set   %s%s: hilt   %s%s%s%sD-pad up: film   %sL3: look   R3: equip   %s: close",
+                 a, y, iosPad_PbName(PB_LB, 0), rnd, x, same, aut, (st & 16) ? "D-pad down: saber throw   " : "", bb);
         iosPad_s.saberPrompt = st;
     }
     else if (iosPad_s.wheelState == IOSPAD_WS_HELD) {
@@ -436,6 +440,8 @@ static void iosPad_WheelReset(void)
     iosPad_s.wheelState = IOSPAD_WS_NONE;
     iosPad_s.wheelBtn = -1;
     iosPad_s.bWheelAimOn = 0;
+    if (iosPad_s.randomState == 1) inputUi_SaberChipHold(0.0f);
+    iosPad_s.randomState = 0;
     inputUi_SetPrompt(NULL);
 }
 
@@ -529,7 +535,7 @@ static void iosPad_WheelInput(void)
     if (iosPad_Pressed(PB_DRIGHT)) { inputUi_WheelStep(1); iosPad_s.bWheelAimed = 1; }
     if (bSaber) {
         // (every button but A, B, Start and the D-pad's left and right is free
-        // on this wheel: the same on every platform, IOSPAD_CHIP_*)
+        // on this wheel: the same on every platform, IOSPAD_CHIP_*; Back below)
         static const struct { int pb, chip; } aSaberPress[] = {
             { PB_X, IOSPAD_CHIP_STYLE },        // one saber or two
             { PB_Y, IOSPAD_CHIP_TARGET },       // the next card or blade
@@ -547,6 +553,23 @@ static void iosPad_WheelInput(void)
             inputUi_SaberChip(aSaberPress[k].chip);
             bChip = 1;
         }
+        // Back: RANDOM -- let go before IOSPAD_RANDOM_HOLD, a new hilt and new
+        // colours; held that long (RANDOM's ring filling), new colours only
+        if (iosPad_Pressed(PB_BACK)) {
+            iosPad_s.randomState = 1;
+            iosPad_s.tRandom = iosPad_s.now;
+        }
+        if (iosPad_s.randomState == 1) {
+            const double held = iosPad_s.now - iosPad_s.tRandom;
+            if (!iosPad_s.aDown[PB_BACK] || held >= IOSPAD_RANDOM_HOLD) {
+                iosPad_s.randomState = iosPad_s.aDown[PB_BACK] ? 2 : 0;
+                inputUi_SaberChipHold(0.0f);
+                inputUi_SaberChip(held >= IOSPAD_RANDOM_HOLD ? IOSPAD_CHIP_RANDOM_COLOURS : IOSPAD_CHIP_RANDOM);
+                bChip = 1;
+            }
+            else inputUi_SaberChipHold((float)(held / IOSPAD_RANDOM_HOLD));
+        }
+        else if (iosPad_s.randomState == 2 && !iosPad_s.aDown[PB_BACK]) iosPad_s.randomState = 0;
         // (what the buttons do now: again whenever it changes, by a press here or a touch)
         if (inputUi_PadWheelIsOpen() && (bChip || iosPad_SaberPromptState() != iosPad_s.saberPrompt)) iosPad_SetWheelPrompt();
         if (iosPad_Pressed(PB_RS)) {

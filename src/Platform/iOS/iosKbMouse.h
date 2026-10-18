@@ -34,7 +34,8 @@
 //     L opens the saber wheel (once there is a saber; L again closes it):
 //     a click sets a colour, 1 adds or takes away the second saber, 2 picks the next card
 //     or blade, 3 takes the saber, 4 the look, 5 FILM, 6 THROW, 7 the
-//     picked hand's hilt, 8 SAME COLOUR, 9 SAME HILT, 0 AUTO (IOSPAD_CHIP_*).
+//     picked hand's hilt, 8 SAME COLOUR, 9 SAME HILT, 0 AUTO, R RANDOM (held
+//     0.3 s: new colours only) (IOSPAD_CHIP_*).
 //   - Shortcuts for what is touch-only, where nothing else is bound to the
 //     key (Setup > Keyboard can take any of them): H first or third person
 //     (as VIEW; the game's own camera key F1 too), P a photo (as CAMERA;

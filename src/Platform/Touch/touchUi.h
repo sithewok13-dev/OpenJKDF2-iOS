@@ -196,10 +196,11 @@ enum { TOUCHUI_WHEEL_FORCE = 0, TOUCHUI_WHEEL_WEAPONS, TOUCHUI_WHEEL_SABER };
 // number): each hand's card (0 the right, 1 the left), its HILT button, its
 // blades' dots (two each: STAFF, FOLD); "+ 2ND SABER"; the LEFT card's x;
 // SAME COLOUR, SAME HILT; EQUIP and the colours' look in the middle; FILM;
-// FOLD's AUTO; THROW at the top right, Jedi Knight's
+// FOLD's AUTO; RANDOM (a tap: a new hilt and new colours; held 0.3 s, new
+// colours only); THROW at the top right, Jedi Knight's
 enum { TOUCHUI_CHIP_CARD = 0, TOUCHUI_CHIP_HILT = 2, TOUCHUI_CHIP_DOT = 4, TOUCHUI_CHIP_ADD = 8, TOUCHUI_CHIP_REMOVE,
        TOUCHUI_CHIP_SAME_COLOUR, TOUCHUI_CHIP_SAME_HILT, TOUCHUI_CHIP_EQUIP, TOUCHUI_CHIP_LOOK, TOUCHUI_CHIP_SHAPE,
-       TOUCHUI_CHIP_AUTO, TOUCHUI_CHIP_THROW, TOUCHUI_NUM_CHIPS };
+       TOUCHUI_CHIP_AUTO, TOUCHUI_CHIP_THROW, TOUCHUI_CHIP_RANDOM, TOUCHUI_NUM_CHIPS };
 
 // Once, before anything else. The settings file (key=value lines) is read
 // now, if there is one, and written whenever a remembered setting changes.

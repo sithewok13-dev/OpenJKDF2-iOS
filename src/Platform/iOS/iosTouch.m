@@ -214,8 +214,9 @@ extern int jkHud_bChatOpen;
 // name for its blades' colours (STAFF and FOLD two, joined while linked),
 // its own HILT button, and on the LEFT card a x (back to one saber); SAME
 // COLOUR and SAME HILT under the LEFT card; FILM (the blade's shape) under
-// the RIGHT card, and AUTO under FILM while a FOLD is in either hand; EQUIP
-// and the look in the middle; THROW at the top right (Jedi Knight).
+// the RIGHT card, AUTO under FILM while a FOLD is in either hand, and RANDOM
+// under where AUTO goes (shown or not, so it never moves); EQUIP and the look
+// in the middle; THROW at the top right (Jedi Knight).
 enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap picks the hand for the ring to paint)
        IOSTOUCH_CHIP_PLUS,       // ("+ 2ND SABER", with one saber: two)
        IOSTOUCH_CHIP_SAMECOLOUR, // (under the LEFT card: a colour tapped paints every blade of both hands)
@@ -227,11 +228,14 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
        IOSTOUCH_CHIP_AUTO,  // (under FILM, while a FOLD is in either hand: FOLD's AUTO, iosSaberFold; "AUTO OPEN")
        IOSTOUCH_CHIP_THROW, // (at the top right, beside the ring: THROW, a switch, Saber Throw on the Force wheel ("SABER THROW");
                             // Jedi Knight's, single player only: iosSaberThrowJk)
+       IOSTOUCH_CHIP_RANDOM, // (under AUTO's spot: a tap, a new hilt and new colours for each saber held; held
+                             // IOSTOUCH_RANDOM_HOLD, a ring filling, new colours only: iosSaberWheel_Random)
        IOSTOUCH_NUM_CHIPS,
        // (touches inside the cards, with no view of their own: each card's
-       // HILT, the LEFT card's x, and each blade's dot on a card with two)
+       // HILT, the LEFT card's x, and each blade's dot on a card with two;
+       // and RANDOM held, its colours only)
        IOSTOUCH_CHIP_HILT_R = IOSTOUCH_NUM_CHIPS, IOSTOUCH_CHIP_HILT_L, IOSTOUCH_CHIP_CLOSE,
-       IOSTOUCH_CHIP_DOT_R0, IOSTOUCH_CHIP_DOT_R1, IOSTOUCH_CHIP_DOT_L0, IOSTOUCH_CHIP_DOT_L1 };
+       IOSTOUCH_CHIP_DOT_R0, IOSTOUCH_CHIP_DOT_R1, IOSTOUCH_CHIP_DOT_L0, IOSTOUCH_CHIP_DOT_L1, IOSTOUCH_CHIP_RANDOM_COLOURS };
 // The switches (FILM, AUTO, THROW, SAME COLOUR, SAME HILT): a track this big
 // at their right, its knob to the right and gold while on. A name on two
 // lines (AUTO OPEN, SABER THROW) starts IOSTOUCH_SWITCH_INSET2 further in,
@@ -264,6 +268,12 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 #define IOSTOUCH_SABER_CHIP_TOUCH 6.0
 #define IOSTOUCH_SABER_CHIP_DIM 0.4 // (FILM while every hilt in use is CROSS: it doesn't change those blades)
 #define IOSTOUCH_SABER_CHIP_HELD 0.7 // (SABER THROW while sithewok holds it on: on, a little dim)
+// RANDOM held this long (as QUICK SAVE: 0.3 s, a ring filling round it, gold
+// as the wheel's picks): new colours only, the hilts kept. Lifted sooner, the
+// tap; slid off it, nothing. Its dice this big, this far in from its left.
+#define IOSTOUCH_RANDOM_HOLD 0.3
+#define IOSTOUCH_RANDOM_DIE 13.0
+#define IOSTOUCH_RANDOM_DIE_X 7.0
 // The look's switch: this big at most, its middle this far over the wheel's,
 // smaller to keep it inside the middle on a small wheel (inputWheel.c's the same)
 #define IOSTOUCH_SABER_LOOK_W 76.0
@@ -741,6 +751,7 @@ typedef struct {
     int bSwipe;           // CAMERA, with FREEZE on: slid up or down, on its way to the cinematic burst or Action Freeze (no tap, no selfie hold)
     int bFlyDone;         // JUMP, ACT: this press has switched sithewok's flight or noclip, or can't (it moved). The tray's LEVEL: no level pick on this press (it moved, or no level can be picked)
     int levelPick;        // the tray's LEVEL: the level number on show (sithewok's level pick), or 0
+    int randomHold;       // ROLE_WHEEL: went down on the saber wheel's RANDOM, 1 while it may still tap or hold; 2 done (held, or slid off)
 } iosTouchSlot;
 
 static iosTouchSlot iosTouch_aSlots[IOSTOUCH_MAX_TOUCHES];
@@ -812,6 +823,7 @@ static int iosTouch_bPadWheel = 0;
 static int iosTouch_bKbmWheel = 0;
 static int iosTouch_padSlot = -1;
 static CGFloat iosTouch_padAim = 0.0;
+static CGFloat iosTouch_padRandomHold = 0.0; // (a pad's View or the keys' R held on the saber wheel: RANDOM's ring, iosTouch_PadSaberHold)
 // MENU's tray; Escape held down for a MENU tap (iosTouch_Update calls left);
 // the FPS readout
 static int iosTouch_bTrayOpen = 0;
@@ -1396,6 +1408,7 @@ typedef struct {
     UILabel* aSwitchName[IOSTOUCH_NUM_CHIPS]; // a switch's name, track and knob (FILM, AUTO, THROW, SAME COLOUR, SAME HILT)
     UIView* aSwitchTrack[IOSTOUCH_NUM_CHIPS];
     UIView* aSwitchKnob[IOSTOUCH_NUM_CHIPS];
+    CAShapeLayer* randomRing; // RANDOM's hold, filling (gold) round it
     // Inside each hand's card ([0] the RIGHT card, [1] the LEFT)
     UILabel* aCardName[2];        // the hand's name
     UIView* cardClose;            // the LEFT card's x
@@ -2357,6 +2370,48 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
                 [c addSubview:t];
             }
         }
+        {
+            // RANDOM: a die (three pips, corner to corner) and its name; the
+            // hold's ring round its edge, filling clockwise from its top middle
+            UILabel* c = aSaberChips[IOSTOUCH_CHIP_RANDOM];
+            const CGFloat d = IOSTOUCH_RANDOM_DIE, w = IOSTOUCH_SABER_CHIP_W, h = IOSTOUCH_SABER_CHIP_H;
+            UIView* die = [[UIView alloc] initWithFrame:CGRectMake(IOSTOUCH_RANDOM_DIE_X, (h - d) * 0.5, d, d)];
+            die.layer.cornerRadius = 3.0;
+            die.layer.borderWidth = 1.2;
+            die.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.9].CGColor;
+            die.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
+            for (int k = -1; k <= 1; k++) {
+                UIView* pip = [[UIView alloc] initWithFrame:CGRectMake(d * 0.5 + k * 3.2 - 1.3, d * 0.5 - k * 3.2 - 1.3, 2.6, 2.6)];
+                pip.layer.cornerRadius = 1.3;
+                pip.backgroundColor = [UIColor whiteColor];
+                [die addSubview:pip];
+            }
+            [c addSubview:die];
+            const CGFloat x0 = IOSTOUCH_RANDOM_DIE_X + d + 3.0;
+            UILabel* name = [[UILabel alloc] initWithFrame:CGRectMake(x0, 0.0, w - x0 - 5.0, h)];
+            name.text = @"RANDOM";
+            name.textAlignment = NSTextAlignmentCenter;
+            name.textColor = [UIColor whiteColor];
+            IOSTouch_FitWidth(name, 10.0, name.bounds.size.width); // (condensed where it must be)
+            [c addSubview:name];
+            const CGFloat r = h * 0.5 - 1.25;
+            UIBezierPath* rp = [UIBezierPath bezierPath];
+            [rp moveToPoint:CGPointMake(w * 0.5, 1.25)];
+            [rp addLineToPoint:CGPointMake(w - h * 0.5, 1.25)];
+            [rp addArcWithCenter:CGPointMake(w - h * 0.5, h * 0.5) radius:r startAngle:-M_PI_2 endAngle:M_PI_2 clockwise:YES];
+            [rp addLineToPoint:CGPointMake(h * 0.5, h - 1.25)];
+            [rp addArcWithCenter:CGPointMake(h * 0.5, h * 0.5) radius:r startAngle:M_PI_2 endAngle:3.0 * M_PI_2 clockwise:YES];
+            [rp closePath];
+            randomRing = [CAShapeLayer layer];
+            randomRing.frame = CGRectMake(0.0, 0.0, w, h);
+            randomRing.path = rp.CGPath;
+            randomRing.fillColor = [UIColor clearColor].CGColor;
+            randomRing.strokeColor = [UIColor colorWithRed:1.0 green:0.85 blue:0.3 alpha:1.0].CGColor;
+            randomRing.lineWidth = 2.5;
+            randomRing.lineCap = kCALineCapRound;
+            randomRing.strokeEnd = 0.0;
+            [c.layer addSublayer:randomRing];
+        }
         [self addSubview:wheelView];
         wheelLastHot = -1;
         wheelTick = [[UISelectionFeedbackGenerator alloc] init];
@@ -3222,7 +3277,7 @@ static int iosTouch_SaberChipUsable(int chip)
     case IOSTOUCH_CHIP_THROW:
         return iosSaberThrowJk_Offered();
     default:
-        return chip >= 0 && chip <= IOSTOUCH_CHIP_DOT_L1;
+        return chip >= 0 && chip <= IOSTOUCH_CHIP_RANDOM_COLOURS;
     }
 }
 
@@ -3230,7 +3285,8 @@ static int iosTouch_SaberChipUsable(int chip)
 // a card picks its hand for the ring to paint, a blade's dot just that blade
 // (only picked: a linked pair splits once its second blade is given a colour
 // of its own; SAME COLOUR on, a dot is its card's); HILT the hand's next hilt
-// (SAME HILT: both hands); "+ 2ND SABER" two sabers, the x one; the switches on or off
+// (SAME HILT: both hands); "+ 2ND SABER" two sabers, the x one; the switches on or off;
+// RANDOM a new hilt and new colours for each saber held (held: the colours only)
 // -- each kept at once, the wheel left open with a tick, to tap a colour. Or
 // EQUIP: the saber in hand, the wheel closed. (Not there to use: nothing,
 // and 0.)
@@ -3301,6 +3357,10 @@ static int iosTouch_SaberChipUsable(int chip)
         break;
     case IOSTOUCH_CHIP_DOT_R1: case IOSTOUCH_CHIP_DOT_L1:
         iosSaberWheel_PickBlade(hand, 1);
+        break;
+    case IOSTOUCH_CHIP_RANDOM: case IOSTOUCH_CHIP_RANDOM_COLOURS:
+        // (the hilts through HILT's own way: a FOLD new to a hand brings AUTO, a STAFF its stance; drawn at once)
+        iosSaberWheel_Random(chip == IOSTOUCH_CHIP_RANDOM_COLOURS);
         break;
     default: // (a card)
         iosSaberWheel_PickHand(hand);
@@ -3382,11 +3442,13 @@ static CGRect IOSTouch_CardPartFrame(CGRect r, int part, int bLinked)
 // there are now: each one's frame, and whether it shows. EQUIP and the look
 // in the middle; THROW where it was found (throwChipSpot); the RIGHT card
 // IOSTOUCH_SABER_CARD_OUT right of the popped ring, FILM under it (AUTO under
-// FILM while a FOLD is in either hand); the LEFT card as far left of it, SAME
-// COLOUR and SAME HILT under it -- or with one saber "+ 2ND SABER" where the
-// LEFT card goes. The cards' tops level with each other: the column (a card
-// and two switches) as near the middle of the ring as it goes under the top
-// row, and under THROW where THROW is over the RIGHT card's column.
+// FILM while a FOLD is in either hand), RANDOM under AUTO's spot (AUTO shown
+// or not); the LEFT card as far left of it, SAME COLOUR and SAME HILT under
+// it -- or with one saber "+ 2ND SABER" where the LEFT card goes. The cards'
+// tops level with each other: the column (a card and two switches; RANDOM
+// hangs under it, so nothing moved for it) as near the middle of the ring as
+// it goes under the top row, and under THROW where THROW is over the RIGHT
+// card's column.
 - (void)saberParts:(CGRect*)aFrame shown:(int*)aShown
 {
     const CGPoint c = iosTouch_wheelCentre;
@@ -3423,6 +3485,19 @@ static CGRect IOSTouch_CardPartFrame(CGRect r, int part, int bLinked)
     aShown[IOSTOUCH_CHIP_SHAPE] = 1;
     aFrame[IOSTOUCH_CHIP_AUTO] = CGRectMake(xr + (W - SW) * 0.5, CGRectGetMaxY(aFrame[IOSTOUCH_CHIP_SHAPE]) + IOSTOUCH_SABER_SWITCH_GAP, SW, SH);
     aShown[IOSTOUCH_CHIP_AUTO] = iosSaberWheel_ShowAuto();
+    {
+        // RANDOM under AUTO's spot (AUTO shown or not: it never moves, and a
+        // second tap never lands on an AUTO that a FOLD brought); where that
+        // is off the screen (it never has been on a phone or an iPad), right
+        // of AUTO's spot; where neither fits, not here to touch (a pad and
+        // the keys still have it). (Nothing else moved for it.)
+        const CGRect a = aFrame[IOSTOUCH_CHIP_AUTO];
+        const CGFloat right = self.bounds.size.width - MAX(in.right, 8.0);
+        CGRect r = CGRectMake(a.origin.x, CGRectGetMaxY(a) + IOSTOUCH_SABER_SWITCH_GAP, SW, SH);
+        if (CGRectGetMaxY(r) > bottom) r = CGRectMake(CGRectGetMaxX(a) + IOSTOUCH_SABER_SWITCH_GAP, a.origin.y, SW, SH);
+        aFrame[IOSTOUCH_CHIP_RANDOM] = r;
+        aShown[IOSTOUCH_CHIP_RANDOM] = CGRectGetMaxY(r) <= bottom && CGRectGetMaxX(r) <= right;
+    }
     aFrame[IOSTOUCH_CHIP_CARD_L] = aFrame[IOSTOUCH_CHIP_PLUS] = CGRectMake(xl, y, W, H);
     aShown[IOSTOUCH_CHIP_CARD_L] = bTwo;
     aShown[IOSTOUCH_CHIP_PLUS] = iosTouch_SaberChipUsable(IOSTOUCH_CHIP_PLUS);
@@ -3765,6 +3840,11 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
             [self setSwitch:i on:iosSaberWheel_GetSameHilt()];
             break;
         case IOSTOUCH_CHIP_PLUS:
+            l.alpha = 1.0;
+            break;
+        case IOSTOUCH_CHIP_RANDOM:
+            l.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.4].CGColor;
+            l.layer.borderWidth = 1.5;
             l.alpha = 1.0;
             break;
         default:
@@ -5006,6 +5086,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         if (iosTouch_bWheelOpen) {
             s->role = ROLE_WHEEL;
             s->wheelSlot = iosTouch_WheelSliceAt(p, -1);
+            if ([self saberChipAt:p] == IOSTOUCH_CHIP_RANDOM) s->randomHold = 1; // (a tap, or held: -tick)
             continue;
         }
 
@@ -5155,6 +5236,15 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 if (bOut) [self openWheelFrom:s held:0];
             }
 
+            // RANDOM slid off (at any of the places UIKit merged into this
+            // move, too): nothing, not even back on, as QUICK SAVE
+            if (s->role == ROLE_WHEEL && s->randomHold == 1) {
+                int bOff = [self saberChipAt:p] != IOSTOUCH_CHIP_RANDOM;
+                for (UITouch* c in [event coalescedTouchesForTouch:t]) {
+                    if ([self saberChipAt:[c locationInView:self]] != IOSTOUCH_CHIP_RANDOM) bOff = 1;
+                }
+                if (bOff) s->randomHold = 2;
+            }
             if (s->role == ROLE_WHEEL) {
                 if (s->bWheelOpener && s->bWheelHeld) {
                     // Opened by holding still: open to tap, until it slides
@@ -5223,7 +5313,16 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 memset(s, 0, sizeof(*s));
                 continue;
             }
-            if (s->role == ROLE_WHEEL && iosTouch_bWheelOpen && bCancelled) {
+            if (s->role == ROLE_WHEEL && iosTouch_bWheelOpen && !s->bWheelOpener && (s->randomHold || [self saberChipAt:p] == IOSTOUCH_CHIP_RANDOM)) {
+                // RANDOM: lifted on it before its hold was up, the tap -- or
+                // held that long (by the touch's own clock, a slow frame not
+                // having seen it yet), the hold's; went off already, slid
+                // off, or slid on from elsewhere, nothing (nor anything under
+                // it now: the wheel stays as it is)
+                if (s->randomHold == 1 && !bCancelled && [self saberChipAt:p] == IOSTOUCH_CHIP_RANDOM)
+                    [self useSaberChip:(t.timestamp - s->tDownTouch >= IOSTOUCH_RANDOM_HOLD ? IOSTOUCH_CHIP_RANDOM_COLOURS : IOSTOUCH_CHIP_RANDOM)];
+            }
+            else if (s->role == ROLE_WHEEL && iosTouch_bWheelOpen && bCancelled) {
                 // the opener taken away: the wheel stays open, for tapping
                 if (s->bWheelOpener) iosTouch_bWheelTapMode = 1;
             }
@@ -5532,6 +5631,25 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         [self setRing:wheelRing progress:wheelProgress];
         [self setRing:weaponRing progress:weaponProgress];
         [self setRing:saberRing progress:saberProgress];
+    }
+    // RANDOM on the saber wheel held still (not slid off): known to be held
+    // IOSTOUCH_RANDOM_HOLD, new colours only (the hilts kept); until then its
+    // ring fills (a pad's View or the keys' R held fill it too)
+    {
+        const int bSaberWheel = iosTouch_bWheelOpen && iosTouch_wheelKind == IOSTOUCH_WHEEL_SABER;
+        CGFloat randomProgress = bSaberWheel ? iosTouch_padRandomHold : 0.0;
+        for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
+            iosTouchSlot* s = &iosTouch_aSlots[i];
+            if (!s->touch || s->role != ROLE_WHEEL || s->randomHold != 1) continue;
+            if (!bSaberWheel) s->randomHold = 2;
+            else if (known - s->tDown >= IOSTOUCH_RANDOM_HOLD) {
+                s->randomHold = 2;
+                [self useSaberChip:IOSTOUCH_CHIP_RANDOM_COLOURS];
+            }
+            else randomProgress = MAX(randomProgress, MIN((CGFloat)((now - s->tDown) / IOSTOUCH_RANDOM_HOLD), 1.0));
+        }
+        randomRing.hidden = randomProgress <= 0.0;
+        [self setRing:randomRing progress:randomProgress];
     }
 
     // JUMP or ACT held still (it jumps or acts as ever, and holds the key, as
@@ -6302,12 +6420,19 @@ void iosTouch_PadSaberChip(int chip)
     case IOSPAD_CHIP_SAMECOLOUR: part = IOSTOUCH_CHIP_SAMECOLOUR; break; // (with two sabers)
     case IOSPAD_CHIP_SAMEHILT: part = IOSTOUCH_CHIP_SAMEHILT; break;
     case IOSPAD_CHIP_AUTO: part = IOSTOUCH_CHIP_AUTO; break; // (while a FOLD is in either hand)
+    case IOSPAD_CHIP_RANDOM: part = IOSTOUCH_CHIP_RANDOM; break;
+    case IOSPAD_CHIP_RANDOM_COLOURS: part = IOSTOUCH_CHIP_RANDOM_COLOURS; break; // (its button held)
     default: return;
     }
     // (one that can't be made now -- SAME COLOUR with one saber, AUTO with no FOLD, THROW not offered -- does nothing)
     if (![iosTouch_pOverlay useSaberChip:part]) return;
     iosTouch_padSlot = -1;
     if (iosTouch_bWheelOpen) [iosTouch_pOverlay refreshWheelLooks];
+}
+
+void iosTouch_PadSaberHold(float progress)
+{
+    iosTouch_padRandomHold = progress > 0.0f ? MIN(progress, 1.0f) : 0.0; // (shown by -tick, on the saber wheel only)
 }
 
 int iosTouch_IsPhotoModeUp(void)

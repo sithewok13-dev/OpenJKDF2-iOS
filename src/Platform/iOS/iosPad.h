@@ -30,7 +30,8 @@
 //         open), Y picks the next card or blade, LB the picked hand's next
 //         hilt, X adds or takes away the second saber, RB SAME COLOUR, LT
 //         SAME HILT, RT AUTO OPEN, D-pad up FILM, D-pad down SABER THROW, L3 the look,
-//         R3 takes the saber (IOSPAD_CHIP_*).
+//         R3 takes the saber, Back RANDOM (held 0.3 s, RANDOM's ring filling:
+//         new colours only) (IOSPAD_CHIP_*).
 //       - Start (Menu, Options, +): a tap opens the game menu as MENU does;
 //         held 0.45 s, the controller options (iosPadPanel: LOOK X, LOOK Y,
 //         CURVE, INVERT, ACCEL, VIBRATION, FPS, TYPE), the game held still.
@@ -86,7 +87,8 @@ extern "C" {
 // iOS's iosTouch_PadSaberChip, inputOverlay.c elsewhere). The pad's button
 // and the key for each, on every platform: X / 1 STYLE, Y / 2 TARGET, R3 / 3
 // EQUIP, L3 / 4 LOOK, D-pad up / 5 SHAPE, D-pad down / 6 THROW, LB / 7 HILT,
-// RB / 8 SAMECOLOUR, LT / 9 SAMEHILT, RT / 0 AUTO.
+// RB / 8 SAMECOLOUR, LT / 9 SAMEHILT, RT / 0 AUTO, Back / R RANDOM (held 0.3 s:
+// RANDOM_COLOURS).
 #define IOSPAD_CHIP_STYLE 0  // one saber or two: the second added ("+ 2ND SABER"), or taken away (the LEFT card's x)
 #define IOSPAD_CHIP_TARGET 1 // what the ring paints: the next card or blade shown (RIGHT, its blades with two, LEFT, its blades; only the cards with SAME COLOUR on; only picked: a linked pair stays linked)
 #define IOSPAD_CHIP_EQUIP 2  // the saber in hand
@@ -97,6 +99,10 @@ extern "C" {
 #define IOSPAD_CHIP_SAMECOLOUR 7 // SAME COLOUR on or off (with two sabers)
 #define IOSPAD_CHIP_SAMEHILT 8   // SAME HILT on or off (with two sabers)
 #define IOSPAD_CHIP_AUTO 9       // FOLD's AUTO on or off (only while a FOLD is in either hand: else nothing)
+#define IOSPAD_CHIP_RANDOM 10    // RANDOM: a new hilt and new colours for each saber held (iosSaberWheel_Random)
+#define IOSPAD_CHIP_RANDOM_COLOURS 11 // RANDOM held: new colours only, the hilts kept
+// RANDOM's button (the key) held this long: RANDOM_COLOURS (as RANDOM held on the touch wheels)
+#define IOSPAD_RANDOM_HOLD 0.3
 
 // Hold rings (iosPadPanel_HoldRing)
 #define IOSPAD_RING_NONE 0

@@ -258,11 +258,18 @@ void inputUi_SaberChip(int chip)
     case IOSPAD_CHIP_LOOK: inputWheel_SaberChip(INPUTWHEEL_CHIP_LOOK); break;
     case IOSPAD_CHIP_SHAPE: inputWheel_SaberChip(INPUTWHEEL_CHIP_SHAPE); break;
     case IOSPAD_CHIP_THROW: inputWheel_SaberChip(INPUTWHEEL_CHIP_THROW); break; // (nothing where it isn't offered)
+    case IOSPAD_CHIP_RANDOM: inputWheel_SaberChip(INPUTWHEEL_CHIP_RANDOM); break;
+    case IOSPAD_CHIP_RANDOM_COLOURS: inputWheel_SaberRandom(1); break; // (its button held: new colours only)
     default: break;
     }
     // (one made lets go of the colour pointed at, as a tap's does; one that
     // can't be made now does nothing at all and keeps it: inputWheel_SaberChip)
     inputOverlay_OutsideWheelIsOpen();
+}
+
+void inputUi_SaberChipHold(float progress)
+{
+    inputWheel_SetRandomHold(progress); // (drawn on the saber wheel only)
 }
 
 // ------------------------------------------------------------ photo modes, the pointer, FPS

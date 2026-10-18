@@ -14,7 +14,9 @@
 // is given a colour other than the first's). SAME COLOUR (a colour tap paints
 // every blade of both hands) and SAME HILT (a HILT tap changes both hands) sit
 // under the LEFT card, and act only with two sabers; FILM under the RIGHT card, dimmed while every hilt in use is
-// CROSS; AUTO under FILM while a FOLD is in either hand.
+// CROSS; AUTO under FILM while a FOLD is in either hand; RANDOM under where
+// AUTO goes (a new hilt and new colours for each saber held; held, new
+// colours only).
 //
 // Hands: 0 the right (IOSSABER_HAND_RIGHT), 1 the left. Blades: 0 a hand's
 // first, 1 its second (STAFF's and FOLD's other one).
@@ -95,6 +97,26 @@ typedef struct {
     int pickedBlade; // the gold ring round a dot: 0, 1; -1 none (the whole hand, not picked, or SAME COLOUR on)
 } iosSaberWheelCard;
 void iosSaberWheel_GetCard(int hand, iosSaberWheelCard* pOut);
+
+// ---- RANDOM (under the RIGHT card's switches, where AUTO's go below it;
+// a pad's View, the keys' R)
+// Each saber held (one or two) a new look: a hilt other than its own (through
+// iosSaberWheel_SetHilt, as its HILT: a new STAFF or FOLD joined) and
+// colours other than its own as shown -- or (bColoursOnly: RANDOM held) the
+// colours only, the hilts kept. SAME HILT on: both hands one new hilt
+// (neither's own); SAME COLOUR on: every blade one new colour (no blade's
+// own), each pair linked again. A STAFF or FOLD's joined dots one colour,
+// split dots two (neither its own, nor each other's). A colour "its own"
+// also where it would look the same (ORIGINAL and the game's own blade's
+// colour: the same swatch). Colours only from this game's wheel in this
+// look (iosSaber_ColourOnWheel), hilts only those available. Nothing else
+// changes: how many sabers, the look, FILM, AUTO, THROW; the pick as it can
+// stand. 1 if anything changed.
+int iosSaberWheel_Random(int bColoursOnly);
+// RANDOM's own dice (never the C library's rand(), which the game has):
+// seeded from the clock at its first throw, unless seeded here first (the
+// tests: the same seed, the same throws)
+void iosSaberWheel_SeedRandom(unsigned int seed);
 
 // ---- FILM and AUTO
 int iosSaberWheel_FilmDimmed(void); // every hilt in use is CROSS (its blades keep their own shape)

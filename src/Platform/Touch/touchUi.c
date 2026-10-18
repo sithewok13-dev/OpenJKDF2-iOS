@@ -234,6 +234,7 @@ typedef struct {
     int bFlyDone;
     int levelPick;
     int bSwipe;         // CAMERA slid on its way to Action Freeze or the cinematic burst: not a tap, nor a hold
+    int randomHold;     // ROLE_WHEEL: went down on the saber wheel's RANDOM, 1 while it may still tap or hold; 2 done (held, or slid off)
 } tuSlot;
 
 static struct {
@@ -324,6 +325,7 @@ static struct {
     // (opened by a finger: inputWheel.c's then; the pad's and the keys'
     // are inputOverlay.c's)
     int bWheelOpen, bWheelTapMode, wheelKind, wheelButton;
+    int bRandomRing; // (RANDOM's ring shown for a finger: inputWheel_SetRandomHold)
     const inputWheelMap* pWheelMap; // (the last one opened)
     float wheelCx, wheelCy, wheelR0, wheelR1;
 
@@ -1612,12 +1614,14 @@ typedef char tu_assertChips[((int)TOUCHUI_CHIP_CARD == (int)INPUTWHEEL_CHIP_CARD
                              && (int)TOUCHUI_CHIP_SAME_HILT == (int)INPUTWHEEL_CHIP_SAME_HILT
                              && (int)TOUCHUI_CHIP_EQUIP == (int)INPUTWHEEL_CHIP_EQUIP && (int)TOUCHUI_CHIP_LOOK == (int)INPUTWHEEL_CHIP_LOOK
                              && (int)TOUCHUI_CHIP_SHAPE == (int)INPUTWHEEL_CHIP_SHAPE && (int)TOUCHUI_CHIP_AUTO == (int)INPUTWHEEL_CHIP_AUTO
-                             && (int)TOUCHUI_CHIP_THROW == (int)INPUTWHEEL_CHIP_THROW
+                             && (int)TOUCHUI_CHIP_THROW == (int)INPUTWHEEL_CHIP_THROW && (int)TOUCHUI_CHIP_RANDOM == (int)INPUTWHEEL_CHIP_RANDOM
                              && (int)TOUCHUI_NUM_CHIPS == (int)INPUTWHEEL_NUM_CHIPS) ? 1 : -1];
+#define TU_CHIP_RANDOM_COLOURS TOUCHUI_NUM_CHIPS // (RANDOM held: new colours only; no part of its own)
 static void tu_UseSaberChip(int chip)
 {
     if (!tu.bWheelOpen) return;
-    inputWheel_SaberChip(chip);
+    if (chip == TU_CHIP_RANDOM_COLOURS) inputWheel_SaberRandom(1);
+    else inputWheel_SaberChip(chip);
     if (!inputWheel_IsOpen()) {
         tu_WheelClosed(); // (EQUIP: the saber taken)
         return;
@@ -1923,6 +1927,7 @@ static void tu_TouchDown(long long id, float px, float py, double t)
     if (tu.bWheelOpen) {
         s->role = ROLE_WHEEL;
         s->wheelSlot = tu_WheelSliceAt(px, py, -1);
+        if (tu_SaberChipAt(px, py) == TOUCHUI_CHIP_RANDOM) s->randomHold = 1; // (a tap, or held: the tick)
         return;
     }
     s->button = tu_ButtonAt(px, py);
@@ -1975,6 +1980,8 @@ static void tu_TouchMove(tuSlot* s, float px, float py, double t)
     // QUICK SAVE, QUICK LOAD: off the button even once, no save or load
     if (s->role == ROLE_BUTTON && tu_IsQuickHold(s->button) && !s->bFired && !tu_IsPointOnButton(px, py, s->button))
         s->bFired = 1;
+    // RANDOM on the saber wheel the same: off it even once, nothing
+    if (s->role == ROLE_WHEEL && s->randomHold == 1 && tu_SaberChipAt(px, py) != TOUCHUI_CHIP_RANDOM) s->randomHold = 2;
     // CAMERA slid TU_WHEEL_OPEN_SLIDE (anywhere) before its hold was up: a
     // burst until this finger lifts -- or, with FREEZE on, mostly up or down
     // as far as TU_FREEZE_SWIPE: down, Action Freeze; up (CAMERA is at the
@@ -2069,7 +2076,17 @@ static void tu_TouchUp(tuSlot* s, float px, float py, double t, int bCancelled)
         if (bClose) tu_EndFreeze();
         return;
     }
-    if (s->role == ROLE_WHEEL && tu.bWheelOpen && bCancelled) {
+    if (s->role == ROLE_WHEEL && tu.bWheelOpen && !s->bWheelOpener && (s->randomHold || tu_SaberChipAt(px, py) == TOUCHUI_CHIP_RANDOM)) {
+        // RANDOM: lifted on it before its hold was up, the tap -- or held
+        // that long (a slow frame not having seen it yet), the hold's; went
+        // off already, slid off, or slid on from elsewhere, nothing (nor
+        // anything under it now: the wheel stays as it is)
+        if (tu.bRandomRing) inputWheel_SetRandomHold(0.0f);
+        tu.bRandomRing = 0;
+        if (s->randomHold == 1 && !bCancelled && tu_SaberChipAt(px, py) == TOUCHUI_CHIP_RANDOM)
+            tu_UseSaberChip(t - s->tDown >= INPUTWHEEL_RANDOM_HOLD ? TU_CHIP_RANDOM_COLOURS : TOUCHUI_CHIP_RANDOM);
+    }
+    else if (s->role == ROLE_WHEEL && tu.bWheelOpen && bCancelled) {
         if (s->bWheelOpener) tu.bWheelTapMode = 1; // the opener taken away: open to tap
     }
     else if (s->role == ROLE_WHEEL && tu.bWheelOpen && s->bWheelOpener && s->bWheelHeld) {
@@ -2342,6 +2359,25 @@ void touchUi_Tick(double known, double now)
         tu.aRing[BTN_WHEEL] = wheelProgress;
         tu.aRing[BTN_NEXTWPN] = weaponProgress;
         tu.aRing[BTN_SABER] = saberProgress;
+    }
+    // RANDOM on the saber wheel held still (not slid off): known to be held
+    // INPUTWHEEL_RANDOM_HOLD, new colours only (the hilts kept); until then
+    // its ring fills (set only while a finger holds it, or as one lets go: a
+    // pad's or the keys' hold sets it too)
+    {
+        float randomProgress = 0.0f;
+        for (int i = 0; i < TU_MAX_TOUCHES; i++) {
+            tuSlot* s = &tu.aSlots[i];
+            if (!s->bUsed || s->role != ROLE_WHEEL || s->randomHold != 1) continue;
+            if (!tu.bWheelOpen) s->randomHold = 2;
+            else if (known - s->tDown >= INPUTWHEEL_RANDOM_HOLD) {
+                s->randomHold = 2;
+                tu_UseSaberChip(TU_CHIP_RANDOM_COLOURS);
+            }
+            else randomProgress = TU_MAX(randomProgress, (float)TU_MIN((now - s->tDown) / INPUTWHEEL_RANDOM_HOLD, 1.0));
+        }
+        if (tu.bWheelOpen && (randomProgress > 0.0f || tu.bRandomRing)) inputWheel_SetRandomHold(randomProgress);
+        tu.bRandomRing = tu.bWheelOpen && randomProgress > 0.0f;
     }
 
     // JUMP, ACT (sithewok's flight, noclip) and the tray's LEVEL (its level

@@ -64,6 +64,7 @@ void sithControl_DefaultHelper(int funcIdx, int dxKeyNum, int flags);
 #define IOSKBM_KEY_PHOTO SDL_SCANCODE_P
 #define IOSKBM_KEY_FREEZE SDL_SCANCODE_O
 #define IOSKBM_KEY_LOAD SDL_SCANCODE_F10
+#define IOSKBM_KEY_RANDOM SDL_SCANCODE_R // (on the saber wheel only: RANDOM; held IOSPAD_RANDOM_HOLD, new colours only)
 
 enum { IOSKBM_WS_NONE = 0, IOSKBM_WS_PENDING, IOSKBM_WS_HELD, IOSKBM_WS_TAP };
 
@@ -100,6 +101,7 @@ static struct {
     float relSum, lastWheel;
     int lastTouch; // 0 none yet, 1 a pointer click, 2 a finger
     int saberPrompt; // the saber wheel's prompt as last set (iosKbMouse_SaberPromptState)
+    int randomState; double tRandom; // R on the saber wheel (RANDOM): 1 held since tRandom, 2 its hold gone off
 } iosKbMouse_s = { .wheelKey = -1 };
 
 // ------------------------------------------------------------ the game
@@ -199,7 +201,7 @@ static void iosKbMouse_SetWheelPrompt(void)
         // (what each key does now: 2 with more than one card or blade to
         // pick, 8 and 9 with two sabers, 0 with a FOLD, 6 where THROW is)
         const int st = iosKbMouse_SaberPromptState(), bTwo = st & 1;
-        snprintf(t, sizeof(t), "Mouse: colour   Click: set   %s%s7: hilt   %s%s3: equip   4: look   5: film   %sEsc: close",
+        snprintf(t, sizeof(t), "Mouse: colour   Click: set   %s%s7: hilt   R: random   %s%s3: equip   4: look   5: film   %sEsc: close",
                  bTwo ? "1: one saber   " : (st & 2) ? "1: 2nd saber   " : "", (st & 4) ? "2: pick   " : "", bTwo ? "8: same colour   9: same hilt   " : "",
                  (st & 8) ? "0: auto open   " : "", (st & 16) ? "6: saber throw   " : "");
         iosKbMouse_s.saberPrompt = st;
@@ -235,6 +237,8 @@ static int iosKbMouse_WheelKindFor(int sc)
 static void iosKbMouse_WheelReset(void)
 {
     if (iosKbMouse_s.wheelState >= IOSKBM_WS_HELD) inputUi_SetPrompt(NULL);
+    if (iosKbMouse_s.randomState == 1) inputUi_SaberChipHold(0.0f);
+    iosKbMouse_s.randomState = 0;
     // (its key, still held, doesn't reach the game either)
     const int key = iosKbMouse_s.wheelKey;
     if (key >= 0 && iosKbMouse_s.aDown[key]) iosKbMouse_s.aStale[key] = 1;
@@ -367,6 +371,24 @@ static void iosKbMouse_WheelInput(void)
             inputUi_SaberChip(aSaberKey[k].chip);
             bChip = 1;
         }
+        // R: RANDOM -- let go before IOSPAD_RANDOM_HOLD, a new hilt and new
+        // colours; held that long (RANDOM's ring filling), new colours only
+        // (as the pad's Back; its repeats are no new press)
+        if (iosKbMouse_Pressed(IOSKBM_KEY_RANDOM)) {
+            iosKbMouse_s.randomState = 1;
+            iosKbMouse_s.tRandom = iosKbMouse_s.now;
+        }
+        if (iosKbMouse_s.randomState == 1) {
+            const double held = iosKbMouse_s.now - iosKbMouse_s.tRandom;
+            if (!iosKbMouse_s.aDown[IOSKBM_KEY_RANDOM] || held >= IOSPAD_RANDOM_HOLD) {
+                iosKbMouse_s.randomState = iosKbMouse_s.aDown[IOSKBM_KEY_RANDOM] ? 2 : 0;
+                inputUi_SaberChipHold(0.0f);
+                inputUi_SaberChip(held >= IOSPAD_RANDOM_HOLD ? IOSPAD_CHIP_RANDOM_COLOURS : IOSPAD_CHIP_RANDOM);
+                bChip = 1;
+            }
+            else inputUi_SaberChipHold((float)(held / IOSPAD_RANDOM_HOLD));
+        }
+        else if (iosKbMouse_s.randomState == 2 && !iosKbMouse_s.aDown[IOSKBM_KEY_RANDOM]) iosKbMouse_s.randomState = 0;
         if (!inputUi_KbmWheelIsOpen()) {
             iosKbMouse_WheelReset();
             return;

@@ -469,7 +469,7 @@ switch the controller off and they come back.
 | L3 (press the left stick) | Run (press again, or stop moving, to walk) |
 | R3 (press the right stick) | First or third person |
 | Start / Options / Menu | Tap: the game menu. Hold: controller options |
-| Back / View / Share | Tap: the map. Hold: quick save |
+| Back / View / Share | Tap: the map. Hold: quick save. On the saber wheel: RANDOM |
 | Back + D-pad down, held | Quick load |
 
 - **The wheels:** hold LB or RB (or push the right stick while you press it)
@@ -493,6 +493,7 @@ switch the controller off and they come back.
   | D-pad down | SABER THROW on or off (Jedi Knight only) |
   | L3 | CLASSIC or REFORGED |
   | R3 | Take the saber in hand ("equip") |
+  | Back / View / Share | RANDOM: a new hilt and new colours. Hold it (0.3 s, RANDOM's ring fills): new colours only |
   | B / Circle, D-pad left | Close (D-pad left sets the colour pointed at first) |
 
   The line at the bottom of the screen shows what each button does right
@@ -581,6 +582,7 @@ Turn on FPS in MENU's tray to see what the app gets (below).
   | 8 | SAME COLOUR on or off (two sabers) |
   | 9 | SAME HILT on or off (two sabers) |
   | 0 | AUTO OPEN on or off (with a FOLD) |
+  | R | RANDOM: a new hilt and new colours. Hold it (0.3 s, RANDOM's ring fills): new colours only |
   | Esc, right click, L again | Close |
 
   The line at the bottom of the screen shows what each key does right now
@@ -958,8 +960,9 @@ hand's colours and has its own **HILT** button.
   tap changes both sabers. Both are off to start, so nothing changes unless
   you switch them on. They only work while you hold two sabers: with one,
   they wait, still on, for the second saber to come back.
-- Every tap on a card, a dot, HILT, + 2ND SABER, the x or a switch gives a
-  small tick and leaves the wheel open, so you can set everything in one go.
+- Every tap on a card, a dot, HILT, + 2ND SABER, the x, a switch or RANDOM
+  gives a small tick and leaves the wheel open, so you can set everything in
+  one go.
   Your sabers, colours and switches are remembered at once. The card you
   picked lasts until you close the game: it starts on the RIGHT card.
 
@@ -1012,6 +1015,25 @@ hand's colours and has its own **HILT** button.
     game has them.
 - **AUTO OPEN**, an on/off switch under FILM, shows only while a FOLD is in
   either hand (see below). On to start.
+- **RANDOM** (a small die), under the RIGHT card's switches, always in the
+  same spot: where AUTO OPEN would go next, even when AUTO OPEN isn't
+  showing. So nothing moves, and a second tap can't land on AUTO OPEN when a
+  random FOLD makes it appear.
+  - **Tap it:** every saber you hold (one or two) gets a different hilt and
+    a different colour (never the one it has, and never one that looks the
+    same). A STAFF or FOLD with joined dots gets one new colour; with split
+    dots, two new ones. A saber that becomes a STAFF or FOLD starts with
+    joined dots, as with HILT.
+  - **Hold it** for 0.3 s (a gold ring fills round it, like QUICK SAVE's):
+    new colours only, the hilts stay. Let go sooner and it's a tap. Slide
+    off it and nothing happens.
+  - With **SAME HILT** on, both sabers get the same new hilt. With **SAME
+    COLOUR** on, every blade gets the same new colour.
+  - It never changes how many sabers you hold, CLASSIC or REFORGED, FILM,
+    AUTO OPEN or SABER THROW. The colours come from the wheel you see (this
+    game's, in this look), and the hilts are the four on HILT.
+  - Like the switches, it gives a tick, is remembered at once and leaves the
+    wheel open. On a controller it's Back (View, Share); on a keyboard, R.
 - **The wheel stays open** after you pick a colour, so you can change every
   blade in one go. Close it with the gap at the bottom, or by tapping an empty
   spot.
