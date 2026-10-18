@@ -1191,7 +1191,9 @@ static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
             iosSaberShape_Across(&aTip[k], &aRoot[k], &aCos[k], &aSin[k]);
     }
 
-    // the glow round them, a little wider or narrower each frame (the side blades' none at their roots, inside the blade's)
+    // the glow round them, a little wider or narrower each frame (the side blades' rounded at their roots too, back
+    // into the blade's over the vents: cut off square there, it ended in a hard line across the guard, a dark
+    // wedge under it)
     if (!g) return;
     iosSaberShape_GlowSetBack(1);
     const flex_t f = (1 + (iosSaberShape_Rand() * 2 - 1) * IOSSABERSHAPE_CROSS_GLOW_FLICKER) * (bBlade ? iosSaberShape_crossGlow : (flex_t)1);
@@ -1199,7 +1201,7 @@ static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
     iosSaberShape_GlowQuads(pLine, g, texMode, pTip, pBase, rg * IOSSABERSHAPE_CROSS_GLOW_POINT, rg, c, sn, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
     for (int k = 0; bGuards && k < 2; k++)
         iosSaberShape_GlowQuads(pLine, g, texMode, &aTip[k], &aRoot[k], gr * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f * IOSSABERSHAPE_CROSS_GLOW_POINT,
-                                gr * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f, aCos[k], aSin[k], IOSSABERSHAPE_END_TIP);
+                                gr * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f, aCos[k], aSin[k], IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
     iosSaberShape_GlowSetBack(0);
 }
 
