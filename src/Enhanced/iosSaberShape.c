@@ -696,18 +696,19 @@ void iosSaberShape_EndBlade(void)
 // middle row runs along the length (across it, the glow's profile) and its
 // top and bottom halves make the round ends, so they meet with no seam and
 // nothing is drawn twice.
-// (ends: which round ends are drawn, IOSSABERSHAPE_END_*)
+// (ends: which round ends are drawn, IOSSABERSHAPE_END_*; the base's
+// reaches baseReach out past the base: rBase round, less squashed)
 #define IOSSABERSHAPE_END_TIP 1
 #define IOSSABERSHAPE_END_BASE 2
 static void iosSaberShape_GlowQuads(rdThing* pLine, const iosSaberShapeGlow* g, rdTexMode_t texMode, const rdVector3* pTip,
-                                    const rdVector3* pBase, flex_t rTip, flex_t rBase, flex_t angCos, flex_t angSin, int ends)
+                                    const rdVector3* pBase, flex_t rTip, flex_t rBase, flex_t baseReach, flex_t angCos, flex_t angSin, int ends)
 {
     // (across, and along from base to tip, at each end's radius)
     const flex_t tx = rTip * angCos, tz = rTip * angSin, bx = rBase * angCos, bz = rBase * angSin;
     const flex_t w = g->w - (flex_t)0.01, h = g->h - (flex_t)0.01, mid = g->h * (flex_t)0.5;
     rdMaterial* pMat = (rdMaterial*)&g->mat;
     rdVector3 tipOut = { pTip->x - tz, pTip->y, pTip->z + tx };
-    rdVector3 baseOut = { pBase->x + bz, pBase->y, pBase->z - bx };
+    rdVector3 baseOut = { pBase->x + baseReach * angSin, pBase->y, pBase->z - baseReach * angCos };
 
     // the length, from the tip down
     for (int i = 0; i < IOSSABERSHAPE_SLICES; i++) {
@@ -758,7 +759,7 @@ static void iosSaberShape_DrawGlow(rdThing* pLine, const rdVector3* pTip, const 
     iosSaberShape_GlowSetBack(1); // (under the beam's end too, in first person)
     iosSaberShape_GlowQuads(pLine, iosSaberShape_pGlow, pLine->polyline->face.textureMode, &end, pBase,
                             iosSaberShape_beamTip * IOSSABERSHAPE_BEAM_GLOW_WIDTH, pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH,
-                            angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
+                            pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
     iosSaberShape_GlowSetBack(0);
 }
 
@@ -1005,6 +1006,7 @@ static int iosSaberShape_GuardAxis(const rdMatrix34* pToCam, const rdVector3* pA
 #define IOSSABERSHAPE_VENT_IN 0.6f
 #define IOSSABERSHAPE_VENT_OUT 3.0f
 #define IOSSABERSHAPE_VENT_LIP 0.7f
+#define IOSSABERSHAPE_VENT_ROOT (IOSSABERSHAPE_VENT_OUT + IOSSABERSHAPE_VENT_LIP * 0.4f) // (the side blade's root: the middle of the open end)
 #define IOSSABERSHAPE_VENT_RADIUS 0.5f
 #define IOSSABERSHAPE_VENT_SIDES 6
 #define IOSSABERSHAPE_CLAMP_OUT 1.4f
@@ -1080,7 +1082,7 @@ static void iosSaberShape_Vents(rdThing* pLine, rdTexMode_t texMode, const rdVec
         const flex_t sd = k ? (flex_t)-1 : (flex_t)1;
         const rdVector3 s = { pSide->x * sd, pSide->y * sd, pSide->z * sd };
         // (the side blade: out of the middle of the open end)
-        const flex_t root = R * (IOSSABERSHAPE_VENT_OUT + IOSSABERSHAPE_VENT_LIP * (flex_t)0.4);
+        const flex_t root = R * IOSSABERSHAPE_VENT_ROOT;
         aRoot[k].x = o.x + s.x * root;
         aRoot[k].y = o.y + s.y * root;
         aRoot[k].z = o.z + s.z * root;
@@ -1193,15 +1195,17 @@ static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
 
     // the glow round them, a little wider or narrower each frame (the side blades' rounded at their roots too, back
     // into the blade's over the vents: cut off square there, it ended in a hard line across the guard, a dark
-    // wedge under it)
+    // wedge under it; that end reaching back no further than the blade's middle line: further, the two piled up on
+    // the blade's glow over the vents and washed them out)
     if (!g) return;
     iosSaberShape_GlowSetBack(1);
     const flex_t f = (1 + (iosSaberShape_Rand() * 2 - 1) * IOSSABERSHAPE_CROSS_GLOW_FLICKER) * (bBlade ? iosSaberShape_crossGlow : (flex_t)1);
     const flex_t rg = r * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f;
-    iosSaberShape_GlowQuads(pLine, g, texMode, pTip, pBase, rg * IOSSABERSHAPE_CROSS_GLOW_POINT, rg, c, sn, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
+    iosSaberShape_GlowQuads(pLine, g, texMode, pTip, pBase, rg * IOSSABERSHAPE_CROSS_GLOW_POINT, rg, rg, c, sn, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
+    const flex_t gw = gr * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f, gBack = gw < R * IOSSABERSHAPE_VENT_ROOT ? gw : R * IOSSABERSHAPE_VENT_ROOT;
     for (int k = 0; bGuards && k < 2; k++)
-        iosSaberShape_GlowQuads(pLine, g, texMode, &aTip[k], &aRoot[k], gr * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f * IOSSABERSHAPE_CROSS_GLOW_POINT,
-                                gr * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f, aCos[k], aSin[k], IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
+        iosSaberShape_GlowQuads(pLine, g, texMode, &aTip[k], &aRoot[k], gw * IOSSABERSHAPE_CROSS_GLOW_POINT, gw, gBack, aCos[k], aSin[k],
+                                IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
     iosSaberShape_GlowSetBack(0);
 }
 
@@ -1384,7 +1388,7 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
     }
     // (as wide as a held blade's of that length: the model's blade is drawn wider, with its blur)
     const flex_t r = iosSaberShape_Len(b.x - a.x, b.y - a.y, b.z - a.z) * IOSSABERSHAPE_THROWN_BEAM * IOSSABERSHAPE_BEAM_GLOW_WIDTH;
-    iosSaberShape_GlowQuads(&glowThing, g, glowThing.curTexMode, &tip, &base, r, r, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
+    iosSaberShape_GlowQuads(&glowThing, g, glowThing.curTexMode, &tip, &base, r, r, r, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
 }
 
 #endif // JK_ENHANCED
