@@ -26,7 +26,8 @@ static int32_t enhSettings_bSaberThrow = 0;
 
 // The saber wheel's choices (iosSaberWheel's kept names, "enh_saber" + name;
 // "" till first kept: the load's start, or what builds before kept), and
-// what builds before kept (read to be moved, then emptied: saved no more)
+// what builds before kept (read to be moved, and not saved again: a string
+// cvar with an updatable default never is, sithCvar_SaveVar)
 #define ENHSETTINGS_MAX_KEPT 24
 #define ENHSETTINGS_MAX_OLD 16
 static char enhSettings_aKeptName[ENHSETTINGS_MAX_KEPT][48];
@@ -57,7 +58,7 @@ void enhSettings_StartupCvars(void)
         snprintf(enhSettings_aKeptName[k], sizeof(enhSettings_aKeptName[k]), "enh_saber%s", iosSaberWheel_KeptName(i));
         sithCvar_RegisterStr(enhSettings_aKeptName[k], "", enhSettings_aKept[k], CVARFLAG_GLOBAL);
     }
-    // (empty, their default, isn't saved)
+    // (read only: not saved again)
     enhSettings_numOld = 0;
     for (int i = 0; i < iosSaberWheel_NumOldKept() && enhSettings_numOld < ENHSETTINGS_MAX_OLD; i++) {
         const char* name = iosSaberWheel_OldKeptName(i);
@@ -106,8 +107,6 @@ static void enhSettings_SyncKept(int bFirst)
         for (int k = 0; k < enhSettings_numKept; k++)
             if (enhSettings_aKept[k][0]) iosSaberWheel_LoadKept(enhSettings_aKeptName[k] + 9, enhSettings_aKept[k]);
         iosSaberWheel_EndLoad();
-        for (int k = 0; k < enhSettings_numOld; k++)
-            if (enhSettings_aOld[k][0]) sithCvar_SetStr(enhSettings_aOldName[k], "");
     }
     for (int k = 0; k < enhSettings_numKept; k++) {
         if (!bFirst && enhSettings_aKept[k][0] && strcmp(enhSettings_aKept[k], enhSettings_aKeptSynced[k])) {

@@ -28,8 +28,8 @@
 //                                 before kept (enh_saberHilt, both hands';
 //                                 enh_saberStyle CROSS; enh_saberColourSingle,
 //                                 enh_saberColourDualRight, enh_saberColourDualLeft,
-//                                 enh_saberColourCross): those are then
-//                                 emptied, and not saved
+//                                 enh_saberColourCross): those are read
+//                                 once, and not saved again
 //       enh_forceJumpStyle        0 smooth, 1 steps, 2 classic (IOSGAME_JUMP_*;
 //                                 classic by default, the desktops' own jump)
 //       enh_thirdPerson           0 or 1

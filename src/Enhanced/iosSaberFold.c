@@ -463,9 +463,10 @@ static void iosSaberFold_TickOthers(void)
     if (!sithNet_isMulti) return;
     for (uint32_t i = 0; i < jkPlayer_maxPlayers; i++) {
         SithThing* t = jkPlayer_playerInfos[i].pLocalPlayer;
-        if (!t || t == sithPlayer_g_pLocalPlayerThing || t->type != SITH_THING_PLAYER) continue;
+        if (!(jkPlayer_playerInfos[i].flags & 1) || !t || t == sithPlayer_g_pLocalPlayerThing || t->type != SITH_THING_PLAYER) continue;
         const jkPlayerLook* pLook = jkPlayerLook_ForThing(t);
-        if (!pLook) continue;
+        // (only players with a FOLD: the snaps' slots are few)
+        if (!pLook || (pLook->aHilt[0] != IOSSABER_HILT_FOLD && pLook->aHilt[1] != IOSSABER_HILT_FOLD)) continue;
         int bits = 0;
         for (int k = 0; k < 2; k++)
             if (pLook->flags & JKPLAYERLOOK_FLAG_FOLD_OPEN(k)) bits |= 1 << k;
