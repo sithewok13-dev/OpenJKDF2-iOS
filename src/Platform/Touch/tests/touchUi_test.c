@@ -2248,7 +2248,7 @@ static void test_saber_hilt(void)
         touchUi_Init(&fakeGame, g_settings);
         CHECK(fg.aHilt[0] == 0 && SC(0, 0) == 7);
     }
-    g_case = "hilt: a CROSS kept as a style (builds before the hilts): SINGLE, the right hand CROSS in CROSS's colour, the left DUAL's left one, the file kept anew";
+    g_case = "hilt: a CROSS kept as a style (builds before the hilts): SINGLE, the right hand CROSS in CROSS's colour, the left DUAL's left one, the file kept anew (the published build's keys too, Style CROSS)";
     {
         static const char* aFile[2] = { "saberStyle=CROSS\nsaberColour.SINGLE.0=c5\nsaberColour.DUAL.0=c3\nsaberColour.DUAL.1=c4\nsaberColour.CROSS.0=c9\n",
                                         "saberColour.CROSS.0=c9\nsaberColour.SINGLE.0=c5\nsaberColour.DUAL.0=c3\nsaberColour.DUAL.1=c4\nsaberStyle=CROSS\n" };
@@ -2261,11 +2261,12 @@ static void test_saber_hilt(void)
             f = fopen(g_settings, "r");
             if (f) { buf[fread(buf, 1, sizeof(buf) - 1, f)] = 0; fclose(f); }
             printf("  %s: style %d hilts %d %d colours %d/%d; kept: %s%s%s\n", k ? "colour line first" : "as kept", fg.saberStyle, fg.aHilt[0], fg.aHilt[1],
-                   SC(0, 0), SC(1, 1), strstr(buf, "saberStyle=SINGLE") ? "saberStyle=SINGLE " : "",
+                   SC(0, 0), SC(1, 1), strstr(buf, "saberStyle=CROSS") ? "saberStyle=CROSS " : "",
                    strstr(buf, "saberHiltRight=CROSS") ? "saberHiltRight=CROSS " : "", strstr(buf, "saberColourRight1=c9") ? "saberColourRight1=c9" : "");
             CHECK(fg.saberStyle == TOUCHUI_SABER_SINGLE && fg.aHilt[0] == 1 && fg.aHilt[1] == 0 && SC(0, 0) == 9 && SC(1, 1) == 4
-                  && strstr(buf, "saberStyle=SINGLE\n") && strstr(buf, "saberHiltRight=CROSS\n") && strstr(buf, "saberColourRight1=c9\n")
-                  && strstr(buf, "saberColourLeft1=c4\n") && !strstr(buf, "saberStyle=CROSS"));
+                  && strstr(buf, "saberStyle=CROSS\n") && strstr(buf, "saberHiltRight=CROSS\n") && strstr(buf, "saberColourRight1=c9\n")
+                  && strstr(buf, "saberColourLeft1=c4\n") && !strstr(buf, "saberStyle=SINGLE") && strstr(buf, "saberColour.SINGLE.0=c9\n")
+                  && strstr(buf, "saberColour.CROSS.0=c9\n") && strstr(buf, "saberColour.DUAL.0=c9\n") && strstr(buf, "saberColour.DUAL.1=c4\n"));
         }
     }
     g_case = "hilt: SINGLE kept with an old CROSS colour too: SINGLE's own colour kept, the hilt NORMAL";
@@ -3209,7 +3210,8 @@ static void test_saber_wheel_state(void)
         FILE* f = fopen(g_settings, "r");
         if (f) { buf[fread(buf, 1, sizeof(buf) - 1, f)] = 0; fclose(f); }
         CHECK(strstr(buf, "saberStyle=DUAL\n") && strstr(buf, "saberHiltLeft=FOLD\n") && strstr(buf, "saberHiltRight=NORMAL\n") && strstr(buf, "saberLinkRight=1\n")
-              && strstr(buf, "saberFoldAuto=1\n") && strstr(buf, "saberSameColour=0\n") && strstr(buf, "saberLook=CLASSIC\n") && !strstr(buf, "saberColour.SINGLE"));
+              && strstr(buf, "saberFoldAuto=1\n") && strstr(buf, "saberSameColour=0\n") && strstr(buf, "saberLook=CLASSIC\n") && strstr(buf, "saberColour.SINGLE.0=")
+              && strstr(buf, "saberColour.DUAL.1="));
         fg.aHilt[1] = 0; fg.saberStyle = 0;
         touchUi_Init(&fakeGame, g_settings);
         CHECK(fg.aHilt[1] == 3 && fg.saberStyle == 1);

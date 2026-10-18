@@ -367,6 +367,8 @@ static void tu_WheelClosed(void);
 
 // ------------------------------------------------------------ settings
 
+#include "Enhanced/enhSettings.h" // (the saber as the published build kept it: enhSettings_Published)
+
 // The saber's choices as they are now (look, shape, THROW, and the saber
 // wheel's: iosSaberWheel's, each by its name), as text
 static void tu_SaberKept(char a[TU_SABER_KEPT])
@@ -411,8 +413,19 @@ static void tu_SaveSettings(void)
     if (G(SaberGetThrow)) fprintf(f, "saberThrow=%d\n", tu.game->SaberGetThrow() ? 1 : 0);
     char v[IOSSABERWHEEL_KEPT_LEN];
     for (int i = 0; i < iosSaberWheel_NumKept(); i++) {
-        iosSaberWheel_GetKept(i, v, sizeof(v));
+        // (Style as the published build reads it too: one saber with a CROSS, CROSS; read back here as one saber)
+        if (!strcmp(iosSaberWheel_KeptName(i), "Style")) enhSettings_Published(ENHSETTINGS_PUB_STYLE, v, sizeof(v));
+        else iosSaberWheel_GetKept(i, v, sizeof(v));
         fprintf(f, "saber%s=%s\n", iosSaberWheel_KeptName(i), v);
+    }
+    // and each style's colour as the published build kept it (going back to it finds the player's saber)
+    static const struct { int what; const char* name; } aPub[] = {
+        { ENHSETTINGS_PUB_SINGLE, "SINGLE.0" }, { ENHSETTINGS_PUB_DUAL_RIGHT, "DUAL.0" }, { ENHSETTINGS_PUB_DUAL_LEFT, "DUAL.1" },
+        { ENHSETTINGS_PUB_CROSS, "CROSS.0" },
+    };
+    for (int i = 0; i < (int)(sizeof(aPub) / sizeof(aPub[0])); i++) {
+        enhSettings_Published(aPub[i].what, v, sizeof(v));
+        fprintf(f, "saberColour.%s=%s\n", aPub[i].name, v);
     }
     fclose(f);
 }
@@ -436,6 +449,7 @@ static void tu_LoadSettings(void)
         return;
     }
     char line[128];
+    int bOld = 0, bOwn = 0; // (names builds before kept; this build's own, but the Style both keep)
     while (fgets(line, sizeof(line), f)) {
         char* eq = strchr(line, '=');
         if (!eq) continue;
@@ -476,15 +490,18 @@ static void tu_LoadSettings(void)
                     if (!strcmp(tu.game->SaberShapeName(sh), v)) tu.game->SaberSetShape(sh);
             }
             else {
-                // (a name builds before kept: moved, and kept as this build keeps it at once)
                 for (int i = 0; i < iosSaberWheel_NumOldKept(); i++)
-                    if (!strcmp(k + 5, iosSaberWheel_OldKeptName(i))) tu.bSettingsMoved = 1;
+                    if (!strcmp(k + 5, iosSaberWheel_OldKeptName(i))) bOld = 1;
+                for (int i = 0; i < iosSaberWheel_NumKept(); i++)
+                    if (!strcmp(k + 5, iosSaberWheel_KeptName(i)) && strcmp(k + 5, "Style")) bOwn = 1;
                 iosSaberWheel_LoadKept(k + 5, v);
             }
         }
     }
     fclose(f);
     iosSaberWheel_EndLoad();
+    // (only what builds before kept: moved, and kept as this build keeps it at once)
+    tu.bSettingsMoved = bOld && !bOwn;
     if (tu.gyroMode != TOUCHUI_GYRO_OFF) tu.gyroLastMode = tu.gyroMode;
 }
 

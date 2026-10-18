@@ -26,8 +26,9 @@ static int32_t enhSettings_bSaberThrow = 0;
 
 // The saber wheel's choices (iosSaberWheel's kept names, "enh_saber" + name;
 // "" till first kept: the load's start, or what builds before kept), and
-// what builds before kept (read to be moved, and not saved again: a string
-// cvar with an updatable default never is, sithCvar_SaveVar)
+// what builds before kept (read to be moved; the published build's kept
+// again as it reads them, enhSettings_Published, the others not saved
+// again: a string cvar with an updatable default never is, sithCvar_SaveVar)
 #define ENHSETTINGS_MAX_KEPT 24
 #define ENHSETTINGS_MAX_OLD 16
 static char enhSettings_aKeptName[ENHSETTINGS_MAX_KEPT][48];
@@ -36,6 +37,12 @@ static char enhSettings_aKeptSynced[ENHSETTINGS_MAX_KEPT][SITHCVAR_MAX_STRLEN];
 static char enhSettings_aOldName[ENHSETTINGS_MAX_OLD][48];
 static char enhSettings_aOld[ENHSETTINGS_MAX_OLD][SITHCVAR_MAX_STRLEN];
 static int enhSettings_numKept = 0, enhSettings_numOld = 0;
+// (the published build's: each colour's place among the old ones, -1 none; and Style's among the kept)
+static const char* const enhSettings_aPubName[ENHSETTINGS_NUM_PUB] = {
+    "enh_saberStyle", "enh_saberColourSingle", "enh_saberColourDualRight", "enh_saberColourDualLeft", "enh_saberColourCross"
+};
+static int enhSettings_aPubOld[ENHSETTINGS_NUM_PUB];
+static int enhSettings_styleKept = -1;
 
 // What was last made the same both ways (cvars and gameplay), to tell which changed
 typedef struct {
@@ -53,19 +60,26 @@ void enhSettings_StartupCvars(void)
     sithCvar_RegisterStr("enh_saberLook", iosSaber_LookName(IOSSABER_LOOK_CLASSIC), enhSettings_saberLook, CVARFLAG_GLOBAL);
     sithCvar_RegisterStr("enh_saberShape", iosSaberShape_Name(IOSSABERSHAPE_DEFAULT), enhSettings_saberShape, CVARFLAG_GLOBAL);
     enhSettings_numKept = 0;
+    enhSettings_styleKept = -1;
     for (int i = 0; i < iosSaberWheel_NumKept() && enhSettings_numKept < ENHSETTINGS_MAX_KEPT; i++) {
         const int k = enhSettings_numKept++;
         snprintf(enhSettings_aKeptName[k], sizeof(enhSettings_aKeptName[k]), "enh_saber%s", iosSaberWheel_KeptName(i));
+        if (!strcmp(enhSettings_aKeptName[k], enhSettings_aPubName[ENHSETTINGS_PUB_STYLE])) enhSettings_styleKept = k;
         sithCvar_RegisterStr(enhSettings_aKeptName[k], "", enhSettings_aKept[k], CVARFLAG_GLOBAL);
     }
-    // (read only: not saved again)
+    // (read; the published build's colours saved again as it reads them, the rest not)
     enhSettings_numOld = 0;
+    for (int w = 0; w < ENHSETTINGS_NUM_PUB; w++) enhSettings_aPubOld[w] = -1;
     for (int i = 0; i < iosSaberWheel_NumOldKept() && enhSettings_numOld < ENHSETTINGS_MAX_OLD; i++) {
         const char* name = iosSaberWheel_OldKeptName(i);
         if (strchr(name, '.')) continue; // (the overlays' spelling: not a cvar's)
         const int k = enhSettings_numOld++;
         snprintf(enhSettings_aOldName[k], sizeof(enhSettings_aOldName[k]), "enh_saber%s", name);
-        sithCvar_RegisterStr(enhSettings_aOldName[k], "", enhSettings_aOld[k], CVARFLAG_GLOBAL | CVARFLAG_UPDATABLE_DEFAULT);
+        int pub = -1;
+        for (int w = ENHSETTINGS_PUB_STYLE + 1; w < ENHSETTINGS_NUM_PUB; w++)
+            if (!strcmp(enhSettings_aOldName[k], enhSettings_aPubName[w])) pub = w;
+        if (pub >= 0) enhSettings_aPubOld[pub] = k;
+        sithCvar_RegisterStr(enhSettings_aOldName[k], "", enhSettings_aOld[k], CVARFLAG_GLOBAL | (pub >= 0 ? 0 : CVARFLAG_UPDATABLE_DEFAULT));
     }
     sithCvar_RegisterInt("enh_forceJumpStyle", IOSGAME_JUMP_CLASSIC, &enhSettings_jumpStyle, CVARFLAG_GLOBAL);
     sithCvar_RegisterBool("enh_thirdPerson", 0, &enhSettings_bThirdPerson, CVARFLAG_GLOBAL);
@@ -113,11 +127,20 @@ static void enhSettings_SyncKept(int bFirst)
             iosSaberWheel_SetKept(enhSettings_aKeptName[k] + 9, enhSettings_aKept[k]);
             stdString_SafeStrCopy(enhSettings_aKeptSynced[k], enhSettings_aKept[k], SITHCVAR_MAX_STRLEN);
         }
-        iosSaberWheel_GetKept(k, now, sizeof(now));
+        // (Style as the published build reads it: one saber with a CROSS, CROSS; this build reads that back as one saber)
+        if (k == enhSettings_styleKept) enhSettings_Published(ENHSETTINGS_PUB_STYLE, now, sizeof(now));
+        else iosSaberWheel_GetKept(k, now, sizeof(now));
         if (bFirst || strcmp(now, enhSettings_aKeptSynced[k])) {
             sithCvar_SetStr(enhSettings_aKeptName[k], now);
             stdString_SafeStrCopy(enhSettings_aKeptSynced[k], now, SITHCVAR_MAX_STRLEN);
         }
+    }
+    // the published build's colours, as the choices are now (after the old ones were read: the first time, moved)
+    for (int w = ENHSETTINGS_PUB_STYLE + 1; w < ENHSETTINGS_NUM_PUB; w++) {
+        const int k = enhSettings_aPubOld[w];
+        if (k < 0) continue;
+        enhSettings_Published(w, now, sizeof(now));
+        if (strcmp(now, enhSettings_aOld[k])) sithCvar_SetStr(enhSettings_aOldName[k], now);
     }
 }
 

@@ -29,7 +29,9 @@
 //                                 enh_saberStyle CROSS; enh_saberColourSingle,
 //                                 enh_saberColourDualRight, enh_saberColourDualLeft,
 //                                 enh_saberColourCross): those are read
-//                                 once, and not saved again
+//                                 once; the published build's are kept
+//                                 too (enhSettings_Published, below), the
+//                                 others not saved again
 //       enh_forceJumpStyle        0 smooth, 1 steps, 2 classic (IOSGAME_JUMP_*;
 //                                 classic by default, the desktops' own jump)
 //       enh_thirdPerson           0 or 1
@@ -38,6 +40,47 @@
 //     A cvar changed (the console, the file) is applied; a choice changed in
 //     the game (a wheel, a pad, the keys, the camera key...) is written back,
 //     to be saved with the rest.
+
+#ifdef JK_ENHANCED
+
+#include <stdio.h>
+#include "Enhanced/iosSaber.h"
+
+// The saber as the published build kept it (v0.8-beta2: one style, each
+// style's colours), worked out from the choices now and kept beside them
+// (here, and in the touch overlay's file, touchUi.c), so that going back to
+// it finds the player's saber, and this build, back again, reads it as
+// moved if that one wrote over it. Each by its key ("game" the game's own):
+//   ENHSETTINGS_PUB_STYLE        SINGLE or DUAL (CROSS: one saber with a CROSS
+//                                in the right hand, as builds before HILT
+//                                kept it; a build without CROSS takes it as
+//                                SINGLE). The saber wheel's own Style too
+//   ENHSETTINGS_PUB_SINGLE       one saber's colour: the right hand's first blade's
+//   ENHSETTINGS_PUB_DUAL_RIGHT   DUAL's right one: the right hand's first blade's
+//   ENHSETTINGS_PUB_DUAL_LEFT    DUAL's left one: the left hand's first blade's
+//   ENHSETTINGS_PUB_CROSS        CROSS's (as one saber's)
+enum {
+    ENHSETTINGS_PUB_STYLE, ENHSETTINGS_PUB_SINGLE, ENHSETTINGS_PUB_DUAL_RIGHT, ENHSETTINGS_PUB_DUAL_LEFT, ENHSETTINGS_PUB_CROSS,
+    ENHSETTINGS_NUM_PUB
+};
+static inline void enhSettings_Published(int what, char* pOut, int len)
+{
+    if (!pOut || len <= 0) return;
+    const char* v = NULL;
+    if (what == ENHSETTINGS_PUB_STYLE) {
+        const int style = iosSaber_GetStyle();
+        v = style == IOSSABER_STYLE_DUAL ? iosSaber_StyleName(style)
+            : (iosSaber_GetHandHilt(IOSSABER_HAND_RIGHT) == IOSSABER_HILT_CROSS ? "CROSS" : iosSaber_StyleName(IOSSABER_STYLE_SINGLE));
+    }
+    else if (what > ENHSETTINGS_PUB_STYLE && what < ENHSETTINGS_NUM_PUB) {
+        const int hand = what == ENHSETTINGS_PUB_DUAL_LEFT ? IOSSABER_HAND_LEFT : IOSSABER_HAND_RIGHT;
+        v = iosSaber_ColourKey(iosSaber_GetBladeColour(hand, 0));
+        if (!v) v = "game";
+    }
+    snprintf(pOut, len, "%s", v ? v : "");
+}
+
+#endif // JK_ENHANCED
 
 #if defined(JK_ENHANCED) && !defined(TARGET_IOS)
 

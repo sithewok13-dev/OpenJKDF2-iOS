@@ -227,7 +227,7 @@ static int iosSaberThrow_Throw(SithThing* p, int hand)
     iosSaberThrow_aFlyColour[hand].colour2 = iosSaber_GetShownBladeColour(hand, 1);
     iosSaberThrow_aFlyColour[hand].hilt = iosSaber_SaberHilt(p, hand);
     iosSaberThrow_secLast = sithTime_g_secGameTime;
-    iosSaberFold_Released(hand, pSaber); // (FOLD: thrown folded or open)
+    iosSaberFold_Released(hand, pSaber, hand); // (FOLD: thrown folded or open; two sabers, each its own)
 
     // both thrown: as the game's own throw leaves her, the saber out of the
     // inventory and her fists in hand -- without the saber's put-away (the

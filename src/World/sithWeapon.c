@@ -1167,8 +1167,8 @@ int sithWeapon_ProcessWeaponControls(SithThing *pThing, flex_t secDeltaTime)
             {
                 if (!Main_bMotsCompat) {
 #ifdef JK_ENHANCED
-                    // Added: the saber's own key again while it is in hand, a FOLD lit: it flips
-                    if (pThing == sithPlayer_g_pLocalPlayerThing && iosSaberWheel_TapFlips()
+                    // Added: the saber's own key again while it is in hand (no weapon switch under way), a FOLD lit: it flips
+                    if (pThing == sithPlayer_g_pLocalPlayerThing && sithWeapon_8BD024 == -1 && iosSaberWheel_TapFlips()
                         && sithInventory_SelectWeaponFollowing(inputFunc - INPUT_FUNC_ACTIVATE) == sithInventory_GetCurrentWeapon(pThing)) {
                         iosSaberWheel_Flip();
                         break;
@@ -1181,13 +1181,16 @@ int sithWeapon_ProcessWeaponControls(SithThing *pThing, flex_t secDeltaTime)
                     flex_t fVar7 = 0.0;
                     int iVar2 = sithInventory_GetCurrentWeapon(pThing);
                     int iVar5 = inputFunc + -0xc;
+#ifdef JK_ENHANCED
+                    // Added: one of this key's two weapons is the one in hand (worked out before the key's
+                    // weapon is turned to its other one: the saber, 11, shares key 1 with the fists)
+                    const int bEnhKeyInHand = sithInventory_SelectWeaponFollowing(iVar5) == iVar2
+                                              || sithInventory_SelectWeaponFollowing(iVar5 + 10) == iVar2;
+#endif
                     if ((iVar5 % 10 != sithWeapon_mots_5a3258 % 10) && ((iVar5 < 0xb && (sithWeapon_motsAConv[iVar5 % 10] != iVar5)))) {
                         iVar5 = sithWeapon_motsAConv[iVar5 % 10];
                     }
                     int iVar4 = sithInventory_SelectWeaponFollowing(iVar5);
-#ifdef JK_ENHANCED
-                    const int bEnhKeyInHand = iVar4 == iVar2; // Added: this key's weapon is the one in hand
-#endif
                     if (iVar4 == iVar2) {
                         if (iVar5 < 0xb) {
                             iVar5 = iVar5 + 10;
@@ -1215,8 +1218,9 @@ int sithWeapon_ProcessWeaponControls(SithThing *pThing, flex_t secDeltaTime)
                             return 0;
                         }
 #ifdef JK_ENHANCED
-                        // Added: the saber's own key again, no other weapon on it to take, a FOLD lit: it flips
-                        if (bEnhKeyInHand && pThing == sithPlayer_g_pLocalPlayerThing && iosSaberWheel_TapFlips())
+                        // Added: the saber's own key again, no other weapon on it to take (the fists, sharing
+                        // its key, are taken when they can be), no weapon switch under way, a FOLD lit: it flips
+                        if (bEnhKeyInHand && pThing == sithPlayer_g_pLocalPlayerThing && sithWeapon_8BD024 == -1 && iosSaberWheel_TapFlips())
                             iosSaberWheel_Flip();
 #endif
                     }

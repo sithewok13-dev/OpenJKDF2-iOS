@@ -446,12 +446,15 @@ static int iosSaberThrowJk_Throw(SithThing* p, int hand, int bDual)
     h->pLastSector = t->sector;
     h->secThrown = sithTime_g_secGameTime;
     h->style = bDual ? IOSSABER_STYLE_DUAL : (iosSaber_StyleNumBlades(style) == 1 ? style : IOSSABER_STYLE_SINGLE);
-    h->colour = iosSaber_GetShownBladeColour(bDual ? hand : 0, 0);
-    h->colour2 = iosSaber_GetShownBladeColour(bDual ? hand : 0, 1);
-    h->hilt = iosSaber_SaberHilt(p, bDual ? hand : 0);
+    // (as it was shown in the hand, whichever hand's saber flies: one of two, its own look; the one
+    // saber, the one saber's, even the left one still in hand once the style went to one saber)
+    const int shown = bDual ? hand : 0;
+    h->colour = iosSaber_GetShownBladeColour(shown, 0);
+    h->colour2 = iosSaber_GetShownBladeColour(shown, 1);
+    h->hilt = iosSaber_SaberHilt(p, shown);
     iosSaberThrowJk_secLast = sithTime_g_secGameTime;
     iosSaberThrowJk_pPlayer = p;
-    iosSaberFold_Released(hand, t); // (FOLD: thrown folded or open)
+    iosSaberFold_Released(hand, t, shown); // (FOLD: thrown folded or open, as shown)
 
     if (iosSaberThrowJk_HandsInHand() == 0) iosSaberThrowJk_PutAway(p);
     return 1;
