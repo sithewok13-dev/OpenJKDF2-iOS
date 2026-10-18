@@ -1048,16 +1048,17 @@ static void inputWheel_LayoutChips(const inputWheelScreen* s)
         if (inputWheel_ChipWanted(INPUTWHEEL_CHIP_HILT + hand))
             inputWheel_PlaceChip(INPUTWHEEL_CHIP_HILT + hand, x0 + INPUTWHEEL_HILT_IN, y + INPUTWHEEL_HILT_DOWN, INPUTWHEEL_HILT_W, INPUTWHEEL_HILT_H);
         // the blades' dots (two): a touch on one picks just that blade -- each
-        // half of the row once split; joined, the two dots (the second a
-        // little past its dot), the rest of the card the whole hand
+        // half of the row once split; joined, the first from the card's left
+        // to midway between the dots, the second from there to the card's
+        // middle (as iosTouch.m's); the rest of the card the whole hand
         if (inputWheel_ChipWanted(INPUTWHEEL_CHIP_DOT + 2 * hand)) {
             const float ry = y + INPUTWHEEL_DOTS_TOP, rh = INPUTWHEEL_HILT_DOWN - INPUTWHEEL_DOTS_TOP;
             iosSaberWheelCard c;
             iosSaberWheel_GetCard(hand, &c);
             if (c.bLinked) {
-                const float d0 = x0 + INPUTWHEEL_DOT_X, mid = d0 + INPUTWHEEL_LINK_STEP * 0.5f + INPUTWHEEL_LINK_DOT * 0.5f;
-                inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand, x0 + 4.0f, ry, mid - (x0 + 4.0f), rh);
-                inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand + 1, mid, ry, d0 + INPUTWHEEL_LINK_STEP + INPUTWHEEL_LINK_DOT + 8.0f - mid, rh);
+                const float mid = x0 + INPUTWHEEL_DOT_X + INPUTWHEEL_LINK_STEP * 0.5f + INPUTWHEEL_LINK_DOT * 0.5f;
+                inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand, x0, ry, mid - x0, rh);
+                inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand + 1, mid, ry, x0 + W * 0.5f - mid, rh);
             }
             else {
                 for (int b = 0; b < 2; b++) inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand + b, x0 + 5.0f + b * INPUTWHEEL_HALF_W, ry, INPUTWHEEL_HALF_W, rh);

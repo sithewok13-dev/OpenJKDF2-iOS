@@ -2548,8 +2548,9 @@ static void test_saber_cards(void)
     CHECK(fg.aBladeColour[0][0] == 1 && fg.aBladeColour[0][1] == 12 && SC(1, 1) == 9);
     g_case = "cards: split, each half of the row its blade's dot and name (condensed); the first dot: blade 1 alone";
     {
-        float r0[4], r1[4];
-        CHECK(chipRect(DOT(0, 0), r0) && chipRect(DOT(0, 1), r1) && fabsf(r0[2] - r1[2]) < 0.01f && r1[0] >= r0[0] + r0[2] - 0.01f
+        float r0[4], r1[4], c0[4];
+        CHECK(chipRect(DOT(0, 0), r0) && chipRect(DOT(0, 1), r1) && chipRect(CARD(0), c0) && fabsf(r0[2] - r1[2]) < 0.01f && r1[0] >= r0[0] + r0[2] - 0.01f
+              && fabsf(r1[0] - (c0[0] + 52.0f)) < 0.01f && fabsf(r0[1] - c0[1] - 20.0f) < 0.01f && fabsf(r0[3] - 22.0f) < 0.01f
               && drawnText("COLOUR 1") && drawnText("COLOUR 12"));
     }
     CHECK(tapChip(DOT(0, 0)) && iosSaberWheel_GetPickedBlade() == 0 && drawnText("right saber, blade 1"));
@@ -2561,6 +2562,12 @@ static void test_saber_cards(void)
     CHECK(iosSaberWheel_GetPickedHand() == 0 && iosSaberWheel_GetPickedBlade() == -1 && goldRings() == 0 && drawnText("colour for the right saber"));
     tapColour(4);
     CHECK(fg.aBladeColour[0][0] == 4 && fg.aBladeColour[0][1] == 4 && !fg.aUnlinked[0]);
+    g_case = "cards: linked, the dots' touch: the first from the card's left to midway between the dots, the second on to the card's middle";
+    {
+        float d0[4], d1[4], c0[4];
+        CHECK(chipRect(DOT(0, 0), d0) && chipRect(DOT(0, 1), d1) && chipRect(CARD(0), c0) && fabsf(d0[0] - c0[0]) < 0.01f && fabsf(d0[0] + d0[2] - (c0[0] + 18.7f)) < 0.01f
+              && fabsf(d1[0] - d0[0] - d0[2]) < 0.01f && fabsf(d1[0] + d1[2] - (c0[0] + 52.0f)) < 0.01f && fabsf(d0[1] - c0[1] - 20.0f) < 0.01f && fabsf(d0[3] - 22.0f) < 0.01f);
+    }
     g_case = "cards: linked, the first dot: blade 1 (ringed), the second follows it";
     CHECK(tapChip(DOT(0, 0)) && iosSaberWheel_GetPickedBlade() == 0 && !fg.aUnlinked[0] && goldRings() == 1);
     tapColour(6);
@@ -2682,6 +2689,14 @@ static void test_saber_cards(void)
         CHECK(!touchUi_IsWheelOpen() && fg.foldFlips == 2 && fg.selectedWeapon == 2);
     }
     fg.curWeapon = 2; fg.bFoldLit = 0;
+
+    g_case = "cards: one saber: the RIGHT card never outlined in gold; its dot's gold ring all the same";
+    setup();
+    fg.bSaberBtn = 1; fg.bStaffOk = 1; fg.aHilt[0] = 2;
+    tick();
+    tapSaber();
+    CHECK(touchUi_IsWheelOpen() && !cardGold(0) && goldRings() == 0 && tapChip(DOT(0, 1)) && !cardGold(0) && goldRings() == 1 && iosSaberWheel_GetPickedBlade() == 1);
+    tapColour(-1);
 
     g_case = "pad / keys (the shared wheel's calls): the next card or blade, round: RIGHT, its blades (STAFF), LEFT, its blades (FOLD); only what is shown";
     setup();
