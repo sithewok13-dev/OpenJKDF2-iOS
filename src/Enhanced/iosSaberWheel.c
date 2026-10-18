@@ -438,10 +438,12 @@ void iosSaberWheel_EndLoad(void)
     }
     // the colours not kept by blade: each style's, the right hand the style's in use, the left DUAL's left
     if (!p[KEPT_COLOUR_R1] && !p[KEPT_COLOUR_R2] && !p[KEPT_COLOUR_L1] && !p[KEPT_COLOUR_L2]) {
-        // (a CROSS kept as a style: its own colour, the game's if none was picked for it; never SINGLE's)
+        // (a CROSS kept as a style: its own colour; none kept for it (a build without CROSS wrote the file last,
+        // keeping the style as it was), one saber's; neither, the game's)
         int right = -1;
         if (iosSaber_GetStyle() == IOSSABER_STYLE_DUAL) right = iosSaberWheel_OldColour(OLD_DUAL_R);
-        else if (iosSaberWheel_load.movedHilt != IOSSABER_HILT_NORMAL) right = iosSaberWheel_OldColour(OLD_CROSS) < 0 ? 0 : iosSaberWheel_OldColour(OLD_CROSS);
+        else if (iosSaberWheel_load.movedHilt != IOSSABER_HILT_NORMAL)
+            right = iosSaberWheel_OldColour(OLD_CROSS) >= 0 ? iosSaberWheel_OldColour(OLD_CROSS) : (iosSaberWheel_OldColour(OLD_SINGLE) >= 0 ? iosSaberWheel_OldColour(OLD_SINGLE) : 0);
         else right = iosSaberWheel_OldColour(OLD_SINGLE);
         const int left = iosSaberWheel_OldColour(OLD_DUAL_L);
         if (right >= 0) iosSaberWheel_PaintHand(IOSSABER_HAND_RIGHT, right);
