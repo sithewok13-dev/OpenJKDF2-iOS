@@ -8,7 +8,8 @@
 // click made from the game's own sounds).
 //
 // The local player's (each saber its own: with two, one in each hand):
-//  - It ignites folded (lit, picked, a new level, a load, a death).
+//  - It ignites folded (lit, picked, a new level, a load, a death; put in a
+//    hand on the saber wheel, folded too: AUTO opens only those in hand).
 //  - AUTO (AUTO OPEN, on to start): the first swing opens it, and it folds
 //    again once 5 s have gone by without one (never before a swing); two
 //    open and fold together. Off: each changes only when the player flips
@@ -29,7 +30,8 @@
 //    other in hand opening with it, as on a swing, unless folded by hand),
 //    and AUTO folds it 5 s after if no swing comes; AUTO off: as the player
 //    left that saber (thrown folded: snapping shut on the catch, as it is
-//    back in the hand, before it is lit again). A throw is not a swing.
+//    back in the hand, before it is lit again; shut at once and silent with
+//    another weapon in hand). A throw is not a swing.
 // Other players' (multiplayer): as their game sends it (iosSaberFold_SetOpenBits,
 // the look's trailing flags byte, jkPlayerLook); folded until then.
 //

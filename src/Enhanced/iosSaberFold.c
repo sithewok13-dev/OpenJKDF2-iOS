@@ -6,6 +6,7 @@
 
 #include <string.h>
 
+#include "Enhanced/iosGame.h"
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberStaff.h"
 #include "Enhanced/iosSaberThrow.h"
@@ -314,10 +315,11 @@ void iosSaberFold_Swing(SithThing* pThing)
     if (!p || pThing != p) return;
     iosSaberFold_s.lastSwingMs = iosSaberFold_Now();
     if (!iosSaberFold_LitFold(p)) return;
-    // AUTO: each folded one opens (both together), but one folded by hand
+    // AUTO: each folded one in hand opens (both together), but one folded by hand (not one out of sight, as the
+    // left one with one saber: a FOLD put there later lights folded)
     int open = 0;
     for (int k = 0; k < 2; k++) {
-        if (iosSaberFold_Flying(k)) continue;
+        if (iosSaberFold_Flying(k) || !iosSaberFold_Shown(p, k)) continue;
         if (iosSaberFold_s.aTarget[k]) iosSaberFold_s.aSwung[k] = 1;
         else if (iosSaberFold_s.bAuto && !iosSaberFold_s.aHeldFolded[k]) {
             open |= 1 << k;
@@ -392,7 +394,7 @@ static SithThing* iosSaberFold_FindThrown(SithThing* p)
 
 // A saber back in its hand (the moment it is, not once it is lit again: drawn in the hand from then on,
 // as caught): AUTO on, open (as it flew), folding 5 s on without a swing; off, as the player left it
-// (thrown folded: snapping shut, with the click)
+// (thrown folded: snapping shut, with the click; with another weapon in hand, and none going to the saber: shut, silent)
 static void iosSaberFold_Caught(SithThing* p, int saber, uint32_t now)
 {
     iosSaberFoldOut* o = &iosSaberFold_s.aOut[saber];
@@ -413,14 +415,16 @@ static void iosSaberFold_Caught(SithThing* p, int saber, uint32_t now)
         int open = 1 << saber;
         iosSaberFold_s.aHeldFolded[saber] = 0;
         for (int k = 0; k < 2; k++) {
-            if (k != saber && !iosSaberFold_Flying(k) && !iosSaberFold_s.aTarget[k] && !iosSaberFold_s.aHeldFolded[k]) open |= 1 << k;
+            if (k != saber && iosSaberFold_Shown(p, k) && !iosSaberFold_Flying(k) && !iosSaberFold_s.aTarget[k] && !iosSaberFold_s.aHeldFolded[k]) open |= 1 << k;
             if (open & (1 << k)) iosSaberFold_s.aSwung[k] = 1;
         }
         iosSaberFold_s.lastSwingMs = now;
         iosSaberFold_Clicked(iosSaberFold_Target(open, 1));
     }
-    else if (iosSaberFold_SnapTo(s, iosSaberFold_s.aTarget[saber], now))
-        iosSaberFold_Click(p);
+    else if (p->actorParams.pPlayer->curWeaponID == iosSaberFold_SaberBin() || iosGame_GetCurWeapon() == iosSaberFold_SaberBin()) {
+        if (iosSaberFold_SnapTo(s, iosSaberFold_s.aTarget[saber], now)) iosSaberFold_Click(p);
+    }
+    else iosSaberFold_SnapSet(s, iosSaberFold_s.aTarget[saber]);
 }
 
 // ------------------------------------------------------------ once a frame
