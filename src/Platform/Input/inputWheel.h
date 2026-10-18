@@ -21,8 +21,8 @@
 // Every power has a fixed slice of the Force wheel, learned or not (those
 // are dimmed); every weapon its slot on the weapon wheel, in the number key
 // order, with its ammo count; every blade colour its slice on the saber
-// wheel, with the choices beside it (one saber or two, the hilt, which
-// blade, take the saber). The gap at the bottom cancels. A learned power's level shows as
+// wheel, with a card for each hand beside it (its hilt, its blades'
+// colours; iosSaberWheel.h) and the saber's other choices. The gap at the bottom cancels. A learned power's level shows as
 // four stars, filled one per level.
 //
 // Units: points (y down) for drawing; angles in degrees counter-clockwise
@@ -67,18 +67,33 @@ typedef struct {
     float nameMin;  // the smallest a name goes to keep its row (its stars) at their size; 0: 7 pt, as alone
 } inputWheelMap;
 
-// The saber wheel's choices beside the ring: one saber or two, HILT (the
-// hilt picked, by its name: a tap for the next, iosSaber_NextHilt), and under
-// them the blade's shape (an on/off switch: FILM on, SPIKE off; iosSaberShape;
-// dim with a hilt whose blades have their own, iosSaber_HiltKeepsShape: CROSS),
-// which of two blades a colour goes to; and in the middle, the saber in hand and the
-// colours' look (CLASSIC / REFORGED, iosSaber_GetLook). In Jedi Knight, single
-// player, THROW at the top right (a switch: Saber Throw on the Force wheel,
-// iosSaberThrowJk).
-enum { INPUTWHEEL_CHIP_SINGLE = 0, INPUTWHEEL_CHIP_DUAL, INPUTWHEEL_CHIP_LEFT, INPUTWHEEL_CHIP_BOTH, INPUTWHEEL_CHIP_RIGHT,
-       INPUTWHEEL_CHIP_EQUIP, INPUTWHEEL_CHIP_LOOK, INPUTWHEEL_CHIP_SHAPE, INPUTWHEEL_CHIP_HILT, INPUTWHEEL_CHIP_THROW, INPUTWHEEL_NUM_CHIPS };
-// With two blades, the one a colour goes to
-enum { INPUTWHEEL_SABER_RIGHT = 0, INPUTWHEEL_SABER_LEFT = 1, INPUTWHEEL_SABER_BOTH = 2 };
+// The saber wheel's choices (hiltmock/DESIGN.md; what each does is
+// iosSaberWheel's, shared with iOS): a card for each hand on its own side of
+// the ring (the RIGHT card right of it; the LEFT card left of it with two
+// sabers, a dashed "+ 2ND SABER" slot there with one). Each card: the hand's
+// name, its blades' colours (a dot each; STAFF and FOLD two, joined while
+// linked), its own HILT button ("HILT STAFF >": that hand's next hilt). A tap
+// on a card picks its whole hand for the ring to paint; on a blade's dot (two
+// blades) just that blade. The LEFT card's x: back to one saber. Under the
+// LEFT card SAME COLOUR and SAME HILT; under the RIGHT card FILM (the blade's
+// shape: dim while every hilt in use is CROSS, iosSaberWheel_FilmDimmed) and,
+// while a FOLD is in either hand, FOLD's AUTO. In the middle the colours' look
+// (CLASSIC / REFORGED) and EQUIP (the saber in hand). In Jedi Knight, single
+// player, THROW at the ring's top right (Saber Throw on the Force wheel,
+// iosSaberThrowJk), where it always was.
+// Per hand (0 the right, 1 the left: IOSSABER_HAND_*): INPUTWHEEL_CHIP_CARD +
+// hand, INPUTWHEEL_CHIP_HILT + hand, INPUTWHEEL_CHIP_DOT + 2 * hand + blade.
+enum {
+    INPUTWHEEL_CHIP_CARD = 0,                      // ...the right's, then the left's
+    INPUTWHEEL_CHIP_HILT = 2,                      // ...the right's, then the left's
+    INPUTWHEEL_CHIP_DOT = 4,                       // ...the right's two, then the left's two
+    INPUTWHEEL_CHIP_ADD = 8,                       // "+ 2ND SABER"
+    INPUTWHEEL_CHIP_REMOVE,                        // the LEFT card's x
+    INPUTWHEEL_CHIP_SAME_COLOUR, INPUTWHEEL_CHIP_SAME_HILT,
+    INPUTWHEEL_CHIP_EQUIP, INPUTWHEEL_CHIP_LOOK,
+    INPUTWHEEL_CHIP_SHAPE,                         // FILM
+    INPUTWHEEL_CHIP_AUTO, INPUTWHEEL_CHIP_THROW, INPUTWHEEL_NUM_CHIPS
+};
 
 // ------------------------------------------------------------ the maps
 
@@ -136,32 +151,33 @@ int inputWheel_IsPickable(int slice);
 // -1 closes the saber wheel too.
 int inputWheel_Close(int slice);
 
-// The saber wheel's choices (INPUTWHEEL_CHIP_*): SINGLE / DUAL, HILT (the next
-// hilt, the wheel open; remembered by the platform around this, from
-// iosSaber_GetHilt), the blade a colour goes to, EQUIP (the saber in hand: the wheel closes), the look (the
-// other one: the wheel made again in it, still open; remembered by the
-// platform around this, from iosSaber_GetLook), the shape (FILM on or off, the
-// wheel open; remembered the same way, from iosSaberShape_Get), THROW (on or
-// off, the wheel open; remembered the same way, from iosSaberThrowJk_Get).
-// Nothing for one that can't be chosen now.
+// One of the saber wheel's choices (INPUTWHEEL_CHIP_*), as a tap on it
+// does: the wheel stays open (to pick more), each with a tick, but EQUIP (the
+// saber in hand, as set: the wheel closes; nothing with no saber to take).
+// The look: the wheel made again in it. Everything is remembered by the
+// platform around this (each store compares iosSaberWheel_GetKept, the look,
+// FILM and THROW as they change). Nothing (no tick) for one not shown now:
+// THROW where it isn't offered, AUTO with no FOLD in hand, the LEFT card's
+// with one saber...
 void inputWheel_SaberChip(int chip);
+// The next card or blade for the ring to paint (a pad's Y, the keys' 2): the
+// RIGHT card, its blades (STAFF, FOLD), the LEFT card, its blades, round
+// again; only what is shown. With a tick, the wheel open.
+void inputWheel_SaberPickNext(void);
 // Whether EQUIP can take the saber now (the player has it and can switch to it)
 int inputWheel_CanEquipSaber(void);
-// The blade a colour goes to with two (INPUTWHEEL_SABER_*); remembered by
-// the platform around this (it sets it at the start)
-int inputWheel_GetSaberTarget(void);
-void inputWheel_SetSaberTarget(int target);
 
 // Called for each new slice pointed at, after the tick (a pad's rumble);
 // NULL for none. Set by whoever opens the wheel, kept until it closes.
 void inputWheel_SetSliceHook(void (*pfn)(void));
 // For an opener whose own buttons stay on the screen around the wheel (the
 // touch overlay, touchUi.c): whether a box (points: left, top, right,
-// bottom) is clear of them. The group names and the saber wheel's choices
-// go only where it is, and never above topClear (points from the top); a
-// column of choices that finds no such place goes down the left with the
-// other. NULL: anywhere on the screen. Set by whoever opens the wheel, kept
-// until it closes.
+// bottom) is clear of them. The group names and THROW go only where it is,
+// and never above topClear (points from the top); the saber wheel's cards
+// and switches only under topClear (the opener hides its other buttons
+// while the saber wheel is open: touchUi.c's action buttons). NULL:
+// anywhere on the screen. Set by whoever opens the wheel, kept until it
+// closes.
 void inputWheel_SetKeepClear(int (*pfn)(float x0, float y0, float x1, float y1), float topClear);
 // What the middle says to do, in the opener's words, given what is pointed
 // at (bPickable: a slice that can be picked; bCancel: the gap); NULL from it
@@ -201,6 +217,9 @@ int inputWheel_SliceAt(float x, float y, int cur);
 int inputWheel_ChipAt(float x, float y);
 // Where one of the saber wheel's choices is (its middle), and whether it is shown
 int inputWheel_GetChip(int chip, float* pX, float* pY);
+// ...its box (points: left, top, width, height: where a tap takes it, a
+// little round it too), and whether it is shown
+int inputWheel_GetChipRect(int chip, float* pX, float* pY, float* pW, float* pH);
 
 #ifdef __cplusplus
 }

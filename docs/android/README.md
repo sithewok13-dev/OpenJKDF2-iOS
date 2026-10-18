@@ -150,22 +150,40 @@ Tick what works, note what doesn't (a photo of the screen helps).
       tap takes: CLEAN, HUD, HUD+BTNS with the touch buttons on), SELFIES
       (1, 3 or 5), FREEZE (whether sliding down/up stops the action).
 - [ ] SABER (once you have the lightsaber, or with the cheat on): a tap opens
-      the saber wheel: tap a colour (ORIGINAL is the game's own).
-      On the left: SINGLE (one saber), DUAL (two sabers; then LEFT / BOTH /
-      RIGHT on the right choose which blade a colour goes to) and HILT,
-      which shows the hilt you have; a tap goes to the next, NORMAL (the
-      game's own), STAFF (a blade out of each end), FOLD (two halves that
-      fold side by side or open into a staff) or CROSS (a crossguard: a jagged, crackling blade that
-      comes to a point, two short blades out of small metal vents either
-      side of the hilt, a strong glow; only the main blade hits; carried
-      low between swings, in Kylo Ren's guard, the swing itself the game's
-      own; its hum lower, rough and crackling, with a sputter as it
-      ignites), and the wheel stays open. The hilt goes with SINGLE or DUAL
-      (DUAL with CROSS: two crossguards). A CROSS picked on an earlier
-      build comes back as SINGLE with the CROSS hilt, in the same colour.
-      EQUIP puts the saber in your hand.
+      the saber wheel: tap a colour (ORIGINAL is the game's own). The button
+      shows your sabers: each in its hilt's shape, each blade in its colour,
+      two in an X.
+      Each hand has a card beside the ring: RIGHT on the right; with one
+      saber, a dashed "+ 2ND SABER" on the left (a tap: two sabers); with two,
+      the LEFT card there, with a small x at its top right (a tap: back to one;
+      the left saber is kept for next time). The card the ring paints has a
+      gold outline: tap a card to paint that whole hand. Each card shows its
+      colour and its own HILT button; a tap goes to that hand's next hilt:
+      NORMAL (the game's own), CROSS (a crossguard: a jagged, crackling blade
+      that comes to a point, two short blades out of small metal vents either
+      side of the hilt, a strong glow; only the main blade hits; carried low
+      between swings, in Kylo Ren's guard, the swing itself the game's own;
+      its hum lower, rough and crackling, with a sputter as it ignites), STAFF
+      (a blade out of each end), FOLD (two halves that fold side by side or
+      open into a staff). STAFF and FOLD show a dot per blade: joined, the
+      second blade follows the first; tap a dot to paint just that blade (a
+      gold ring round it; the second dot splits the pair). The wheel's middle
+      says what a colour tap paints. Under the LEFT card: SAME COLOUR (a
+      colour goes to every blade of both sabers) and SAME HILT (a HILT tap
+      changes both hands), both off to start. Under the RIGHT card: FILM and,
+      while a FOLD is in either hand, AUTO (FOLD opens on the first swing and
+      folds after 5 s without one; off: only when you flip it). Every tap
+      there ticks, is kept, and leaves the wheel open. JUMP, FIRE, DUCK and
+      the other action buttons hide while the saber wheel is open; the top
+      row stays. A CROSS picked on an earlier build comes back as one saber
+      with the CROSS hilt, in the same colour. EQUIP puts the saber in your
+      hand.
       The gap at the bottom (or a tap off the wheel) closes it. A slide from
       SABER opens it to slide to a colour.
+- [ ] With a FOLD lit in your hand, a tap on SABER flips it (folded or open,
+      with a click); a slide or a 0.3 s hold on SABER opens the wheel. Picking
+      the saber again on the weapon wheel, or its number key again, flips it
+      too.
 - [ ] CLASSIC / REFORGED (at the top of the saber wheel's middle): a tap
       switches the colours' look, and the wheel stays open. CLASSIC (to
       start, unless you picked REFORGED before): the earlier look, 17
@@ -174,8 +192,8 @@ Tick what works, note what doesn't (a photo of the screen helps).
       you see every blade, yours and other players', and the blade in hand
       changes at once. In Jedi Knight a green you kept shows as ORIGINAL
       while REFORGED is on, and other players see it as ORIGINAL too.
-- [ ] FILM (it was called BEAM; an on/off switch under SINGLE, DUAL and
-      HILT): a tap turns the film look on or off, and the wheel stays open.
+- [ ] FILM (it was called BEAM; an on/off switch under the RIGHT card): a
+      tap turns the film look on or off, and the wheel stays open.
       Off (to start): the game's blade, narrowing to a point. On: a blade as
       in the films, as long as the game's own and slim to the films'
       proportions, even with a rounded end, a white-hot core, its colour at
@@ -186,14 +204,20 @@ Tick what works, note what doesn't (a photo of the screen helps).
       strongest attacks up to two and a half times as far). It's for your own screen:
       your blade, and players whose game sends their saber choice (not
       enemy Jedi). It doesn't change the CROSS hilt, which keeps its own
-      blade: the switch is dimmed while your hilt is CROSS. A pad's D-pad up
-      and the 5 key do the same while the saber wheel is open; a pad's X and
-      the 1 key switch SINGLE and DUAL; a pad's LB and the 7 key go to the
-      next hilt.
+      blade: the switch is dimmed while every hilt you hold is CROSS.
+- [ ] A pad or the keys on the open saber wheel (pad / key): the right stick
+      or D-pad right points at a colour, A sets it (D-pad left, which opens
+      the wheel, closes it); Y / 2 the next card or
+      blade (RIGHT, its blades, LEFT, its blades); X / 1 add or take away the
+      second saber; LB / 7 the picked card's HILT; RB / 8 SAME COLOUR; LT / 9
+      SAME HILT; RT / 0 AUTO (with a FOLD in hand); D-pad up / 5 FILM; D-pad
+      down / 6 THROW (Jedi Knight); L3 / 4 the look; R3 / 3 EQUIP. The prompt
+      at the bottom lists them.
 - [ ] Use a keyboard, mouse or controller: the buttons hide; touch the screen
       and they come back.
 - [ ] Quit and start again: GYRO, SENS, FPS, CHEAT, VIEW, CONTROLS, the
-      camera options and the saber's colours, style, hilt, look and FILM
+      camera options and the saber's colours (each blade's), one saber or
+      two, each hand's hilt, SAME COLOUR, SAME HILT, AUTO, look and FILM
       are kept, also when picked with a pad or the keys.
 
 **Start up**

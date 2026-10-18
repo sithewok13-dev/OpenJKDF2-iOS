@@ -47,6 +47,7 @@ static struct {
     int aHilt[2], bCrossOk, bStaffOk, bFoldOk; // (0 NORMAL, 1 CROSS, 2 STAFF, 3 FOLD; CROSS on, STAFF and FOLD off as setup leaves them)
     int bFoldAuto, bFoldOpen, bFoldLit, foldFlips; // (iosSaberFold's: AUTO, held open, a FOLD lit in hand)
     int saberLook; // (0 CLASSIC, the default, as setup leaves it; 1 REFORGED)
+    int bRealNames; // (the colours' names as the game's: for how they fit)
     int saberShape; // (0 SPIKE, the default; 1 FILM)
     int bThrow, bThrowHidden; // THROW (Jedi Knight's Saber Throw, iosSaberThrowJk); not offered (multiplayer)
     // the camera
@@ -130,6 +131,9 @@ static const char* F_SaberColourName(int id)
 {
     static char b[17][16];
     if (id < 0 || id >= 17) return NULL;
+    static const char* const aReal[17] = { "ORIGINAL", "RED", "CRIMSON", "ORANGE", "AMBER", "YELLOW", "LIME", "GREEN", "TEAL", "CYAN",
+                                           "LIGHT BLUE", "BLUE", "PURPLE", "MAGENTA", "PINK", "WHITE", "BLACK" }; // (iosSaber.c's)
+    if (fg.bRealNames) return aReal[id];
     snprintf(b[id], 16, id ? "COLOUR %d" : "GAME", id);
     return b[id];
 }
@@ -141,7 +145,15 @@ static const char* F_SaberColourKey(int id)
     return b[id];
 }
 static int F_SaberColourByKey(const char* k) { int n = -1; return (k[0] == 'c' && sscanf(k + 1, "%d", &n) == 1 && n >= 0 && n < 17) ? n : -1; }
-static void F_SaberColourRGB(int id, unsigned char* r, unsigned char* g, unsigned char* b) { *r = (unsigned char)(id * 15); *g = 100; *b = 200; }
+static void F_SaberColourRGB(int id, unsigned char* r, unsigned char* g, unsigned char* b)
+{
+    // (with the game's names, its colours too: iosSaber.c's Jedi Knight swatches)
+    static const unsigned char aReal[17][3] = { { 150, 150, 150 }, { 230, 45, 75 }, { 165, 10, 30 }, { 255, 95, 20 }, { 255, 158, 18 }, { 255, 230, 40 },
+        { 150, 240, 40 }, { 50, 225, 75 }, { 15, 185, 150 }, { 20, 225, 240 }, { 115, 160, 240 }, { 50, 110, 255 }, { 190, 67, 240 }, { 245, 35, 195 },
+        { 255, 115, 185 }, { 215, 225, 255 }, { 245, 248, 255 } };
+    if (fg.bRealNames && id >= 0 && id < 17) { *r = aReal[id][0]; *g = aReal[id][1]; *b = aReal[id][2]; return; }
+    *r = (unsigned char)(id * 15); *g = 100; *b = 200;
+}
 static int F_SaberStyleAvailable(int st) { return st == 0 || (st == 1 && fg.bDualOk); }
 static const char* F_SaberStyleName(int st) { return st == 0 ? "SINGLE" : st == 1 ? "DUAL" : NULL; }
 static int F_SaberStyleNumBlades(int st) { return st == 1 ? 2 : st == 0 ? 1 : 0; }
@@ -233,7 +245,7 @@ int iosSaberThrowJk_Offered(void) { return !F_IsMots() && !fg.bThrowHidden; }
 int iosSaberThrowJk_OnWheel(void) { return iosSaberThrowJk_Offered() && (fg.bThrow || fg.bCheat); }
 int iosSaber_GetShownColour(int st, int b) { const int id = F_SaberGetColour(st, b); return iosSaber_ColourOnWheel(id) ? id : 0; }
 const char* iosSaber_ColourName(int id) { return F_SaberColourName(id); }
-void iosSaber_ColourRGB(int id, unsigned char* r, unsigned char* g, unsigned char* b) { F_SaberColourRGB(id, r, g, b); if (!fg.saberLook) *g = 50; }
+void iosSaber_ColourRGB(int id, unsigned char* r, unsigned char* g, unsigned char* b) { F_SaberColourRGB(id, r, g, b); if (!fg.saberLook && !fg.bRealNames) *g = 50; }
 int iosSaber_StyleAvailable(int st) { return F_SaberStyleAvailable(st); }
 int iosSaber_StyleNumBlades(int st) { return F_SaberStyleNumBlades(st); }
 // (the hilts as iosSaber.c has them: HILT goes round the available ones; CROSS's blades keep their own shape)
@@ -1347,6 +1359,31 @@ static void test_camera(void)
           && touchUi_GetCameraKinds() == (TOUCHUI_CAPTURE_HUD | TOUCHUI_CAPTURE_HUDBTNS));
 }
 
+static int drawnText(const char* t);
+static int settingsHave(const char* line);
+// ---- the saber wheel's choices, tapped
+// A tap on one (its middle; finger 9): 0 if it isn't shown
+static int tapChip(int chip)
+{
+    float x, y;
+    if (!touchUi_GetSaberChip(chip, &x, &y)) return 0;
+    down(9, x, y); up(9, x, y);
+    return 1;
+}
+// A tap on a colour's slice (the middle of the band), or in the gap at the bottom (bin -1)
+static void tapColour(int bin)
+{
+    float cx, cy, r0, r1, deg = 270.0f, px, py;
+    touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
+    if (bin >= 0) touchUi_GetWheelSlice(bin, &deg);
+    polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
+    down(9, px, py); up(9, px, py);
+}
+static void tapSaber(void) { float sx, sy; bxy(TOUCHUI_BTN_SABER, &sx, &sy); down(1, sx, sy); wait(0.1); up(1, sx, sy); }
+#define CARD(h) (TOUCHUI_CHIP_CARD + (h))
+#define HILT(h) (TOUCHUI_CHIP_HILT + (h))
+#define DOT(h, b) (TOUCHUI_CHIP_DOT + 2 * (h) + (b))
+
 static void test_saber(void)
 {
     float sx, sy, cx, cy, r0, r1, deg;
@@ -1364,51 +1401,50 @@ static void test_saber(void)
     // (Jedi Knight: 16, colour 7 -- GREEN -- left out; each slice keeps its colour's id)
     CHECK(touchUi_GetWheelSliceBin(15) == 16 && touchUi_GetWheelSliceBin(16) == -1
           && touchUi_GetWheelSliceBin(6) == 6 && touchUi_GetWheelSliceBin(7) == 8);
-    CHECK(touchUi_GetSaberChip(TOUCHUI_CHIP_SINGLE, NULL, NULL) && touchUi_GetSaberChip(TOUCHUI_CHIP_DUAL, NULL, NULL)
-          && touchUi_GetSaberChip(TOUCHUI_CHIP_EQUIP, NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_LEFT, NULL, NULL));
+    g_case = "saber wheel, one saber: the RIGHT card (its HILT), + 2ND SABER on the left, FILM, EQUIP; no LEFT card, x, SAME switches or AUTO";
+    CHECK(touchUi_GetSaberChip(CARD(0), NULL, NULL) && touchUi_GetSaberChip(HILT(0), NULL, NULL) && touchUi_GetSaberChip(TOUCHUI_CHIP_ADD, NULL, NULL)
+          && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, NULL, NULL) && touchUi_GetSaberChip(TOUCHUI_CHIP_EQUIP, NULL, NULL));
+    CHECK(!touchUi_GetSaberChip(CARD(1), NULL, NULL) && !touchUi_GetSaberChip(HILT(1), NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_REMOVE, NULL, NULL)
+          && !touchUi_GetSaberChip(TOUCHUI_CHIP_SAME_COLOUR, NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_SAME_HILT, NULL, NULL)
+          && !touchUi_GetSaberChip(TOUCHUI_CHIP_AUTO, NULL, NULL) && !touchUi_GetSaberChip(DOT(0, 0), NULL, NULL));
+    {
+        float ax, ay, bx, by;
+        touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
+        touchUi_GetSaberChip(CARD(0), &ax, &ay);
+        touchUi_GetSaberChip(TOUCHUI_CHIP_ADD, &bx, &by);
+        CHECK(ax > cx + r1 && bx < cx - r1 && fabsf(ay - by) < 0.01f && drawnText("RIGHT") && drawnText("2ND SABER") && drawnText("tap a colour"));
+    }
     g_case = "saber wheel: a colour tapped is set, the wheel stays open, a tick felt";
-    touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
-    touchUi_GetWheelSlice(5, &deg);
     float px, py;
-    polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
+    touchUi_GetWheelSlice(5, &deg);
     takeHaptics();
-    down(2, px, py); up(2, px, py);
+    tapColour(5);
     CHECK(SC(0, 0) == 5 && touchUi_IsWheelOpen());
     CHECK(takeHaptics() & TOUCHUI_HAPTIC_TICK);
-    g_case = "saber wheel: DUAL; LEFT; a colour goes to the left blade only";
-    float qx, qy;
-    touchUi_GetSaberChip(TOUCHUI_CHIP_DUAL, &qx, &qy);
-    down(2, qx, qy); up(2, qx, qy);
-    CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && touchUi_IsWheelOpen());
-    CHECK(touchUi_GetSaberChip(TOUCHUI_CHIP_LEFT, &qx, &qy) && touchUi_GetSaberChip(TOUCHUI_CHIP_RIGHT, NULL, NULL));
-    down(2, qx, qy); up(2, qx, qy);
-    CHECK(touchUi_GetSaberTarget() == TOUCHUI_CHIP_LEFT);
+    g_case = "saber wheel: + 2ND SABER: two sabers, the LEFT card picked (gold); a colour goes to the left saber only";
+    g_platTicks = 0;
+    CHECK(tapChip(TOUCHUI_CHIP_ADD));
+    CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && touchUi_IsWheelOpen() && g_platTicks == 1 && iosSaberWheel_GetPickedHand() == 1);
+    CHECK(touchUi_GetSaberChip(CARD(1), NULL, NULL) && touchUi_GetSaberChip(TOUCHUI_CHIP_REMOVE, NULL, NULL) && touchUi_GetSaberChip(TOUCHUI_CHIP_SAME_COLOUR, NULL, NULL)
+          && touchUi_GetSaberChip(TOUCHUI_CHIP_SAME_HILT, NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_ADD, NULL, NULL) && drawnText("colour for the left saber"));
     CHECK(touchUi_GetWheelSlice(7, NULL) < 0); // (GREEN: not on Jedi Knight's wheel)
-    touchUi_GetWheelSlice(8, &deg);
-    polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
-    down(2, px, py); up(2, px, py);
+    tapColour(8);
     CHECK(SC(1, 1) == 8 && SC(1, 0) == 5); // (the right hand's saber as it was with one)
-    g_case = "saber wheel: BOTH: a colour goes to both blades";
-    touchUi_GetSaberChip(TOUCHUI_CHIP_BOTH, &qx, &qy);
-    down(2, qx, qy); up(2, qx, qy);
-    touchUi_GetWheelSlice(12, &deg);
-    polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
-    down(2, px, py); up(2, px, py);
+    g_case = "saber wheel: SAME COLOUR: a colour goes to both sabers";
+    CHECK(tapChip(TOUCHUI_CHIP_SAME_COLOUR) && iosSaberWheel_GetSameColour() && drawnText("colour for both sabers"));
+    tapColour(12);
     CHECK(SC(1, 1) == 12 && SC(1, 0) == 12);
     CHECK(SC(0, 0) == 12); // (the right hand's saber: the same one with one saber or two)
     g_case = "saber wheel: a tap in the gap closes it; the game goes on";
-    polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
-    down(2, px, py); up(2, px, py);
+    tapColour(-1);
     CHECK(!touchUi_IsWheelOpen() && !fg.bHold);
     g_case = "saber wheel in Mysteries of the Sith: all 17, GREEN (7) on it and picked";
     fg.bMots = 1;
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
     CHECK(touchUi_IsWheelOpen() && touchUi_GetWheelSliceBin(16) == 16 && touchUi_GetWheelSliceBin(17) == -1 && touchUi_GetWheelSlice(7, &deg) == 7);
-    polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
-    down(2, px, py); up(2, px, py);
+    tapColour(7);
     CHECK(SC(1, 1) == 7 && SC(1, 0) == 7 && touchUi_IsWheelOpen());
-    polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
-    down(2, px, py); up(2, px, py);
+    tapColour(-1);
     CHECK(!touchUi_IsWheelOpen());
     fg.bMots = 0;
 
@@ -1416,6 +1452,7 @@ static void test_saber(void)
     down(1, sx, sy);
     move(1, sx, sy + 10.5f);
     CHECK(touchUi_IsWheelOpen() && !touchUi_IsWheelTapMode());
+    touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
     touchUi_GetWheelSlice(3, &deg);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     move(1, px, py);
@@ -1423,6 +1460,7 @@ static void test_saber(void)
     up(1, px, py);
     CHECK(SC(1, 0) == 3 && SC(1, 1) == 3 && touchUi_IsWheelOpen() && touchUi_IsWheelTapMode());
     g_case = "saber wheel: EQUIP without a saber does nothing";
+    float qx, qy;
     touchUi_GetSaberChip(TOUCHUI_CHIP_EQUIP, &qx, &qy);
     down(2, qx, qy); up(2, qx, qy);
     CHECK(touchUi_IsWheelOpen());
@@ -1438,26 +1476,27 @@ static void test_saber(void)
     CHECK(touchUi_IsWheelOpen() && touchUi_IsWheelTapMode());
     up(1, sx, sy);
     CHECK(touchUi_IsWheelOpen());
-    touchUi_GetSaberChip(TOUCHUI_CHIP_RIGHT, &qx, &qy);
-    down(2, qx, qy); up(2, qx, qy);
-    polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
-    down(2, px, py); up(2, px, py);
+    CHECK(tapChip(CARD(0)) && iosSaberWheel_GetPickedHand() == 0);
+    tapColour(-1);
     CHECK(!touchUi_IsWheelOpen());
 
     g_case = "saber choices remembered (by key and name)";
     memset(fg.aBladeColour, 0, sizeof(fg.aBladeColour)); memset(fg.aUnlinked, 0, sizeof(fg.aUnlinked));
     fg.saberStyle = 0;
+    iosSaberWheel_SetSameColour(0);
     touchUi_Init(&fakeGame, g_settings);
-    CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && SC(0, 0) == 3 && SC(1, 0) == 3 && SC(1, 1) == 3);
-    CHECK(touchUi_GetSaberTarget() == TOUCHUI_CHIP_RIGHT);
+    CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && SC(0, 0) == 3 && SC(1, 0) == 3 && SC(1, 1) == 3 && iosSaberWheel_GetSameColour());
+    CHECK(iosSaberWheel_GetPickedHand() == 0 && settingsHave("saberSameColour=1\n") && !settingsHave("saberTarget"));
 
-    g_case = "DUAL not offered where the style can't be had";
+    g_case = "+ 2ND SABER not offered where two can't be had";
     setup();
     fg.bSaberBtn = 1; fg.bDualOk = 0;
     tick();
     bxy(TOUCHUI_BTN_SABER, &sx, &sy);
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
-    CHECK(touchUi_IsWheelOpen() && !touchUi_GetSaberChip(TOUCHUI_CHIP_DUAL, NULL, NULL));
+    CHECK(touchUi_IsWheelOpen() && !touchUi_GetSaberChip(TOUCHUI_CHIP_ADD, NULL, NULL) && touchUi_GetSaberChip(CARD(0), NULL, NULL));
+    inputWheel_SaberChip(INPUTWHEEL_CHIP_ADD);
+    CHECK(fg.saberStyle == TOUCHUI_SABER_SINGLE);
 }
 
 // The saber wheel's look switch (CLASSIC / REFORGED), in its middle
@@ -1532,18 +1571,18 @@ static void test_saber_look(void)
         down(2, px, py); up(2, px, py);
         CHECK(fg.saberLook == 1 && SC(0, 0) == k && touchUi_IsWheelOpen());
     }
-    g_case = "look: DUAL in both looks: LEFT gets GREEN in CLASSIC, RIGHT gets BLUE in REFORGED";
-    touchUi_GetSaberChip(TOUCHUI_CHIP_DUAL, &qx, &qy);
+    g_case = "look: two sabers in both looks: LEFT gets GREEN in CLASSIC, RIGHT gets BLUE in REFORGED";
+    touchUi_GetSaberChip(TOUCHUI_CHIP_ADD, &qx, &qy);
     down(2, qx, qy); up(2, qx, qy);
     down(2, lx, ly); up(2, lx, ly); // CLASSIC
-    touchUi_GetSaberChip(TOUCHUI_CHIP_LEFT, &qx, &qy);
+    touchUi_GetSaberChip(TOUCHUI_CHIP_CARD + 1, &qx, &qy);
     down(2, qx, qy); up(2, qx, qy);
     touchUi_GetWheelSlice(7, &deg);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
     CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && SC(1, 1) == 7 && SC(1, 0) == 8); // (the right hand's as it was with one saber)
     down(2, lx, ly); up(2, lx, ly); // REFORGED
-    touchUi_GetSaberChip(TOUCHUI_CHIP_RIGHT, &qx, &qy);
+    touchUi_GetSaberChip(TOUCHUI_CHIP_CARD, &qx, &qy);
     down(2, qx, qy); up(2, qx, qy);
     touchUi_GetWheelSlice(11, &deg);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
@@ -1620,10 +1659,10 @@ static void test_saber_look(void)
     touchUi_SetShown(0);
     fg.bMots = 0; fg.saberStyle = 0; fg.saberLook = 0;
     tick();
-    inputWheel_SetSaberTarget(INPUTWHEEL_SABER_BOTH);
     inputWheel_Open(INPUTWHEEL_SABER, 1);
     inputWheel_SaberChip(INPUTWHEEL_CHIP_LOOK); // (REFORGED)
-    inputWheel_SaberChip(INPUTWHEEL_CHIP_DUAL);
+    inputWheel_SaberChip(INPUTWHEEL_CHIP_ADD);
+    inputWheel_SaberChip(INPUTWHEEL_CHIP_SAME_COLOUR);
     inputWheel_Close(inputWheel_GetOpenMap()->numSlices - 1); // (BLACK, to both)
     inputWheel_Close(-1);
     tick();
@@ -1636,36 +1675,80 @@ static void test_saber_look(void)
 
 static int drawnText(const char* t);
 static int drawnTextAt(const char* t, float* pX, float* pY, float* pSize);
-// The saber wheel's shape switch (FILM on or off), under SINGLE and DUAL
-static int chipsClear(float W, float H, float l, float t, float r, float b, const char* what)
+// The saber wheel's choices as laid out now (on a screen W x H, insets l t r
+// b; bTouch: under the touch overlay's top row, clear of its buttons): each
+// shown inside the safe area; the cards and switches clear of the popped
+// ring by 14 pt; none within 6 pt of another (THROW 8); each HILT, dot and x
+// inside its card; clear of every button showing (the action buttons are
+// hidden). FILM shown.
+static float g_ringGap = 14.0f;
+static int chipRect(int i, float* r) { return inputWheel_GetChipRect(i, &r[0], &r[1], &r[2], &r[3]) && inputWheel_IsOpen(); }
+static float rectGap(const float* a, const float* b)
 {
-    // every choice shown: inside the safe area (8 pt in from an edge with none),
-    // clear of the ring (and its pop-out), of each other and of every button
+    const float ex = fmaxf(fmaxf(a[0] - (b[0] + b[2]), b[0] - (a[0] + a[2])), 0.0f), ey = fmaxf(fmaxf(a[1] - (b[1] + b[3]), b[1] - (a[1] + a[3])), 0.0f);
+    return hypotf(ex, ey);
+}
+static int layoutClear(float W, float H, float l, float t, float r, float b, int bTouch, const char* what)
+{
     float cx, cy, r0, r1;
-    touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
-    float aX[INPUTWHEEL_NUM_CHIPS], aY[INPUTWHEEL_NUM_CHIPS];
-    int aOn[INPUTWHEEL_NUM_CHIPS], bOk = 1, n = 0;
-    const float hw = 32.0f, hh = 14.0f;
-    for (int i = 0; i < INPUTWHEEL_NUM_CHIPS; i++) {
-        aOn[i] = touchUi_GetSaberChip(i, &aX[i], &aY[i]);
-        if (!aOn[i] || i == TOUCHUI_CHIP_EQUIP || i == TOUCHUI_CHIP_LOOK) { aOn[i] = 0; continue; } // (the middle's own)
+    inputWheel_GetGeometry(&cx, &cy, &r0, &r1);
+    const float top = fmaxf(t, 8.0f) + (bTouch ? 52.0f : 0.0f);
+    static const int aOuter[] = { TOUCHUI_CHIP_CARD, TOUCHUI_CHIP_CARD + 1, TOUCHUI_CHIP_ADD, TOUCHUI_CHIP_SAME_COLOUR, TOUCHUI_CHIP_SAME_HILT,
+                                  TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_AUTO, TOUCHUI_CHIP_THROW, TOUCHUI_CHIP_EQUIP };
+    const int nOuter = (int)(sizeof(aOuter) / sizeof(aOuter[0]));
+    int bOk = 1, n = 0;
+    float rc[4], ro[4];
+    for (int k = 0; k < nOuter; k++) {
+        const int i = aOuter[k];
+        if (!chipRect(i, rc)) continue;
         n++;
-        if (aX[i] - hw < (l > 8 ? l : 8) - 0.5f || aX[i] + hw > W - (r > 8 ? r : 8) + 0.5f
-            || aY[i] - hh < (t > 8 ? t : 8) - 0.5f || aY[i] + hh > H - (b > 8 ? b : 8) + 0.5f) { printf("  %s: chip %d off the safe area (%.0f,%.0f)\n", what, i, aX[i], aY[i]); bOk = 0; }
-        const float ex = fmaxf(fabsf(aX[i] - cx) - hw, 0.0f), ey = fmaxf(fabsf(aY[i] - cy) - hh, 0.0f);
-        if (hypotf(ex, ey) < r1 + 10.0f) { printf("  %s: chip %d on the ring\n", what, i); bOk = 0; }
-        for (int j = 0; j < i; j++)
-            if (aOn[j] && fabsf(aX[i] - aX[j]) < 2.0f * hw && fabsf(aY[i] - aY[j]) < 2.0f * hh) { printf("  %s: chips %d and %d overlap\n", what, i, j); bOk = 0; }
-        for (int k = 0; k < TOUCHUI_BTN_TRAYGYRO; k++) {
+        if (rc[0] < fmaxf(l, 8.0f) - 0.01f || rc[0] + rc[2] > W - fmaxf(r, 8.0f) + 0.01f || (i != TOUCHUI_CHIP_EQUIP && rc[1] < top - 0.01f)
+            || rc[1] + rc[3] > H - fmaxf(b, 8.0f) + 0.01f) { printf("  %s: choice %d off the safe area (%.0f,%.0f %.0fx%.0f)\n", what, i, rc[0], rc[1], rc[2], rc[3]); bOk = 0; }
+        if (i != TOUCHUI_CHIP_EQUIP) {
+            const float nx = fminf(fmaxf(cx, rc[0]), rc[0] + rc[2]), ny = fminf(fmaxf(cy, rc[1]), rc[1] + rc[3]);
+            const float d = hypotf(nx - cx, ny - cy) - r1 - 10.0f;
+            if (d < (i == TOUCHUI_CHIP_THROW ? 6.0f : g_ringGap) - 0.01f) { printf("  %s: choice %d %.1f pt from the popped ring\n", what, i, d); bOk = 0; }
+        }
+        for (int m = 0; m < k; m++) {
+            if (!chipRect(aOuter[m], ro)) continue;
+            const float g = rectGap(rc, ro), need = (i == TOUCHUI_CHIP_THROW || aOuter[m] == TOUCHUI_CHIP_THROW) ? 8.0f : 6.0f;
+            if (g < need - 0.01f) { printf("  %s: choices %d and %d %.1f pt apart\n", what, aOuter[m], i, g); bOk = 0; }
+        }
+        for (int kb = 0; bTouch && kb < TOUCHUI_BTN_TRAYGYRO; kb++) {
             float bx, by, br;
-            if (k == TOUCHUI_BTN_SABER || !touchUi_GetButton(k, &bx, &by, &br)) continue;
-            const float dx = fmaxf(fabsf(bx - aX[i]) - hw, 0.0f), dy = fmaxf(fabsf(by - aY[i]) - hh, 0.0f);
-            if (hypotf(dx, dy) < br) { printf("  %s: chip %d on button %d\n", what, i, k); bOk = 0; }
+            if (kb == TOUCHUI_BTN_SABER || !touchUi_GetButton(kb, &bx, &by, &br)) continue;
+            if (kb <= TOUCHUI_BTN_FORCE && touchUi_AreActionsHidden()) continue;
+            const float ex = fmaxf(fmaxf(rc[0] - bx, bx - (rc[0] + rc[2])), 0.0f), ey = fmaxf(fmaxf(rc[1] - by, by - (rc[1] + rc[3])), 0.0f);
+            if (hypotf(ex, ey) < br + 4.0f) { printf("  %s: choice %d on button %d\n", what, i, kb); bOk = 0; }
         }
     }
-    printf("  %s: %d choices beside the ring, shape at %.0f,%.0f (wheel %.0f,%.0f r1 %.0f)\n", what, n, aX[TOUCHUI_CHIP_SHAPE], aY[TOUCHUI_CHIP_SHAPE], cx, cy, r1);
-    return bOk && aOn[TOUCHUI_CHIP_SHAPE];
+    // the x, each HILT and dot inside its card
+    for (int i = TOUCHUI_CHIP_HILT; i <= TOUCHUI_CHIP_REMOVE; i++) {
+        if (i == TOUCHUI_CHIP_ADD || !chipRect(i, rc)) continue;
+        const int hand = i == TOUCHUI_CHIP_REMOVE ? 1 : i < TOUCHUI_CHIP_DOT ? i - TOUCHUI_CHIP_HILT : (i - TOUCHUI_CHIP_DOT) / 2;
+        if (!chipRect(TOUCHUI_CHIP_CARD + hand, ro) || rc[0] < ro[0] - 0.01f || rc[1] < ro[1] - 0.01f || rc[0] + rc[2] > ro[0] + ro[2] + 0.01f
+            || rc[1] + rc[3] > ro[1] + ro[3] + 0.01f) { printf("  %s: %d outside its card\n", what, i); bOk = 0; }
+    }
+    chipRect(TOUCHUI_CHIP_CARD, rc);
+    printf("  %s: %d choices beside the ring, the RIGHT card at %.0f,%.0f (wheel %.0f,%.0f r1 %.0f)\n", what, n, rc[0], rc[1], cx, cy, r1);
+    return bOk && chipRect(TOUCHUI_CHIP_SHAPE, rc);
 }
+static int chipsClear(float W, float H, float l, float t, float r, float b, const char* what) { return layoutClear(W, H, l, t, r, b, 1, what); }
+
+// The saber wheel's state for a layout case: 0 one saber; 1 two; 2 one
+// CROSS; 3 two CROSS; 4 two, the right STAFF (its blades each their own),
+// the left FOLD (linked); 5 one FOLD
+static void saberState(int st)
+{
+    fg.bStaffOk = fg.bFoldOk = 1;
+    fg.saberStyle = st == 1 || st == 3 || st == 4;
+    fg.aHilt[0] = st == 2 || st == 3 ? 1 : st == 4 ? 2 : st == 5 ? 3 : 0;
+    fg.aHilt[1] = st == 3 ? 1 : st == 4 ? 3 : 0;
+    fg.aUnlinked[0] = st == 4;
+    fg.aUnlinked[1] = 0;
+    fg.aBladeColour[0][0] = 10; fg.aBladeColour[0][1] = 13; fg.aBladeColour[1][0] = 2; fg.aBladeColour[1][1] = 2;
+}
+static const char* const g_aStateName[6] = { "one", "two sabers", "CROSS", "two CROSS", "STAFF + FOLD", "one FOLD" };
 
 static void test_saber_shape(void)
 {
@@ -1674,11 +1757,11 @@ static void test_saber_shape(void)
     fg.bSaberBtn = 1;
     tick();
     bxy(TOUCHUI_BTN_SABER, &sx, &sy);
-    g_case = "shape: the switch under SINGLE and DUAL, left of the ring; SPIKE (off) to start; drawn as BEAM with a switch";
+    g_case = "shape: FILM under the RIGHT card, right of the ring; SPIKE (off) to start; drawn as FILM with a switch";
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
     touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
-    CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &hx, &hy) && touchUi_GetSaberChip(TOUCHUI_CHIP_DUAL, &dx, &dy));
-    CHECK(fabsf(hx - dx) < 0.01f && hy > dy + 20.0f && hx < cx - r1 && fg.saberShape == 0 && drawnText("FILM"));
+    CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &hx, &hy) && touchUi_GetSaberChip(TOUCHUI_CHIP_CARD, &dx, &dy));
+    CHECK(fabsf(hx - dx) < 0.01f && hy > dy + 39.0f + 10.0f && hx > cx + r1 && fg.saberShape == 0 && drawnText("FILM"));
     g_case = "shape: tapped: BEAM, one tick, the wheel stays open (to tap), the game still held; again: SPIKE";
     g_platTicks = 0;
     down(2, hx, hy); up(2, hx, hy);
@@ -1721,7 +1804,7 @@ static void test_saber_shape(void)
     g_case = "shape: a tap just off the switch, toward the ring: nothing changes";
     {
         const int sh0 = fg.saberShape;
-        down(2, hx + 32.0f + 9.0f, hy); up(2, hx + 32.0f + 9.0f, hy);
+        down(2, hx - 32.0f - 9.0f, hy); up(2, hx - 32.0f - 9.0f, hy);
         CHECK(fg.saberShape == sh0);
     }
     g_case = "shape: a slide from SABER: one tick per slice; lifted in the gap: cancelled, the shape unchanged";
@@ -1773,7 +1856,7 @@ static void test_saber_shape(void)
         touchUi_Init(&fakeGame, g_settings);
         CHECK(fg.saberShape == sh);
     }
-    // where it goes, two sabers (all six beside the ring), on phones and tablets
+    // where it goes, in every state, on phones and tablets
     static const struct { const char* name; float w, h, l, t, r, b; } aScr[] = {
         { "iPhone-sized (852x393, notch)", 852, 393, 59, 0, 59, 21 },
         { "Android phone (873x393, cutout left)", 873, 393, 32, 0, 0, 0 },
@@ -1786,18 +1869,17 @@ static void test_saber_shape(void)
         { "iPhone mini, Display Zoom (693x320)", 693, 320, 44, 0, 44, 21 },
     };
     for (int k = 0; k < (int)(sizeof(aScr) / sizeof(aScr[0])); k++) {
-        for (int st = 0; st < 4; st++) {
+        for (int st = 0; st < 6; st++) {
             setup();
             fg.bSaberBtn = 1;
-            fg.saberStyle = st == 1 || st == 3; // (2: one saber with the CROSS hilt; 3: two)
-            fg.aHilt[0] = st >= 2;
+            saberState(st);
             tick();
             touchUi_SetScreen(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b);
             tick();
             bxy(TOUCHUI_BTN_SABER, &sx, &sy);
             down(1, sx, sy); wait(0.1); up(1, sx, sy);
             static char name[160];
-            snprintf(name, sizeof(name), "shape: %s, %s: the choices on screen, clear of the ring, each other and the buttons", aScr[k].name, st == 1 ? "two sabers" : st == 2 ? "CROSS" : st == 3 ? "two CROSS" : "one");
+            snprintf(name, sizeof(name), "shape: %s, %s: the choices on screen, clear of the ring, each other and the buttons", aScr[k].name, g_aStateName[st]);
             g_case = name;
             CHECK(touchUi_IsWheelOpen() && chipsClear(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b, aScr[k].name));
             touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &hx, &hy);
@@ -1832,10 +1914,9 @@ static int throwClear(float W, float H, float l, float t, float r, float b, cons
     const float rx = fmaxf(fmaxf(x0 - cx, cx - x1), 0.0f), ry = fmaxf(fmaxf(y0 - cy, cy - y1), 0.0f);
     if (hypotf(rx, ry) < r1 + 10.0f + 6.0f) { printf("  %s: THROW on the popped slices\n", what); bOk = 0; }
     for (int i = 0; i < TOUCHUI_NUM_CHIPS; i++) {
-        float ox, oy;
-        if (i == TOUCHUI_CHIP_THROW || !touchUi_GetSaberChip(i, &ox, &oy)) continue;
-        const float gx = fmaxf(fabsf(ox - x) - 64.0f, 0.0f), gy = fmaxf(fabsf(oy - y) - 28.0f, 0.0f);
-        if (hypotf(gx, gy) < 12.0f && i != TOUCHUI_CHIP_LOOK) { printf("  %s: THROW %.1f pt from choice %d\n", what, hypotf(gx, gy), i); bOk = 0; }
+        float rt[4] = { x0, y0, 64.0f, 28.0f }, ro[4];
+        if (i == TOUCHUI_CHIP_THROW || i == TOUCHUI_CHIP_LOOK || !chipRect(i, ro)) continue;
+        if (rectGap(rt, ro) < 8.0f - 0.01f) { printf("  %s: THROW %.1f pt from choice %d\n", what, rectGap(rt, ro), i); bOk = 0; }
     }
     for (int k = 0; k < TOUCHUI_BTN_TRAYGYRO; k++) {
         float bx, by, br;
@@ -2024,14 +2105,15 @@ static void test_saber_throw(void)
         { "tablet (1067x667, nav bar)", 1067, 667, 0, 0, 0, 40 },
         { "iPhone mini, Display Zoom (693x320)", 693, 320, 44, 0, 44, 21 },
     };
+    // (THROW's spot before the hand cards, each screen's: where it stays)
+    static const float aWas[][2] = { { 575, 61 }, { 595, 61 }, { 571, 61 }, { 537, 135 }, { 541, 61 }, { 417, 61 }, { 586, 61 }, { 656, 153 }, { 475, 61 } };
     for (int k = 0; k < (int)(sizeof(aScr) / sizeof(aScr[0])); k++) {
         float x0 = -1.0f, y0 = -1.0f;
         int bSame = 1, bClear = 1;
-        for (int st = 0; st < 4; st++) {
+        for (int st = 0; st < 6; st++) {
             setup();
             fg.bSaberBtn = 1;
-            fg.saberStyle = st == 1 || st == 3; // (2: one saber with the CROSS hilt; 3: two)
-            fg.aHilt[0] = st >= 2;
+            saberState(st);
             tick();
             touchUi_SetScreen(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b);
             tick();
@@ -2051,100 +2133,104 @@ static void test_saber_throw(void)
             tick();
         }
         static char name[160];
-        snprintf(name, sizeof(name), "throw: %s: THROW at one spot in every style and hilt (%.0f,%.0f), clear of the ring, the other choices, the buttons and the edges", aScr[k].name, x0 - 32.0f, y0 - 14.0f);
+        snprintf(name, sizeof(name), "throw: %s: THROW at one spot in every state (%.0f,%.0f, where it was before the cards), clear of the ring, the other choices, the buttons and the edges", aScr[k].name, x0 - 32.0f, y0 - 14.0f);
         g_case = name;
-        printf("  %s: THROW at %.0f,%.0f\n", aScr[k].name, x0 - 32.0f, y0 - 14.0f);
-        CHECK(bSame && bClear);
+        printf("  %s: THROW at %.0f,%.0f (was %.0f,%.0f)\n", aScr[k].name, x0 - 32.0f, y0 - 14.0f, aWas[k][0], aWas[k][1]);
+        CHECK(bSame && bClear && fabsf(x0 - 32.0f - aWas[k][0]) < 0.01f && fabsf(y0 - 14.0f - aWas[k][1]) < 0.01f);
     }
 }
 
-// HILT, the hilt (NORMAL, CROSS...: both hands', with either style): on the
-// left under DUAL and over the shape's switch, where CROSS was; its name
-// drawn; a tap for the next available, round; remembered by name, set from
-// outside too (a pad, the keys); a CROSS kept as a style by builds before the
-// hilts moved to SINGLE with the CROSS hilt and its colour; where all seven
-// choices go down one side and don't fit as they are, closer and evenly, each
-// touch on one its own
+// HILT: each card's own button (NORMAL, CROSS, STAFF, FOLD: that hand's
+// next available, round; SAME HILT: both hands'); its name drawn; remembered
+// by name, set from outside too (a pad, the keys); a CROSS kept as a style by
+// builds before the hilts moved to SINGLE with the CROSS hilt and its colour;
+// on small screens each touch on a choice its own
 static void test_saber_hilt(void)
 {
-    float sx, sy, cx, cy, r0, r1, deg, px, py, xx, xy, dx, dy, hx, hy;
+    float sx, sy, cx, cy, r0, r1, xx, xy, dx, dy, hx, hy;
     setup();
     fg.bSaberBtn = 1;
     tick();
     bxy(TOUCHUI_BTN_SABER, &sx, &sy);
-    g_case = "hilt: HILT under DUAL, over FILM, on the left; its name (NORMAL) drawn inside it";
+    g_case = "hilt: the RIGHT card's HILT button, in the card under its colour; its hilt's name (NORMAL) drawn inside it, at 11 pt";
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
     touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
-    CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &xx, &xy) && touchUi_GetSaberChip(TOUCHUI_CHIP_DUAL, &dx, &dy)
+    CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(HILT(0), &xx, &xy) && touchUi_GetSaberChip(CARD(0), &dx, &dy)
           && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &hx, &hy));
     {
-        float tx = 0.0f, ty = 0.0f, ts = 0.0f, tw = 0.0f;
+        float tx = 0.0f, ty = 0.0f, ts = 0.0f, tw = 0.0f, hr[4];
         const int bName = drawnTextAt("NORMAL", &tx, &ty, &ts);
         touchUiDraw_MeasureText("NORMAL", ts, 1.0f, &tw, NULL);
-        printf("  NORMAL drawn at %.1f pt, %.1f wide in the 64 pt chip\n", ts, tw);
-        CHECK(fabsf(xx - dx) < 0.01f && fabsf(xx - hx) < 0.01f && xy > dy + 20.0f && hy > xy + 20.0f && xx < cx - r1
-              && bName && fabsf(tx - xx) < 0.01f && fabsf(ty - xy) < 0.01f && ts >= 8.0f && tw <= 64.0f - 10.0f + 0.01f);
+        chipRect(HILT(0), hr);
+        printf("  NORMAL drawn at %.1f pt, %.1f wide in the 88 pt HILT button\n", ts, tw);
+        CHECK(fabsf(xx - dx) < 0.01f && xy > dy + 10.0f && hy > xy + 20.0f && xx > cx + r1 && bName && ts == 11.0f
+              && tx - tw * 0.5f > hr[0] + 6.0f && tx + tw * 0.5f < hr[0] + hr[2] - 6.0f && fabsf(ty - xy) < 0.01f && drawnText("HILT"));
     }
-    g_case = "hilt: tapped: CROSS (its name drawn), the style kept (SINGLE), one tick, the wheel open to tap, the game held";
+    g_case = "hilt: tapped: CROSS (its name drawn), one saber kept, one tick, the wheel open to tap, the game held";
     g_platTicks = 0;
-    down(2, xx, xy); up(2, xx, xy);
-    CHECK(fg.aHilt[0] == 1 && fg.saberStyle == TOUCHUI_SABER_SINGLE && g_platTicks == 1 && touchUi_IsWheelOpen() && touchUi_IsWheelTapMode() && fg.bHold
-          && drawnText("CROSS") && !drawnText("NORMAL"));
-    CHECK(!touchUi_GetSaberChip(TOUCHUI_CHIP_LEFT, NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_BOTH, NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_RIGHT, NULL, NULL));
+    CHECK(tapChip(HILT(0)));
+    CHECK(fg.aHilt[0] == 1 && fg.aHilt[1] == 0 && fg.saberStyle == TOUCHUI_SABER_SINGLE && g_platTicks == 1 && touchUi_IsWheelOpen() && touchUi_IsWheelTapMode()
+          && fg.bHold && drawnText("CROSS") && !drawnText("NORMAL"));
+    CHECK(!touchUi_GetSaberChip(CARD(1), NULL, NULL) && !touchUi_GetSaberChip(HILT(1), NULL, NULL));
     g_case = "hilt: nothing else moved with it";
     {
         float ax, ay;
         int bSame = 1;
-        bSame &= touchUi_GetSaberChip(TOUCHUI_CHIP_DUAL, &ax, &ay) && fabsf(ax - dx) < 0.01f && fabsf(ay - dy) < 0.01f;
-        bSame &= touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &ax, &ay) && fabsf(ax - xx) < 0.01f && fabsf(ay - xy) < 0.01f;
+        bSame &= touchUi_GetSaberChip(CARD(0), &ax, &ay) && fabsf(ax - dx) < 0.01f && fabsf(ay - dy) < 0.01f;
+        bSame &= touchUi_GetSaberChip(HILT(0), &ax, &ay) && fabsf(ax - xx) < 0.01f && fabsf(ay - xy) < 0.01f;
         bSame &= touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &ax, &ay) && fabsf(ax - hx) < 0.01f && fabsf(ay - hy) < 0.01f;
         CHECK(bSame);
     }
-    g_case = "hilt: a colour tapped with SINGLE and CROSS: the right hand's (the left hand's kept)";
+    g_case = "hilt: a colour tapped with one CROSS saber: the right hand's (the left hand's kept)";
     SC(0, 0) = 5; SC(1, 1) = 3;
-    touchUi_GetWheelSlice(1, &deg);
-    polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
-    down(2, px, py); up(2, px, py);
+    tapColour(1);
     CHECK(SC(0, 0) == 1 && SC(1, 1) == 3 && fg.aHilt[0] == 1 && touchUi_IsWheelOpen());
-    g_case = "hilt: the shape's switch still flips FILM with CROSS, the hilt kept";
+    g_case = "hilt: FILM dim with every hilt in use CROSS, and it still flips, the hilt kept";
     {
         const int sh0 = fg.saberShape;
+        CHECK(iosSaberWheel_FilmDimmed());
         down(2, hx, hy); up(2, hx, hy);
         CHECK(fg.saberShape == !sh0 && fg.aHilt[0] == 1 && touchUi_IsWheelOpen());
         down(2, hx, hy); up(2, hx, hy);
     }
-    g_case = "hilt: DUAL with CROSS: two crossguards, the blades' choices shown, HILT where it was";
-    down(2, dx, dy); up(2, dx, dy);
+    g_case = "hilt: two sabers with the right CROSS: the LEFT card its own hilt (NORMAL), FILM no longer dim, HILT where it was";
+    CHECK(tapChip(TOUCHUI_CHIP_ADD));
     {
         float ax, ay;
-        CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && fg.aHilt[0] == 1 && touchUi_GetSaberChip(TOUCHUI_CHIP_LEFT, NULL, NULL)
-              && touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &ax, &ay) && drawnText("CROSS"));
+        CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && fg.aHilt[0] == 1 && fg.aHilt[1] == 0 && touchUi_GetSaberChip(HILT(1), NULL, NULL)
+              && touchUi_GetSaberChip(HILT(0), &ax, &ay) && fabsf(ax - xx) < 0.01f && fabsf(ay - xy) < 0.01f && drawnText("CROSS") && drawnText("NORMAL")
+              && !iosSaberWheel_FilmDimmed());
     }
-    g_case = "hilt: tapped again: NORMAL (round: only two available), the style kept (DUAL)";
-    touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &xx, &xy);
-    down(2, xx, xy); up(2, xx, xy);
-    CHECK(fg.aHilt[0] == 0 && fg.saberStyle == TOUCHUI_SABER_DUAL && drawnText("NORMAL"));
+    g_case = "hilt: the LEFT card's HILT: only the left hand (CROSS), the right kept";
+    CHECK(tapChip(HILT(1)) && fg.aHilt[1] == 1 && fg.aHilt[0] == 1 && iosSaberWheel_FilmDimmed());
+    g_case = "hilt: SAME HILT on: a HILT tap changes both hands (NORMAL: round, only two available)";
+    g_platTicks = 0;
+    CHECK(tapChip(TOUCHUI_CHIP_SAME_HILT) && iosSaberWheel_GetSameHilt() && g_platTicks == 1 && touchUi_IsWheelOpen());
+    CHECK(tapChip(HILT(1)) && fg.aHilt[0] == 0 && fg.aHilt[1] == 0 && fg.saberStyle == TOUCHUI_SABER_DUAL);
+    CHECK(tapChip(HILT(0)) && fg.aHilt[0] == 1 && fg.aHilt[1] == 1);
+    CHECK(tapChip(TOUCHUI_CHIP_SAME_HILT) && !iosSaberWheel_GetSameHilt());
     g_case = "hilt: with STAFF available too: NORMAL, CROSS, STAFF, round, past FOLD (not available)";
     {
         fg.bStaffOk = 1;
         int aSeen[4];
-        for (int k = 0; k < 4; k++) { touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &xx, &xy); down(2, xx, xy); up(2, xx, xy); aSeen[k] = fg.aHilt[0]; }
-        CHECK(aSeen[0] == 1 && aSeen[1] == 2 && aSeen[2] == 0 && aSeen[3] == 1 && drawnText("CROSS"));
+        for (int k = 0; k < 4; k++) { tapChip(HILT(0)); aSeen[k] = fg.aHilt[0]; }
+        CHECK(aSeen[0] == 2 && aSeen[1] == 0 && aSeen[2] == 1 && aSeen[3] == 2 && fg.aHilt[1] == 1 && drawnText("STAFF"));
         fg.bStaffOk = 0;
         fg.aHilt[0] = 1;
     }
-    g_case = "hilt: the shared wheel's own call (a pad's LB, the 7 key, go through it) goes to the next";
-    inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT);
-    CHECK(fg.aHilt[0] == 0 && inputWheel_IsOpen());
-    inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT);
+    g_case = "hilt: the shared wheel's own call (a pad's LB, the 7 key: the picked card's HILT) goes to that hand's next";
+    iosSaberWheel_PickHand(0);
+    inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT + iosSaberWheel_GetPickedHand());
+    CHECK(fg.aHilt[0] == 0 && fg.aHilt[1] == 1 && inputWheel_IsOpen());
+    inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT + iosSaberWheel_GetPickedHand());
     CHECK(fg.aHilt[0] == 1 && inputWheel_IsOpen());
+    tick(); // (a frame: what a pad or the keys changed, saved)
     g_case = "hilt: the gap cancels; remembered (by name) over a restart, the style and colours too";
-    polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
-    down(2, px, py); up(2, px, py);
-    CHECK(!touchUi_IsWheelOpen() && fg.aHilt[0] == 1 && fg.saberStyle == TOUCHUI_SABER_DUAL);
-    fg.aHilt[0] = 0; fg.saberStyle = 0; SC(0, 0) = 0;
+    tapColour(-1);
+    CHECK(!touchUi_IsWheelOpen() && fg.aHilt[0] == 1 && fg.aHilt[1] == 1 && fg.saberStyle == TOUCHUI_SABER_DUAL);
+    fg.aHilt[0] = fg.aHilt[1] = 0; fg.saberStyle = 0; SC(0, 0) = 0;
     touchUi_Init(&fakeGame, g_settings);
-    CHECK(fg.aHilt[0] == 1 && fg.saberStyle == TOUCHUI_SABER_DUAL && SC(0, 0) == 1);
+    CHECK(fg.aHilt[0] == 1 && fg.aHilt[1] == 1 && fg.saberStyle == TOUCHUI_SABER_DUAL && SC(0, 0) == 1 && settingsHave("saberHiltLeft=CROSS\n"));
     g_case = "hilt: a hilt and a colour set from outside the overlay (a pad, the keys): remembered over a restart";
     {
         setup();
@@ -2217,73 +2303,66 @@ static void test_saber_hilt(void)
     fg.bSaberBtn = 1; fg.bCrossOk = 0;
     tick();
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
-    CHECK(touchUi_IsWheelOpen() && !touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, NULL, NULL) && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, NULL, NULL));
+    CHECK(touchUi_IsWheelOpen() && !touchUi_GetSaberChip(HILT(0), NULL, NULL) && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, NULL, NULL)
+          && touchUi_GetSaberChip(CARD(0), NULL, NULL));
     inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT);
     CHECK(fg.aHilt[0] == 0);
+    inputWheel_SaberChip(INPUTWHEEL_CHIP_ADD);
+    touchUi_Draw(T); // (laid out again as it is drawn)
+    CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && !touchUi_GetSaberChip(HILT(1), NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_SAME_HILT, NULL, NULL)
+          && touchUi_GetSaberChip(TOUCHUI_CHIP_SAME_COLOUR, NULL, NULL));
     if (inputWheel_IsOpen()) inputWheel_Close(-1);
     fg.bCrossOk = 1;
-    // all seven down one side: in order; where they don't fit as they are, 6 pt apart and every touch on a choice its own
+    // small screens: every choice shown, each touch on one its own (the x, HILT
+    // and the dots before their card), none moving as HILT is tapped
     static const struct { const char* name; float w, h, l, t, r, b; } aScr[] = {
         { "SE-sized (568x320)", 568, 320, 0, 0, 0, 0 },
         { "iPhone mini, Display Zoom (693x320)", 693, 320, 44, 0, 44, 21 },
         { "small phone (640x360)", 640, 360, 0, 0, 0, 0 },
         { "squat phone (640x300)", 640, 300, 0, 0, 0, 0 },
     };
-    static const int aOrder[7] = { TOUCHUI_CHIP_SINGLE, TOUCHUI_CHIP_DUAL, TOUCHUI_CHIP_HILT, TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_LEFT, TOUCHUI_CHIP_BOTH, TOUCHUI_CHIP_RIGHT };
     for (int k = 0; k < (int)(sizeof(aScr) / sizeof(aScr[0])); k++) {
         setup();
         fg.bSaberBtn = 1;
-        fg.saberStyle = TOUCHUI_SABER_DUAL;
+        saberState(4); // (two: STAFF, its blades each their own; FOLD, linked: AUTO shown)
         tick();
         touchUi_SetScreen(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b);
         tick();
         bxy(TOUCHUI_BTN_SABER, &sx, &sy);
         down(1, sx, sy); wait(0.1); up(1, sx, sy);
-        float aX[7], aY[7];
-        int bAll = 1;
-        for (int i = 0; i < 7; i++) bAll &= touchUi_GetSaberChip(aOrder[i], &aX[i], &aY[i]);
-        const int bOne = bAll && fabsf(aX[6] - aX[0]) < 0.01f;
-        const int bTight = bOne && fabsf((aY[1] - aY[0]) - 34.0f) < 0.01f;
-        int bOk = bAll, bOwn = 1;
-        for (int i = 1; bOne && i < 7; i++) {
-            const float step = aY[i] - aY[i - 1];
-            if (bTight ? fabsf(step - 34.0f) > 0.01f : fabsf(step - (i == 4 ? 44.0f : 36.0f)) > 0.01f) bOk = 0;
+        int bAll = 1, bOwn = 1;
+        for (int i = 0; i < TOUCHUI_NUM_CHIPS; i++) {
+            if (i == TOUCHUI_CHIP_ADD || i == TOUCHUI_CHIP_LOOK) continue;
+            float rc[4];
+            if (!chipRect(i, rc)) { if (i != TOUCHUI_CHIP_THROW || aScr[k].h > 300) { printf("  %s: %d not shown\n", aScr[k].name, i); bAll = 0; } continue; }
+            for (float y = rc[1] + 0.5f; y < rc[1] + rc[3]; y += 2.0f)
+                for (float x = rc[0] + 0.5f; x < rc[0] + rc[2]; x += 2.0f) {
+                    int want = i;
+                    // (inside a card: its x, HILT or dot where one is)
+                    for (int j = TOUCHUI_CHIP_HILT; j <= TOUCHUI_CHIP_REMOVE && i < TOUCHUI_CHIP_HILT; j++) {
+                        float rj[4];
+                        if (chipRect(j, rj) && x >= rj[0] && x <= rj[0] + rj[2] && y >= rj[1] && y <= rj[1] + rj[3] && want == i) want = j;
+                    }
+                    if (inputWheel_ChipAt(x, y) != want) { if (bOwn) printf("  %s: %.1f,%.1f is %d, not %d\n", aScr[k].name, x, y, inputWheel_ChipAt(x, y), want); bOwn = 0; }
+                }
         }
-        for (int i = 0; bTight && i < 7; i++)
-            for (float y = aY[i] - 14.0f - 3.0f + 0.25f; y < aY[i] + 14.0f + 3.0f; y += 1.0f)
-                for (float x = aX[i] - 32.0f - 6.0f + 0.25f; x < aX[i] + 32.0f + 6.0f; x += 4.0f)
-                    if (inputWheel_ChipAt(x, y) != aOrder[i]) bOwn = 0;
-        printf("  %s, two sabers: %s%s\n", aScr[k].name, bOne ? "one column" : "two columns", bTight ? ", close (6 pt apart)" : "");
         static char name[160];
-        snprintf(name, sizeof(name), "hilt: %s, two sabers: the seven in order, 8 pt apart (16 between the kinds) or, where they don't fit so, 6 pt and evenly; each touch its own", aScr[k].name);
+        snprintf(name, sizeof(name), "hilt: %s, two sabers (STAFF, FOLD): every choice shown, each touch its own, clear", aScr[k].name);
         g_case = name;
-        CHECK(bOk && bOwn && chipsClear(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b, aScr[k].name));
+        CHECK(bAll && bOwn && chipsClear(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b, aScr[k].name));
         {
-            // HILT tapped with all seven: none of them moves
-            float tx, ty, cX[7], cY[7];
-            touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &tx, &ty);
-            down(2, tx, ty); up(2, tx, ty);
-            int bStill = fg.aHilt[0] == 1;
-            for (int i = 0; i < 7; i++) bStill &= touchUi_GetSaberChip(aOrder[i], &cX[i], &cY[i]) && fabsf(cX[i] - aX[i]) < 0.01f && fabsf(cY[i] - aY[i]) < 0.01f;
-            snprintf(name, sizeof(name), "hilt: %s, two sabers: HILT tapped (CROSS), none of the seven moves", aScr[k].name);
+            // HILT tapped: none of them moves
+            float aR[TOUCHUI_NUM_CHIPS][4], rc[4];
+            int aOn[TOUCHUI_NUM_CHIPS];
+            for (int i = 0; i < TOUCHUI_NUM_CHIPS; i++) aOn[i] = chipRect(i, aR[i]);
+            fg.bStaffOk = 0; // (STAFF to FOLD: the dots the same, AUTO stays)
+            tapChip(HILT(0));
+            int bStill = fg.aHilt[0] == 3 && fg.aHilt[1] == 3;
+            for (int i = 0; i < TOUCHUI_NUM_CHIPS; i++)
+                if (aOn[i]) bStill &= chipRect(i, rc) && fabsf(rc[0] - aR[i][0]) < 0.01f && fabsf(rc[1] - aR[i][1]) < 0.01f;
+            snprintf(name, sizeof(name), "hilt: %s, two sabers: HILT tapped (STAFF to FOLD), no choice moves", aScr[k].name);
             g_case = name;
             CHECK(bStill);
-        }
-        if (bTight) {
-            // only the four (SINGLE, then HILT again): as far apart as ever, SINGLE where it was
-            for (int c = 0; c < 2; c++) {
-                float tx, ty;
-                touchUi_GetSaberChip(c ? TOUCHUI_CHIP_HILT : TOUCHUI_CHIP_SINGLE, &tx, &ty);
-                down(2, tx, ty); up(2, tx, ty);
-                float bX[4], bY[4];
-                int bFour = 1;
-                for (int i = 0; i < 4; i++) bFour &= touchUi_GetSaberChip(aOrder[i], &bX[i], &bY[i]);
-                for (int i = 1; bFour && i < 4; i++) if (fabsf(bY[i] - bY[i - 1] - 36.0f) > 0.01f) bFour = 0;
-                snprintf(name, sizeof(name), "hilt: %s, %s: the four 8 pt apart as ever (closer only with all seven), SINGLE where it was", aScr[k].name, c ? "HILT tapped" : "SINGLE");
-                g_case = name;
-                CHECK(bFour && fabsf(bY[0] - aY[0]) < 0.01f && !touchUi_GetSaberChip(TOUCHUI_CHIP_LEFT, NULL, NULL)
-                      && chipsClear(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b, aScr[k].name));
-            }
         }
         if (inputWheel_IsOpen()) inputWheel_Close(-1);
         tick();
@@ -2383,27 +2462,499 @@ static void test_shared_wheel(void)
     up(3, wx, wy);
     CHECK(presses(SC_E, 6) == 1);
 
-    g_case = "shared wheel: the blade choice is the wheel's (the pad's too), remembered";
+    g_case = "shared wheel: the card picked is the wheel's (the pad's too): the overlay shows it, and a tap picks it back";
     fg.bSaberBtn = 1;
     fg.saberStyle = 1;
     tick();
-    inputWheel_SetSaberTarget(INPUTWHEEL_SABER_LEFT); // (as the pad set it)
-    CHECK(touchUi_GetSaberTarget() == TOUCHUI_CHIP_LEFT);
+    iosSaberWheel_PickHand(1); // (as the pad set it)
     float sx, sy, cx, cy;
     bxy(TOUCHUI_BTN_SABER, &sx, &sy);
     down(4, sx, sy);
     wait(0.1);
     up(4, sx, sy);
-    CHECK(touchUi_IsWheelOpen() && touchUi_GetWheelKind() == TOUCHUI_WHEEL_SABER);
-    CHECK(touchUi_GetSaberChip(TOUCHUI_CHIP_RIGHT, &cx, &cy));
+    CHECK(touchUi_IsWheelOpen() && touchUi_GetWheelKind() == TOUCHUI_WHEEL_SABER && drawnText("colour for the left saber"));
+    CHECK(touchUi_GetSaberChip(TOUCHUI_CHIP_CARD, &cx, &cy));
     down(5, cx, cy);
     up(5, cx, cy);
-    CHECK(inputWheel_GetSaberTarget() == INPUTWHEEL_SABER_RIGHT && touchUi_GetSaberTarget() == TOUCHUI_CHIP_RIGHT);
-    CHECK(touchUi_IsWheelOpen());
+    CHECK(iosSaberWheel_GetPickedHand() == 0 && drawnText("colour for the right saber") && touchUi_IsWheelOpen());
     touchUi_SetShown(0);
     CHECK(!inputWheel_IsOpen() && fg.bHold == 0);
-    touchUi_Init(&fakeGame, g_settings);
-    CHECK(inputWheel_GetSaberTarget() == INPUTWHEEL_SABER_RIGHT);
+}
+
+// ---- the hand cards (hiltmock/DESIGN.md)
+// Whether a card is drawn outlined in gold (its box's border)
+static int cardGold(int hand)
+{
+    float rc[4];
+    if (!chipRect(TOUCHUI_CHIP_CARD + hand, rc)) return 0;
+    const touchUiDrawList* l = touchUi_Draw(T);
+    for (int i = 0; i < l->numItems; i++) {
+        const touchUiDrawItem* it = &l->aItems[i];
+        if (it->type == TOUCHUI_DRAW_RRECT && fabsf(it->x0 - rc[0]) < 0.01f && fabsf(it->y0 - rc[1]) < 0.01f && fabsf(it->x1 - rc[2]) < 0.01f)
+            return it->stroke.b < 0.5f && it->stroke.r > 0.9f && it->lw > 1.9f;
+    }
+    return 0;
+}
+// A drawn text's alpha (-1: not drawn)
+static float drawnTextAlpha(const char* t)
+{
+    const touchUiDrawList* l = touchUi_Draw(T);
+    for (int i = 0; i < l->numItems; i++)
+        if (l->aItems[i].type == TOUCHUI_DRAW_TEXT && !strcmp(l->aPool + l->aItems[i].text, t)) return l->aItems[i].fill.a;
+    return -1.0f;
+}
+// The gold rings drawn round a blade's dot (circles with a gold border and no fill)
+static int goldRings(void)
+{
+    const touchUiDrawList* l = touchUi_Draw(T);
+    int n = 0;
+    for (int i = 0; i < l->numItems; i++) {
+        const touchUiDrawItem* it = &l->aItems[i];
+        n += it->type == TOUCHUI_DRAW_CIRCLE && it->fill.a <= 0.0f && it->stroke.r > 0.9f && it->stroke.b < 0.5f && it->r < 8.0f;
+    }
+    return n;
+}
+
+// (the pad's words for the middle, as iosPad_WheelHint's)
+static const char* padHint(int bPickable, int bCancel) { return bCancel ? "B to close" : bPickable ? "A to set" : "point the stick"; }
+static int listHasText(const touchUiDrawList* l, const char* t)
+{
+    for (int i = 0; i < l->numItems; i++)
+        if (l->aItems[i].type == TOUCHUI_DRAW_TEXT && !strcmp(l->aPool + l->aItems[i].text, t)) return 1;
+    return 0;
+}
+
+static void test_saber_cards(void)
+{
+    float sx, sy, x, y, rc[4];
+    setup();
+    fg.bSaberBtn = 1; fg.bStaffOk = fg.bFoldOk = 1;
+    fg.saberStyle = 1;
+    fg.aHilt[0] = 2; // (the right hand STAFF, linked; the left NORMAL)
+    fg.aBladeColour[0][0] = 1; fg.aBladeColour[1][0] = 5;
+    tick();
+    bxy(TOUCHUI_BTN_SABER, &sx, &sy);
+    tapSaber();
+    g_case = "cards: two sabers: the RIGHT card picked to start (gold), the LEFT not; the STAFF's two dots joined, the name once";
+    CHECK(touchUi_IsWheelOpen() && iosSaberWheel_GetPickedHand() == 0 && iosSaberWheel_GetPickedBlade() == -1 && cardGold(0) && !cardGold(1));
+    CHECK(touchUi_GetSaberChip(DOT(0, 0), NULL, NULL) && touchUi_GetSaberChip(DOT(0, 1), NULL, NULL) && !touchUi_GetSaberChip(DOT(1, 0), NULL, NULL)
+          && drawnText("COLOUR 1") && drawnText("COLOUR 5") && drawnText("STAFF") && drawnText("NORMAL") && drawnText("LEFT") && drawnText("RIGHT")
+          && drawnText("colour for the right saber") && goldRings() == 0);
+    g_case = "cards: a tap on the LEFT card (outside its HILT and x): that hand (gold), a tick, the wheel open; its colour named in the middle";
+    chipRect(CARD(1), rc);
+    g_platTicks = 0;
+    down(2, rc[0] + 20.0f, rc[1] + 32.0f); up(2, rc[0] + 20.0f, rc[1] + 32.0f);
+    CHECK(iosSaberWheel_GetPickedHand() == 1 && cardGold(1) && !cardGold(0) && g_platTicks == 1 && touchUi_IsWheelOpen()
+          && fg.saberStyle == 1 && drawnText("colour for the left saber"));
+    tapColour(9);
+    CHECK(SC(1, 1) == 9 && fg.aBladeColour[0][0] == 1 && iosSaber_GetBladeColour(0, 1) == 1);
+    g_case = "cards: the STAFF's second dot: just that blade, split from the first (its colour to start), ringed in gold; a colour paints it alone";
+    g_platTicks = 0;
+    CHECK(tapChip(DOT(0, 1)));
+    CHECK(iosSaberWheel_GetPickedHand() == 0 && iosSaberWheel_GetPickedBlade() == 1 && fg.aUnlinked[0] && fg.aBladeColour[0][1] == 1 && g_platTicks == 1
+          && cardGold(0) && goldRings() == 1 && drawnText("right saber, blade 2"));
+    tapColour(12);
+    CHECK(fg.aBladeColour[0][0] == 1 && fg.aBladeColour[0][1] == 12 && SC(1, 1) == 9);
+    g_case = "cards: split, each half of the row its blade's dot and name (condensed); the first dot: blade 1 alone";
+    {
+        float r0[4], r1[4], c0[4];
+        CHECK(chipRect(DOT(0, 0), r0) && chipRect(DOT(0, 1), r1) && chipRect(CARD(0), c0) && fabsf(r0[2] - r1[2]) < 0.01f && r1[0] >= r0[0] + r0[2] - 0.01f
+              && fabsf(r1[0] - (c0[0] + 52.0f)) < 0.01f && fabsf(r0[1] - c0[1] - 20.0f) < 0.01f && fabsf(r0[3] - 22.0f) < 0.01f
+              && drawnText("COLOUR 1") && drawnText("COLOUR 12"));
+    }
+    CHECK(tapChip(DOT(0, 0)) && iosSaberWheel_GetPickedBlade() == 0 && drawnText("right saber, blade 1"));
+    tapColour(3);
+    CHECK(fg.aBladeColour[0][0] == 3 && fg.aBladeColour[0][1] == 12 && fg.aUnlinked[0]);
+    g_case = "cards: the card itself (outside its dots and HILT): the whole hand again; a colour joins its blades again";
+    chipRect(CARD(0), rc);
+    down(2, rc[0] + rc[2] - 10.0f, rc[1] + 12.0f); up(2, rc[0] + rc[2] - 10.0f, rc[1] + 12.0f);
+    CHECK(iosSaberWheel_GetPickedHand() == 0 && iosSaberWheel_GetPickedBlade() == -1 && goldRings() == 0 && drawnText("colour for the right saber"));
+    tapColour(4);
+    CHECK(fg.aBladeColour[0][0] == 4 && fg.aBladeColour[0][1] == 4 && !fg.aUnlinked[0]);
+    g_case = "cards: linked, the dots' touch: the first from the card's left to midway between the dots, the second on to the card's middle";
+    {
+        float d0[4], d1[4], c0[4];
+        CHECK(chipRect(DOT(0, 0), d0) && chipRect(DOT(0, 1), d1) && chipRect(CARD(0), c0) && fabsf(d0[0] - c0[0]) < 0.01f && fabsf(d0[0] + d0[2] - (c0[0] + 18.7f)) < 0.01f
+              && fabsf(d1[0] - d0[0] - d0[2]) < 0.01f && fabsf(d1[0] + d1[2] - (c0[0] + 52.0f)) < 0.01f && fabsf(d0[1] - c0[1] - 20.0f) < 0.01f && fabsf(d0[3] - 22.0f) < 0.01f);
+    }
+    g_case = "cards: linked, the first dot: blade 1 (ringed), the second follows it";
+    CHECK(tapChip(DOT(0, 0)) && iosSaberWheel_GetPickedBlade() == 0 && !fg.aUnlinked[0] && goldRings() == 1);
+    tapColour(6);
+    CHECK(fg.aBladeColour[0][0] == 6 && iosSaber_GetBladeColour(0, 1) == 6 && !fg.aUnlinked[0]);
+    g_case = "cards: SAME COLOUR under the LEFT card: on, every blade of both hands takes a colour; no dot ringed; off again: the pick as it was";
+    {
+        float a[4], b[4], c[4];
+        CHECK(chipRect(CARD(1), a) && chipRect(TOUCHUI_CHIP_SAME_COLOUR, b) && chipRect(TOUCHUI_CHIP_SAME_HILT, c) && fabsf(a[0] - b[0]) < 0.01f
+              && fabsf(b[0] - c[0]) < 0.01f && b[1] >= a[1] + a[3] + 9.99f && c[1] >= b[1] + b[3] + 5.99f && drawnText("SAME COLOUR") && drawnText("SAME HILT"));
+    }
+    tapChip(DOT(0, 1)); // (split, blade 2 picked)
+    g_platTicks = 0;
+    CHECK(tapChip(TOUCHUI_CHIP_SAME_COLOUR) && iosSaberWheel_GetSameColour() && g_platTicks == 1 && touchUi_IsWheelOpen() && goldRings() == 0
+          && drawnText("colour for both sabers") && settingsHave("saberSameColour=1\n"));
+    tapColour(14);
+    CHECK(fg.aBladeColour[0][0] == 14 && iosSaber_GetBladeColour(0, 1) == 14 && SC(1, 1) == 14 && iosSaber_GetBladeColour(1, 1) == 14);
+    CHECK(tapChip(TOUCHUI_CHIP_SAME_COLOUR) && !iosSaberWheel_GetSameColour() && iosSaberWheel_GetPickedBlade() == 1 && goldRings() == 1);
+    g_case = "cards: the LEFT card's x: one saber (the left hand's kept); the pick back to the RIGHT card; + 2ND SABER in its place";
+    tapChip(CARD(1));
+    {
+        float xr[4];
+        CHECK(chipRect(TOUCHUI_CHIP_REMOVE, xr) && chipRect(CARD(1), rc) && fabsf(xr[2] - 40.0f) < 0.01f && fabsf(xr[3] - 28.0f) < 0.01f
+              && fabsf(xr[0] + xr[2] - rc[0] - rc[2]) < 0.01f && fabsf(xr[1] - rc[1]) < 0.01f);
+    }
+    fg.aHilt[1] = 3; // (FOLD, to see it kept)
+    g_platTicks = 0;
+    CHECK(tapChip(TOUCHUI_CHIP_REMOVE));
+    CHECK(fg.saberStyle == 0 && iosSaberWheel_GetPickedHand() == 0 && g_platTicks == 1 && touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_ADD, &x, &y)
+          && !touchUi_GetSaberChip(CARD(1), NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_SAME_COLOUR, NULL, NULL) && fg.aHilt[1] == 3 && SC(1, 1) == 14);
+    g_case = "cards: + 2ND SABER: two again, the left hand as it was kept (FOLD), the ring painting it";
+    CHECK(tapChip(TOUCHUI_CHIP_ADD) && fg.saberStyle == 1 && fg.aHilt[1] == 3 && iosSaberWheel_GetPickedHand() == 1 && cardGold(1) && drawnText("FOLD"));
+    g_case = "cards: AUTO under FILM on the right, only while a FOLD is in either hand; a tap switches it (a tick, saved, open)";
+    {
+        float f[4], a[4], c[4];
+        CHECK(chipRect(TOUCHUI_CHIP_AUTO, a) && chipRect(TOUCHUI_CHIP_SHAPE, f) && chipRect(CARD(0), c) && fabsf(a[0] - f[0]) < 0.01f
+              && a[1] >= f[1] + f[3] + 5.99f && fabsf(f[0] + f[2] * 0.5f - c[0] - c[2] * 0.5f) < 0.01f && drawnText("AUTO"));
+    }
+    g_platTicks = 0;
+    CHECK(tapChip(TOUCHUI_CHIP_AUTO) && !fg.bFoldAuto && g_platTicks == 1 && touchUi_IsWheelOpen() && settingsHave("saberFoldAuto=0\n"));
+    CHECK(tapChip(TOUCHUI_CHIP_AUTO) && fg.bFoldAuto);
+    g_case = "cards: no FOLD in hand (the left back to NORMAL... via its HILT): no AUTO, and its pad key does nothing";
+    while (fg.aHilt[1] != 0 && tapChip(HILT(1))) {}
+    CHECK(!touchUi_GetSaberChip(TOUCHUI_CHIP_AUTO, NULL, NULL) && !iosSaberWheel_ShowAuto());
+    g_platTicks = 0;
+    inputWheel_SaberChip(INPUTWHEEL_CHIP_AUTO);
+    CHECK(fg.bFoldAuto && g_platTicks == 0);
+    g_case = "cards: FOLD in the right hand of one saber: AUTO shown again";
+    tapChip(TOUCHUI_CHIP_REMOVE);
+    while (fg.aHilt[0] != 3 && tapChip(HILT(0))) {}
+    touchUi_Draw(T);
+    CHECK(fg.saberStyle == 0 && touchUi_GetSaberChip(TOUCHUI_CHIP_AUTO, NULL, NULL));
+    g_case = "cards: FILM dim only while every hilt in use is CROSS";
+    {
+        while (fg.aHilt[0] != 1 && tapChip(HILT(0))) {}
+        const float aCross = drawnTextAlpha("FILM");
+        tapChip(HILT(0));
+        const float aStaff = drawnTextAlpha("FILM");
+        tapChip(TOUCHUI_CHIP_ADD); // (the left NORMAL)
+        while (fg.aHilt[0] != 1 && tapChip(HILT(0))) {}
+        const float aMixed = drawnTextAlpha("FILM");
+        printf("  FILM's alpha: CROSS %.2f, STAFF %.2f, CROSS + NORMAL %.2f\n", aCross, aStaff, aMixed);
+        CHECK(aCross > 0.0f && aCross < 0.35f && aStaff > 0.55f && aMixed > 0.55f);
+    }
+    g_case = "cards: the action buttons hidden while the saber wheel is open (the top row stays); back once it closes";
+    {
+        const touchUiDrawList* l = touchUi_Draw(T);
+        int bFire = 0;
+        for (int i = 0; i < l->numItems; i++) bFire |= l->aItems[i].type == TOUCHUI_DRAW_TEXT && !strcmp(l->aPool + l->aItems[i].text, "FIRE");
+        CHECK(touchUi_AreActionsHidden() && !bFire && !drawnText("JUMP") && !drawnText("DUCK") && drawnText("MENU"));
+        float fx, fy;
+        bxy(TOUCHUI_BTN_FIRE, &fx, &fy);
+        down(2, fx, fy); up(2, fx, fy); // (a tap where FIRE was: empty space, the wheel closes, nothing changed)
+        CHECK(!touchUi_IsWheelOpen() && !touchUi_AreActionsHidden() && drawnText("FIRE") && drawnText("JUMP") && presses(SC_LCTRL, 4) == 0);
+    }
+    g_case = "cards: the Force wheel keeps its action buttons";
+    {
+        float wx, wy;
+        bxy(TOUCHUI_BTN_WHEEL, &wx, &wy);
+        down(1, wx, wy); wait(0.35); up(1, wx, wy);
+        CHECK(touchUi_IsWheelOpen() && !touchUi_AreActionsHidden() && drawnText("FIRE"));
+        tapColour(-1);
+    }
+
+    g_case = "SABER with a FOLD lit in hand: a tap flips it (a tap felt), the wheel stays shut";
+    fg.aHilt[0] = 3; fg.bFoldLit = 1; fg.bFoldOpen = 0; fg.foldFlips = 0;
+    tick(); takeHaptics();
+    down(1, sx, sy); wait(0.1); up(1, sx, sy);
+    CHECK(fg.foldFlips == 1 && fg.bFoldOpen && !touchUi_IsWheelOpen() && (takeHaptics() & TOUCHUI_HAPTIC_TAP));
+    g_case = "SABER with a FOLD lit: a 10 pt slide opens the wheel at once (no flip)";
+    down(1, sx, sy); move(1, sx, sy + 10.5f);
+    CHECK(touchUi_IsWheelOpen() && !touchUi_IsWheelTapMode() && fg.foldFlips == 1);
+    up(1, sx, sy + 10.5f);
+    tapColour(-1);
+    g_case = "SABER with a FOLD lit: held 0.3 s (its ring filling): the wheel open to tap (no flip)";
+    down(1, sx, sy); wait(0.2);
+    CHECK(!touchUi_IsWheelOpen() && touchUi_GetRingProgress(TOUCHUI_BTN_SABER) > 0.5f);
+    wait(0.11);
+    CHECK(touchUi_IsWheelOpen() && touchUi_IsWheelTapMode() && fg.foldFlips == 1);
+    up(1, sx, sy);
+    CHECK(touchUi_IsWheelOpen());
+    tapColour(-1);
+    g_case = "SABER with no FOLD lit (folded away, put out): a tap opens the wheel, as ever";
+    fg.bFoldLit = 0;
+    down(1, sx, sy); wait(0.1); up(1, sx, sy);
+    CHECK(touchUi_IsWheelOpen() && fg.foldFlips == 1);
+    tapColour(-1);
+
+    g_case = "weapon wheel: the saber in hand picked again: a FOLD lit flips; another weapon: no flip";
+    fg.aWeaponOwned[10] = fg.aWeaponSel[10] = 1; fg.curWeapon = 10; fg.bFoldLit = 1;
+    {
+        float nx, ny;
+        bxy(TOUCHUI_BTN_NEXTWPN, &nx, &ny);
+        down(1, nx, ny); wait(0.35); up(1, nx, ny);
+        CHECK(touchUi_IsWheelOpen() && touchUi_GetWheelKind() == TOUCHUI_WHEEL_WEAPONS);
+        tapColour(10);
+        CHECK(!touchUi_IsWheelOpen() && fg.foldFlips == 2 && fg.selectedWeapon != 10);
+        down(1, nx, ny); wait(0.35); up(1, nx, ny);
+        tapColour(2);
+        CHECK(!touchUi_IsWheelOpen() && fg.foldFlips == 2 && fg.selectedWeapon == 2);
+    }
+    fg.curWeapon = 2; fg.bFoldLit = 0;
+
+    g_case = "cards: one saber: the RIGHT card never outlined in gold; its dot's gold ring all the same";
+    setup();
+    fg.bSaberBtn = 1; fg.bStaffOk = 1; fg.aHilt[0] = 2;
+    tick();
+    tapSaber();
+    CHECK(touchUi_IsWheelOpen() && !cardGold(0) && goldRings() == 0 && tapChip(DOT(0, 1)) && !cardGold(0) && goldRings() == 1 && iosSaberWheel_GetPickedBlade() == 1);
+    tapColour(-1);
+
+    g_case = "pad / keys: the middle in the opener's words with one saber; what the ring paints with two, or a blade picked";
+    {
+        touchUi_SetShown(0);
+        tick();
+        fg.saberStyle = 0; fg.aHilt[0] = 2;
+        iosSaberWheel_PickHand(0); // (the whole hand: as a pad finds it)
+        inputWheel_Open(INPUTWHEEL_SABER, 1);
+        inputWheel_SetHintFn(padHint);
+        static touchUiDrawList list;
+        inputWheelScreen sc = { 853.33f, 480.0f, 0, 0, 0, 0 };
+        touchUiDraw_Begin(&list); inputWheel_Draw(&list, &sc);
+        const int bOne = listHasText(&list, "point the stick") && !listHasText(&list, "tap a colour");
+        iosSaberWheel_PickBlade(0, 1);
+        touchUiDraw_Begin(&list); inputWheel_Draw(&list, &sc);
+        const int bBlade = listHasText(&list, "right saber, blade 2");
+        iosSaberWheel_PickHand(0);
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_ADD);
+        touchUiDraw_Begin(&list); inputWheel_Draw(&list, &sc);
+        const int bTwo = listHasText(&list, "colour for the left saber");
+        inputWheel_Point(3, 1, 0.0f);
+        touchUiDraw_Begin(&list); inputWheel_Draw(&list, &sc);
+        const int bHot = listHasText(&list, "A to set");
+        CHECK(bOne && bBlade && bTwo && bHot);
+        inputWheel_Close(-1);
+        touchUi_SetShown(1);
+        tick();
+    }
+
+    g_case = "pad / keys (the shared wheel's calls): the next card or blade, round: RIGHT, its blades (STAFF), LEFT, its blades (FOLD); only what is shown";
+    setup();
+    fg.bSaberBtn = 1; fg.bStaffOk = fg.bFoldOk = 1; fg.saberStyle = 1; fg.aHilt[0] = 2; fg.aHilt[1] = 3;
+    tick();
+    tapSaber();
+    {
+        static const int aWant[][2] = { { 0, 0 }, { 0, 1 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 0, -1 }, { 0, 0 } };
+        int bOk = 1;
+        g_platTicks = 0;
+        for (int k = 0; k < 7; k++) {
+            inputWheel_SaberPickNext();
+            if (iosSaberWheel_GetPickedHand() != aWant[k][0] || iosSaberWheel_GetPickedBlade() != aWant[k][1]) { printf("  next %d: %d,%d\n", k, iosSaberWheel_GetPickedHand(), iosSaberWheel_GetPickedBlade()); bOk = 0; }
+        }
+        CHECK(bOk && g_platTicks == 7 && inputWheel_IsOpen());
+        // one NORMAL saber: the RIGHT card only, again and again
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_REMOVE);
+        fg.aHilt[0] = 0;
+        inputWheel_SaberPickNext();
+        const int a = iosSaberWheel_GetPickedHand() == 0 && iosSaberWheel_GetPickedBlade() == -1;
+        inputWheel_SaberPickNext();
+        CHECK(a && iosSaberWheel_GetPickedHand() == 0 && iosSaberWheel_GetPickedBlade() == -1);
+    }
+    g_case = "pad / keys: add and take away the second saber, the picked card's HILT, SAME COLOUR, SAME HILT, AUTO: each with a tick, the wheel open, saved";
+    {
+        g_platTicks = 0;
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_ADD);
+        const int bTwo = fg.saberStyle == 1 && iosSaberWheel_GetPickedHand() == 1;
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT + iosSaberWheel_GetPickedHand());
+        const int bLeftHilt = fg.aHilt[1] == 0 && fg.aHilt[0] == 0; // (FOLD to NORMAL: round)
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_SAME_COLOUR);
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_SAME_HILT);
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT + iosSaberWheel_GetPickedHand());
+        const int bBoth = fg.aHilt[0] == 1 && fg.aHilt[1] == 1;
+        touchUi_Draw(T);
+        const int bNoAuto = !touchUi_GetSaberChip(TOUCHUI_CHIP_AUTO, NULL, NULL);
+        while (fg.aHilt[1] != 3) inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT + 1);
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_AUTO);
+        printf("  pad: two %d left hilt %d both %d no AUTO %d same %d/%d auto %d ticks %d\n", bTwo, bLeftHilt, bBoth, bNoAuto, iosSaberWheel_GetSameColour(),
+               iosSaberWheel_GetSameHilt(), fg.bFoldAuto, g_platTicks);
+        CHECK(bTwo && bLeftHilt && bBoth && bNoAuto && iosSaberWheel_GetSameColour() && iosSaberWheel_GetSameHilt() && !fg.bFoldAuto && inputWheel_IsOpen()
+              && g_platTicks >= 7);
+        tick(); // (a frame: saved)
+        CHECK(settingsHave("saberStyle=DUAL\n") && settingsHave("saberSameColour=1\n") && settingsHave("saberSameHilt=1\n") && settingsHave("saberFoldAuto=0\n")
+              && settingsHave("saberHiltRight=FOLD\n") && settingsHave("saberHiltLeft=FOLD\n"));
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_REMOVE);
+        CHECK(fg.saberStyle == 0 && inputWheel_IsOpen());
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_SAME_COLOUR); // (not shown with one saber: nothing)
+        CHECK(iosSaberWheel_GetSameColour());
+    }
+    g_case = "pad / keys: remembered over a restart, the overlay hidden as they were picked";
+    {
+        touchUi_SetShown(0);
+        tick();
+        fg.saberStyle = 1; fg.aHilt[0] = fg.aHilt[1] = 0; fg.bFoldAuto = 1;
+        touchUi_Init(&fakeGame, g_settings);
+        CHECK(fg.saberStyle == 0 && fg.aHilt[0] == 3 && fg.aHilt[1] == 3 && !fg.bFoldAuto && iosSaberWheel_GetSameColour() && iosSaberWheel_GetSameHilt());
+    }
+    g_case = "the SABER button's picture: each saber in its hilt's shape, each blade in its colour; two in an X";
+    {
+        static const struct { int two, h0, h1, open; int nMin, nMax; const char* what; } aPic[] = {
+            { 0, 0, 0, 0, 1, 1, "one NORMAL" }, { 0, 1, 0, 0, 3, 3, "one CROSS" }, { 0, 2, 0, 0, 2, 2, "one STAFF" },
+            { 0, 3, 0, 0, 2, 2, "one FOLD folded" }, { 0, 3, 0, 1, 2, 2, "one FOLD open" }, { 1, 0, 0, 0, 2, 2, "two NORMAL" },
+            { 1, 2, 3, 0, 4, 4, "STAFF + FOLD" },
+        };
+        int bOk = 1;
+        for (int k = 0; k < (int)(sizeof(aPic) / sizeof(aPic[0])); k++) {
+            setup();
+            fg.bSaberBtn = 1; fg.bStaffOk = fg.bFoldOk = 1; fg.saberStyle = aPic[k].two; fg.aHilt[0] = aPic[k].h0; fg.aHilt[1] = aPic[k].h1;
+            fg.bFoldLit = aPic[k].open; fg.bFoldOpen = aPic[k].open;
+            fg.aBladeColour[0][0] = 1; fg.aBladeColour[0][1] = 11; fg.aUnlinked[0] = 1; fg.aBladeColour[1][0] = 7;
+            tick();
+            float bx, by, br;
+            touchUi_GetButton(TOUCHUI_BTN_SABER, &bx, &by, &br);
+            // (the blades: solid lines in a blade's colour, wider than the core, inside the button)
+            const touchUiDrawList* l = touchUi_Draw(T);
+            int nBlades = 0, nHinge = 0;
+            for (int i = 0; i < l->numItems; i++) {
+                const touchUiDrawItem* it = &l->aItems[i];
+                if (it->type == TOUCHUI_DRAW_LINE && it->stroke.a > 0.6f && fabsf(it->stroke.g - 100.0f / 255.0f) < 0.01f && hypotf(it->x0 - bx, it->y0 - by) < br
+                    && hypotf(it->x1 - bx, it->y1 - by) < br + 1.0f)
+                    nBlades++;
+                if (it->type == TOUCHUI_DRAW_CIRCLE && fabsf(it->x0 - bx) < 0.01f && fabsf(it->y0 - by) < 0.01f && it->r < 2.0f) nHinge++;
+            }
+            if (nBlades < aPic[k].nMin || nBlades > aPic[k].nMax || nHinge != (aPic[k].h0 == 3 && aPic[k].open)) {
+                printf("  SABER picture, %s: %d blade lines, %d hinge\n", aPic[k].what, nBlades, nHinge);
+                bOk = 0;
+            }
+        }
+        CHECK(bOk);
+    }
+}
+
+// ---- the saber wheel's fit, with the label font's own widths
+// (touchUiFont.h: the font the GL renderer draws), at every size the touch
+// overlay (Android) and the pad's and keys' wheel (desktops: 480 pt tall in a
+// window that tall or more) are laid out at
+static float textW(const char* t, float size, float xscale) { float w; touchUiDraw_MeasureText(t, size, xscale, &w, NULL); return w; }
+// Every text the wheel draws in a card, a switch or a button beside the ring
+// inside it, 2 pt in (its box at its size and width: the font's own)
+static int textsInside(float W, float H, float l, float t, float r, float b, const char* what)
+{
+    static touchUiDrawList list;
+    touchUiDraw_Begin(&list);
+    inputWheelScreen sc = { W, H, l, t, r, b };
+    inputWheel_Draw(&list, &sc);
+    static const int aBox[] = { TOUCHUI_CHIP_HILT, TOUCHUI_CHIP_HILT + 1, TOUCHUI_CHIP_CARD, TOUCHUI_CHIP_CARD + 1, TOUCHUI_CHIP_ADD, TOUCHUI_CHIP_SAME_COLOUR,
+                                TOUCHUI_CHIP_SAME_HILT, TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_AUTO, TOUCHUI_CHIP_EQUIP, TOUCHUI_CHIP_LOOK };
+    int bOk = 1, n = 0;
+    for (int i = 0; i < list.numItems; i++) {
+        const touchUiDrawItem* it = &list.aItems[i];
+        if (it->type != TOUCHUI_DRAW_TEXT) continue;
+        float w, h, rc[4];
+        const char* txt = list.aPool + it->text;
+        touchUiDraw_MeasureText(txt, it->size, it->xscale, &w, &h);
+        const float capH = it->size * 22.0f / 32.0f; // (its capitals: TOUCHUI_FONT_CAP)
+        for (int k = 0; k < (int)(sizeof(aBox) / sizeof(aBox[0])); k++) {
+            if (!chipRect(aBox[k], rc) || it->x0 < rc[0] || it->x0 > rc[0] + rc[2] || it->y0 < rc[1] || it->y0 > rc[1] + rc[3]) continue;
+            n++;
+            const float m = aBox[k] == TOUCHUI_CHIP_LOOK ? 0.0f : 2.0f;
+            if (it->x0 - w * 0.5f < rc[0] + m - 0.01f || it->x0 + w * 0.5f > rc[0] + rc[2] - m + 0.01f || it->y0 - capH * 0.5f < rc[1] + m
+                || it->y0 + capH * 0.5f > rc[1] + rc[3] - m) { printf("  %s: \"%s\" (%.1f pt) out of choice %d\n", what, txt, it->size, aBox[k]); bOk = 0; }
+            break;
+        }
+    }
+    return bOk && n >= 6;
+}
+
+static void test_saber_fit(void)
+{
+    static const char* const aName[17] = { "ORIGINAL", "RED", "CRIMSON", "ORANGE", "AMBER", "YELLOW", "LIME", "GREEN", "TEAL", "CYAN",
+                                           "LIGHT BLUE", "BLUE", "PURPLE", "MAGENTA", "PINK", "WHITE", "BLACK" };
+    static const char* const aHilt[4] = { "NORMAL", "CROSS", "STAFF", "FOLD" };
+    const float CW = 104.0f;
+    g_case = "fit: the cards' text at its sizes, in its room (the widest names)";
+    {
+        // (as inputWheel.c draws them: a split blade's name 8.5 pt condensed, down to
+        // 7.5 and then narrower; SAME COLOUR a little condensed at 10; HILT 3 pt gaps)
+        float wColour = 0.0f, wBlade = 0.0f, bladeMin = 8.5f, bladeX = 0.82f, wHilt = 0.0f;
+        for (int i = 0; i < 17; i++) {
+            wColour = fmaxf(wColour, textW(aName[i], 10.0f, 1.0f));
+            float size = 8.5f, xs = 0.82f, w = textW(aName[i], size, xs);
+            if (w > 34.0f) { size = fmaxf(7.5f, 8.5f * 34.0f / w); w = textW(aName[i], size, xs); if (w > 34.0f) xs = fmaxf(0.7f, xs * 34.0f / w); }
+            if (size < 8.5f) printf("  fit: %s split at %.2f pt, x %.3f: %.1f wide\n", aName[i], size, xs, textW(aName[i], size, xs));
+            wBlade = fmaxf(wBlade, textW(aName[i], size, xs));
+            bladeMin = fminf(bladeMin, size);
+            bladeX = fminf(bladeX, xs);
+        }
+        for (int h = 0; h < 4; h++) wHilt = fmaxf(wHilt, textW("HILT", 8.0f, 1.0f) + 3.0f + textW(aHilt[h], 11.0f, 1.0f) + 3.0f + 4.0f);
+        const float wSameC = textW("SAME COLOUR", 10.0f, fmaxf(0.82f, 71.0f / textW("SAME COLOUR", 10.0f, 1.0f))), wSameH = textW("SAME HILT", 10.0f, 1.0f);
+        const float wPlus = textW("2ND SABER", 11.0f, 1.0f);
+        printf("  fit: colour %.1f (room %.1f, joined %.1f), blades %.1f (room 34, smallest %.2f pt, x %.3f), HILT %.1f (room 76), SAME COLOUR %.1f (x %.3f) / SAME HILT %.1f (room 71), 2ND SABER %.1f, RIGHT %.1f, LEFT %.1f\n",
+               wColour, CW - 8.0f - 21.0f, CW - 8.0f - 31.5f, wBlade, bladeMin, bladeX, wHilt, wSameC, 71.0f / textW("SAME COLOUR", 10.0f, 1.0f), wSameH, wPlus,
+               textW("RIGHT", 11.0f, 1.0f), textW("LEFT", 11.0f, 1.0f));
+        CHECK(21.0f + wColour <= CW - 8.0f && 10.0f + 21.5f + wColour <= CW - 8.0f && wHilt <= 88.0f - 12.0f + 0.2f && wSameC <= 71.0f + 0.01f && wSameH <= 71.0f
+              && wPlus <= CW - 8.0f && textW("RIGHT", 11.0f, 1.0f) <= CW - 20.0f && textW("LEFT", 11.0f, 1.0f) <= CW - 20.0f - 40.0f);
+        CHECK(bladeMin >= 7.5f && bladeX >= 0.7f && wBlade <= 34.0f + 0.01f);
+        CHECK(textW("FILM", 10.0f, 1.0f) <= 64.0f - 33.0f && textW("AUTO", 10.0f, 1.0f) <= 64.0f - 33.0f);
+    }
+    static const struct { const char* name; float w, h, l, t, r, b; int bTouch; } aScr[] = {
+        { "Android 568x320", 568, 320, 0, 0, 0, 0, 1 }, { "Android 640x360", 640, 360, 0, 0, 0, 0, 1 }, { "Android 640x300", 640, 300, 0, 0, 0, 0, 1 },
+        { "Android 667x375", 667, 375, 0, 0, 0, 0, 1 }, { "Android 693x320 (insets)", 693, 320, 44, 0, 44, 21, 1 }, { "Android 732x360", 732, 360, 0, 0, 0, 0, 1 },
+        { "Android 780x360", 780, 360, 0, 0, 0, 0, 1 }, { "Android 800x360", 800, 360, 0, 0, 0, 0, 1 }, { "Android 852x393 (insets)", 852, 393, 59, 0, 59, 21, 1 },
+        { "Android 873x393 (cutout left)", 873, 393, 32, 0, 0, 0, 1 }, { "Android 873x393 (cutout right)", 873, 393, 0, 0, 32, 0, 1 },
+        { "Android 915x412", 915, 412, 0, 0, 0, 0, 1 }, { "Android tablet 853x640", 853, 640, 0, 0, 0, 0, 1 }, { "Android tablet 1067x667 (nav bar)", 1067, 667, 0, 0, 0, 40, 1 },
+        { "desktop 640x480 (4:3)", 640, 480, 0, 0, 0, 0, 0 }, { "desktop 720x480 (3:2)", 720, 480, 0, 0, 0, 0, 0 }, { "desktop 768x480 (16:10)", 768, 480, 0, 0, 0, 0, 0 },
+        { "desktop 853x480 (16:9)", 853.33f, 480, 0, 0, 0, 0, 0 }, { "desktop 1120x480 (21:9)", 1120, 480, 0, 0, 0, 0, 0 },
+        { "desktop window 640x400", 640, 400, 0, 0, 0, 0, 0 }, { "desktop window 800x450", 800, 450, 0, 0, 0, 0, 0 },
+        { "desktop window 600x400 (small)", 600, 400, 0, 0, 0, 0, 2 },
+    };
+    for (int k = 0; k < (int)(sizeof(aScr) / sizeof(aScr[0])); k++) {
+        int bOk = 1;
+        float hubMin = 1.0f;
+        for (int game = 0; game < 2; game++)
+            for (int st = 0; st < 6; st++) {
+                setup();
+                fg.bRealNames = 1;
+                fg.bMots = game;
+                fg.bSaberBtn = 1;
+                saberState(st);
+                tick();
+                if (aScr[k].bTouch == 1) {
+                    touchUi_SetScreen(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b);
+                    tick();
+                    tapSaber();
+                }
+                else {
+                    // (as the pad and the keys open it: no buttons round it, no top row)
+                    touchUi_SetShown(0);
+                    tick();
+                    inputWheel_Open(INPUTWHEEL_SABER, 1);
+                    inputWheelScreen sc = { aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b };
+                    inputWheel_Layout(&sc);
+                }
+                char what[200];
+                snprintf(what, sizeof(what), "%s, %s, %s", aScr[k].name, game ? "MotS" : "JK", g_aStateName[st]);
+                g_ringGap = aScr[k].bTouch == 2 ? 6.0f : 14.0f; // (a window narrower than the cards and the ring want: the cards in toward it)
+                if (!inputWheel_IsOpen() || !layoutClear(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b, aScr[k].bTouch == 1, what)) bOk = 0;
+                // (the longest names: the right hand's LIGHT BLUE and MAGENTA, the left's ORIGINAL)
+                fg.aBladeColour[0][0] = 10; fg.aBladeColour[0][1] = 13; fg.aBladeColour[1][0] = 0;
+                if (!textsInside(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b, what)) bOk = 0;
+                g_ringGap = 14.0f;
+                // (THROW in Jedi Knight wherever there is room for it; never in MotS)
+                float rt[4];
+                if (game && chipRect(TOUCHUI_CHIP_THROW, rt)) bOk = 0;
+                if (!game && !chipRect(TOUCHUI_CHIP_THROW, rt) && aScr[k].h > 300) { printf("  %s: no THROW\n", what); bOk = 0; }
+                // (the middle's line, as small as it goes)
+                float cx, cy, r0, r1;
+                inputWheel_GetGeometry(&cx, &cy, &r0, &r1);
+                static const char* const aHub[] = { "colour for the right saber", "colour for the left saber", "colour for both sabers", "right saber, blade 2",
+                                                    "slide toward a colour" };
+                for (int h = 0; h < 5; h++) hubMin = fminf(hubMin, 2.0f * r0 / textW(aHub[h], 10.0f, 1.0f));
+                if (inputWheel_IsOpen()) inputWheel_Close(-1);
+            }
+        static char name[200];
+        snprintf(name, sizeof(name), "fit: %s: every state, both games: on screen, clear of the ring, THROW and each other; the middle's line at %.1f pt or more", aScr[k].name, 10.0f * fminf(1.0f, hubMin));
+        g_case = name;
+        printf("  %s: the middle's longest line at %.2f of 10 pt\n", aScr[k].name, fminf(1.0f, hubMin));
+        // (the middle's line on the squat 640x300: as small as it goes, a point wider than the hole, as it was before the cards)
+        CHECK(bOk && (hubMin >= 0.8f || aScr[k].h <= 300));
+    }
 }
 
 // Whether the overlay draws a text
@@ -2685,6 +3236,8 @@ int main(void)
     test_saber_hilt();
     test_saber_throw();
     test_saber_wheel_state();
+    test_saber_cards();
+    test_saber_fit();
     test_shared_wheel();
     test_other_photo_and_cancel();
     test_level_tray();

@@ -27,6 +27,7 @@
 #include "Enhanced/iosGame.h"
 #include "Enhanced/iosCapture.h"
 #include "Enhanced/iosSaber.h"
+#include "Enhanced/iosSaberWheel.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -78,11 +79,9 @@ static inputOverlaySetting inputOverlay_aSetting[] = {
 #define INPUTOVERLAY_NUM_SETTINGS ((int)(sizeof(inputOverlay_aSetting) / sizeof(inputOverlay_aSetting[0])))
 
 static int32_t inputOverlay_bShowFps = 0;
-static int32_t inputOverlay_saberTarget = INPUTWHEEL_SABER_BOTH;
 static int32_t inputOverlay_selfieShots = 3;
 static int32_t inputOverlay_photoKinds = IOSCAPTURE_CLEAN;
 static int inputOverlay_bCvars = 0;
-static int inputOverlay_saberTargetSeen = -1;
 
 void inputOverlay_StartupCvars(void)
 {
@@ -91,7 +90,6 @@ void inputOverlay_StartupCvars(void)
         sithCvar_RegisterInt(s->pCvar, s->val, &s->val, CVARFLAG_GLOBAL);
     }
     sithCvar_RegisterBool("enh_showFps", 0, &inputOverlay_bShowFps, CVARFLAG_GLOBAL);
-    sithCvar_RegisterInt("enh_saberTarget", INPUTWHEEL_SABER_BOTH, &inputOverlay_saberTarget, CVARFLAG_GLOBAL);
     sithCvar_RegisterInt("enh_selfieShots", 3, &inputOverlay_selfieShots, CVARFLAG_GLOBAL);
     sithCvar_RegisterInt("enh_photoKinds", IOSCAPTURE_CLEAN, &inputOverlay_photoKinds, CVARFLAG_GLOBAL);
     inputOverlay_bCvars = 1;
@@ -122,7 +120,7 @@ void inputUi_SaveInt(const char* pKey, int val)
 }
 
 // Once a frame: a setting changed from the console goes to the pad; the
-// saber wheel's blade choice both ways; the photo choices
+// photo choices. (The saber wheel's choices are kept by enhSettings.c.)
 static void inputOverlay_SyncSettings(void)
 {
     int bChanged = 0;
@@ -131,14 +129,6 @@ static void inputOverlay_SyncSettings(void)
     }
     if (bChanged) iosPad_ReloadSettings(); // (reads them again: inputUi_LoadInt)
 
-    if (inputOverlay_saberTarget != inputOverlay_saberTargetSeen) {
-        inputWheel_SetSaberTarget(inputOverlay_saberTarget);
-        inputOverlay_saberTargetSeen = inputOverlay_saberTarget = inputWheel_GetSaberTarget();
-    }
-    else if (inputWheel_GetSaberTarget() != inputOverlay_saberTarget) {
-        inputOverlay_saberTargetSeen = inputOverlay_saberTarget = inputWheel_GetSaberTarget();
-        if (inputOverlay_bCvars) sithCvar_SetInt("enh_saberTarget", inputOverlay_saberTarget);
-    }
     inputPhoto_SetChoices(inputOverlay_photoKinds, inputOverlay_selfieShots);
 }
 
@@ -247,34 +237,21 @@ int inputUi_WheelClose(int bSelect)
 void inputUi_SaberChip(int chip)
 {
     if (!inputOverlay_OutsideWheelIsOpen() || inputWheel_GetKind() != INPUTWHEEL_SABER) return;
-    if (chip == IOSPAD_CHIP_STYLE) {
-        // the next style, as they sit: SINGLE, DUAL, round again (those that can be picked)
-        const int cur = iosSaber_GetStyle();
-        int next = cur;
-        for (int k = 1; k <= IOSSABER_NUM_STYLES && next == cur; k++)
-            if (iosSaber_StyleAvailable((cur + k) % IOSSABER_NUM_STYLES)) next = (cur + k) % IOSSABER_NUM_STYLES;
-        if (next != cur)
-            inputWheel_SaberChip(next == IOSSABER_STYLE_DUAL ? INPUTWHEEL_CHIP_DUAL : INPUTWHEEL_CHIP_SINGLE);
-    }
-    else if (chip == IOSPAD_CHIP_HILT) {
-        inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT); // (the next hilt, as HILT's tap)
-    }
-    else if (chip == IOSPAD_CHIP_TARGET) {
-        // LEFT, BOTH, RIGHT, as they sit
-        const int t = inputWheel_GetSaberTarget();
-        inputWheel_SaberChip(t == INPUTWHEEL_SABER_LEFT ? INPUTWHEEL_CHIP_BOTH : t == INPUTWHEEL_SABER_BOTH ? INPUTWHEEL_CHIP_RIGHT : INPUTWHEEL_CHIP_LEFT);
-    }
-    else if (chip == IOSPAD_CHIP_EQUIP) {
-        inputWheel_SaberChip(INPUTWHEEL_CHIP_EQUIP);
-    }
-    else if (chip == IOSPAD_CHIP_LOOK) {
-        inputWheel_SaberChip(INPUTWHEEL_CHIP_LOOK);
-    }
-    else if (chip == IOSPAD_CHIP_SHAPE) {
-        inputWheel_SaberChip(INPUTWHEEL_CHIP_SHAPE);
-    }
-    else if (chip == IOSPAD_CHIP_THROW) {
-        inputWheel_SaberChip(INPUTWHEEL_CHIP_THROW); // (nothing where it isn't offered)
+    // the pad's and the keys' choices (iosPad.h), as the taps on the wheel's own
+    switch (chip) {
+    case IOSPAD_CHIP_STYLE: // one saber or two: "+ 2ND SABER", or the LEFT card's x
+        inputWheel_SaberChip(iosSaberWheel_NumSabers() > 1 ? INPUTWHEEL_CHIP_REMOVE : INPUTWHEEL_CHIP_ADD);
+        break;
+    case IOSPAD_CHIP_TARGET: inputWheel_SaberPickNext(); break; // (the next card or blade shown)
+    case IOSPAD_CHIP_HILT: inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT + iosSaberWheel_GetPickedHand()); break; // (the picked card's HILT)
+    case IOSPAD_CHIP_SAMECOLOUR: inputWheel_SaberChip(INPUTWHEEL_CHIP_SAME_COLOUR); break;
+    case IOSPAD_CHIP_SAMEHILT: inputWheel_SaberChip(INPUTWHEEL_CHIP_SAME_HILT); break;
+    case IOSPAD_CHIP_AUTO: inputWheel_SaberChip(INPUTWHEEL_CHIP_AUTO); break; // (nothing with no FOLD in hand)
+    case IOSPAD_CHIP_EQUIP: inputWheel_SaberChip(INPUTWHEEL_CHIP_EQUIP); break;
+    case IOSPAD_CHIP_LOOK: inputWheel_SaberChip(INPUTWHEEL_CHIP_LOOK); break;
+    case IOSPAD_CHIP_SHAPE: inputWheel_SaberChip(INPUTWHEEL_CHIP_SHAPE); break;
+    case IOSPAD_CHIP_THROW: inputWheel_SaberChip(INPUTWHEEL_CHIP_THROW); break; // (nothing where it isn't offered)
+    default: break;
     }
     if (inputWheel_IsOpen()) inputWheel_Point(-1, 0, 0.0f);
     inputOverlay_OutsideWheelIsOpen();

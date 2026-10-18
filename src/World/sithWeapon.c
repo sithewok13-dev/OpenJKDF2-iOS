@@ -27,6 +27,7 @@
 #include "Platform/iOS/iosKbMouse.h" // Added: the mouse wheel's weapon steps (iOS)
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSaberThrowJk.h" // Added
+#include "Enhanced/iosSaberWheel.h" // Added: FOLD flipped by the saber's own key
 // Added: a weapon that can't be picked for now: Jedi Knight's saber while it is thrown (iosSaberThrowJk)
 #define SITHWEAPON_HELD_BACK(pThing, bin) iosSaberThrowJk_WeaponHeldBack(pThing, bin)
 #else
@@ -1165,6 +1166,14 @@ int sithWeapon_ProcessWeaponControls(SithThing *pThing, flex_t secDeltaTime)
             if ( readInput && sithThing_MotsTick(7,0,inputFunc))
             {
                 if (!Main_bMotsCompat) {
+#ifdef JK_ENHANCED
+                    // Added: the saber's own key again while it is in hand, a FOLD lit: it flips
+                    if (pThing == sithPlayer_g_pLocalPlayerThing && iosSaberWheel_TapFlips()
+                        && sithInventory_SelectWeaponFollowing(inputFunc - INPUT_FUNC_ACTIVATE) == sithInventory_GetCurrentWeapon(pThing)) {
+                        iosSaberWheel_Flip();
+                        break;
+                    }
+#endif
                     if ( sithWeapon_SelectWeapon(pThing, sithInventory_SelectWeaponFollowing(inputFunc - INPUT_FUNC_ACTIVATE), 0) )
                         break;
                 }
@@ -1176,6 +1185,9 @@ int sithWeapon_ProcessWeaponControls(SithThing *pThing, flex_t secDeltaTime)
                         iVar5 = sithWeapon_motsAConv[iVar5 % 10];
                     }
                     int iVar4 = sithInventory_SelectWeaponFollowing(iVar5);
+#ifdef JK_ENHANCED
+                    const int bEnhKeyInHand = iVar4 == iVar2; // Added: this key's weapon is the one in hand
+#endif
                     if (iVar4 == iVar2) {
                         if (iVar5 < 0xb) {
                             iVar5 = iVar5 + 10;
@@ -1202,6 +1214,11 @@ int sithWeapon_ProcessWeaponControls(SithThing *pThing, flex_t secDeltaTime)
                         if (iVar5 != 0) {
                             return 0;
                         }
+#ifdef JK_ENHANCED
+                        // Added: the saber's own key again, no other weapon on it to take, a FOLD lit: it flips
+                        if (bEnhKeyInHand && pThing == sithPlayer_g_pLocalPlayerThing && iosSaberWheel_TapFlips())
+                            iosSaberWheel_Flip();
+#endif
                     }
                 }
             }

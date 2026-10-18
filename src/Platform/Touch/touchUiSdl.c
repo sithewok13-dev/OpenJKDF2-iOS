@@ -65,7 +65,7 @@ static struct {
     double gx, gy, gz;
     double lastAccelT;
 #ifdef ENH_INPUT
-    int bSharedTarget;         // the saber's blade choice handed to the shared wheel
+    int bSharedFps;            // the FPS setting handed to the input layer
     int bFpsWas;               // the FPS readout as last kept in step with enh_showFps
     long long aPanelFinger[4]; // fingers that went down on the controller options (+1: 0 is none)
 #endif
@@ -376,14 +376,13 @@ void touchUiSdl_AfterEvents(void)
     // hidden while a game controller or the keyboard and mouse are played
     // (until a finger goes down: inputOverlay_NoteTouch)
     touchUi_SetOtherInput(inputOverlay_IsTouchHudHidden());
-    if (!ts.bSharedTarget) {
-        // (now that the input layer has read its settings: the one this
-        // overlay remembers wins -- it is saved as it changes, the cvars
+    if (!ts.bSharedFps) {
+        // (now that the input layer has read its settings: the FPS readout
+        // this overlay remembers wins -- it is saved as it changes, the cvars
         // only as the game saves them)
-        touchUi_ShareSaberTarget();
-        inputUi_SetFpsShown(touchUi_IsFpsShown()); // (likewise the FPS readout)
+        inputUi_SetFpsShown(touchUi_IsFpsShown());
         ts.bFpsWas = touchUi_IsFpsShown();
-        ts.bSharedTarget = 1;
+        ts.bSharedFps = 1;
     }
     // One FPS setting (enh_showFps: MENU's tray here, the controller options),
     // one readout (this overlay's, while it is up)
