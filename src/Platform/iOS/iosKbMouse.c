@@ -20,6 +20,8 @@
 #include "stdPlatform.h"
 #include "Enhanced/iosGame.h"
 #include "Enhanced/iosSaberThrowJk.h"
+#include "Enhanced/iosSaber.h"
+#include "Enhanced/iosSaberWheel.h"
 #include "Platform/iOS/iosPad.h"
 #include "Platform/Input/inputUi.h" // (iOS: the touch overlay and iosPadPanel; elsewhere: inputOverlay.c)
 
@@ -181,9 +183,15 @@ static const char* iosKbMouse_KeyName(int sc)
 static void iosKbMouse_SetWheelPrompt(void)
 {
     char t[256];
-    if (iosKbMouse_s.wheelKind == IOSPAD_WHEEL_SABER)
-        snprintf(t, sizeof(t), "Mouse: colour   Click: set   1: style   7: hilt   2: blade   3: equip   4: look   5: film   %sEsc: close",
-                 iosSaberThrowJk_Offered() ? "6: throw   " : "");
+    if (iosKbMouse_s.wheelKind == IOSPAD_WHEEL_SABER) {
+        // (what each key does now: 2 with more than one card or blade to
+        // pick, 8 and 9 with two sabers, 0 with a FOLD, 6 where THROW is)
+        const int bTwo = iosSaberWheel_NumSabers() > 1;
+        const int bPick = bTwo || iosSaber_HiltNumBlades(iosSaberWheel_GetHilt(0)) > 1;
+        snprintf(t, sizeof(t), "Mouse: colour   Click: set   1: %s   %s7: hilt   %s%s3: equip   4: look   5: film   %sEsc: close",
+                 bTwo ? "one saber" : "2nd saber", bPick ? "2: blade   " : "", bTwo ? "8: same colour   9: same hilt   " : "",
+                 iosSaberWheel_ShowAuto() ? "0: auto   " : "", iosSaberThrowJk_Offered() ? "6: throw   " : "");
+    }
     else if (iosKbMouse_s.wheelState == IOSKBM_WS_HELD)
         snprintf(t, sizeof(t), "Mouse: point   Let go of %s: pick   Right click or Esc: cancel", iosKbMouse_KeyName(iosKbMouse_s.wheelKey));
     else
@@ -328,17 +336,30 @@ static void iosKbMouse_WheelInput(void)
         return;
     }
     if (iosKbMouse_s.wheelKind == IOSPAD_WHEEL_SABER) {
-        if (iosKbMouse_Pressed(SDL_SCANCODE_1)) inputUi_SaberChip(IOSPAD_CHIP_STYLE);
-        if (iosKbMouse_Pressed(SDL_SCANCODE_2)) inputUi_SaberChip(IOSPAD_CHIP_TARGET);
-        if (iosKbMouse_Pressed(SDL_SCANCODE_3)) inputUi_SaberChip(IOSPAD_CHIP_EQUIP);
-        if (iosKbMouse_Pressed(SDL_SCANCODE_4)) inputUi_SaberChip(IOSPAD_CHIP_LOOK);
-        if (iosKbMouse_Pressed(SDL_SCANCODE_5)) inputUi_SaberChip(IOSPAD_CHIP_SHAPE);
-        if (iosKbMouse_Pressed(SDL_SCANCODE_6)) inputUi_SaberChip(IOSPAD_CHIP_THROW); // (Jedi Knight only)
-        if (iosKbMouse_Pressed(SDL_SCANCODE_7)) inputUi_SaberChip(IOSPAD_CHIP_HILT);
+        // (the number keys, the same on every platform as the pad's buttons: IOSPAD_CHIP_*)
+        static const struct { int sc, chip; } aSaberKey[] = {
+            { SDL_SCANCODE_1, IOSPAD_CHIP_STYLE },       // one saber or two
+            { SDL_SCANCODE_2, IOSPAD_CHIP_TARGET },      // the next card or blade
+            { SDL_SCANCODE_3, IOSPAD_CHIP_EQUIP },
+            { SDL_SCANCODE_4, IOSPAD_CHIP_LOOK },
+            { SDL_SCANCODE_5, IOSPAD_CHIP_SHAPE },       // FILM
+            { SDL_SCANCODE_6, IOSPAD_CHIP_THROW },       // (Jedi Knight only)
+            { SDL_SCANCODE_7, IOSPAD_CHIP_HILT },        // the picked hand's hilt
+            { SDL_SCANCODE_8, IOSPAD_CHIP_SAMECOLOUR },  // (two sabers)
+            { SDL_SCANCODE_9, IOSPAD_CHIP_SAMEHILT },    // (two sabers)
+            { SDL_SCANCODE_0, IOSPAD_CHIP_AUTO },        // (a FOLD in either hand)
+        };
+        int bChip = 0;
+        for (size_t k = 0; k < sizeof(aSaberKey) / sizeof(aSaberKey[0]); k++) {
+            if (!iosKbMouse_Pressed(aSaberKey[k].sc)) continue;
+            inputUi_SaberChip(aSaberKey[k].chip);
+            bChip = 1;
+        }
         if (!inputUi_KbmWheelIsOpen()) {
             iosKbMouse_WheelReset();
             return;
         }
+        if (bChip) iosKbMouse_SetWheelPrompt(); // (what the keys do now)
     }
     if (st == IOSKBM_WS_HELD && key >= 0 && !iosKbMouse_s.aDown[key]) {
         // let go: what it points at; nothing pointed at, it stays open to click

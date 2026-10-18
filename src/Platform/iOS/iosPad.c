@@ -19,6 +19,8 @@
 #include "World/sithThing.h"
 #include "Enhanced/iosGame.h"
 #include "Enhanced/iosSaberThrowJk.h"
+#include "Enhanced/iosSaber.h"
+#include "Enhanced/iosSaberWheel.h"
 #include "Platform/Input/inputUi.h" // (iOS: the touch overlay and iosPadPanel; elsewhere: inputOverlay.c)
 
 extern int stdControl_bControllerEscapeKey;
@@ -379,8 +381,16 @@ static void iosPad_SetWheelPrompt(void)
     const char* a = iosPad_ButtonName(SDL_GAMEPAD_BUTTON_SOUTH, 0);
     const char* bb = iosPad_ButtonName(SDL_GAMEPAD_BUTTON_EAST, 0);
     if (iosPad_s.wheelKind == IOSPAD_WHEEL_SABER) {
-        snprintf(t, sizeof(t), "Right stick: colour   %s: set   %s: style   %s: hilt   %s: blade   L3: look   D-pad up: film   %sR3: equip   %s: close",
-                 a, iosPad_ButtonName(SDL_GAMEPAD_BUTTON_WEST, 0), iosPad_PbName(PB_LB, 0), iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0),
+        // (what each does now: Y with more than one card or blade to pick, RB
+        // and LT with two sabers, RT with a FOLD, D-pad down where THROW is)
+        const int bTwo = iosSaberWheel_NumSabers() > 1;
+        const int bPick = bTwo || iosSaber_HiltNumBlades(iosSaberWheel_GetHilt(0)) > 1;
+        char y[48] = "", same[96] = "", aut[32] = "";
+        if (bPick) snprintf(y, sizeof(y), "%s: blade   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0));
+        if (bTwo) snprintf(same, sizeof(same), "%s: same colour   %s: same hilt   ", iosPad_PbName(PB_RB, 0), iosPad_PbName(PB_LT, 0));
+        if (iosSaberWheel_ShowAuto()) snprintf(aut, sizeof(aut), "%s: auto   ", iosPad_PbName(PB_RT, 0));
+        snprintf(t, sizeof(t), "Right stick: colour   %s: set   %s%s: hilt   %s: %s   %s%sD-pad up: film   %sL3: look   R3: equip   %s: close",
+                 a, y, iosPad_PbName(PB_LB, 0), iosPad_ButtonName(SDL_GAMEPAD_BUTTON_WEST, 0), bTwo ? "one saber" : "2nd saber", same, aut,
                  iosSaberThrowJk_Offered() ? "D-pad down: throw   " : "", bb);
     }
     else if (iosPad_s.wheelState == IOSPAD_WS_HELD) {
@@ -505,12 +515,26 @@ static void iosPad_WheelInput(void)
     if (iosPad_Pressed(PB_DLEFT) && btn != PB_DLEFT) { inputUi_WheelStep(-1); iosPad_s.bWheelAimed = 1; }
     if (iosPad_Pressed(PB_DRIGHT)) { inputUi_WheelStep(1); iosPad_s.bWheelAimed = 1; }
     if (bSaber) {
-        if (iosPad_Pressed(PB_X)) inputUi_SaberChip(IOSPAD_CHIP_STYLE);
-        if (iosPad_Pressed(PB_LB)) inputUi_SaberChip(IOSPAD_CHIP_HILT); // (LB: free on this wheel)
-        if (iosPad_Pressed(PB_Y)) inputUi_SaberChip(IOSPAD_CHIP_TARGET);
-        if (iosPad_Pressed(PB_LS)) inputUi_SaberChip(IOSPAD_CHIP_LOOK);
-        if (iosPad_Pressed(PB_DUP)) inputUi_SaberChip(IOSPAD_CHIP_SHAPE); // (the D-pad's up: free on this wheel)
-        if (iosPad_Pressed(PB_DDOWN)) inputUi_SaberChip(IOSPAD_CHIP_THROW); // (the D-pad's down, likewise; Jedi Knight only)
+        // (every button but A, B, Start and the D-pad's left and right is free
+        // on this wheel: the same on every platform, IOSPAD_CHIP_*)
+        static const struct { int pb, chip; } aSaberPress[] = {
+            { PB_X, IOSPAD_CHIP_STYLE },        // one saber or two
+            { PB_Y, IOSPAD_CHIP_TARGET },       // the next card or blade
+            { PB_LB, IOSPAD_CHIP_HILT },        // the picked hand's hilt
+            { PB_RB, IOSPAD_CHIP_SAMECOLOUR },  // (two sabers)
+            { PB_LT, IOSPAD_CHIP_SAMEHILT },    // (two sabers)
+            { PB_RT, IOSPAD_CHIP_AUTO },        // (a FOLD in either hand)
+            { PB_LS, IOSPAD_CHIP_LOOK },
+            { PB_DUP, IOSPAD_CHIP_SHAPE },      // FILM
+            { PB_DDOWN, IOSPAD_CHIP_THROW },    // (Jedi Knight only)
+        };
+        int bChip = 0;
+        for (size_t k = 0; k < sizeof(aSaberPress) / sizeof(aSaberPress[0]); k++) {
+            if (!iosPad_Pressed(aSaberPress[k].pb)) continue;
+            inputUi_SaberChip(aSaberPress[k].chip);
+            bChip = 1;
+        }
+        if (bChip && inputUi_PadWheelIsOpen()) iosPad_SetWheelPrompt(); // (what the buttons do now)
         if (iosPad_Pressed(PB_RS)) {
             inputUi_SaberChip(IOSPAD_CHIP_EQUIP);
             if (!inputUi_PadWheelIsOpen()) {
