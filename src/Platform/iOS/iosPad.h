@@ -27,8 +27,10 @@
 //         pointed at, the wheel stays open to pick with A (D-pad left and
 //         right step through it); B cancels. A tick and a short rumble for
 //         every slice. On the saber wheel: A sets the colour (it stays
-//         open), X the next style (one saber, two, the crossguard), Y which
-//         blade, R3 takes the saber.
+//         open), Y picks the next card or blade, LB the picked hand's next
+//         hilt, X adds or takes away the second saber, RB SAME COLOUR, LT
+//         SAME HILT, RT AUTO, D-pad up FILM, D-pad down THROW, L3 the look,
+//         R3 takes the saber (IOSPAD_CHIP_*).
 //       - Start (Menu, Options, +): a tap opens the game menu as MENU does;
 //         held 0.45 s, the controller options (iosPadPanel: LOOK X, LOOK Y,
 //         CURVE, INVERT, ACCEL, VIBRATION, FPS, TYPE), the game held still.
@@ -80,14 +82,21 @@ extern "C" {
 #define IOSPAD_WHEEL_WEAPONS 1
 #define IOSPAD_WHEEL_SABER 2
 
-// The saber wheel's choices a pad can make (iosTouch_PadSaberChip)
-#define IOSPAD_CHIP_STYLE 0  // the next style: one saber or two
-#define IOSPAD_CHIP_TARGET 1 // with two: the next of LEFT, BOTH, RIGHT
+// The saber wheel's choices a pad or the keys can make (inputUi_SaberChip:
+// iOS's iosTouch_PadSaberChip, inputOverlay.c elsewhere). The pad's button
+// and the key for each, on every platform: X / 1 STYLE, Y / 2 TARGET, R3 / 3
+// EQUIP, L3 / 4 LOOK, D-pad up / 5 SHAPE, D-pad down / 6 THROW, LB / 7 HILT,
+// RB / 8 SAMECOLOUR, LT / 9 SAMEHILT, RT / 0 AUTO.
+#define IOSPAD_CHIP_STYLE 0  // one saber or two: the second added ("+ 2ND SABER"), or taken away (the LEFT card's x)
+#define IOSPAD_CHIP_TARGET 1 // what the ring paints: the next card or blade shown (RIGHT, its blades with two, LEFT, its blades)
 #define IOSPAD_CHIP_EQUIP 2  // the saber in hand
 #define IOSPAD_CHIP_LOOK 3   // the colours' other look (CLASSIC / REFORGED)
 #define IOSPAD_CHIP_SHAPE 4  // the blade's shape: FILM on or off (iosSaberShape)
 #define IOSPAD_CHIP_THROW 5  // THROW on or off: Jedi Knight's Saber Throw on the Force wheel (iosSaberThrowJk)
-#define IOSPAD_CHIP_HILT 6   // the next hilt (HILT's tap: NORMAL, CROSS...)
+#define IOSPAD_CHIP_HILT 6   // the picked hand's next hilt (its card's HILT tapped: NORMAL, CROSS, STAFF, FOLD; SAME HILT: both)
+#define IOSPAD_CHIP_SAMECOLOUR 7 // SAME COLOUR on or off (with two sabers)
+#define IOSPAD_CHIP_SAMEHILT 8   // SAME HILT on or off (with two sabers)
+#define IOSPAD_CHIP_AUTO 9       // FOLD's AUTO on or off (only while a FOLD is in either hand: else nothing)
 
 // Hold rings (iosPadPanel_HoldRing)
 #define IOSPAD_RING_NONE 0
