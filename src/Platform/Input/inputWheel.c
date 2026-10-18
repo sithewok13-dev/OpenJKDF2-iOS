@@ -19,6 +19,7 @@
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberShape.h"
 #include "Enhanced/iosSaberThrowJk.h"
+#include "Enhanced/iosSaberWheel.h"
 #include "Platform/platServices.h"
 
 #ifndef M_PI
@@ -1043,7 +1044,7 @@ static void inputWheel_DrawChips(void)
         else if (i == INPUTWHEEL_CHIP_LOOK) alpha = 1.0f;
         else if (i == INPUTWHEEL_CHIP_SHAPE) {
             bOn = iosSaberShape_Get() == IOSSABERSHAPE_BEAM;
-            alpha = iosSaber_HiltKeepsShape(iosSaber_GetHilt()) ? INPUTWHEEL_CHIP_DIM : bOn ? 1.0f : 0.8f;
+            alpha = iosSaberWheel_FilmDimmed() ? INPUTWHEEL_CHIP_DIM : bOn ? 1.0f : 0.8f; // (every hilt in use CROSS)
         }
         else if (i == INPUTWHEEL_CHIP_THROW) {
             bOn = iosSaberThrowJk_Get();

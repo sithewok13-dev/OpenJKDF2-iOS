@@ -2,37 +2,42 @@
 #define _ENHANCED_ENHSETTINGS_H
 
 // Added: entire file. Where the enhanced gameplay's choices are kept: the
-// saber style and hilt and each blade's colour, Force Jump's style, first or third
-// person, THROW.
+// saber (one or two, each hand's hilt, each blade's colour, the saber wheel's
+// switches), Force Jump's style, first or third person, THROW.
 //
 // The gameplay itself always holds the current ones (iosSaber_GetStyle,
-// iosSaber_GetColour, iosGame_IsThirdPerson...), which shared code reads.
-// They are remembered:
+// iosSaber_GetHandHilt, iosSaber_GetBladeColour, iosGame_IsThirdPerson...),
+// which shared code reads. They are remembered:
 //   - on iOS by the touch overlay, in NSUserDefaults, as since the first
-//     builds (iosTouch.m: read at its start, written when picked); nothing
+//     builds (iosTouch.m: read at its start, written when changed); nothing
 //     here runs there, so no setting moves and none is lost;
+//   - with the touch overlay (Android), in its settings file (touchUi.c);
 //   - elsewhere as global cvars, kept in openjkdf2_cvars.json and settable
 //     from the console:
-//       enh_saberStyle            SINGLE or DUAL (CROSS, kept by builds before
-//                                 the hilts: SINGLE with the CROSS hilt, and
-//                                 their enh_saberColourCross SINGLE's colour;
-//                                 that one is then emptied, and not saved)
-//       enh_saberHilt             NORMAL (the default) or CROSS: both hands'
-//                                 hilt (iosSaber)
-//       enh_saberLook             REFORGED (the default) or CLASSIC: how the
+//       enh_saberLook             CLASSIC (the default) or REFORGED: how the
 //                                 blades' colours are drawn (iosSaber)
 //       enh_saberShape            SPIKE (the default) or BEAM (FILM on the screen, and taken too): the blades'
 //                                 shape (iosSaberShape)
-//       enh_saberColourSingle     a colour key (iosSaber: "red", "lightblue"...),
-//       enh_saberColourDualRight  "game" for the game's own
-//       enh_saberColourDualLeft
+//       enh_saber<name>           the saber wheel's choices, each by its name
+//                                 (iosSaberWheel.h: Style SINGLE or DUAL,
+//                                 HiltRight, HiltLeft, ColourRight1 ... a
+//                                 colour's key, "game" the game's own; the
+//                                 links, SAME COLOUR and SAME HILT, FOLD's
+//                                 AUTO and how it was left), from the saved
+//                                 ones and, the first time, from what builds
+//                                 before kept (enh_saberHilt, both hands';
+//                                 enh_saberStyle CROSS; enh_saberColourSingle,
+//                                 enh_saberColourDualRight, enh_saberColourDualLeft,
+//                                 enh_saberColourCross): those are then
+//                                 emptied, and not saved
 //       enh_forceJumpStyle        0 smooth, 1 steps, 2 classic (IOSGAME_JUMP_*;
 //                                 classic by default, the desktops' own jump)
 //       enh_thirdPerson           0 or 1
 //       enh_saberThrow            0 (the default) or 1: THROW, Jedi Knight's
 //                                 Saber Throw on the Force wheel (iosSaberThrowJk)
 //     A cvar changed (the console, the file) is applied; a choice changed in
-//     the game (the camera key...) is written back, to be saved with the rest.
+//     the game (a wheel, a pad, the keys, the camera key...) is written back,
+//     to be saved with the rest.
 
 #if defined(JK_ENHANCED) && !defined(TARGET_IOS)
 

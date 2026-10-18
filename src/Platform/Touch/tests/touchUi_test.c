@@ -4,7 +4,7 @@
 //
 //   cc -std=c11 -DTOUCHUI_ENABLED -DJK_ENHANCED -I src src/Platform/Touch/tests/touchUi_test.c
 //      src/Platform/Touch/touchUi.c src/Platform/Touch/touchUiDraw.c
-//      src/Platform/Input/inputWheel.c -lm && ./a.out
+//      src/Platform/Input/inputWheel.c src/Enhanced/iosSaberWheel.c -lm && ./a.out
 //
 // The wheels are inputWheel.c's, which asks the game itself (iosGame.h,
 // iosSaber.h) and ticks in the hand itself (platServices_Haptic): those are
@@ -12,6 +12,7 @@
 
 #include "Platform/Touch/touchUi.h"
 #include "Platform/Input/inputWheel.h"
+#include "Enhanced/iosSaberWheel.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -39,9 +40,13 @@ static struct {
     char lastMsg[128];
     int bGauge;
     // the saber
-    int bSaberBtn, saberStyle, aSaberColour[3][2], bDualOk;
-    int saberHilt, bCrossOk, bStaffOk; // (the hilt: 0 NORMAL, 1 CROSS, 2 STAFF, 3 FOLD; CROSS on, STAFF off as setup leaves them, FOLD never)
-    int saberLook; // (0 CLASSIC, 1 REFORGED; the default, as setup leaves it)
+    int bSaberBtn, saberStyle, bDualOk;
+    // each hand's saber, as iosSaber keeps it: [hand][blade] colours, the
+    // second blade linked to the first (to start), each hand's hilt
+    int aBladeColour[2][2], aUnlinked[2];
+    int aHilt[2], bCrossOk, bStaffOk, bFoldOk; // (0 NORMAL, 1 CROSS, 2 STAFF, 3 FOLD; CROSS on, STAFF and FOLD off as setup leaves them)
+    int bFoldAuto, bFoldOpen, bFoldLit, foldFlips; // (iosSaberFold's: AUTO, held open, a FOLD lit in hand)
+    int saberLook; // (0 CLASSIC, the default, as setup leaves it; 1 REFORGED)
     int saberShape; // (0 SPIKE, the default; 1 FILM)
     int bThrow, bThrowHidden; // THROW (Jedi Knight's Saber Throw, iosSaberThrowJk); not offered (multiplayer)
     // the camera
@@ -51,6 +56,8 @@ static struct {
     float orbitYaw, orbitPitch, panX, panY, zoom;
     int cinemaResult, bCinema, cinemaStops;
 } fg;
+// (a style's blade's colour as tests before the hands had their own asked: the hand's first blade)
+#define SC(st, b) fg.aBladeColour[(b) & 1][0]
 
 static int F_IsMots(void) { return fg.bMots; }
 static const char* F_GetForcePowerName(void) { return fg.curPower >= 0 ? "SPEED" : NULL; }
@@ -140,12 +147,13 @@ static const char* F_SaberStyleName(int st) { return st == 0 ? "SINGLE" : st == 
 static int F_SaberStyleNumBlades(int st) { return st == 1 ? 2 : st == 0 ? 1 : 0; }
 static int F_SaberGetStyle(void) { return fg.saberStyle; }
 static void F_SaberSetStyle(int st) { if (F_SaberStyleAvailable(st)) fg.saberStyle = st; }
-static int F_SaberGetColour(int st, int b) { return (st >= 0 && st <= 1) ? fg.aSaberColour[st][b & 1] : 0; }
-static void F_SaberSetColour(int st, int b, int id) { if (st >= 0 && st <= 1) fg.aSaberColour[st][b & 1] = id; }
+// (as iosSaber's: a style's blade is a hand, its first blade's colour; setting it colours the whole hand, linked)
+static int F_SaberGetColour(int st, int b) { return (st >= 0 && st <= 1) ? fg.aBladeColour[b & 1][0] : 0; }
+static void F_SaberSetColour(int st, int b, int id) { if (st >= 0 && st <= 1) { fg.aBladeColour[b & 1][0] = fg.aBladeColour[b & 1][1] = id; fg.aUnlinked[b & 1] = 0; } }
 static const char* F_SaberHiltName(int h) { return h == 0 ? "NORMAL" : h == 1 ? "CROSS" : h == 2 ? "STAFF" : h == 3 ? "FOLD" : NULL; }
-static int F_SaberHiltAvailable(int h) { return h == 0 || (h == 1 && fg.bCrossOk) || (h == 2 && fg.bStaffOk); }
-static int F_SaberGetHilt(void) { return fg.saberHilt; }
-static void F_SaberSetHilt(int h) { if (F_SaberHiltAvailable(h)) fg.saberHilt = h; }
+static int F_SaberHiltAvailable(int h) { return h == 0 || (h == 1 && fg.bCrossOk) || (h == 2 && fg.bStaffOk) || (h == 3 && fg.bFoldOk); }
+static int F_SaberGetHilt(void) { return fg.aHilt[0]; }
+static void F_SaberSetHilt(int h) { if (F_SaberHiltAvailable(h)) fg.aHilt[0] = fg.aHilt[1] = h; }
 static const char* F_SaberLookName(int lk) { return lk == 0 ? "CLASSIC" : lk == 1 ? "REFORGED" : NULL; }
 static int F_SaberGetLook(void) { return fg.saberLook; }
 static void F_SaberSetLook(int lk) { if (lk == 0 || lk == 1) fg.saberLook = lk; }
@@ -239,6 +247,40 @@ int iosSaber_GetStyle(void) { return F_SaberGetStyle(); }
 void iosSaber_SetStyle(int st) { F_SaberSetStyle(st); }
 int iosSaber_GetColour(int st, int b) { return F_SaberGetColour(st, b); }
 void iosSaber_SetColour(int st, int b, int id) { F_SaberSetColour(st, b, id); }
+// (each hand's saber, as iosSaber.c keeps it; for iosSaberWheel)
+const char* iosSaber_StyleName(int st) { return F_SaberStyleName(st); }
+int iosSaber_StyleByName(const char* n, int* pHilt)
+{
+    if (!n) return -1;
+    if (!strcmp(n, "SINGLE")) return 0;
+    if (!strcmp(n, "DUAL")) return 1;
+    if (!strcmp(n, "CROSS")) { if (pHilt) *pHilt = 1; return 0; }
+    return -1;
+}
+int iosSaber_HiltByName(const char* n) { for (int h = 0; n && h < 4; h++) if (!strcmp(n, F_SaberHiltName(h))) return h; return -1; }
+int iosSaber_HiltNumBlades(int h) { return (h == 2 || h == 3) ? 2 : 1; }
+int iosSaber_GetHandHilt(int hand) { return (hand == 0 || hand == 1) ? fg.aHilt[hand] : 0; }
+void iosSaber_SetHandHilt(int hand, int h)
+{
+    if ((hand != 0 && hand != 1) || !F_SaberHiltAvailable(h)) return;
+    if (iosSaber_HiltNumBlades(h) > 1 && iosSaber_HiltNumBlades(fg.aHilt[hand]) < 2) fg.aUnlinked[hand] = 0;
+    fg.aHilt[hand] = h;
+}
+int iosSaber_GetBladeColour(int hand, int b) { if ((hand != 0 && hand != 1) || (b != 0 && b != 1)) return 0; return fg.aBladeColour[hand][fg.aUnlinked[hand] ? b : 0]; }
+void iosSaber_SetBladeColour(int hand, int b, int id) { if ((hand == 0 || hand == 1) && (b == 0 || b == 1) && id >= 0 && id < 17) fg.aBladeColour[hand][b] = id; }
+int iosSaber_GetBladeLinked(int hand) { return (hand == 0 || hand == 1) ? !fg.aUnlinked[hand] : 1; }
+void iosSaber_SetBladeLinked(int hand, int b) { if (hand == 0 || hand == 1) fg.aUnlinked[hand] = !b; }
+int iosSaber_GetShownBladeColour(int hand, int b) { const int id = iosSaber_GetBladeColour(hand, b); return iosSaber_ColourOnWheel(id) ? id : 0; }
+const char* iosSaber_ColourKey(int id) { return F_SaberColourKey(id); }
+int iosSaber_ColourByKey(const char* k) { return k ? F_SaberColourByKey(k) : -1; }
+// (iosSaberFold's: AUTO, how it was left, the SABER tap's flip)
+int iosSaberFold_GetAuto(void) { return fg.bFoldAuto; }
+void iosSaberFold_SetAuto(int b) { fg.bFoldAuto = b != 0; }
+int iosSaberFold_GetHeldOpen(void) { return fg.bFoldOpen; }
+void iosSaberFold_SetHeldOpen(int b) { if (!fg.bFoldAuto) fg.bFoldOpen = b != 0; }
+int iosSaberFold_CanFlip(void) { return fg.bFoldLit; }
+int iosSaberFold_Flip(void) { if (!fg.bFoldLit) return 0; fg.bFoldOpen = !fg.bFoldOpen; fg.foldFlips++; return 1; }
+int iosSaberFold_LocalOpen(int hand) { return (hand == 0 || hand == 1) && fg.aHilt[hand] == 3 && fg.bFoldLit && fg.bFoldOpen; }
 static int g_platHaptics = 0, g_platTicks = 0;
 void platServices_Haptic(int kind) { g_platHaptics |= kind == 0 ? TOUCHUI_HAPTIC_TICK : TOUCHUI_HAPTIC_TAP; if (kind == 0) g_platTicks++; }
 
@@ -270,7 +312,8 @@ static void setup_screen(float w, float h, float l, float t, float r, float b)
 static void setup(void)
 {
     memset(&fg, 0, sizeof(fg));
-    fg.saberLook = 1;
+    fg.saberLook = 0; // (CLASSIC, the default)
+    fg.bFoldAuto = 1;
     fg.curPower = -1;
     fg.curWeapon = 2;
     // Jedi Knight: every power learned, at levels 1..4 round
@@ -1315,6 +1358,7 @@ static void test_saber(void)
     CHECK(touchUi_IsSaberShown() && touchUi_GetButton(TOUCHUI_BTN_SABER, &sx, &sy, NULL));
 
     g_case = "SABER: a tap opens its wheel to tap a colour; the game holds still";
+    fg.saberLook = 1; // (REFORGED, picked: these cases were made with it)
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
     CHECK(touchUi_IsWheelOpen() && touchUi_GetWheelKind() == TOUCHUI_WHEEL_SABER && touchUi_IsWheelTapMode() && fg.bHold);
     // (Jedi Knight: 16, colour 7 -- GREEN -- left out; each slice keeps its colour's id)
@@ -1329,7 +1373,7 @@ static void test_saber(void)
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     takeHaptics();
     down(2, px, py); up(2, px, py);
-    CHECK(fg.aSaberColour[0][0] == 5 && touchUi_IsWheelOpen());
+    CHECK(SC(0, 0) == 5 && touchUi_IsWheelOpen());
     CHECK(takeHaptics() & TOUCHUI_HAPTIC_TICK);
     g_case = "saber wheel: DUAL; LEFT; a colour goes to the left blade only";
     float qx, qy;
@@ -1343,15 +1387,15 @@ static void test_saber(void)
     touchUi_GetWheelSlice(8, &deg);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
-    CHECK(fg.aSaberColour[1][1] == 8 && fg.aSaberColour[1][0] == 0);
+    CHECK(SC(1, 1) == 8 && SC(1, 0) == 5); // (the right hand's saber as it was with one)
     g_case = "saber wheel: BOTH: a colour goes to both blades";
     touchUi_GetSaberChip(TOUCHUI_CHIP_BOTH, &qx, &qy);
     down(2, qx, qy); up(2, qx, qy);
     touchUi_GetWheelSlice(12, &deg);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
-    CHECK(fg.aSaberColour[1][1] == 12 && fg.aSaberColour[1][0] == 12);
-    CHECK(fg.aSaberColour[0][0] == 5); // (one blade's own colour kept)
+    CHECK(SC(1, 1) == 12 && SC(1, 0) == 12);
+    CHECK(SC(0, 0) == 12); // (the right hand's saber: the same one with one saber or two)
     g_case = "saber wheel: a tap in the gap closes it; the game goes on";
     polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
@@ -1362,7 +1406,7 @@ static void test_saber(void)
     CHECK(touchUi_IsWheelOpen() && touchUi_GetWheelSliceBin(16) == 16 && touchUi_GetWheelSliceBin(17) == -1 && touchUi_GetWheelSlice(7, &deg) == 7);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
-    CHECK(fg.aSaberColour[1][1] == 7 && fg.aSaberColour[1][0] == 7 && touchUi_IsWheelOpen());
+    CHECK(SC(1, 1) == 7 && SC(1, 0) == 7 && touchUi_IsWheelOpen());
     polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
     CHECK(!touchUi_IsWheelOpen());
@@ -1377,7 +1421,7 @@ static void test_saber(void)
     move(1, px, py);
     CHECK(touchUi_GetWheelHot() == 3);
     up(1, px, py);
-    CHECK(fg.aSaberColour[1][0] == 3 && fg.aSaberColour[1][1] == 3 && touchUi_IsWheelOpen() && touchUi_IsWheelTapMode());
+    CHECK(SC(1, 0) == 3 && SC(1, 1) == 3 && touchUi_IsWheelOpen() && touchUi_IsWheelTapMode());
     g_case = "saber wheel: EQUIP without a saber does nothing";
     touchUi_GetSaberChip(TOUCHUI_CHIP_EQUIP, &qx, &qy);
     down(2, qx, qy); up(2, qx, qy);
@@ -1401,10 +1445,10 @@ static void test_saber(void)
     CHECK(!touchUi_IsWheelOpen());
 
     g_case = "saber choices remembered (by key and name)";
-    memset(fg.aSaberColour, 0, sizeof(fg.aSaberColour));
+    memset(fg.aBladeColour, 0, sizeof(fg.aBladeColour)); memset(fg.aUnlinked, 0, sizeof(fg.aUnlinked));
     fg.saberStyle = 0;
     touchUi_Init(&fakeGame, g_settings);
-    CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && fg.aSaberColour[0][0] == 5 && fg.aSaberColour[1][0] == 3 && fg.aSaberColour[1][1] == 3);
+    CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && SC(0, 0) == 3 && SC(1, 0) == 3 && SC(1, 1) == 3);
     CHECK(touchUi_GetSaberTarget() == TOUCHUI_CHIP_RIGHT);
 
     g_case = "DUAL not offered where the style can't be had";
@@ -1424,7 +1468,16 @@ static void test_saber_look(void)
     fg.bSaberBtn = 1;
     tick();
     bxy(TOUCHUI_BTN_SABER, &sx, &sy);
-    g_case = "look: the switch in the saber wheel's middle, over the name; REFORGED to start, 16 slices (no GREEN) in Jedi Knight";
+    g_case = "look: CLASSIC to start (nothing kept): all 17 slices in Jedi Knight";
+    CHECK(fg.saberLook == 0);
+    down(1, sx, sy); wait(0.1); up(1, sx, sy);
+    CHECK(touchUi_IsWheelOpen() && touchUi_GetWheelSliceBin(16) == 16 && touchUi_GetWheelSlice(7, NULL) == 7);
+    touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
+    polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
+    down(2, px, py); up(2, px, py);
+    CHECK(!touchUi_IsWheelOpen());
+    fg.saberLook = 1; // (REFORGED picked: the cases below were made from it)
+    g_case = "look: the switch in the saber wheel's middle, over the name; REFORGED picked, 16 slices (no GREEN) in Jedi Knight";
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
     touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
     CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_LOOK, &lx, &ly));
@@ -1438,9 +1491,9 @@ static void test_saber_look(void)
     g_case = "look: CLASSIC, Jedi Knight: GREEN tapped: set; back to REFORGED: 16 again, GREEN kept (shown as ORIGINAL)";
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
-    CHECK(fg.aSaberColour[0][0] == 7 && touchUi_IsWheelOpen());
+    CHECK(SC(0, 0) == 7 && touchUi_IsWheelOpen());
     down(2, lx, ly); up(2, lx, ly);
-    CHECK(fg.saberLook == 1 && fg.aSaberColour[0][0] == 7 && iosSaber_GetShownColour(0, 0) == 0 && touchUi_GetWheelSlice(7, NULL) < 0 && touchUi_IsWheelOpen());
+    CHECK(fg.saberLook == 1 && SC(0, 0) == 7 && iosSaber_GetShownColour(0, 0) == 0 && touchUi_GetWheelSlice(7, NULL) < 0 && touchUi_IsWheelOpen());
     g_case = "look: slid from SABER in CLASSIC: one tick per slice (17); the gap cancels";
     down(2, lx, ly); up(2, lx, ly); // (CLASSIC)
     polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
@@ -1458,14 +1511,14 @@ static void test_saber_look(void)
     const int nTicks = g_platTicks;
     polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
     move(1, px, py); up(1, px, py);
-    CHECK(nTicks == 17 && !touchUi_IsWheelOpen() && fg.aSaberColour[0][0] == 7);
+    CHECK(nTicks == 17 && !touchUi_IsWheelOpen() && SC(0, 0) == 7);
     g_case = "look: a slide lifted on the switch: nothing picked, closed, the look unchanged";
     down(1, sx, sy);
     move(1, sx, sy + 10.5f);
     touchUi_GetWheelSlice(9, &deg);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     move(1, px, py); move(1, lx, ly); up(1, lx, ly);
-    CHECK(!touchUi_IsWheelOpen() && fg.saberLook == 0 && fg.aSaberColour[0][0] == 7);
+    CHECK(!touchUi_IsWheelOpen() && fg.saberLook == 0 && SC(0, 0) == 7);
     g_case = "look: held 0.3 s, open to tap: the switch works";
     down(1, sx, sy); wait(0.31); up(1, sx, sy);
     CHECK(touchUi_IsWheelOpen() && touchUi_IsWheelTapMode());
@@ -1477,7 +1530,7 @@ static void test_saber_look(void)
         touchUi_GetWheelSlice(k, &deg);
         polar(cx, cy, deg, r0 + 6.0f, &px, &py);
         down(2, px, py); up(2, px, py);
-        CHECK(fg.saberLook == 1 && fg.aSaberColour[0][0] == k && touchUi_IsWheelOpen());
+        CHECK(fg.saberLook == 1 && SC(0, 0) == k && touchUi_IsWheelOpen());
     }
     g_case = "look: DUAL in both looks: LEFT gets GREEN in CLASSIC, RIGHT gets BLUE in REFORGED";
     touchUi_GetSaberChip(TOUCHUI_CHIP_DUAL, &qx, &qy);
@@ -1488,14 +1541,14 @@ static void test_saber_look(void)
     touchUi_GetWheelSlice(7, &deg);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
-    CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && fg.aSaberColour[1][1] == 7 && fg.aSaberColour[1][0] == 0);
+    CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && SC(1, 1) == 7 && SC(1, 0) == 8); // (the right hand's as it was with one saber)
     down(2, lx, ly); up(2, lx, ly); // REFORGED
     touchUi_GetSaberChip(TOUCHUI_CHIP_RIGHT, &qx, &qy);
     down(2, qx, qy); up(2, qx, qy);
     touchUi_GetWheelSlice(11, &deg);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
-    CHECK(fg.saberLook == 1 && fg.aSaberColour[1][0] == 11 && fg.aSaberColour[1][1] == 7 && iosSaber_GetShownColour(1, 1) == 0 && touchUi_IsWheelOpen());
+    CHECK(fg.saberLook == 1 && SC(1, 0) == 11 && SC(1, 1) == 7 && iosSaber_GetShownColour(1, 1) == 0 && touchUi_IsWheelOpen());
     polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
     CHECK(!touchUi_IsWheelOpen());
@@ -1518,9 +1571,9 @@ static void test_saber_look(void)
             polar(cx, cy, (float)d, r0 - 2.0f, &px, &py);
             const int k = inputWheel_SliceAt(px, py, -1);
             if (k < 0) continue;
-            fg.aSaberColour[0][0] = 0;
+            SC(0, 0) = 0;
             down(2, px, py); up(2, px, py);
-            if (fg.saberLook != 0 || fg.aSaberColour[0][0] != touchUi_GetWheelSliceBin(k) || !touchUi_IsWheelOpen()) bOk = 0;
+            if (fg.saberLook != 0 || SC(0, 0) != touchUi_GetWheelSliceBin(k) || !touchUi_IsWheelOpen()) bOk = 0;
         }
         CHECK(bOk);
     }
@@ -1534,7 +1587,7 @@ static void test_saber_look(void)
     CHECK(hot0 == 10 && fg.saberLook == 1 && touchUi_GetWheelHot() == -1);
     up(3, px, py);
     if (touchUi_IsWheelOpen()) { polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py); down(2, px, py); up(2, px, py); }
-    fg.aSaberColour[0][0] = 8;
+    SC(0, 0) = 8;
     g_case = "look: the shared wheel's own call (a pad's L3, the 4 key) switches it, the wheel open";
     fg.saberLook = 0;
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
@@ -1574,11 +1627,11 @@ static void test_saber_look(void)
     inputWheel_Close(inputWheel_GetOpenMap()->numSlices - 1); // (BLACK, to both)
     inputWheel_Close(-1);
     tick();
-    printf("  pad picks: look %d style %d colours %d/%d\n", fg.saberLook, fg.saberStyle, fg.aSaberColour[1][0], fg.aSaberColour[1][1]);
-    CHECK(fg.saberLook == 1 && fg.saberStyle == 1 && fg.aSaberColour[1][0] == 16 && fg.aSaberColour[1][1] == 16);
-    fg.saberLook = 0; fg.saberStyle = 0; fg.aSaberColour[1][0] = fg.aSaberColour[1][1] = 0;
+    printf("  pad picks: look %d style %d colours %d/%d\n", fg.saberLook, fg.saberStyle, SC(1, 0), SC(1, 1));
+    CHECK(fg.saberLook == 1 && fg.saberStyle == 1 && SC(1, 0) == 16 && SC(1, 1) == 16);
+    fg.saberLook = 0; fg.saberStyle = 0; SC(1, 0) = SC(1, 1) = 0;
     touchUi_Init(&fakeGame, g_settings);
-    CHECK(fg.saberLook == 1 && fg.saberStyle == 1 && fg.aSaberColour[1][0] == 16 && fg.aSaberColour[1][1] == 16);
+    CHECK(fg.saberLook == 1 && fg.saberStyle == 1 && SC(1, 0) == 16 && SC(1, 1) == 16);
 }
 
 static int drawnText(const char* t);
@@ -1656,10 +1709,10 @@ static void test_saber_shape(void)
                 // (the middle of the slice, and its outer edge too, nearest the switch)
                 const float aR[2] = { (r0 + r1) * 0.5f, r1 - 2.0f };
                 for (int j = 0; j < 2; j++) {
-                    fg.aSaberColour[0][0] = -1;
+                    SC(0, 0) = -1;
                     polar(cx, cy, deg, aR[j], &px, &py);
                     down(2, px, py); up(2, px, py);
-                    if (fg.aSaberColour[0][0] != touchUi_GetWheelSliceBin(k) || fg.saberShape != sh0 || !touchUi_IsWheelOpen()) bOk = 0;
+                    if (SC(0, 0) != touchUi_GetWheelSliceBin(k) || fg.saberShape != sh0 || !touchUi_IsWheelOpen()) bOk = 0;
                 }
             }
         }
@@ -1737,7 +1790,7 @@ static void test_saber_shape(void)
             setup();
             fg.bSaberBtn = 1;
             fg.saberStyle = st == 1 || st == 3; // (2: one saber with the CROSS hilt; 3: two)
-            fg.saberHilt = st >= 2;
+            fg.aHilt[0] = st >= 2;
             tick();
             touchUi_SetScreen(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b);
             tick();
@@ -1978,7 +2031,7 @@ static void test_saber_throw(void)
             setup();
             fg.bSaberBtn = 1;
             fg.saberStyle = st == 1 || st == 3; // (2: one saber with the CROSS hilt; 3: two)
-            fg.saberHilt = st >= 2;
+            fg.aHilt[0] = st >= 2;
             tick();
             touchUi_SetScreen(aScr[k].w, aScr[k].h, aScr[k].l, aScr[k].t, aScr[k].r, aScr[k].b);
             tick();
@@ -2035,7 +2088,7 @@ static void test_saber_hilt(void)
     g_case = "hilt: tapped: CROSS (its name drawn), the style kept (SINGLE), one tick, the wheel open to tap, the game held";
     g_platTicks = 0;
     down(2, xx, xy); up(2, xx, xy);
-    CHECK(fg.saberHilt == 1 && fg.saberStyle == TOUCHUI_SABER_SINGLE && g_platTicks == 1 && touchUi_IsWheelOpen() && touchUi_IsWheelTapMode() && fg.bHold
+    CHECK(fg.aHilt[0] == 1 && fg.saberStyle == TOUCHUI_SABER_SINGLE && g_platTicks == 1 && touchUi_IsWheelOpen() && touchUi_IsWheelTapMode() && fg.bHold
           && drawnText("CROSS") && !drawnText("NORMAL"));
     CHECK(!touchUi_GetSaberChip(TOUCHUI_CHIP_LEFT, NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_BOTH, NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_RIGHT, NULL, NULL));
     g_case = "hilt: nothing else moved with it";
@@ -2047,69 +2100,69 @@ static void test_saber_hilt(void)
         bSame &= touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &ax, &ay) && fabsf(ax - hx) < 0.01f && fabsf(ay - hy) < 0.01f;
         CHECK(bSame);
     }
-    g_case = "hilt: a colour tapped with SINGLE and CROSS: SINGLE's own (DUAL's kept)";
-    fg.aSaberColour[0][0] = 5; fg.aSaberColour[1][0] = fg.aSaberColour[1][1] = 3;
+    g_case = "hilt: a colour tapped with SINGLE and CROSS: the right hand's (the left hand's kept)";
+    SC(0, 0) = 5; SC(1, 1) = 3;
     touchUi_GetWheelSlice(1, &deg);
     polar(cx, cy, deg, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
-    CHECK(fg.aSaberColour[0][0] == 1 && fg.aSaberColour[1][0] == 3 && fg.aSaberColour[1][1] == 3 && fg.saberHilt == 1 && touchUi_IsWheelOpen());
+    CHECK(SC(0, 0) == 1 && SC(1, 1) == 3 && fg.aHilt[0] == 1 && touchUi_IsWheelOpen());
     g_case = "hilt: the shape's switch still flips FILM with CROSS, the hilt kept";
     {
         const int sh0 = fg.saberShape;
         down(2, hx, hy); up(2, hx, hy);
-        CHECK(fg.saberShape == !sh0 && fg.saberHilt == 1 && touchUi_IsWheelOpen());
+        CHECK(fg.saberShape == !sh0 && fg.aHilt[0] == 1 && touchUi_IsWheelOpen());
         down(2, hx, hy); up(2, hx, hy);
     }
     g_case = "hilt: DUAL with CROSS: two crossguards, the blades' choices shown, HILT where it was";
     down(2, dx, dy); up(2, dx, dy);
     {
         float ax, ay;
-        CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && fg.saberHilt == 1 && touchUi_GetSaberChip(TOUCHUI_CHIP_LEFT, NULL, NULL)
+        CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && fg.aHilt[0] == 1 && touchUi_GetSaberChip(TOUCHUI_CHIP_LEFT, NULL, NULL)
               && touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &ax, &ay) && drawnText("CROSS"));
     }
     g_case = "hilt: tapped again: NORMAL (round: only two available), the style kept (DUAL)";
     touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &xx, &xy);
     down(2, xx, xy); up(2, xx, xy);
-    CHECK(fg.saberHilt == 0 && fg.saberStyle == TOUCHUI_SABER_DUAL && drawnText("NORMAL"));
+    CHECK(fg.aHilt[0] == 0 && fg.saberStyle == TOUCHUI_SABER_DUAL && drawnText("NORMAL"));
     g_case = "hilt: with STAFF available too: NORMAL, CROSS, STAFF, round, past FOLD (not available)";
     {
         fg.bStaffOk = 1;
         int aSeen[4];
-        for (int k = 0; k < 4; k++) { touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &xx, &xy); down(2, xx, xy); up(2, xx, xy); aSeen[k] = fg.saberHilt; }
+        for (int k = 0; k < 4; k++) { touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &xx, &xy); down(2, xx, xy); up(2, xx, xy); aSeen[k] = fg.aHilt[0]; }
         CHECK(aSeen[0] == 1 && aSeen[1] == 2 && aSeen[2] == 0 && aSeen[3] == 1 && drawnText("CROSS"));
         fg.bStaffOk = 0;
-        fg.saberHilt = 1;
+        fg.aHilt[0] = 1;
     }
     g_case = "hilt: the shared wheel's own call (a pad's LB, the 7 key, go through it) goes to the next";
     inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT);
-    CHECK(fg.saberHilt == 0 && inputWheel_IsOpen());
+    CHECK(fg.aHilt[0] == 0 && inputWheel_IsOpen());
     inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT);
-    CHECK(fg.saberHilt == 1 && inputWheel_IsOpen());
+    CHECK(fg.aHilt[0] == 1 && inputWheel_IsOpen());
     g_case = "hilt: the gap cancels; remembered (by name) over a restart, the style and colours too";
     polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
     down(2, px, py); up(2, px, py);
-    CHECK(!touchUi_IsWheelOpen() && fg.saberHilt == 1 && fg.saberStyle == TOUCHUI_SABER_DUAL);
-    fg.saberHilt = 0; fg.saberStyle = 0; fg.aSaberColour[0][0] = 0;
+    CHECK(!touchUi_IsWheelOpen() && fg.aHilt[0] == 1 && fg.saberStyle == TOUCHUI_SABER_DUAL);
+    fg.aHilt[0] = 0; fg.saberStyle = 0; SC(0, 0) = 0;
     touchUi_Init(&fakeGame, g_settings);
-    CHECK(fg.saberHilt == 1 && fg.saberStyle == TOUCHUI_SABER_DUAL && fg.aSaberColour[0][0] == 1);
+    CHECK(fg.aHilt[0] == 1 && fg.saberStyle == TOUCHUI_SABER_DUAL && SC(0, 0) == 1);
     g_case = "hilt: a hilt and a colour set from outside the overlay (a pad, the keys): remembered over a restart";
     {
         setup();
-        fg.saberHilt = 1;
+        fg.aHilt[0] = 1;
         tick(); tick(); // (the hilt saved)
-        fg.aSaberColour[0][0] = 7; // (then only SINGLE's colour: picked with a pad's A, a click)
+        SC(0, 0) = 7; // (then only SINGLE's colour: picked with a pad's A, a click)
         tick();
-        fg.saberHilt = 0; fg.aSaberColour[0][0] = 0;
+        fg.aHilt[0] = 0; SC(0, 0) = 0;
         touchUi_Init(&fakeGame, g_settings);
-        CHECK(fg.saberHilt == 1 && fg.aSaberColour[0][0] == 7);
+        CHECK(fg.aHilt[0] == 1 && SC(0, 0) == 7);
         tick();
-        fg.saberHilt = 0; // (then only the hilt: a pad's LB, the 7 key)
+        fg.aHilt[0] = 0; // (then only the hilt: a pad's LB, the 7 key)
         tick();
-        fg.saberHilt = 1;
+        fg.aHilt[0] = 1;
         touchUi_Init(&fakeGame, g_settings);
-        CHECK(fg.saberHilt == 0 && fg.aSaberColour[0][0] == 7);
+        CHECK(fg.aHilt[0] == 0 && SC(0, 0) == 7);
     }
-    g_case = "hilt: a CROSS kept as a style (builds before the hilts): SINGLE with the CROSS hilt, CROSS's colour SINGLE's, the file kept anew";
+    g_case = "hilt: a CROSS kept as a style (builds before the hilts): SINGLE, the right hand CROSS in CROSS's colour, the left DUAL's left one, the file kept anew";
     {
         static const char* aFile[2] = { "saberStyle=CROSS\nsaberColour.SINGLE.0=c5\nsaberColour.DUAL.0=c3\nsaberColour.DUAL.1=c4\nsaberColour.CROSS.0=c9\n",
                                         "saberColour.CROSS.0=c9\nsaberColour.SINGLE.0=c5\nsaberColour.DUAL.0=c3\nsaberColour.DUAL.1=c4\nsaberStyle=CROSS\n" };
@@ -2121,11 +2174,12 @@ static void test_saber_hilt(void)
             char buf[2048] = "";
             f = fopen(g_settings, "r");
             if (f) { buf[fread(buf, 1, sizeof(buf) - 1, f)] = 0; fclose(f); }
-            printf("  %s: style %d hilt %d colours %d %d/%d; kept: %s%s%s\n", k ? "colour line first" : "as kept", fg.saberStyle, fg.saberHilt,
-                   fg.aSaberColour[0][0], fg.aSaberColour[1][0], fg.aSaberColour[1][1], strstr(buf, "saberStyle=SINGLE") ? "saberStyle=SINGLE " : "",
-                   strstr(buf, "saberHilt=CROSS") ? "saberHilt=CROSS " : "", strstr(buf, "saberColour.SINGLE.0=c9") ? "saberColour.SINGLE.0=c9" : "");
-            CHECK(fg.saberStyle == TOUCHUI_SABER_SINGLE && fg.saberHilt == 1 && fg.aSaberColour[0][0] == 9 && fg.aSaberColour[1][0] == 3 && fg.aSaberColour[1][1] == 4
-                  && strstr(buf, "saberStyle=SINGLE\n") && strstr(buf, "saberHilt=CROSS\n") && strstr(buf, "saberColour.SINGLE.0=c9\n") && !strstr(buf, "saberStyle=CROSS"));
+            printf("  %s: style %d hilts %d %d colours %d/%d; kept: %s%s%s\n", k ? "colour line first" : "as kept", fg.saberStyle, fg.aHilt[0], fg.aHilt[1],
+                   SC(0, 0), SC(1, 1), strstr(buf, "saberStyle=SINGLE") ? "saberStyle=SINGLE " : "",
+                   strstr(buf, "saberHiltRight=CROSS") ? "saberHiltRight=CROSS " : "", strstr(buf, "saberColourRight1=c9") ? "saberColourRight1=c9" : "");
+            CHECK(fg.saberStyle == TOUCHUI_SABER_SINGLE && fg.aHilt[0] == 1 && fg.aHilt[1] == 0 && SC(0, 0) == 9 && SC(1, 1) == 4
+                  && strstr(buf, "saberStyle=SINGLE\n") && strstr(buf, "saberHiltRight=CROSS\n") && strstr(buf, "saberColourRight1=c9\n")
+                  && strstr(buf, "saberColourLeft1=c4\n") && !strstr(buf, "saberStyle=CROSS"));
         }
     }
     g_case = "hilt: SINGLE kept with an old CROSS colour too: SINGLE's own colour kept, the hilt NORMAL";
@@ -2134,7 +2188,7 @@ static void test_saber_hilt(void)
         FILE* f = fopen(g_settings, "w");
         if (f) { fputs("saberStyle=SINGLE\nsaberColour.SINGLE.0=c5\nsaberColour.CROSS.0=c9\n", f); fclose(f); }
         touchUi_Init(&fakeGame, g_settings);
-        CHECK(fg.saberStyle == TOUCHUI_SABER_SINGLE && fg.saberHilt == 0 && fg.aSaberColour[0][0] == 5);
+        CHECK(fg.saberStyle == TOUCHUI_SABER_SINGLE && fg.aHilt[0] == 0 && SC(0, 0) == 5);
     }
     g_case = "hilt: an unknown style's or hilt's name, or one not available here: left as it was (SINGLE, NORMAL)";
     {
@@ -2145,18 +2199,18 @@ static void test_saber_hilt(void)
             FILE* f = fopen(g_settings, "w");
             if (f) { fputs(aFile[k], f); fclose(f); }
             touchUi_Init(&fakeGame, g_settings);
-            bOk &= fg.saberStyle == TOUCHUI_SABER_SINGLE && fg.saberHilt == 0 && fg.aSaberColour[0][0] == 0;
+            bOk &= fg.saberStyle == TOUCHUI_SABER_SINGLE && fg.aHilt[0] == 0 && SC(0, 0) == 0;
         }
         CHECK(bOk);
     }
-    g_case = "hilt: a CROSS kept as a style where CROSS isn't available: SINGLE, NORMAL";
+    g_case = "hilt: a CROSS kept as a style where CROSS isn't available: SINGLE, NORMAL, in CROSS's colour";
     {
         setup();
         fg.bCrossOk = 0;
         FILE* f = fopen(g_settings, "w");
         if (f) { fputs("saberStyle=CROSS\nsaberColour.CROSS.0=c9\n", f); fclose(f); }
         touchUi_Init(&fakeGame, g_settings);
-        CHECK(fg.saberStyle == TOUCHUI_SABER_SINGLE && fg.saberHilt == 0 && fg.aSaberColour[0][0] == 0);
+        CHECK(fg.saberStyle == TOUCHUI_SABER_SINGLE && fg.aHilt[0] == 0 && SC(0, 0) == 9);
     }
     g_case = "hilt: not offered with only one hilt available (FILM still there)";
     setup();
@@ -2165,7 +2219,7 @@ static void test_saber_hilt(void)
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
     CHECK(touchUi_IsWheelOpen() && !touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, NULL, NULL) && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, NULL, NULL));
     inputWheel_SaberChip(INPUTWHEEL_CHIP_HILT);
-    CHECK(fg.saberHilt == 0);
+    CHECK(fg.aHilt[0] == 0);
     if (inputWheel_IsOpen()) inputWheel_Close(-1);
     fg.bCrossOk = 1;
     // all seven down one side: in order; where they don't fit as they are, 6 pt apart and every touch on a choice its own
@@ -2209,7 +2263,7 @@ static void test_saber_hilt(void)
             float tx, ty, cX[7], cY[7];
             touchUi_GetSaberChip(TOUCHUI_CHIP_HILT, &tx, &ty);
             down(2, tx, ty); up(2, tx, ty);
-            int bStill = fg.saberHilt == 1;
+            int bStill = fg.aHilt[0] == 1;
             for (int i = 0; i < 7; i++) bStill &= touchUi_GetSaberChip(aOrder[i], &cX[i], &cY[i]) && fabsf(cX[i] - aX[i]) < 0.01f && fabsf(cY[i] - aY[i]) < 0.01f;
             snprintf(name, sizeof(name), "hilt: %s, two sabers: HILT tapped (CROSS), none of the seven moves", aScr[k].name);
             g_case = name;
@@ -2422,6 +2476,195 @@ static void test_other_photo_and_cancel(void)
     CHECK(!touchUi_IsWheelOpen() && fg.bHold == 0);
 }
 
+// ------------------------------------------------------------ the saber wheel's state (iosSaberWheel, for every UI)
+
+static int hubIs(const char* want) { return !strcmp(iosSaberWheel_HubText(1), want); }
+
+static void test_saber_wheel_state(void)
+{
+    iosSaberWheelCard c, l;
+    iosSaberWheelIcon ic;
+    setup();
+    fg.bStaffOk = fg.bFoldOk = 1;
+    g_case = "wheel state: to start one saber, the RIGHT card picked (its whole hand), SAME COLOUR and SAME HILT off, AUTO on";
+    iosSaberWheel_BeginLoad(); iosSaberWheel_EndLoad();
+    iosSaberWheel_GetCard(0, &c); iosSaberWheel_GetCard(1, &l);
+    CHECK(iosSaberWheel_NumSabers() == 1 && c.bShown && !l.bShown && c.bPicked && c.pickedBlade == -1 && c.numBlades == 1 && c.bLinked);
+    CHECK(!iosSaberWheel_GetSameColour() && !iosSaberWheel_GetSameHilt() && iosSaberWheel_GetAuto() && !iosSaberWheel_ShowAuto());
+    CHECK(iosSaberWheel_PaintKind() == IOSSABERWHEEL_PAINT_HAND && hubIs("tap a colour") && !strcmp(iosSaberWheel_HubText(0), "slide toward a colour"));
+    g_case = "wheel state: one saber: a colour paints the right hand; the left card can't be picked";
+    iosSaberWheel_ApplyColour(5);
+    iosSaberWheel_PickHand(1);
+    CHECK(fg.aBladeColour[0][0] == 5 && iosSaberWheel_GetPickedHand() == 0 && iosSaberWheel_PaintColour() == 5);
+    g_case = "wheel state: + 2ND SABER: two, the LEFT card shown and picked; a colour paints only the left";
+    iosSaberWheel_AddSecond();
+    iosSaberWheel_GetCard(1, &l);
+    CHECK(iosSaberWheel_NumSabers() == 2 && fg.saberStyle == 1 && l.bShown && l.bPicked && hubIs("colour for the left saber"));
+    iosSaberWheel_ApplyColour(9);
+    CHECK(fg.aBladeColour[1][0] == 9 && fg.aBladeColour[0][0] == 5);
+    g_case = "wheel state: the RIGHT card: a colour paints only the right";
+    iosSaberWheel_PickHand(0);
+    iosSaberWheel_ApplyColour(3);
+    CHECK(fg.aBladeColour[0][0] == 3 && fg.aBladeColour[1][0] == 9 && hubIs("colour for the right saber") && iosSaberWheel_PaintColour() == 3);
+    g_case = "wheel state: HILT on a card: only that hand, round the available ones (NORMAL CROSS STAFF FOLD)";
+    int seq[5];
+    for (int k = 0; k < 5; k++) seq[k] = iosSaberWheel_CycleHilt(1);
+    CHECK(seq[0] == 1 && seq[1] == 2 && seq[2] == 3 && seq[3] == 0 && seq[4] == 1 && fg.aHilt[0] == 0 && fg.aHilt[1] == 1);
+    fg.bFoldOk = 0;
+    iosSaberWheel_SetHilt(1, 2);
+    CHECK(iosSaberWheel_CycleHilt(1) == 0); // (FOLD not available: past it)
+    fg.bFoldOk = 1;
+    g_case = "wheel state: SAME HILT on: a HILT tap changes both hands, to the tapped hand's next";
+    iosSaberWheel_SetSameHilt(1);
+    iosSaberWheel_SetHilt(1, 1);
+    CHECK(fg.aHilt[0] == 1 && fg.aHilt[1] == 1);
+    fg.aHilt[0] = 0;
+    CHECK(iosSaberWheel_CycleHilt(1) == 2 && fg.aHilt[0] == 2 && fg.aHilt[1] == 2);
+    iosSaberWheel_SetSameHilt(0);
+    g_case = "wheel state: a new STAFF starts linked: blade 2 shows blade 1's colour; two dots";
+    iosSaberWheel_SetHilt(0, 0); iosSaberWheel_SetHilt(1, 0);
+    fg.aUnlinked[0] = 1; fg.aBladeColour[0][1] = 12;
+    iosSaberWheel_SetHilt(0, 2);
+    iosSaberWheel_GetCard(0, &c);
+    CHECK(c.numBlades == 2 && c.bLinked && c.aColour[0] == 3 && c.aColour[1] == 3 && iosSaber_GetBladeColour(0, 1) == 3);
+    g_case = "wheel state: the first dot of a linked pair: blade 1 (blade 2 follows)";
+    iosSaberWheel_PickBlade(0, 0);
+    iosSaberWheel_ApplyColour(6);
+    iosSaberWheel_GetCard(0, &c);
+    CHECK(c.bLinked && c.aColour[0] == 6 && c.aColour[1] == 6 && c.pickedBlade == 0 && hubIs("right saber, blade 1"));
+    g_case = "wheel state: the second dot splits the pair (blade 1's colour to start); a colour then paints blade 2 only";
+    iosSaberWheel_PickBlade(0, 1);
+    iosSaberWheel_GetCard(0, &c);
+    CHECK(!c.bLinked && c.aColour[1] == 6 && c.pickedBlade == 1 && iosSaberWheel_PaintKind() == IOSSABERWHEEL_PAINT_BLADE && hubIs("right saber, blade 2"));
+    iosSaberWheel_ApplyColour(11);
+    iosSaberWheel_GetCard(0, &c);
+    CHECK(c.aColour[0] == 6 && c.aColour[1] == 11 && iosSaberWheel_PaintColour() == 11);
+    g_case = "wheel state: split, the first dot paints blade 1 only";
+    iosSaberWheel_PickBlade(0, 0);
+    iosSaberWheel_ApplyColour(2);
+    iosSaberWheel_GetCard(0, &c);
+    CHECK(c.aColour[0] == 2 && c.aColour[1] == 11 && !c.bLinked);
+    g_case = "wheel state: the card itself: the whole hand, both blades, linked again";
+    iosSaberWheel_PickHand(0);
+    iosSaberWheel_ApplyColour(4);
+    iosSaberWheel_GetCard(0, &c);
+    CHECK(c.bLinked && c.aColour[0] == 4 && c.aColour[1] == 4 && c.pickedBlade == -1 && hubIs("colour for the right saber"));
+    g_case = "wheel state: SAME COLOUR on: every blade of both hands, linked; the hub says so";
+    iosSaberWheel_PickBlade(0, 1); // (split)
+    iosSaberWheel_SetSameColour(1);
+    CHECK(iosSaberWheel_PaintKind() == IOSSABERWHEEL_PAINT_ALL && hubIs("colour for both sabers"));
+    iosSaberWheel_ApplyColour(13);
+    CHECK(fg.aBladeColour[0][0] == 13 && fg.aBladeColour[0][1] == 13 && fg.aBladeColour[1][0] == 13 && !fg.aUnlinked[0] && !fg.aUnlinked[1]);
+    iosSaberWheel_SetSameColour(0);
+    g_case = "wheel state: a hilt with one blade: the dot picked goes back to the whole hand";
+    iosSaberWheel_PickBlade(0, 1);
+    iosSaberWheel_SetHilt(0, 1);
+    CHECK(iosSaberWheel_GetPickedBlade() == -1 && iosSaberWheel_PaintKind() == IOSSABERWHEEL_PAINT_HAND);
+    g_case = "wheel state: FILM dimmed only while every hilt in use is CROSS";
+    iosSaberWheel_SetHilt(0, 1); iosSaberWheel_SetHilt(1, 0);
+    CHECK(!iosSaberWheel_FilmDimmed());
+    iosSaberWheel_SetHilt(1, 1);
+    CHECK(iosSaberWheel_FilmDimmed());
+    iosSaberWheel_SetHilt(1, 2);
+    CHECK(!iosSaberWheel_FilmDimmed());
+    iosSaberWheel_RemoveSecond();
+    CHECK(iosSaberWheel_FilmDimmed()); // (one saber: the right one's CROSS alone)
+    g_case = "wheel state: the LEFT card's x: one saber, the right card picked, the left hand's kept";
+    iosSaberWheel_AddSecond(); iosSaberWheel_PickHand(1);
+    iosSaberWheel_RemoveSecond();
+    CHECK(iosSaberWheel_NumSabers() == 1 && iosSaberWheel_GetPickedHand() == 0 && fg.aHilt[1] == 2 && fg.aBladeColour[1][0] == 13);
+    g_case = "wheel state: AUTO shown with a FOLD in either hand in use";
+    iosSaberWheel_SetHilt(0, 0);
+    CHECK(!iosSaberWheel_ShowAuto());
+    fg.aHilt[1] = 3;
+    CHECK(!iosSaberWheel_ShowAuto()); // (the left hand's, with one saber: not in use)
+    iosSaberWheel_AddSecond();
+    CHECK(iosSaberWheel_ShowAuto());
+    iosSaberWheel_SetAuto(0);
+    CHECK(!fg.bFoldAuto && !iosSaberWheel_GetAuto());
+    iosSaberWheel_SetAuto(1);
+    g_case = "wheel state: SABER's picture: each hand's hilt, FOLD open or not, each blade's colour";
+    fg.aHilt[0] = 2; fg.aUnlinked[0] = 1; fg.aBladeColour[0][0] = 1; fg.aBladeColour[0][1] = 11;
+    fg.bFoldLit = 1; fg.bFoldOpen = 1;
+    iosSaberWheel_GetIcon(&ic);
+    CHECK(ic.numSabers == 2 && ic.aHand[0].hilt == 2 && ic.aHand[0].aColour[0] == 1 && ic.aHand[0].aColour[1] == 11 && !ic.aHand[0].bOpen
+          && ic.aHand[1].hilt == 3 && ic.aHand[1].bOpen);
+    g_case = "wheel state: SABER's tap flips a FOLD lit in hand, and only then";
+    CHECK(iosSaberWheel_TapFlips() && iosSaberWheel_Flip() && fg.foldFlips == 1);
+    fg.bFoldLit = 0;
+    CHECK(!iosSaberWheel_TapFlips() && !iosSaberWheel_Flip() && fg.foldFlips == 1);
+    g_case = "wheel state: green off Jedi Knight's REFORGED wheel shows as the game's own, kept as picked";
+    fg.saberLook = 1;
+    iosSaberWheel_PickHand(0); iosSaberWheel_ApplyColour(7);
+    iosSaberWheel_GetCard(0, &c);
+    CHECK(fg.aBladeColour[0][0] == 7 && c.aColour[0] == 0 && iosSaberWheel_PaintColour() == 0);
+    fg.saberLook = 0;
+
+    g_case = "wheel kept: every choice by its name, and back the same";
+    {
+        char aName[32][40], aVal[32][IOSSABERWHEEL_KEPT_LEN];
+        const int n = iosSaberWheel_NumKept();
+        iosSaberWheel_SetSameHilt(1);
+        fg.bFoldAuto = 0; fg.bFoldOpen = 1;
+        for (int i = 0; i < n && i < 32; i++) { snprintf(aName[i], 40, "%s", iosSaberWheel_KeptName(i)); iosSaberWheel_GetKept(i, aVal[i], IOSSABERWHEEL_KEPT_LEN); }
+        const int st = fg.saberStyle, h0 = fg.aHilt[0], h1 = fg.aHilt[1], c00 = fg.aBladeColour[0][0], c01 = iosSaber_GetBladeColour(0, 1), u0 = fg.aUnlinked[0];
+        iosSaberWheel_BeginLoad();
+        fg.bFoldAuto = 1; fg.bFoldOpen = 0;
+        CHECK(fg.saberStyle == 0 && fg.aHilt[0] == 0 && fg.aBladeColour[0][0] == 0 && !iosSaberWheel_GetSameHilt());
+        for (int i = 0; i < n && i < 32; i++) iosSaberWheel_LoadKept(aName[i], aVal[i]);
+        iosSaberWheel_EndLoad();
+        CHECK(n == 13 && fg.saberStyle == st && fg.aHilt[0] == h0 && fg.aHilt[1] == h1 && fg.aBladeColour[0][0] == c00 && iosSaber_GetBladeColour(0, 1) == c01
+              && fg.aUnlinked[0] == u0 && iosSaberWheel_GetSameHilt() && !iosSaberWheel_GetSameColour() && !fg.bFoldAuto && fg.bFoldOpen);
+        printf("  kept:");
+        for (int i = 0; i < n && i < 32; i++) printf(" %s=%s", aName[i], aVal[i]);
+        printf("\n");
+    }
+    g_case = "wheel kept: links put on after the hilts, whatever the order kept";
+    iosSaberWheel_BeginLoad();
+    iosSaberWheel_LoadKept("LinkRight", "0"); iosSaberWheel_LoadKept("ColourRight2", "c8"); iosSaberWheel_LoadKept("ColourRight1", "c2"); iosSaberWheel_LoadKept("HiltRight", "FOLD");
+    iosSaberWheel_EndLoad();
+    CHECK(fg.aHilt[0] == 3 && fg.aUnlinked[0] && iosSaber_GetBladeColour(0, 0) == 2 && iosSaber_GetBladeColour(0, 1) == 8 && fg.bFoldAuto);
+    g_case = "wheel kept: a published build's (SINGLE red; DUAL blue/green): one saber in its red, the left the DUAL's green";
+    iosSaberWheel_BeginLoad();
+    iosSaberWheel_LoadKept("Colour.SINGLE.0", "c1"); iosSaberWheel_LoadKept("Colour.DUAL.0", "c11"); iosSaberWheel_LoadKept("Colour.DUAL.1", "c7");
+    iosSaberWheel_EndLoad();
+    CHECK(fg.saberStyle == 0 && fg.aBladeColour[0][0] == 1 && fg.aBladeColour[1][0] == 7 && fg.aHilt[0] == 0 && fg.aHilt[1] == 0 && !fg.aUnlinked[0] && !fg.aUnlinked[1]);
+    g_case = "wheel kept: a published build's with DUAL picked: the right hand DUAL's right colour (the cvars' names too)";
+    iosSaberWheel_BeginLoad();
+    iosSaberWheel_LoadKept("ColourSingle", "c1"); iosSaberWheel_LoadKept("ColourDualRight", "c11"); iosSaberWheel_LoadKept("ColourDualLeft", "c7");
+    iosSaberWheel_LoadKept("Style", "DUAL");
+    iosSaberWheel_EndLoad();
+    CHECK(fg.saberStyle == 1 && fg.aBladeColour[0][0] == 11 && fg.aBladeColour[1][0] == 7);
+    g_case = "wheel kept: the hilt branch's shared hilt: both hands";
+    iosSaberWheel_BeginLoad();
+    iosSaberWheel_LoadKept("Hilt", "CROSS"); iosSaberWheel_LoadKept("Style", "DUAL");
+    iosSaberWheel_EndLoad();
+    CHECK(fg.aHilt[0] == 1 && fg.aHilt[1] == 1);
+    g_case = "wheel kept: each hand's own wins over what builds before kept";
+    iosSaberWheel_BeginLoad();
+    iosSaberWheel_LoadKept("Hilt", "CROSS"); iosSaberWheel_LoadKept("HiltLeft", "STAFF"); iosSaberWheel_LoadKept("Colour.SINGLE.0", "c1"); iosSaberWheel_LoadKept("ColourLeft1", "c4");
+    iosSaberWheel_EndLoad();
+    CHECK(fg.aHilt[0] == 0 && fg.aHilt[1] == 2 && fg.aBladeColour[0][0] == 0 && fg.aBladeColour[1][0] == 4);
+    g_case = "wheel kept: one changed in its store (a cvar typed): taken at once; an unknown name: nothing";
+    CHECK(iosSaberWheel_SetKept("HiltRight", "STAFF") && fg.aHilt[0] == 2 && !iosSaberWheel_SetKept("Wobbly", "1"));
+    g_case = "wheel kept: the Android file keeps them all, pad-made changes too";
+    {
+        setup();
+        fg.bStaffOk = fg.bFoldOk = 1;
+        touchUi_Init(&fakeGame, g_settings);
+        fg.aHilt[1] = 3; fg.saberStyle = 1; // (as a pad or the keys would)
+        tick();
+        char buf[4096] = "";
+        FILE* f = fopen(g_settings, "r");
+        if (f) { buf[fread(buf, 1, sizeof(buf) - 1, f)] = 0; fclose(f); }
+        CHECK(strstr(buf, "saberStyle=DUAL\n") && strstr(buf, "saberHiltLeft=FOLD\n") && strstr(buf, "saberHiltRight=NORMAL\n") && strstr(buf, "saberLinkRight=1\n")
+              && strstr(buf, "saberFoldAuto=1\n") && strstr(buf, "saberSameColour=0\n") && strstr(buf, "saberLook=CLASSIC\n") && !strstr(buf, "saberColour.SINGLE"));
+        fg.aHilt[1] = 0; fg.saberStyle = 0;
+        touchUi_Init(&fakeGame, g_settings);
+        CHECK(fg.aHilt[1] == 3 && fg.saberStyle == 1);
+    }
+}
+
 int main(void)
 {
     test_stick();
@@ -2441,6 +2684,7 @@ int main(void)
     test_saber_shape();
     test_saber_hilt();
     test_saber_throw();
+    test_saber_wheel_state();
     test_shared_wheel();
     test_other_photo_and_cancel();
     test_level_tray();

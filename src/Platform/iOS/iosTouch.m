@@ -25,6 +25,7 @@
 #include "Platform/iOS/iosSaber.h"
 #include "Enhanced/iosSaberShape.h"
 #include "Enhanced/iosSaberThrowJk.h"
+#include "Enhanced/iosSaberWheel.h"
 #include "Enhanced/enhTick.h"
 #include "Platform/platServices.h"
 #include "Platform/iOS/iosPad.h"
@@ -193,9 +194,8 @@ extern int jkHud_bChatOpen;
 // BACTA uses a bacta tank only once held this long (a tap does nothing;
 // lifted or slid off sooner, nothing); one a press, its ring filling meanwhile
 #define IOSTOUCH_BACTA_HOLD 0.3
-#define IOSTOUCH_SABERSTYLE_DEFAULTS_KEY @"iosTouchSaberStyle"
-#define IOSTOUCH_SABERHILT_DEFAULTS_KEY @"iosTouchSaberHilt" // (by its name: NORMAL, CROSS...; iosSaber)
-#define IOSTOUCH_SABERCOLOUR_DEFAULTS_KEY @"iosTouchSaberColour" // + style name + blade number
+// (the saber wheel's choices: "iosTouchSaber" + each name iosSaberWheel keeps, loadSaberChoices;
+// builds before kept iosTouchSaberStyle, iosTouchSaberHilt, iosTouchSaberColour.<style>.<blade>)
 #define IOSTOUCH_SABERTARGET_DEFAULTS_KEY @"iosTouchSaberTarget"
 #define IOSTOUCH_SABERLOOK_DEFAULTS_KEY @"iosTouchSaberLook" // (by its name: CLASSIC, REFORGED)
 #define IOSTOUCH_SABERSHAPE_DEFAULTS_KEY @"iosTouchSaberShape" // (by its name as kept: SPIKE, BEAM (FILM on the screen); iosSaberShape)
@@ -2857,50 +2857,56 @@ static void iosTouch_PhotosAsked(void)
     [self setShowCheat:0];
 }
 
-// The style, the hilt and each blade's colour, as last picked (by name: a
-// colour that is no more is the game's own). A style kept by a build before
-// the hilts that is a hilt's name (CROSS): SINGLE with that hilt, and that
-// style's own colour SINGLE's, so the saber is as it was -- kept so at once
-// (its own colour's key left as it was: an older build finds it there)
+// The saber wheel's choices as last kept (iosSaberWheel: one saber or two,
+// each hand's hilt, each blade's colour, the switches; each by its name,
+// "iosTouchSaber" + name), and what builds before kept, moved (by name: a
+// colour that is no more is the game's own): a player sees what they had.
+// The keys builds before kept are left as they were (an older build finds
+// them there).
+#define IOSTOUCH_SABERKEPT_PREFIX @"iosTouchSaber"
+static char iosTouch_aSaberKept[32][IOSSABERWHEEL_KEPT_LEN];
+
 - (void)loadSaberChoices
 {
     NSUserDefaults* d = [NSUserDefaults standardUserDefaults];
-    NSString* kept = [d stringForKey:IOSTOUCH_SABERSTYLE_DEFAULTS_KEY];
-    int movedHilt = IOSSABER_HILT_NORMAL;
-    if (kept && iosSaber_StyleByName([kept UTF8String], &movedHilt) >= 0 && movedHilt != IOSSABER_HILT_NORMAL) {
-        const int st = iosSaber_StyleByName([kept UTF8String], NULL);
-        // (none kept for it: it was never picked, the game's own)
-        NSString* v = [d stringForKey:[NSString stringWithFormat:@"%@.%@.0", IOSTOUCH_SABERCOLOUR_DEFAULTS_KEY, kept]];
-        [d setObject:(v ? v : [NSString stringWithUTF8String:iosSaber_ColourKey(IOSSABER_COLOUR_GAME)])
-              forKey:[NSString stringWithFormat:@"%@.%s.0", IOSTOUCH_SABERCOLOUR_DEFAULTS_KEY, iosSaber_StyleName(st)]];
-        [d setObject:[NSString stringWithUTF8String:iosSaber_HiltName(movedHilt)] forKey:IOSTOUCH_SABERHILT_DEFAULTS_KEY];
-        [d setObject:[NSString stringWithUTF8String:iosSaber_StyleName(st)] forKey:IOSTOUCH_SABERSTYLE_DEFAULTS_KEY];
+    iosSaberWheel_BeginLoad();
+    for (int i = 0; i < iosSaberWheel_NumOldKept(); i++) {
+        NSString* v = [d stringForKey:[NSString stringWithFormat:@"%@%s", IOSTOUCH_SABERKEPT_PREFIX, iosSaberWheel_OldKeptName(i)]];
+        if (v) iosSaberWheel_LoadKept(iosSaberWheel_OldKeptName(i), [v UTF8String]);
     }
-    for (int st = 0; st < IOSSABER_NUM_STYLES; st++) {
-        for (int b = 0; b < iosSaber_StyleNumBlades(st); b++) {
-            NSString* key = [NSString stringWithFormat:@"%@.%s.%d", IOSTOUCH_SABERCOLOUR_DEFAULTS_KEY, iosSaber_StyleName(st), b];
-            NSString* v = [d stringForKey:key];
-            int id = v ? iosSaber_ColourByKey([v UTF8String]) : -1;
-            iosSaber_SetColour(st, b, id >= 0 ? id : IOSSABER_COLOUR_GAME);
-        }
+    for (int i = 0; i < iosSaberWheel_NumKept(); i++) {
+        NSString* v = [d stringForKey:[NSString stringWithFormat:@"%@%s", IOSTOUCH_SABERKEPT_PREFIX, iosSaberWheel_KeptName(i)]];
+        if (v) iosSaberWheel_LoadKept(iosSaberWheel_KeptName(i), [v UTF8String]);
     }
+    iosSaberWheel_EndLoad();
+    memset(iosTouch_aSaberKept, 0, sizeof(iosTouch_aSaberKept));
+    [self keepSaberChoices];
     NSString* look = [d stringForKey:IOSTOUCH_SABERLOOK_DEFAULTS_KEY];
     const int lk = look ? iosSaber_LookByName([look UTF8String]) : -1;
-    iosSaber_SetLook(lk >= 0 ? lk : IOSSABER_LOOK_REFORGED);
+    iosSaber_SetLook(lk >= 0 ? lk : IOSSABER_LOOK_CLASSIC); // (CLASSIC unless REFORGED was picked: only a pick is kept)
     NSString* shape = [d stringForKey:IOSTOUCH_SABERSHAPE_DEFAULTS_KEY];
     const int sh = shape ? iosSaberShape_ByName([shape UTF8String]) : -1;
     iosSaberShape_Set(sh >= 0 ? sh : IOSSABERSHAPE_DEFAULT);
     iosSaberThrowJk_Set([d boolForKey:IOSTOUCH_SABERTHROW_DEFAULTS_KEY]); // (off unless switched on)
-    NSString* style = [d stringForKey:IOSTOUCH_SABERSTYLE_DEFAULTS_KEY];
-    for (int st = 0; style && st < IOSSABER_NUM_STYLES; st++) {
-        if (!strcmp([style UTF8String], iosSaber_StyleName(st))) iosSaber_SetStyle(st);
-    }
-    NSString* hilt = [d stringForKey:IOSTOUCH_SABERHILT_DEFAULTS_KEY];
-    const int h = hilt ? iosSaber_HiltByName([hilt UTF8String]) : IOSSABER_HILT_NORMAL;
-    iosSaber_SetHilt(iosSaber_HiltAvailable(h) ? h : IOSSABER_HILT_NORMAL); // (one this build hasn't, or not available yet: NORMAL)
     if ([d objectForKey:IOSTOUCH_SABERTARGET_DEFAULTS_KEY]) {
         const NSInteger t = [d integerForKey:IOSTOUCH_SABERTARGET_DEFAULTS_KEY];
         if (t >= IOSTOUCH_SABER_RIGHT && t <= IOSTOUCH_SABER_BOTH) iosTouch_saberTarget = (int)t;
+    }
+}
+
+// The saber wheel's choices kept, each one that changed since last kept (by
+// any input: the wheel, a pad, the keys; a FOLD left open with AUTO off).
+// Each tick, and once loaded (every one kept under its own name from then on)
+- (void)keepSaberChoices
+{
+    NSUserDefaults* d = nil;
+    char v[IOSSABERWHEEL_KEPT_LEN];
+    for (int i = 0; i < iosSaberWheel_NumKept() && i < 32; i++) {
+        iosSaberWheel_GetKept(i, v, sizeof(v));
+        if (!strcmp(v, iosTouch_aSaberKept[i])) continue;
+        if (!d) d = [NSUserDefaults standardUserDefaults];
+        [d setObject:[NSString stringWithUTF8String:v] forKey:[NSString stringWithFormat:@"%@%s", IOSTOUCH_SABERKEPT_PREFIX, iosSaberWheel_KeptName(i)]];
+        memcpy(iosTouch_aSaberKept[i], v, sizeof(v));
     }
 }
 
@@ -2920,10 +2926,9 @@ static int iosTouch_SaberBlade(void)
     const int bTwo = iosSaber_StyleNumBlades(st) >= 2;
     for (int b = 0; b < (bTwo ? 2 : 1); b++) {
         if (bTwo && iosTouch_saberTarget != IOSTOUCH_SABER_BOTH && b != iosTouch_SaberBlade()) continue;
-        iosSaber_SetColour(st, b, id);
-        NSString* key = [NSString stringWithFormat:@"%@.%s.%d", IOSTOUCH_SABERCOLOUR_DEFAULTS_KEY, iosSaber_StyleName(st), b];
-        [[NSUserDefaults standardUserDefaults] setObject:[NSString stringWithUTF8String:iosSaber_ColourKey(id)] forKey:key];
+        iosSaber_SetColour(st, b, id); // (the hand's whole saber)
     }
+    [self keepSaberChoices];
     [self refreshSaberIcons];
 }
 
@@ -2979,21 +2984,20 @@ static int iosTouch_SaberBlade(void)
         [d setBool:iosSaberThrowJk_Get() ? YES : NO forKey:IOSTOUCH_SABERTHROW_DEFAULTS_KEY];
     }
     else if (chip == IOSTOUCH_CHIP_SINGLE || chip == IOSTOUCH_CHIP_DUAL) {
-        iosSaber_SetStyle(chip == IOSTOUCH_CHIP_DUAL ? IOSSABER_STYLE_DUAL : IOSSABER_STYLE_SINGLE);
-        [d setObject:[NSString stringWithUTF8String:iosSaber_StyleName(iosSaber_GetStyle())] forKey:IOSTOUCH_SABERSTYLE_DEFAULTS_KEY];
+        iosSaber_SetStyle(chip == IOSTOUCH_CHIP_DUAL ? IOSSABER_STYLE_DUAL : IOSSABER_STYLE_SINGLE); // (kept below)
         [self refreshSaberIcons];
     }
     else if (chip == IOSTOUCH_CHIP_HILT) {
-        // the next hilt, remembered: the blades drawn with it at once (only one: nothing)
+        // the next hilt, both hands (until the hand cards), remembered: the blades drawn with it at once (only one: nothing)
         const int next = iosSaber_NextHilt(iosSaber_GetHilt());
         if (next == iosSaber_GetHilt()) return;
-        iosSaber_SetHilt(next);
-        [d setObject:[NSString stringWithUTF8String:iosSaber_HiltName(iosSaber_GetHilt())] forKey:IOSTOUCH_SABERHILT_DEFAULTS_KEY];
+        iosSaber_SetHilt(next); // (kept below)
     }
     else {
         iosTouch_saberTarget = chip == IOSTOUCH_CHIP_LEFT ? IOSTOUCH_SABER_LEFT : chip == IOSTOUCH_CHIP_RIGHT ? IOSTOUCH_SABER_RIGHT : IOSTOUCH_SABER_BOTH;
         [d setInteger:iosTouch_saberTarget forKey:IOSTOUCH_SABERTARGET_DEFAULTS_KEY];
     }
+    [self keepSaberChoices]; // (one saber or two, the hilt: remembered at once)
     iosTouch_bWheelTapMode = 1;
     for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
         // (a thumb that opened it, still down: lifted, it leaves it open to tap)
@@ -3309,7 +3313,7 @@ static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch
         l.layer.borderColor = bLit ? [UIColor colorWithRed:1.0 green:0.85 blue:0.3 alpha:0.95].CGColor
                                    : [UIColor colorWithWhite:1.0 alpha:0.4].CGColor;
         l.layer.borderWidth = bLit ? 2.0 : 1.5;
-        l.alpha = (i == IOSTOUCH_CHIP_SHAPE && iosSaber_HiltKeepsShape(iosSaber_GetHilt())) ? IOSTOUCH_SABER_CHIP_DIM : bOn ? 1.0 : 0.8;
+        l.alpha = (i == IOSTOUCH_CHIP_SHAPE && iosSaberWheel_FilmDimmed()) ? IOSTOUCH_SABER_CHIP_DIM : bOn ? 1.0 : 0.8; // (every hilt in use CROSS)
         if (i == IOSTOUCH_CHIP_LEFT || i == IOSTOUCH_CHIP_RIGHT) {
             unsigned char r, g, b;
             iosSaber_ColourRGB(iosSaber_GetShownColour(st, i == IOSTOUCH_CHIP_LEFT ? 1 : 0), &r, &g, &b);
@@ -4996,6 +5000,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         }
     }
     if (iosTouch_bShowSaber) [self refreshSaberIcons];
+    [self keepSaberChoices]; // (the saber's choices, however they were made)
     // VIEW: the view picked by a keyboard's camera key, shown and remembered
     if (iosGame_IsThirdPerson() != iosTouch_bThirdPerson) [self setThirdPerson:iosGame_IsThirdPerson()];
     // The tray's LEVEL there while sithewok is on (gone if it goes off

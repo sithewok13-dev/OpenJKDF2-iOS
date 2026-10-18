@@ -1,0 +1,155 @@
+// Added: entire file. The saber wheel's choices, for every input that shows
+// the wheel (iOS's touch overlay, iosTouch.m; the touch overlay of Android
+// and the desktops, touchUi.c; a pad and the keys, inputWheel.c), so each
+// shows the same and does the same. Logic only, no drawing: over iosSaber
+// (each hand's saber, the local player's) and iosSaberFold (FOLD's AUTO and
+// its flip).
+//
+// The wheel (hiltmock/DESIGN.md): a card for each hand, on its own side of
+// the colour ring (RIGHT always; LEFT with two sabers, a "+ 2ND SABER" slot
+// with one). Each card: the hand's hilt with its own HILT button, and its
+// blades' colours (a dot each; STAFF and FOLD two, joined while linked).
+// Tapping a card picks its whole hand for the ring to paint; tapping a blade's
+// dot picks just that blade. SAME COLOUR (a colour tap paints every blade of
+// both hands) and SAME HILT (a HILT tap changes both hands) sit under the
+// LEFT card; FILM under the RIGHT card, dimmed while every hilt in use is
+// CROSS; AUTO under FILM while a FOLD is in either hand.
+//
+// Hands: 0 the right (IOSSABER_HAND_RIGHT), 1 the left. Blades: 0 a hand's
+// first, 1 its second (STAFF's and FOLD's other one).
+
+#ifndef _ENHANCED_IOSSABERWHEEL_H
+#define _ENHANCED_IOSSABERWHEEL_H
+
+#ifdef JK_ENHANCED
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// ---- one saber or two (iosSaber's style)
+int iosSaberWheel_NumSabers(void); // 1 or 2
+// "+ 2ND SABER": two sabers, the left hand's as it was kept; the ring then
+// paints the left hand
+void iosSaberWheel_AddSecond(void);
+// The LEFT card's x: one saber (the left hand's kept for next time); the ring
+// paints the right hand if it painted the left
+void iosSaberWheel_RemoveSecond(void);
+
+// ---- each hand's hilt
+int iosSaberWheel_GetHilt(int hand);
+// (SAME HILT on: both hands to it; only one available)
+void iosSaberWheel_SetHilt(int hand, int hilt);
+// A hand's HILT tapped: its next available hilt (NORMAL, CROSS, STAFF, FOLD,
+// round again); SAME HILT on: both hands to that. The hand's hilt now.
+int iosSaberWheel_CycleHilt(int hand);
+
+// ---- SAME COLOUR and SAME HILT (the switches under the LEFT card; off to
+// start: nothing changes for a player who never touches them; remembered)
+int iosSaberWheel_GetSameColour(void);
+void iosSaberWheel_SetSameColour(int bOn);
+int iosSaberWheel_GetSameHilt(void);
+void iosSaberWheel_SetSameHilt(int bOn);
+
+// ---- what the ring paints
+// A tap on a card (outside its HILT): that whole hand (only the right with
+// one saber)
+void iosSaberWheel_PickHand(int hand);
+// A tap on a blade's dot (a STAFF or FOLD card): just that blade. The second
+// dot of a linked pair splits it (its own colour from now on, the first's to
+// start). A hand with one blade: the whole hand.
+void iosSaberWheel_PickBlade(int hand, int blade);
+int iosSaberWheel_GetPickedHand(void);  // the card outlined in gold
+int iosSaberWheel_GetPickedBlade(void); // the dot ringed in gold: 0, 1; -1 for the whole hand
+enum { IOSSABERWHEEL_PAINT_ALL = 0, IOSSABERWHEEL_PAINT_HAND, IOSSABERWHEEL_PAINT_BLADE };
+int iosSaberWheel_PaintKind(void);      // ALL (SAME COLOUR on), the picked HAND, or one BLADE
+// A colour tapped on the ring (iosSaber's id): SAME COLOUR on, every blade of
+// both hands; a whole hand, both its blades (linked again); a blade, that one
+// (a linked first blade: the second follows)
+void iosSaberWheel_ApplyColour(int id);
+// The colour the hub names and the ring shows as picked (as shown): the
+// picked blade's, or the picked hand's first blade's
+int iosSaberWheel_PaintColour(void);
+// The hub's line under the colour's name: what the ring paints ("colour for
+// both sabers", "colour for the left saber", "right saber, blade 2"; one
+// saber's whole hand: bTapMode "tap a colour", else "slide toward a colour")
+const char* iosSaberWheel_HubText(int bTapMode);
+
+// ---- a hand's card
+typedef struct {
+    int bShown;      // RIGHT always; LEFT with two sabers
+    int hilt;        // (iosSaber_HiltName for HILT's name)
+    int numBlades;   // its dots: 1, or 2 (STAFF, FOLD)
+    int bLinked;     // two dots: joined, one name (linked); or each with its own
+    int aColour[2];  // each blade's colour as shown ([1] is [0] with one blade, or linked)
+    int bPicked;     // the gold outline: the ring paints this hand (or one of its blades)
+    int pickedBlade; // the gold ring round a dot: 0, 1; -1 none (the whole hand, or not picked)
+} iosSaberWheelCard;
+void iosSaberWheel_GetCard(int hand, iosSaberWheelCard* pOut);
+
+// ---- FILM and AUTO
+int iosSaberWheel_FilmDimmed(void); // every hilt in use is CROSS (its blades keep their own shape)
+int iosSaberWheel_ShowAuto(void);   // a FOLD in either hand in use: AUTO is shown
+int iosSaberWheel_GetAuto(void);    // (iosSaberFold's, one for both hands; remembered)
+void iosSaberWheel_SetAuto(int bOn);
+
+// ---- the SABER button (top row)
+// Its picture: each saber in its hilt's shape, each blade in its colour, two
+// in an X (the left hand's underneath). Compare with the last one drawn to
+// know when to draw it again.
+typedef struct {
+    int numSabers;
+    struct {
+        int hilt;
+        int bOpen;      // FOLD: open (a staff with a hinge), else folded (two blades side by side)
+        int aColour[2]; // each blade's as shown (iosSaber_ColourRGB)
+    } aHand[2];          // [0] the right, [1] the left (with two)
+} iosSaberWheelIcon;
+void iosSaberWheel_GetIcon(iosSaberWheelIcon* pOut);
+// With a FOLD lit in hand, a tap on SABER flips it (a slide or a 0.3 s hold
+// opens the wheel); else any touch opens the wheel, as ever
+int iosSaberWheel_TapFlips(void);
+int iosSaberWheel_Flip(void); // (1 if it flipped: the click comes with the snap)
+
+// ---- how the platforms keep it (each its own store: iOS NSUserDefaults,
+// "iosTouchSaber" + name; the desktops' cvars, "enh_saber" + name; Android's
+// settings file, "saber" + name). Every choice above as text by its name:
+//   Style                        SINGLE or DUAL
+//   HiltRight, HiltLeft          NORMAL, CROSS, STAFF, FOLD
+//   ColourRight1, ColourRight2,  a colour's key ("red"; "game" the game's own),
+//   ColourLeft1, ColourLeft2     each blade's
+//   LinkRight, LinkLeft          1: the second blade follows the first
+//   SameColour, SameHilt         0 or 1
+//   FoldAuto                     1 (to start) or 0
+//   FoldOpen                     with AUTO off, how FOLD was left (1 open)
+// Saved when one differs from what was last saved (a pad or the keys change
+// them too: compare often, as GetKept gives them).
+#define IOSSABERWHEEL_KEPT_LEN 32
+int iosSaberWheel_NumKept(void);
+const char* iosSaberWheel_KeptName(int i);
+void iosSaberWheel_GetKept(int i, char* pOut, int len);
+// Loading: everything to its start, then each name kept with its value, then
+// the end. Names that builds before kept are taken too, and moved, for any
+// choice not kept under its own name: Hilt (both hands'), Style CROSS (one
+// saber with the right hand's CROSS), each style's colours (Colour.SINGLE.0,
+// Colour.DUAL.0, Colour.DUAL.1, Colour.CROSS.0; the cvars' ColourSingle,
+// ColourDualRight, ColourDualLeft, ColourCross): the right hand the colour of
+// the style kept (one saber: SINGLE's; two: DUAL's right one), the left
+// DUAL's left one, each hand linked. So a player sees what they had.
+void iosSaberWheel_BeginLoad(void);
+void iosSaberWheel_LoadKept(const char* name, const char* value);
+void iosSaberWheel_EndLoad(void);
+// The names builds before kept (for a store that asks for each name it reads)
+int iosSaberWheel_NumOldKept(void);
+const char* iosSaberWheel_OldKeptName(int i);
+// One kept choice changed in its store (a cvar typed in the console): taken
+// now (one of the names above; 0 if not one)
+int iosSaberWheel_SetKept(const char* name, const char* value);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // JK_ENHANCED
+
+#endif // _ENHANCED_IOSSABERWHEEL_H
