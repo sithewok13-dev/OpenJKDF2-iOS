@@ -41,14 +41,10 @@
 //     the game (a wheel, a pad, the keys, the camera key...) is written back,
 //     to be saved with the rest.
 
-#if defined(JK_ENHANCED) && !defined(TARGET_IOS)
+#ifdef JK_ENHANCED
 
 #include <stdio.h>
 #include "Enhanced/iosSaber.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // The saber as the published build kept it (v0.8-beta2: one style, each
 // style's colours), worked out from the choices now and kept beside them
@@ -83,6 +79,14 @@ static inline void enhSettings_Published(int what, char* pOut, int len)
     }
     snprintf(pOut, len, "%s", v ? v : "");
 }
+
+#endif // JK_ENHANCED
+
+#if defined(JK_ENHANCED) && !defined(TARGET_IOS)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // sithCvar_Startup: the cvars, before the saved ones are read
 void enhSettings_StartupCvars(void);
