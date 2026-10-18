@@ -180,7 +180,8 @@ extern int jkHud_bChatOpen;
 // has the saber for real, or while sithewok is on (iosGame_IsSaberButtonShown,
 // read every frame), it opens the saber wheel (iosSaberWheel: a card for each
 // hand, its hilt and each blade's colour), its picture the sabers as they
-// are. With a FOLD lit in hand, a tap flips it instead (a slide or a hold
+// are. With a FOLD lit in hand, a tap flips it instead (one in each hand: the
+// right one, a second tap soon after the left one too; a slide or a hold
 // still opens the wheel). Every choice is remembered (keepSaberChoices),
 // but the hand the ring paints: the RIGHT card's, each time the app starts.
 // The CHEAT button (right of SABER): cheat mode. Switched on in MENU's tray
@@ -746,6 +747,7 @@ typedef struct {
 static iosTouchSlot iosTouch_aSlots[IOSTOUCH_MAX_TOUCHES];
 static int iosTouch_levelToLoad; // the tray's LEVEL pick, lifted: loaded at the next tick (as quick load)
 static double iosTouch_tJumpTapUp = -1.0; // when the last quick tap on JUMP lifted (by the touch's clock), for the double tap that lands
+static double iosTouch_tSaberTapUp = -1.0; // ...on SABER, flipping the right hand's of two FOLDs (by the touch's clock): the left's next
 static int iosTouch_aButtonHeld[IOSTOUCH_NUM_BUTTONS];
 static unsigned char iosTouch_aKeyDown[IOSTOUCH_NUM_SCANCODES];
 // One-off presses waiting to be read, and the one being read right now
@@ -5280,10 +5282,15 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 else if (t.timestamp - s->tDownTouch < IOSTOUCH_WHEEL_HOLD && s->button == BTN_SABER) {
                     // SABER: with a FOLD lit in hand, a tap flips it (folded or
                     // open, the click with its snap; a slide or a hold still
-                    // opens the wheel); else, having no key, a tap opens its
-                    // wheel, to tap a colour
+                    // opens the wheel): with one in each hand the right one, and
+                    // a second tap soon after (down within
+                    // IOSSABERWHEEL_TAP_AGAIN_SECS of this one's lift) the left
+                    // one too; else, having no key, a tap opens its wheel, to
+                    // tap a colour
                     if (iosSaberWheel_TapFlips()) {
-                        if (iosSaberWheel_Flip()) [cameraTap impactOccurred];
+                        const int r = iosSaberWheel_TapFlip(iosTouch_tSaberTapUp >= 0.0 && s->tDownTouch - iosTouch_tSaberTapUp < IOSSABERWHEEL_TAP_AGAIN_SECS);
+                        if (r) [cameraTap impactOccurred];
+                        iosTouch_tSaberTapUp = r == 2 ? t.timestamp : -1.0;
                         [self refreshSaberIcons];
                     }
                     else [self openWheelFrom:s held:1];

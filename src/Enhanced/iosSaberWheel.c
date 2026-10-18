@@ -307,15 +307,27 @@ int iosSaberWheel_Flip(void)
     return iosSaberFold_Flip();
 }
 
+int iosSaberWheel_TapFlip(int bAgain)
+{
+    return iosSaberFold_TapFlip(bAgain);
+}
+
+int iosSaberWheel_KeyFlip(void)
+{
+    return iosSaberFold_KeyFlip();
+}
+
 // ------------------------------------------------------------ kept
 
 enum {
     KEPT_STYLE, KEPT_HILT_R, KEPT_HILT_L, KEPT_COLOUR_R1, KEPT_COLOUR_R2, KEPT_COLOUR_L1, KEPT_COLOUR_L2,
-    KEPT_LINK_R, KEPT_LINK_L, KEPT_SAME_COLOUR, KEPT_SAME_HILT, KEPT_FOLD_AUTO, KEPT_FOLD_OPEN, KEPT_NUM
+    KEPT_LINK_R, KEPT_LINK_L, KEPT_SAME_COLOUR, KEPT_SAME_HILT, KEPT_FOLD_AUTO, KEPT_FOLD_OPEN,
+    KEPT_FOLD_OPEN_R, KEPT_FOLD_OPEN_L, KEPT_NUM
 };
 static const char* const iosSaberWheel_aKept[KEPT_NUM] = {
     "Style", "HiltRight", "HiltLeft", "ColourRight1", "ColourRight2", "ColourLeft1", "ColourLeft2",
     "LinkRight", "LinkLeft", "SameColour", "SameHilt", "FoldAuto", "FoldOpen",
+    "FoldOpenRight", "FoldOpenLeft",
 };
 // (what builds before kept: the shared hilt, and each style's colours under two spellings)
 enum { OLD_HILT, OLD_SINGLE, OLD_DUAL_R, OLD_DUAL_L, OLD_CROSS, OLD_NUM_KINDS };
@@ -331,7 +343,7 @@ static struct {
     int aPresent[KEPT_NUM];
     char aOld[OLD_NUM_KINDS][IOSSABERWHEEL_KEPT_LEN]; // ("" none)
     int movedHilt;                                    // (Style CROSS: one saber, this hilt in the right hand)
-    int foldAuto, foldOpen;                           // (FOLD's, put on at the end: AUTO first)
+    int foldAuto, foldOpen, aFoldOpen[2];             // (FOLD's, put on at the end: AUTO first)
     int aLink[IOSSABER_NUM_HANDS];                    // (put on at the end: after the hilts, whatever their order)
 } iosSaberWheel_load;
 
@@ -378,7 +390,11 @@ void iosSaberWheel_GetKept(int i, char* pOut, int len)
     case KEPT_SAME_HILT: snprintf(pOut, len, "%d", iosSaberWheel_s.bSameHilt); break;
     case KEPT_FOLD_AUTO: snprintf(pOut, len, "%d", iosSaberFold_GetAuto() ? 1 : 0); break;
     // (with AUTO on, it opens and folds by itself: not a choice to keep)
-    case KEPT_FOLD_OPEN: snprintf(pOut, len, "%d", (!iosSaberFold_GetAuto() && iosSaberFold_GetHeldOpen()) ? 1 : 0); break;
+    // (FoldOpen, as builds before kept it, one for both: the right hand's)
+    case KEPT_FOLD_OPEN: snprintf(pOut, len, "%d", (!iosSaberFold_GetAuto() && iosSaberFold_GetSaberHeldOpen(0)) ? 1 : 0); break;
+    case KEPT_FOLD_OPEN_R: case KEPT_FOLD_OPEN_L:
+        snprintf(pOut, len, "%d", (!iosSaberFold_GetAuto() && iosSaberFold_GetSaberHeldOpen(i - KEPT_FOLD_OPEN_R)) ? 1 : 0);
+        break;
     default: break;
     }
 }
@@ -425,7 +441,11 @@ static int iosSaberWheel_Put(const char* name, const char* v, int bLoad)
         break;
     case KEPT_FOLD_OPEN:
         if (bLoad) iosSaberWheel_load.foldOpen = iosSaberWheel_Bool(v);
-        else iosSaberFold_SetHeldOpen(iosSaberWheel_Bool(v));
+        else iosSaberFold_SetHeldOpen(iosSaberWheel_Bool(v)); // (both)
+        break;
+    case KEPT_FOLD_OPEN_R: case KEPT_FOLD_OPEN_L:
+        if (bLoad) iosSaberWheel_load.aFoldOpen[i - KEPT_FOLD_OPEN_R] = iosSaberWheel_Bool(v);
+        else iosSaberFold_SetSaberHeldOpen(i - KEPT_FOLD_OPEN_R, iosSaberWheel_Bool(v));
         break;
     default: break;
     }
@@ -492,9 +512,12 @@ void iosSaberWheel_EndLoad(void)
     }
     for (int h = 0; h < IOSSABER_NUM_HANDS; h++)
         if (p[KEPT_LINK_R + h]) iosSaber_SetBladeLinked(h, iosSaberWheel_load.aLink[h]);
-    // FOLD: AUTO, then how it was left with AUTO off
+    // FOLD: AUTO, then how each was left with AUTO off: each hand's own, or FoldOpen for both (kept by builds
+    // before; or changed by one since this build kept the hands, which writes FoldOpen as the right hand's)
     iosSaberFold_SetAuto(iosSaberWheel_load.foldAuto);
-    if (!iosSaberWheel_load.foldAuto) iosSaberFold_SetHeldOpen(iosSaberWheel_load.foldOpen);
+    const int bOldSince = p[KEPT_FOLD_OPEN] && p[KEPT_FOLD_OPEN_R] && iosSaberWheel_load.foldOpen != iosSaberWheel_load.aFoldOpen[0];
+    for (int k = 0; k < 2 && !iosSaberWheel_load.foldAuto; k++)
+        iosSaberFold_SetSaberHeldOpen(k, (p[KEPT_FOLD_OPEN_R + k] && !bOldSince) ? iosSaberWheel_load.aFoldOpen[k] : iosSaberWheel_load.foldOpen);
     iosSaberWheel_load.bLoading = 0;
     iosSaberWheel_PickHand(IOSSABER_HAND_RIGHT);
 }

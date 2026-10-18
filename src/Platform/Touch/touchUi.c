@@ -262,6 +262,7 @@ static struct {
     int haptics;
     int levelToLoad;
     double tJumpTapUp;
+    double tSaberTapUp; // when the last tap on SABER that flipped the right hand's of two FOLDs lifted (the left's next)
 
     // layout
     int bLayoutGauge;
@@ -2112,9 +2113,15 @@ static void tu_TouchUp(tuSlot* s, float px, float py, double t, int bCancelled)
         }
         else if (t - s->tDown < TU_WHEEL_HOLD && s->button == BTN_SABER) {
             // SABER has no key: a tap opens its wheel, to tap a colour; with a
-            // FOLD lit in hand it flips it instead (the click comes with the snap)
+            // FOLD lit in hand it flips it instead (the click comes with the snap):
+            // with one in each hand the right one, and a second tap soon after
+            // the left one too (a double tap flips both)
             if (!iosSaberWheel_TapFlips()) tu_OpenWheelFrom(s, 1);
-            else if (iosSaberWheel_Flip()) tu_Haptic(TOUCHUI_HAPTIC_TAP);
+            else {
+                const int r = iosSaberWheel_TapFlip(tu.tSaberTapUp >= 0.0 && s->tDown - tu.tSaberTapUp < IOSSABERWHEEL_TAP_AGAIN_SECS);
+                if (r) tu_Haptic(TOUCHUI_HAPTIC_TAP);
+                tu.tSaberTapUp = r == 2 ? t : -1.0;
+            }
         }
         else if (t - s->tDown < TU_WHEEL_HOLD) {
             // a quick tap: the next power (E) or weapon (G)
@@ -2621,6 +2628,7 @@ void touchUi_Init(const touchUiGame* pGame, const char* pSettingsPath)
     memset(&tu, 0, sizeof(tu));
     tu.game = pGame;
     tu.tJumpTapUp = -1.0;
+    tu.tSaberTapUp = -1.0;
     tu.gyroTurnedRound = -1.0e9;
     tu.bAlwaysRun = -1;
     snprintf(tu.fpsText, sizeof(tu.fpsText), "-- FPS");
