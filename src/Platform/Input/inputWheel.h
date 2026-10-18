@@ -156,13 +156,15 @@ int inputWheel_Close(int slice);
 // saber in hand, as set: the wheel closes; nothing with no saber to take).
 // The look: the wheel made again in it. Everything is remembered by the
 // platform around this (each store compares iosSaberWheel_GetKept, the look,
-// FILM and THROW as they change). Nothing (no tick) for one not shown now:
-// THROW where it isn't offered, AUTO with no FOLD in hand, the LEFT card's
-// with one saber...
-void inputWheel_SaberChip(int chip);
+// FILM and THROW as they change). Nothing (no tick, 0; the slice pointed at
+// kept) for one not to be had now: THROW where it isn't offered, AUTO with
+// no FOLD in hand, the LEFT card's with one saber, HILT with one hilt...;
+// 1 if it was made (the slice pointed at let go of, but EQUIP's: closed).
+int inputWheel_SaberChip(int chip);
 // The next card or blade for the ring to paint (a pad's Y, the keys' 2): the
-// RIGHT card, its blades (STAFF, FOLD), the LEFT card, its blades, round
-// again; only what is shown. With a tick, the wheel open.
+// RIGHT card, its blades (STAFF, FOLD; not with SAME COLOUR on), the LEFT
+// card, its blades, round again; only what is shown. Only picked (a linked
+// pair stays linked). With a tick, the wheel open.
 void inputWheel_SaberPickNext(void);
 // Whether EQUIP can take the saber now (the player has it and can switch to it)
 int inputWheel_CanEquipSaber(void);

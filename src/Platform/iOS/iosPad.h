@@ -88,7 +88,7 @@ extern "C" {
 // EQUIP, L3 / 4 LOOK, D-pad up / 5 SHAPE, D-pad down / 6 THROW, LB / 7 HILT,
 // RB / 8 SAMECOLOUR, LT / 9 SAMEHILT, RT / 0 AUTO.
 #define IOSPAD_CHIP_STYLE 0  // one saber or two: the second added ("+ 2ND SABER"), or taken away (the LEFT card's x)
-#define IOSPAD_CHIP_TARGET 1 // what the ring paints: the next card or blade shown (RIGHT, its blades with two, LEFT, its blades)
+#define IOSPAD_CHIP_TARGET 1 // what the ring paints: the next card or blade shown (RIGHT, its blades with two, LEFT, its blades; only the cards with SAME COLOUR on; only picked: a linked pair stays linked)
 #define IOSPAD_CHIP_EQUIP 2  // the saber in hand
 #define IOSPAD_CHIP_LOOK 3   // the colours' other look (CLASSIC / REFORGED)
 #define IOSPAD_CHIP_SHAPE 4  // the blade's shape: FILM on or off (iosSaberShape)

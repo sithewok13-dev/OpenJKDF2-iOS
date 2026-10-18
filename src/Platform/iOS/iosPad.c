@@ -398,7 +398,7 @@ static void iosPad_SetWheelPrompt(void)
         // and LT with two sabers, RT with a FOLD, D-pad down where THROW is)
         const int st = iosPad_SaberPromptState(), bTwo = st & 1;
         char y[48] = "", x[48] = "", same[96] = "", aut[32] = "";
-        if (st & 4) snprintf(y, sizeof(y), "%s: blade   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0));
+        if (st & 4) snprintf(y, sizeof(y), "%s: pick   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0));
         if (bTwo || (st & 2)) snprintf(x, sizeof(x), "%s: %s   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_WEST, 0), bTwo ? "one saber" : "2nd saber");
         if (bTwo) snprintf(same, sizeof(same), "%s: same colour   %s: same hilt   ", iosPad_PbName(PB_RB, 0), iosPad_PbName(PB_LT, 0));
         if (st & 8) snprintf(aut, sizeof(aut), "%s: auto   ", iosPad_PbName(PB_RT, 0));

@@ -68,10 +68,11 @@
 // The saber wheel's hand cards (hiltmock/hilt2.py's): a card, its corners;
 // how far right (left) of the popped ring; to the switch under it, and on
 // to the next; its HILT button (in from the card's left, down from its top);
-// its x (the LEFT card's top right); its colours' row: its middle down from
-// the card's top, its touch from INPUTWHEEL_DOTS_TOP to the HILT; one dot
-// (in from the left), two joined (each's width, the step between), two
-// split (each in its half, this wide)
+// its x (the LEFT card's top right; its touch 40 x 22, over the colours'
+// row's); its colours' row: its middle down from the card's top, its touch
+// from INPUTWHEEL_ROW_TOP to the HILT (a linked pair's second dot stopping
+// where the name starts); one dot (in from the left), two joined (each's
+// width, the step between), two split (each in its half, this wide)
 #define INPUTWHEEL_CARD_W 104.0f
 #define INPUTWHEEL_CARD_H 78.0f
 #define INPUTWHEEL_CARD_R 12.0f
@@ -83,9 +84,10 @@
 #define INPUTWHEEL_HILT_IN 8.0f
 #define INPUTWHEEL_HILT_DOWN 42.0f
 #define INPUTWHEEL_X_W 40.0f
-#define INPUTWHEEL_X_H 28.0f
+#define INPUTWHEEL_X_H 22.0f // (its touch: the card's top right, down to the colours' row)
 #define INPUTWHEEL_DOTS_Y 31.5f
-#define INPUTWHEEL_DOTS_TOP 20.0f
+#define INPUTWHEEL_ROW_TOP 22.0f // (the colours' row's touch: from here down to HILT)
+#define INPUTWHEEL_LINK_NAME_X 31.0f // (a linked pair's name: from here, the card's)
 #define INPUTWHEEL_DOT_X 10.0f
 #define INPUTWHEEL_LINK_DOT 6.4f
 #define INPUTWHEEL_LINK_STEP 11.0f
@@ -272,13 +274,17 @@ static struct {
     const char* (*pfnHint)(int bPickable, int bCancel);
     int (*pfnClear)(float x0, float y0, float x1, float y1);
     float topClear;
-    // where it was last laid out
+    // where it was last laid out (the saber wheel's cards: beside the ring,
+    // under it, over it, or left out: inputWheel_Layout; under or over, their
+    // columns' top left)
     float cx, cy, R0, R1;
+    int cardsAt;
+    float cardsX, cardsY;
     float chipX[INPUTWHEEL_NUM_CHIPS], chipY[INPUTWHEEL_NUM_CHIPS], chipW[INPUTWHEEL_NUM_CHIPS], chipH[INPUTWHEEL_NUM_CHIPS];
     int aChipShown[INPUTWHEEL_NUM_CHIPS];
     // THROW's spot (its middle) for the screen and the ring it was found for (inputWheel_ThrowSpot)
     int bThrowFound, bThrowSpot;
-    float throwKey[8], throwX, throwY;
+    float throwKey[9], throwX, throwY;
     inputWheelFit aFit[INPUTWHEEL_NUM_KINDS];
 } inputWheel_s = { .hot = -1, .lastHot = -1 };
 
@@ -503,18 +509,18 @@ static void inputWheel_SaberChose(void)
     inputWheel_Tick();
 }
 
-void inputWheel_SaberChip(int chip)
+int inputWheel_SaberChip(int chip)
 {
-    if (!inputWheel_s.bOpen || inputWheel_s.kind != INPUTWHEEL_SABER) return;
-    if (chip < 0 || chip >= INPUTWHEEL_NUM_CHIPS || !inputWheel_ChipWanted(chip)) return;
+    if (!inputWheel_s.bOpen || inputWheel_s.kind != INPUTWHEEL_SABER) return 0;
+    if (chip < 0 || chip >= INPUTWHEEL_NUM_CHIPS || !inputWheel_ChipWanted(chip)) return 0;
     if (chip == INPUTWHEEL_CHIP_EQUIP) {
         // the saber in hand, as set: the wheel closes with nothing else
         // changed, and the game takes it once it runs again; not had, nothing
-        if (!inputWheel_CanEquipSaber()) return;
+        if (!inputWheel_CanEquipSaber()) return 0;
         const int bin = inputWheel_SaberBin();
         inputWheel_Close(-1);
         if (bin != iosGame_GetCurWeapon()) iosGame_SelectWeapon(bin);
-        return;
+        return 1;
     }
     if (chip < INPUTWHEEL_CHIP_HILT) {
         iosSaberWheel_PickHand(chip - INPUTWHEEL_CHIP_CARD); // (its whole hand for the ring to paint)
@@ -522,16 +528,17 @@ void inputWheel_SaberChip(int chip)
     else if (chip < INPUTWHEEL_CHIP_DOT) {
         // that hand's next hilt (SAME HILT: both hands'), drawn with it at once
         const int hand = chip - INPUTWHEEL_CHIP_HILT, was = iosSaberWheel_GetHilt(hand);
-        if (iosSaberWheel_CycleHilt(hand) == was) return;
+        if (iosSaberWheel_CycleHilt(hand) == was) return 0;
     }
     else if (chip < INPUTWHEEL_CHIP_ADD) {
-        // just that blade (the second of a linked pair: split from the first)
+        // just that blade, picked (a linked pair stays linked until the
+        // second is given a colour of its own; SAME COLOUR on: its card)
         const int k = chip - INPUTWHEEL_CHIP_DOT;
         iosSaberWheel_PickBlade(k / 2, k % 2);
     }
     else if (chip == INPUTWHEEL_CHIP_ADD) {
         iosSaberWheel_AddSecond(); // (two sabers: the ring paints the left)
-        if (iosSaberWheel_NumSabers() < 2) return;
+        if (iosSaberWheel_NumSabers() < 2) return 0;
     }
     else if (chip == INPUTWHEEL_CHIP_REMOVE) {
         iosSaberWheel_RemoveSecond(); // (the left hand's kept for next time)
@@ -558,21 +565,23 @@ void inputWheel_SaberChip(int chip)
     else if (chip == INPUTWHEEL_CHIP_THROW) {
         // THROW on or off: Saber Throw on the Force wheel (or not) from its next opening
         // (only while its switch shows: the pad's and keyboard's key too)
-        if (!inputWheel_s.aChipShown[INPUTWHEEL_CHIP_THROW]) return;
+        if (!inputWheel_s.aChipShown[INPUTWHEEL_CHIP_THROW]) return 0;
         iosSaberThrowJk_Toggle();
     }
-    else return;
+    else return 0;
     inputWheel_SaberChose();
+    return 1;
 }
 
 void inputWheel_SaberPickNext(void)
 {
     if (!inputWheel_s.bOpen || inputWheel_s.kind != INPUTWHEEL_SABER) return;
-    // (what can be picked, in order: each hand shown, then its blades if it has two)
+    // (what can be picked, in order: each hand shown, then its blades if it
+    // has two and SAME COLOUR is off)
     int aHand[6], aBlade[6], n = 0, cur = -1;
     for (int hand = IOSSABER_HAND_RIGHT; hand < IOSSABER_NUM_HANDS; hand++) {
         if (hand != IOSSABER_HAND_RIGHT && iosSaberWheel_NumSabers() < 2) break;
-        const int nBlades = iosSaber_HiltNumBlades(iosSaberWheel_GetHilt(hand)) > 1 ? 2 : 0;
+        const int nBlades = iosSaberWheel_BladesPickable(hand) ? 2 : 0;
         for (int b = -1; b < nBlades; b++) {
             if (hand == iosSaberWheel_GetPickedHand() && b == iosSaberWheel_GetPickedBlade()) cur = n;
             aHand[n] = hand;
@@ -781,14 +790,66 @@ static void inputWheel_FitLabels(void)
 
 static void inputWheel_LayoutChips(const inputWheelScreen* s);
 
+// Where the saber wheel's cards go (each with its switches under it): beside
+// the ring, the LEFT card left of it and the RIGHT right (the ring no bigger
+// than leaves them their room); where that would make the ring smaller than
+// putting them under it does (a narrow window, a square one, one standing
+// up), side by side under the ring -- over it where nothing is kept clear
+// round the wheel (opened by a pad or the keys: their prompt runs along the
+// bottom); where neither leaves the ring INPUTWHEEL_CARDS_R1_MIN (the
+// smallest a landscape phone's has been with them beside it, 640 x 300's:
+// smaller, the middle's words and EQUIP no longer fit in it), left out (a
+// window too small for them: the middle still says what the ring paints,
+// and the pad and the keys still pick), the ring as big as it fits
+enum { INPUTWHEEL_CARDS_BESIDE = 0, INPUTWHEEL_CARDS_UNDER, INPUTWHEEL_CARDS_OVER, INPUTWHEEL_CARDS_NONE };
+#define INPUTWHEEL_CARDS_R1_MIN 126.0f
+#define INPUTWHEEL_COLUMN_H (INPUTWHEEL_CARD_H + INPUTWHEEL_CARD_UNDER + INPUTWHEEL_CHIP_H + INPUTWHEEL_SWITCH_GAP + INPUTWHEEL_CHIP_H) // (a card and two switches)
+
 void inputWheel_Layout(const inputWheelScreen* s)
 {
     if (!inputWheel_s.bOpen || !s) return;
     const float left = INPUTWHEEL_MAX_F(s->inL, 8.0f), right = s->w - INPUTWHEEL_MAX_F(s->inR, 8.0f);
     const float top = INPUTWHEEL_MAX_F(s->inT, 8.0f), bottom = s->h - INPUTWHEEL_MAX_F(s->inB, 8.0f);
+    // (the ring as big as the height lets it, with room to pop: 10 pt over
+    // it, 2 under it; and the width)
+    const float halfW = (right - left) * 0.5f, R1h = (bottom - top) * 0.5f - INPUTWHEEL_POP - 6.0f;
     inputWheel_s.cx = (left + right) * 0.5f;
     inputWheel_s.cy = (top + bottom) * 0.5f + 4.0f;
-    inputWheel_s.R1 = INPUTWHEEL_MIN(INPUTWHEEL_R1_MAX, (bottom - top) * 0.5f - INPUTWHEEL_POP - 6.0f);
+    inputWheel_s.R1 = INPUTWHEEL_MIN(INPUTWHEEL_R1_MAX, INPUTWHEEL_MIN(R1h, halfW - INPUTWHEEL_POP - 6.0f));
+    inputWheel_s.cardsAt = INPUTWHEEL_CARDS_BESIDE;
+    if (inputWheel_s.kind == INPUTWHEEL_SABER) {
+        const float out = INPUTWHEEL_CARD_W + INPUTWHEEL_CARD_OUT + INPUTWHEEL_POP;
+        const float R1beside = INPUTWHEEL_MIN(INPUTWHEEL_R1_MAX, INPUTWHEEL_MIN(R1h, halfW - out));
+        // (under: 10 pt over the ring, the ring popped, INPUTWHEEL_CARD_OUT, the columns, side by side)
+        const float rowW = 2.0f * INPUTWHEEL_CARD_W + INPUTWHEEL_CARD_OUT;
+        const float R1under = rowW > right - left ? -1.0f
+                            : INPUTWHEEL_MIN(INPUTWHEEL_R1_MAX, INPUTWHEEL_MIN(halfW - INPUTWHEEL_POP - 6.0f,
+                                             (bottom - top - 10.0f - INPUTWHEEL_CARD_OUT - INPUTWHEEL_COLUMN_H) * 0.5f - INPUTWHEEL_POP));
+        if (R1beside >= R1under && R1beside >= INPUTWHEEL_CARDS_R1_MIN) {
+            inputWheel_s.R1 = R1beside;
+        }
+        else if (R1under >= INPUTWHEEL_CARDS_R1_MIN) {
+            // (the ring and the columns as one, in the middle of the height;
+            // the columns INPUTWHEEL_CARD_OUT apart, as far from the popped ring)
+            const float blockH = 10.0f + 2.0f * (R1under + INPUTWHEEL_POP) + INPUTWHEEL_CARD_OUT + INPUTWHEEL_COLUMN_H;
+            const float y0 = top + (bottom - top - blockH) * 0.5f;
+            const int bOver = !inputWheel_s.pfnClear;
+            inputWheel_s.R1 = R1under;
+            inputWheel_s.cardsAt = bOver ? INPUTWHEEL_CARDS_OVER : INPUTWHEEL_CARDS_UNDER;
+            inputWheel_s.cardsX = roundf(inputWheel_s.cx - INPUTWHEEL_CARD_OUT * 0.5f - INPUTWHEEL_CARD_W);
+            if (bOver) {
+                inputWheel_s.cardsY = roundf(y0);
+                inputWheel_s.cy = inputWheel_s.cardsY + INPUTWHEEL_COLUMN_H + INPUTWHEEL_CARD_OUT + R1under + INPUTWHEEL_POP;
+            }
+            else {
+                inputWheel_s.cy = roundf(y0 + 10.0f + R1under + INPUTWHEEL_POP);
+                inputWheel_s.cardsY = ceilf(inputWheel_s.cy + R1under + INPUTWHEEL_POP + INPUTWHEEL_CARD_OUT);
+            }
+        }
+        else {
+            inputWheel_s.cardsAt = INPUTWHEEL_CARDS_NONE;
+        }
+    }
     inputWheel_s.R0 = roundf(inputWheel_s.R1 * INPUTWHEEL_R0_FRAC);
     inputWheelFit* F = &inputWheel_s.aFit[inputWheel_s.kind];
     if (inputWheel_s.pMap != F->map || inputWheel_s.R1 != F->R1) {
@@ -921,7 +982,7 @@ static int inputWheel_OldShownFor(int i, int bTwo)
 #define INPUTWHEEL_THROW_REACH 300
 static int inputWheel_ThrowSpot(const inputWheelScreen* s, float* pX, float* pY)
 {
-    const float key[8] = { s->w, s->h, s->inL, s->inT, s->inR, s->inB, inputWheel_s.R1, inputWheel_s.topClear + (inputWheel_s.pfnClear ? 0.5f : 0.0f) };
+    const float key[9] = { s->w, s->h, s->inL, s->inT, s->inR, s->inB, inputWheel_s.R1, inputWheel_s.topClear + (inputWheel_s.pfnClear ? 0.5f : 0.0f), inputWheel_s.cy };
     if (inputWheel_s.bThrowFound && !memcmp(key, inputWheel_s.throwKey, sizeof(key))) {
         *pX = inputWheel_s.throwX;
         *pY = inputWheel_s.throwY;
@@ -934,7 +995,7 @@ static int inputWheel_ThrowSpot(const inputWheelScreen* s, float* pX, float* pY)
     const float bottom = s->h - INPUTWHEEL_MAX_F(s->inB, 8.0f);
     const float ringR = inputWheel_s.R1 + INPUTWHEEL_POP + 6.0f;
     // (the other choices, with one saber and with two)
-    float aL[2 * INPUTWHEEL_OLD_NUM], aT[2 * INPUTWHEEL_OLD_NUM], aR[2 * INPUTWHEEL_OLD_NUM], aB[2 * INPUTWHEEL_OLD_NUM];
+    float aL[2 * INPUTWHEEL_OLD_NUM + 1], aT[2 * INPUTWHEEL_OLD_NUM + 1], aR[2 * INPUTWHEEL_OLD_NUM + 1], aB[2 * INPUTWHEEL_OLD_NUM + 1];
     int nOther = 0;
     for (int bTwo = 0; bTwo < 2; bTwo++) {
         float aX[INPUTWHEEL_OLD_NUM], aY[INPUTWHEEL_OLD_NUM];
@@ -954,6 +1015,14 @@ static int inputWheel_ThrowSpot(const inputWheelScreen* s, float* pX, float* pY)
             aB[nOther] = y + h * 0.5f;
             nOther++;
         }
+    }
+    if (inputWheel_s.kind == INPUTWHEEL_SABER && (inputWheel_s.cardsAt == INPUTWHEEL_CARDS_UNDER || inputWheel_s.cardsAt == INPUTWHEEL_CARDS_OVER)) {
+        // (the cards' columns, under the ring or over it)
+        aL[nOther] = inputWheel_s.cardsX;
+        aR[nOther] = inputWheel_s.cardsX + 2.0f * INPUTWHEEL_CARD_W + INPUTWHEEL_CARD_OUT;
+        aT[nOther] = inputWheel_s.cardsY;
+        aB[nOther] = inputWheel_s.cardsY + INPUTWHEEL_COLUMN_H;
+        nOther++;
     }
     const float d = ringR + hypotf(W, H) * 0.5f;
     const float ax = cx + d * 0.70710678f, ay = cy - d * 0.70710678f; // (its middle's aim)
@@ -1029,16 +1098,28 @@ static void inputWheel_LayoutChips(const inputWheelScreen* s)
     const int bThrow = inputWheel_ChipWanted(INPUTWHEEL_CHIP_THROW) && inputWheel_ThrowSpot(s, &tx, &ty);
     if (bThrow) inputWheel_PlaceChip(INPUTWHEEL_CHIP_THROW, tx - INPUTWHEEL_CHIP_W * 0.5f, ty - INPUTWHEEL_CHIP_H * 0.5f, INPUTWHEEL_CHIP_W, INPUTWHEEL_CHIP_H);
 
+    if (inputWheel_s.cardsAt == INPUTWHEEL_CARDS_NONE) return; // (no room for the cards: inputWheel_Layout)
     const float W = INPUTWHEEL_CARD_W, H = INPUTWHEEL_CARD_H, SH = INPUTWHEEL_CHIP_H;
     const float left = INPUTWHEEL_MAX_F(s->inL, 8.0f), right = s->w - INPUTWHEEL_MAX_F(s->inR, 8.0f);
     const float top = INPUTWHEEL_MAX_F(INPUTWHEEL_MAX_F(s->inT, 8.0f), inputWheel_s.topClear), bottom = s->h - INPUTWHEEL_MAX_F(s->inB, 8.0f);
-    const float out = inputWheel_s.R1 + INPUTWHEEL_POP + INPUTWHEEL_CARD_OUT;
-    const float xr = INPUTWHEEL_MIN(cx + out, right - W), xl = INPUTWHEEL_MAX_F(cx - out - W, left);
-    const float colH = H + INPUTWHEEL_CARD_UNDER + SH + INPUTWHEEL_SWITCH_GAP + SH; // (a card and two switches)
-    float y = INPUTWHEEL_MAX_F(roundf(cy - colH * 0.5f), top);
-    if (bThrow && tx - INPUTWHEEL_CHIP_W * 0.5f < xr + W + 6.0f && tx + INPUTWHEEL_CHIP_W * 0.5f > xr - 6.0f)
-        y = INPUTWHEEL_MAX_F(y, ty + INPUTWHEEL_CHIP_H * 0.5f + 10.0f);
-    if (y + colH > bottom) y = INPUTWHEEL_MAX_F(top, bottom - colH);
+    const float colH = INPUTWHEEL_COLUMN_H;
+    float xr, xl, y;
+    if (inputWheel_s.cardsAt != INPUTWHEEL_CARDS_BESIDE) {
+        // (side by side, under the ring or over it: inputWheel_Layout; THROW
+        // found clear of them, inputWheel_ThrowSpot)
+        xl = inputWheel_s.cardsX;
+        xr = xl + W + INPUTWHEEL_CARD_OUT;
+        y = inputWheel_s.cardsY;
+    }
+    else {
+        const float out = inputWheel_s.R1 + INPUTWHEEL_POP + INPUTWHEEL_CARD_OUT;
+        xr = INPUTWHEEL_MIN(cx + out, right - W);
+        xl = INPUTWHEEL_MAX_F(cx - out - W, left);
+        y = INPUTWHEEL_MAX_F(roundf(cy - colH * 0.5f), top);
+        if (bThrow && tx - INPUTWHEEL_CHIP_W * 0.5f < xr + W + 6.0f && tx + INPUTWHEEL_CHIP_W * 0.5f > xr - 6.0f)
+            y = INPUTWHEEL_MAX_F(y, ty + INPUTWHEEL_CHIP_H * 0.5f + 10.0f);
+        if (y + colH > bottom) y = INPUTWHEEL_MAX_F(top, bottom - colH);
+    }
     const float yu = y + H + INPUTWHEEL_CARD_UNDER, yu2 = yu + SH + INPUTWHEEL_SWITCH_GAP; // (the switches under a card)
     const int bTwo = iosSaberWheel_NumSabers() > 1;
     for (int hand = IOSSABER_HAND_RIGHT; hand < IOSSABER_NUM_HANDS; hand++) {
@@ -1049,19 +1130,21 @@ static void inputWheel_LayoutChips(const inputWheelScreen* s)
             inputWheel_PlaceChip(INPUTWHEEL_CHIP_HILT + hand, x0 + INPUTWHEEL_HILT_IN, y + INPUTWHEEL_HILT_DOWN, INPUTWHEEL_HILT_W, INPUTWHEEL_HILT_H);
         // the blades' dots (two): a touch on one picks just that blade -- each
         // half of the row once split; joined, the first from the card's left
-        // to midway between the dots, the second from there to the card's
-        // middle (as iosTouch.m's); the rest of the card the whole hand
+        // to midway between the dots, the second from there to where the
+        // colour's name starts (the name is both blades': the card's); the
+        // rest of the card the whole hand. The row from INPUTWHEEL_ROW_TOP
+        // down to HILT (over it, the LEFT card's x). As iosTouch.m's.
         if (inputWheel_ChipWanted(INPUTWHEEL_CHIP_DOT + 2 * hand)) {
-            const float ry = y + INPUTWHEEL_DOTS_TOP, rh = INPUTWHEEL_HILT_DOWN - INPUTWHEEL_DOTS_TOP;
+            const float ry = y + INPUTWHEEL_ROW_TOP, rh = INPUTWHEEL_HILT_DOWN - INPUTWHEEL_ROW_TOP;
             iosSaberWheelCard c;
             iosSaberWheel_GetCard(hand, &c);
             if (c.bLinked) {
                 const float mid = x0 + INPUTWHEEL_DOT_X + INPUTWHEEL_LINK_STEP * 0.5f + INPUTWHEEL_LINK_DOT * 0.5f;
                 inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand, x0, ry, mid - x0, rh);
-                inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand + 1, mid, ry, x0 + W * 0.5f - mid, rh);
+                inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand + 1, mid, ry, x0 + INPUTWHEEL_LINK_NAME_X - mid, rh);
             }
             else {
-                for (int b = 0; b < 2; b++) inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand + b, x0 + 5.0f + b * INPUTWHEEL_HALF_W, ry, INPUTWHEEL_HALF_W, rh);
+                for (int b = 0; b < 2; b++) inputWheel_PlaceChip(INPUTWHEEL_CHIP_DOT + 2 * hand + b, x0 + b * W * 0.5f, ry, W * 0.5f, rh);
             }
         }
     }

@@ -167,13 +167,18 @@ Tick what works, note what doesn't (a photo of the screen helps).
       (a blade out of each end), FOLD (two halves that fold side by side or
       open into a staff). STAFF and FOLD show a dot per blade: joined, the
       second blade follows the first; tap a dot to paint just that blade (a
-      gold ring round it; the second dot splits the pair). The wheel's middle
-      says what a colour tap paints. Under the LEFT card: SAME COLOUR (a
-      colour goes to every blade of both sabers) and SAME HILT (a HILT tap
-      changes both hands), both off to start. Under the RIGHT card: FILM and,
+      gold ring round it; the dots stay joined until blade 2 gets a colour
+      other than blade 1's, then they split; a tap on the colour's name is
+      the card's). The wheel's middle says what a colour tap paints. Under
+      the LEFT card: SAME COLOUR (a colour goes to every blade of both
+      sabers; a dot tap picks its card) and SAME HILT (a HILT tap changes
+      both hands), both off to start, and only working with two sabers (with
+      one they wait, still on, for the second). A tap from just over the
+      LEFT card's colour down is the card's, never its x. Under the RIGHT card: FILM and,
       while a FOLD is in either hand, AUTO (FOLD opens on the first swing and
       folds after 5 s without one; off: only when you flip it). Every tap
-      there ticks, is kept, and leaves the wheel open. JUMP, FIRE, DUCK and
+      there ticks and leaves the wheel open; the sabers, colours and switches
+      are kept (the picked card starts on RIGHT each time the game starts). JUMP, FIRE, DUCK and
       the other action buttons hide while the saber wheel is open; the top
       row stays. A CROSS picked on an earlier build comes back as one saber
       with the CROSS hilt, in the same colour. EQUIP puts the saber in your
@@ -182,8 +187,10 @@ Tick what works, note what doesn't (a photo of the screen helps).
       SABER opens it to slide to a colour.
 - [ ] With a FOLD lit in your hand, a tap on SABER flips it (folded or open,
       with a click); a slide or a 0.3 s hold on SABER opens the wheel. Picking
-      the saber again on the weapon wheel, or its number key again, flips it
-      too.
+      the saber again on the weapon wheel flips it too, and in Jedi Knight
+      its key (0) again while it's in hand. In Mysteries of the Sith the
+      saber shares key 1 with the fists: 1 switches to the fists, as in the
+      game, so flip it there with SABER or the weapon wheel.
 - [ ] CLASSIC / REFORGED (at the top of the saber wheel's middle): a tap
       switches the colours' look, and the wheel stays open. CLASSIC (to
       start, unless you picked REFORGED before): the earlier look, 17
@@ -207,12 +214,18 @@ Tick what works, note what doesn't (a photo of the screen helps).
       blade: the switch is dimmed while every hilt you hold is CROSS.
 - [ ] A pad or the keys on the open saber wheel (pad / key): the right stick
       or D-pad right points at a colour, A sets it (D-pad left, which opens
-      the wheel, closes it); Y / 2 the next card or
-      blade (RIGHT, its blades, LEFT, its blades); X / 1 add or take away the
+      the wheel, closes it; L again closes the keys' wheel); Y / 2 the next
+      card or blade (RIGHT, its blades, LEFT, its blades; only the cards with
+      SAME COLOUR on; blade 2 picked stays joined); X / 1 add or take away the
       second saber; LB / 7 the picked card's HILT; RB / 8 SAME COLOUR; LT / 9
       SAME HILT; RT / 0 AUTO (with a FOLD in hand); D-pad up / 5 FILM; D-pad
       down / 6 THROW (Jedi Knight); L3 / 4 the look; R3 / 3 EQUIP. The prompt
-      at the bottom lists them.
+      at the bottom lists them (on two lines, or more in a narrow window,
+      when one line is too narrow for it; never cut off).
+- [ ] A narrow window (half a desktop screen, a square one, one standing up,
+      split screen): the cards go under the ring (over it, opened with a pad
+      or the keys), nothing on top of the ring. A window too small for both
+      (400 x 300): the ring alone; the middle still says what it paints.
 - [ ] Use a keyboard, mouse or controller: the buttons hide; touch the screen
       and they come back.
 - [ ] Quit and start again: GYRO, SENS, FPS, CHEAT, VIEW, CONTROLS, the

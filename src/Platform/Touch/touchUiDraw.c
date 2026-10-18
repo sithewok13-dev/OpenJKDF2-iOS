@@ -3,6 +3,7 @@
 #include "Platform/Touch/touchUiDraw.h"
 #include "Platform/Touch/touchUiFont.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 
@@ -210,4 +211,90 @@ void touchUiDraw_MeasureText(const char* text, float size, float xscale, float* 
     if (w > best) best = w;
     if (pW) *pW = best;
     if (pH) *pH = lines * touchUiDraw_LineHeight(size);
+}
+
+// (parts' widths w, gap g: the lines greedily filled to at most T wide; how many)
+static int touchUiDraw_FillLines(const float* w, int n, float g, float T, int* aBreak)
+{
+    int lines = 1;
+    float cur = 0.0f;
+    for (int i = 0; i < n; i++) {
+        const float add = (cur > 0.0f ? g : 0.0f) + w[i];
+        if (cur > 0.0f && cur + add > T + 0.001f) {
+            if (aBreak) aBreak[i] = 1;
+            lines++;
+            cur = w[i];
+        }
+        else {
+            if (aBreak) aBreak[i] = 0;
+            cur += add;
+        }
+    }
+    return lines;
+}
+
+int touchUiDraw_BreakLines(char* t, float size, float fitMin, float maxW, int maxLines, float* pW)
+{
+    float tw = 0.0f;
+    touchUiDraw_MeasureText(t, size, 1.0f, &tw, NULL);
+    *pW = tw;
+    if (tw * fitMin <= maxW || maxLines < 2) return 1;
+    // the parts (after each three spaces), their widths
+    enum { MAX_PARTS = 32 };
+    const char* aStart[MAX_PARTS];
+    int aLen[MAX_PARTS], n = 0;
+    float aW[MAX_PARTS], widest = 0.0f, g = 0.0f;
+    char part[512];
+    touchUiDraw_MeasureText("   ", size, 1.0f, &g, NULL);
+    for (const char* p = t; n < MAX_PARTS;) {
+        const char* e = n < MAX_PARTS - 1 ? strstr(p, "   ") : NULL; // (the last one takes the rest)
+        aStart[n] = p;
+        aLen[n] = e ? (int)(e - p) : (int)strlen(p);
+        snprintf(part, sizeof(part), "%.*s", aLen[n], p);
+        touchUiDraw_MeasureText(part, size, 1.0f, &aW[n], NULL);
+        widest = aW[n] > widest ? aW[n] : widest;
+        n++;
+        if (!e) break;
+        p = e + 3;
+    }
+    if (n < 2) return 1;
+    // the fewest lines that fit at fitMin (maxLines at the most), each as
+    // short as it can be: the least widest line for that many
+    int aBreak[MAX_PARTS], lines = 2;
+    float T = tw;
+    for (; lines <= maxLines; lines++) {
+        float lo = widest, hi = tw;
+        for (int it = 0; it < 40 && hi - lo > 0.01f; it++) {
+            const float mid = (lo + hi) * 0.5f;
+            if (touchUiDraw_FillLines(aW, n, g, mid, NULL) <= lines) hi = mid;
+            else lo = mid;
+        }
+        T = hi;
+        if (T * fitMin <= maxW || lines == maxLines) break;
+    }
+    lines = touchUiDraw_FillLines(aW, n, g, T, aBreak);
+    // (the text again, a '\n' for each three spaces broken at)
+    char out[512];
+    int o = 0;
+    float W = 0.0f, cur = 0.0f;
+    for (int i = 0; i < n; i++) {
+        if (i) {
+            if (aBreak[i]) {
+                W = cur > W ? cur : W;
+                cur = 0.0f;
+                if (o < (int)sizeof(out) - 1) out[o++] = '\n';
+            }
+            else {
+                cur += g;
+                for (int k = 0; k < 3 && o < (int)sizeof(out) - 1; k++) out[o++] = ' ';
+            }
+        }
+        cur += aW[i];
+        for (int k = 0; k < aLen[i] && o < (int)sizeof(out) - 1; k++) out[o++] = aStart[i][k];
+    }
+    out[o] = 0;
+    W = cur > W ? cur : W;
+    memcpy(t, out, (size_t)o + 1);
+    *pW = W;
+    return lines;
 }

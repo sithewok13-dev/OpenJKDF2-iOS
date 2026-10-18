@@ -33,6 +33,20 @@ static int iosSaberWheel_InUse(int hand)
     return hand == IOSSABER_HAND_RIGHT || (hand == IOSSABER_HAND_LEFT && iosSaberWheel_NumSabers() > 1);
 }
 
+// (SAME COLOUR and SAME HILT act only with two sabers; with one, as off, each
+// switch kept as set for when the second comes back)
+static int iosSaberWheel_SameColourActs(void)
+{
+    return iosSaberWheel_s.bSameColour && iosSaberWheel_NumSabers() > 1;
+}
+
+static int iosSaberWheel_SameHiltActs(void)
+{
+    return iosSaberWheel_s.bSameHilt && iosSaberWheel_NumSabers() > 1;
+}
+
+static void iosSaberWheel_Settle(int* pHand, int* pBlade);
+
 // ------------------------------------------------------------ one saber or two
 
 int iosSaberWheel_NumSabers(void)
@@ -63,8 +77,10 @@ int iosSaberWheel_GetHilt(int hand)
 void iosSaberWheel_SetHilt(int hand, int hilt)
 {
     if (!iosSaberWheel_ValidHand(hand) || !iosSaber_HiltAvailable(hilt)) return;
+    const int bBoth = iosSaberWheel_SameHiltActs();
     for (int h = 0; h < IOSSABER_NUM_HANDS; h++)
-        if (h == hand || iosSaberWheel_s.bSameHilt) iosSaber_SetHandHilt(h, hilt);
+        if (h == hand || bBoth) iosSaber_SetHandHilt(h, hilt);
+    iosSaberWheel_Settle(NULL, NULL); // (a blade picked on a hand now with one: its whole hand, for good)
 }
 
 int iosSaberWheel_CycleHilt(int hand)
@@ -78,7 +94,7 @@ int iosSaberWheel_CycleHilt(int hand)
 
 int iosSaberWheel_GetSameColour(void)
 {
-    return iosSaberWheel_s.bSameColour;
+    return iosSaberWheel_SameColourActs();
 }
 
 void iosSaberWheel_SetSameColour(int bOn)
@@ -88,7 +104,7 @@ void iosSaberWheel_SetSameColour(int bOn)
 
 int iosSaberWheel_GetSameHilt(void)
 {
-    return iosSaberWheel_s.bSameHilt;
+    return iosSaberWheel_SameHiltActs();
 }
 
 void iosSaberWheel_SetSameHilt(int bOn)
@@ -105,20 +121,25 @@ void iosSaberWheel_PickHand(int hand)
     iosSaberWheel_s.pickBlade = -1;
 }
 
+int iosSaberWheel_BladesPickable(int hand)
+{
+    return iosSaberWheel_ValidHand(hand) && iosSaberWheel_InUse(hand) && iosSaberWheel_Blades(hand) > 1 && !iosSaberWheel_SameColourActs();
+}
+
 void iosSaberWheel_PickBlade(int hand, int blade)
 {
     iosSaberWheel_PickHand(hand);
     hand = iosSaberWheel_s.pickHand;
-    if (blade < 0 || blade >= iosSaberWheel_Blades(hand)) return;
-    // (the second of a linked pair: split, its own colour from now on, the first's to start)
-    if (blade == 1 && iosSaber_GetBladeLinked(hand)) {
-        iosSaber_SetBladeColour(hand, 1, iosSaber_GetBladeColour(hand, 0));
-        iosSaber_SetBladeLinked(hand, 0);
-    }
+    // (only picked: a linked pair stays linked until blade 2 is given a
+    // colour of its own, iosSaberWheel_ApplyColour. SAME COLOUR on, the dots
+    // are their card's: the ring paints every blade)
+    if (blade < 0 || blade >= iosSaberWheel_Blades(hand) || !iosSaberWheel_BladesPickable(hand)) return;
     iosSaberWheel_s.pickBlade = blade;
 }
 
-// (the pick as it stands now: a hand put away or a hilt changed since)
+// (the pick as it stands now, and kept so: a hand put away, or a hilt with
+// fewer blades since, is back to the right hand's or that hand's whole --
+// for good, so a STAFF back again starts whole)
 static void iosSaberWheel_Settle(int* pHand, int* pBlade)
 {
     int hand = iosSaberWheel_s.pickHand, blade = iosSaberWheel_s.pickBlade;
@@ -127,27 +148,37 @@ static void iosSaberWheel_Settle(int* pHand, int* pBlade)
         blade = -1;
     }
     if (blade >= iosSaberWheel_Blades(hand)) blade = -1;
-    *pHand = hand;
-    *pBlade = blade;
+    iosSaberWheel_s.pickHand = hand;
+    iosSaberWheel_s.pickBlade = blade;
+    if (pHand) *pHand = hand;
+    if (pBlade) *pBlade = blade;
+}
+
+// (what the ring paints: SAME COLOUR on, every blade, so no blade of its own;
+// the blade picked before is back when SAME COLOUR goes off)
+static void iosSaberWheel_Pick(int* pHand, int* pBlade)
+{
+    iosSaberWheel_Settle(pHand, pBlade);
+    if (iosSaberWheel_SameColourActs()) *pBlade = -1;
 }
 
 int iosSaberWheel_GetPickedHand(void)
 {
     int hand, blade;
-    iosSaberWheel_Settle(&hand, &blade);
+    iosSaberWheel_Pick(&hand, &blade);
     return hand;
 }
 
 int iosSaberWheel_GetPickedBlade(void)
 {
     int hand, blade;
-    iosSaberWheel_Settle(&hand, &blade);
+    iosSaberWheel_Pick(&hand, &blade);
     return blade;
 }
 
 int iosSaberWheel_PaintKind(void)
 {
-    if (iosSaberWheel_s.bSameColour) return IOSSABERWHEEL_PAINT_ALL;
+    if (iosSaberWheel_SameColourActs()) return IOSSABERWHEEL_PAINT_ALL;
     return iosSaberWheel_GetPickedBlade() >= 0 ? IOSSABERWHEEL_PAINT_BLADE : IOSSABERWHEEL_PAINT_HAND;
 }
 
@@ -164,21 +195,31 @@ void iosSaberWheel_ApplyColour(int id)
     if (id < 0 || id >= iosSaber_NumColours()) return;
     int hand, blade;
     iosSaberWheel_Settle(&hand, &blade);
-    if (iosSaberWheel_s.bSameColour) {
+    if (iosSaberWheel_SameColourActs()) {
+        // (every blade of both hands, every pair linked again: a blade picked
+        // before is its whole hand now)
         for (int h = 0; h < IOSSABER_NUM_HANDS; h++) iosSaberWheel_PaintHand(h, id);
+        iosSaberWheel_s.pickBlade = -1;
     }
     else if (blade < 0) {
         iosSaberWheel_PaintHand(hand, id);
     }
+    else if (blade == 1 && iosSaber_GetBladeLinked(hand)) {
+        // (the second of a linked pair: split from the first only for a
+        // colour other than the first's, as shown; the first keeps its own)
+        if (id == iosSaber_GetShownBladeColour(hand, 0)) return;
+        iosSaber_SetBladeColour(hand, 1, id);
+        iosSaber_SetBladeLinked(hand, 0);
+    }
     else {
-        iosSaber_SetBladeColour(hand, blade, id);
+        iosSaber_SetBladeColour(hand, blade, id); // (the first of a linked pair: the second follows)
     }
 }
 
 int iosSaberWheel_PaintColour(void)
 {
     int hand, blade;
-    iosSaberWheel_Settle(&hand, &blade);
+    iosSaberWheel_Pick(&hand, &blade);
     return iosSaber_GetShownBladeColour(hand, blade < 0 ? 0 : blade);
 }
 
@@ -186,14 +227,14 @@ const char* iosSaberWheel_HubText(int bTapMode)
 {
     static char text[48];
     int hand, blade;
-    iosSaberWheel_Settle(&hand, &blade);
+    iosSaberWheel_Pick(&hand, &blade);
     const char* side = hand == IOSSABER_HAND_LEFT ? "left" : "right";
-    if (blade >= 0 && !iosSaberWheel_s.bSameColour) {
+    if (blade >= 0) {
         snprintf(text, sizeof(text), "%s saber, blade %d", side, blade + 1);
         return text;
     }
     if (iosSaberWheel_NumSabers() < 2) return bTapMode ? "tap a colour" : "slide toward a colour";
-    if (iosSaberWheel_s.bSameColour) return "colour for both sabers";
+    if (iosSaberWheel_SameColourActs()) return "colour for both sabers";
     snprintf(text, sizeof(text), "colour for the %s saber", side);
     return text;
 }
@@ -206,7 +247,7 @@ void iosSaberWheel_GetCard(int hand, iosSaberWheelCard* pOut)
     pOut->pickedBlade = -1;
     if (!iosSaberWheel_ValidHand(hand)) return;
     int pickHand, pickBlade;
-    iosSaberWheel_Settle(&pickHand, &pickBlade);
+    iosSaberWheel_Pick(&pickHand, &pickBlade);
     pOut->bShown = iosSaberWheel_InUse(hand);
     pOut->hilt = iosSaber_GetHandHilt(hand);
     pOut->numBlades = iosSaberWheel_Blades(hand);
@@ -461,7 +502,9 @@ void iosSaberWheel_EndLoad(void)
 int iosSaberWheel_SetKept(const char* name, const char* value)
 {
     if (!name || !value) return 0;
-    return iosSaberWheel_Put(name, value, 0);
+    const int bTaken = iosSaberWheel_Put(name, value, 0);
+    iosSaberWheel_Settle(NULL, NULL); // (a hilt or the style changed: the pick as it can stand)
+    return bTaken;
 }
 
 #endif // JK_ENHANCED

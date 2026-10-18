@@ -483,7 +483,7 @@ switch the controller off and they come back.
   | --- | --- |
   | Right stick | Point at a colour (D-pad right steps round) |
   | A / Cross | Set the colour (the wheel stays open) |
-  | Y / Triangle | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades |
+  | Y / Triangle | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades (only the cards with SAME COLOUR on). Picking blade 2 doesn't split joined dots: a colour different from blade 1's does |
   | LB / L1 | The next hilt for the card you picked |
   | X / Square | Add the second saber, or go back to one |
   | RB / R1 | SAME COLOUR on or off (two sabers) |
@@ -496,8 +496,8 @@ switch the controller off and they come back.
   | B / Circle, D-pad left | Close (D-pad left sets the colour pointed at first) |
 
   The line at the bottom of the screen shows what each button does right
-  now. With a FOLD in your hand, picking the lightsaber again on the weapon
-  wheel flips it.
+  now (on two lines when it's too long for one). With a FOLD in your hand,
+  picking the lightsaber again on the weapon wheel flips it.
 - **Quick save and quick load** need a short hold (a ring fills at the top of
   the screen), so a stray press never saves or loads.
 - **Controller options** (hold Start): look speed across and up and down,
@@ -572,7 +572,7 @@ Turn on FPS in MENU's tray to see what the app gets (below).
   | Mouse, scroll wheel | Point at a colour |
   | Click | Set the colour (the wheel stays open) |
   | 1 | Add the second saber, or go back to one |
-  | 2 | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades |
+  | 2 | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades (only the cards with SAME COLOUR on) |
   | 3 | Take the saber in hand ("equip") |
   | 4 | CLASSIC or REFORGED |
   | 5 | FILM on or off |
@@ -581,11 +581,14 @@ Turn on FPS in MENU's tray to see what the app gets (below).
   | 8 | SAME COLOUR on or off (two sabers) |
   | 9 | SAME HILT on or off (two sabers) |
   | 0 | AUTO on or off (with a FOLD) |
-  | Esc, right click | Close |
+  | Esc, right click, L again | Close |
 
-  The line at the bottom of the screen shows what each key does right now.
-  With a FOLD in your hand, pressing the lightsaber's weapon key again (or
-  picking it again on the weapon wheel) flips it.
+  The line at the bottom of the screen shows what each key does right now
+  (on two lines when it's too long for one). With a FOLD in your hand,
+  picking the lightsaber again on the weapon wheel flips it. In Jedi Knight,
+  so does pressing its key (0) again while it's in your hand. In Mysteries of
+  the Sith the lightsaber shares key 1 with the fists, and 1 switches to the
+  fists as it always has: flip a FOLD there with SABER or the weapon wheel.
 - **Your own keys and buttons:** Setup > Controls > Keyboard and Setup >
   Controls > Mouse change any of them; the mouse sensitivity is there too.
   Whatever key you put on next/previous power or weapon gets the wheel when
@@ -929,9 +932,11 @@ hand's colours and has its own **HILT** button.
   for each blade. NORMAL and CROSS have one blade, STAFF and FOLD two.
   - A new STAFF or FOLD starts with both blades the same colour: two joined
     dots and one name.
-  - **Tap the second dot** to give blade 2 its own colour: the dots split, a
-    gold ring goes round the second, and the next colour you tap goes to that
-    blade only. Tap the first dot for blade 1 alone.
+  - **Tap the second dot** to pick blade 2: a gold ring goes round it and the
+    middle says "right saber, blade 2" (or left). The dots stay joined until
+    you tap a colour that's different from blade 1's: then blade 2 takes it
+    and the dots split, each with its own name. Tap the first dot for blade 1
+    alone. Tapping the colour's name picks the whole saber, like the card.
   - **Tap the card itself** to paint the whole saber again: both blades take
     the colour and join up.
 - **HILT** on a card changes only that hand's saber. Tap it for the next one:
@@ -945,15 +950,18 @@ hand's colours and has its own **HILT** button.
   dashed **+ 2ND SABER** box where the LEFT card goes. Tap it for a second
   saber in your left hand (it comes back the way you left it). With two, the
   LEFT card has a small **x** in its top right corner: tap it to go back to
-  one saber. It's a separate small spot, so a tap on the card can't drop
-  your saber by mistake.
+  one saber. It's a separate small spot above the colour, so a tap on the
+  card or its colour can't drop your saber by mistake.
 - **SAME COLOUR and SAME HILT**, two switches under the LEFT card (with two
   sabers). With SAME COLOUR on, a colour you tap goes to every blade of both
-  sabers. With SAME HILT on, a HILT tap changes both sabers. Both are off to
-  start, so nothing changes unless you switch them on.
+  sabers, and a tap on a dot picks its whole card. With SAME HILT on, a HILT
+  tap changes both sabers. Both are off to start, so nothing changes unless
+  you switch them on. They only work while you hold two sabers: with one,
+  they wait, still on, for the second saber to come back.
 - Every tap on a card, a dot, HILT, + 2ND SABER, the x or a switch gives a
-  small tick, is remembered at once, and leaves the wheel open, so you can
-  set everything in one go.
+  small tick and leaves the wheel open, so you can set everything in one go.
+  Your sabers, colours and switches are remembered at once. The card you
+  picked lasts until you close the game: it starts on the RIGHT card.
 
 ### The rest of the wheel
 
@@ -1021,9 +1029,10 @@ hand's colours and has its own **HILT** button.
     5 seconds after your last (never before a swing).
   - **AUTO off:** it only changes when you flip it, and stays the way you
     left it, across levels and loads.
-  - **Flip it yourself:** tap SABER, pick the lightsaber again on the weapon
-    wheel while it's in your hand (touch or controller), or press the
-    lightsaber's weapon key again on a keyboard. Your flip always wins:
+  - **Flip it yourself:** tap SABER, or pick the lightsaber again on the
+    weapon wheel while it's in your hand (touch or controller). On a
+    keyboard in Jedi Knight, its key (0) again does it too (in Mysteries of
+    the Sith, key 1 switches to the fists instead). Your flip always wins:
     folded by hand, it stays folded until 5 seconds go by without a swing;
     opened by hand, it stays open until you swing and then 5 seconds go by.
   - Two FOLDs open and fold together. A thrown FOLD flies the way it left

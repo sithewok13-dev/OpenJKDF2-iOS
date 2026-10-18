@@ -247,7 +247,8 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 #define IOSTOUCH_SABER_HILT_W 88.0
 #define IOSTOUCH_SABER_HILT_H 28.0
 #define IOSTOUCH_SABER_CLOSE_W 40.0
-#define IOSTOUCH_SABER_CLOSE_H 28.0
+#define IOSTOUCH_SABER_CLOSE_H 22.0 // (its touch, down to the colours' row: IOSTOUCH_SABER_ROW_Y)
+#define IOSTOUCH_SABER_ROW_Y 22.0
 // (each part's touch reaches this far round it -- half the gap between two,
 // so no two meet; the middle's EQUIP and the look, and THROW, as far as ever)
 #define IOSTOUCH_SABER_PART_TOUCH 3.0
@@ -3185,8 +3186,9 @@ static int iosTouch_SaberChipUsable(int chip)
 
 // One of the saber wheel's parts tapped (or picked with a pad or the keys):
 // a card picks its hand for the ring to paint, a blade's dot just that blade
-// (the second of a linked pair: split); HILT the hand's next hilt (SAME HILT:
-// both hands); "+ 2ND SABER" two sabers, the x one; the switches on or off
+// (only picked: a linked pair splits once its second blade is given a colour
+// of its own; SAME COLOUR on, a dot is its card's); HILT the hand's next hilt
+// (SAME HILT: both hands); "+ 2ND SABER" two sabers, the x one; the switches on or off
 // -- each kept at once, the wheel left open with a tick, to tap a colour. Or
 // EQUIP: the saber in hand, the wheel closed. (Not there to use: nothing,
 // and 0.)
@@ -3275,14 +3277,15 @@ static int iosTouch_SaberChipUsable(int chip)
 
 // Where a touch inside a card lands (the card's frame r; the hand's blades
 // and whether they are linked): its HILT button, the LEFT card's x (its top
-// right, 40 by 28), and on a card with two blades each blade's dot -- split,
+// right, 40 by 22: the colours' row, from 22 pt down, is the row's), and on
+// a card with two blades each blade's dot -- split,
 // each half of the colours' row (the dot and its name); linked (two dots
 // joined, one name), the first dot, and the second up to the name (the name
 // is both blades': the card's)
 static CGRect IOSTouch_CardPartFrame(CGRect r, int part, int bLinked)
 {
     const CGFloat x = r.origin.x, y = r.origin.y, w = r.size.width;
-    const CGFloat rowY = y + 20.0, rowH = IOSTOUCH_SABER_HILT_Y - 20.0, mid = w * 0.5, split = 18.7, name = 31.0;
+    const CGFloat rowY = y + IOSTOUCH_SABER_ROW_Y, rowH = IOSTOUCH_SABER_HILT_Y - IOSTOUCH_SABER_ROW_Y, mid = w * 0.5, split = 18.7, name = 31.0;
     if (part == 0) return CGRectMake(x + IOSTOUCH_SABER_HILT_X, y + IOSTOUCH_SABER_HILT_Y, IOSTOUCH_SABER_HILT_W, IOSTOUCH_SABER_HILT_H);
     if (part == 1) return CGRectMake(x + w - IOSTOUCH_SABER_CLOSE_W, y, IOSTOUCH_SABER_CLOSE_W, IOSTOUCH_SABER_CLOSE_H);
     if (part == 2) return CGRectMake(x, rowY, bLinked ? split : mid, rowH);
@@ -3616,9 +3619,10 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
         n.font = [UIFont boldSystemFontOfSize:10];
         n.minimumScaleFactor = 0.8;
         n.frame = CGRectMake(d0 + 21.5, ym - 7.0, IOSTOUCH_SABER_CARD_W - d0 - 21.5 - 5.0, 14.0);
-        if (ringBlade == 0) {
+        if (ringBlade >= 0) {
+            // (either dot: blade 2 picked stays linked until given a colour of its own)
             aCardRing[k].hidden = NO;
-            aCardRing[k].frame = CGRectMake(d0 - 1.9, ym - 5.1, 10.2, 10.2);
+            aCardRing[k].frame = CGRectMake(d0 + 11.0 * ringBlade - 1.9, ym - 5.1, 10.2, 10.2);
             aCardRing[k].layer.cornerRadius = 5.1;
         }
     }
@@ -4632,7 +4636,11 @@ static int iosTouch_WheelSliceHasRow(int i)
         else if (bWeapons) wheelHint.text = iosTouch_bWheelTapMode ? @"tap a weapon" : @"slide toward a weapon";
         else wheelHint.text = iosTouch_bWheelTapMode ? @"tap a power" : @"slide toward a power";
     }
-    if (bPadPoints) {
+    // (on the saber wheel pointing at nothing, what the ring paints, where
+    // there is more than one thing it could: two sabers, or a blade picked --
+    // as inputWheel.c's)
+    const int bPaintSaid = bSaber && hot == -1 && !bCancel && (iosSaberWheel_NumSabers() > 1 || iosSaberWheel_GetPickedBlade() >= 0);
+    if (bPadPoints && !bPaintSaid) {
         // what letting go of the pad's button (or A) does, in its words --
         // or the keyboard's (why a slice can't be picked stays as it is)
         const int bPickable = hot >= 0 && iosTouch_aWheelEarned[hot];
@@ -6193,7 +6201,8 @@ int iosTouch_PadWheelClose(int bSelect)
 }
 
 // The cards and blades a pad's Y (the keys' 2) steps through, as they show:
-// the RIGHT card, its blades (STAFF, FOLD), the LEFT card, its blades
+// the RIGHT card, its blades (STAFF, FOLD; not with SAME COLOUR on), the
+// LEFT card, its blades
 static int iosTouch_SaberPickOrder(int* aChip)
 {
     int n = 0;
@@ -6201,7 +6210,7 @@ static int iosTouch_SaberPickOrder(int* aChip)
         const int hand = k ? IOSSABER_HAND_LEFT : IOSSABER_HAND_RIGHT;
         if (k && iosSaberWheel_NumSabers() < 2) break;
         aChip[n++] = k ? IOSTOUCH_CHIP_CARD_L : IOSTOUCH_CHIP_CARD_R;
-        if (iosSaber_HiltNumBlades(iosSaberWheel_GetHilt(hand)) < 2) continue;
+        if (!iosSaberWheel_BladesPickable(hand)) continue;
         aChip[n++] = k ? IOSTOUCH_CHIP_DOT_L0 : IOSTOUCH_CHIP_DOT_R0;
         aChip[n++] = k ? IOSTOUCH_CHIP_DOT_L1 : IOSTOUCH_CHIP_DOT_R1;
     }

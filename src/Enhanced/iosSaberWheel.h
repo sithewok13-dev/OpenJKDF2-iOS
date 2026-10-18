@@ -10,9 +10,10 @@
 // with one). Each card: the hand's hilt with its own HILT button, and its
 // blades' colours (a dot each; STAFF and FOLD two, joined while linked).
 // Tapping a card picks its whole hand for the ring to paint; tapping a blade's
-// dot picks just that blade. SAME COLOUR (a colour tap paints every blade of
-// both hands) and SAME HILT (a HILT tap changes both hands) sit under the
-// LEFT card; FILM under the RIGHT card, dimmed while every hilt in use is
+// dot picks just that blade (a linked pair splits only when its second blade
+// is given a colour other than the first's). SAME COLOUR (a colour tap paints
+// every blade of both hands) and SAME HILT (a HILT tap changes both hands) sit
+// under the LEFT card, and act only with two sabers; FILM under the RIGHT card, dimmed while every hilt in use is
 // CROSS; AUTO under FILM while a FOLD is in either hand.
 //
 // Hands: 0 the right (IOSSABER_HAND_RIGHT), 1 the left. Blades: 0 a hand's
@@ -45,7 +46,9 @@ void iosSaberWheel_SetHilt(int hand, int hilt);
 int iosSaberWheel_CycleHilt(int hand);
 
 // ---- SAME COLOUR and SAME HILT (the switches under the LEFT card; off to
-// start: nothing changes for a player who never touches them; remembered)
+// start: nothing changes for a player who never touches them; remembered).
+// On only while two sabers are held: with one, each counts as off (Get says
+// 0), its setting kept (GetKept) for when the second saber comes back.
 int iosSaberWheel_GetSameColour(void);
 void iosSaberWheel_SetSameColour(int bOn);
 int iosSaberWheel_GetSameHilt(void);
@@ -55,17 +58,23 @@ void iosSaberWheel_SetSameHilt(int bOn);
 // A tap on a card (outside its HILT): that whole hand (only the right with
 // one saber)
 void iosSaberWheel_PickHand(int hand);
-// A tap on a blade's dot (a STAFF or FOLD card): just that blade. The second
-// dot of a linked pair splits it (its own colour from now on, the first's to
-// start). A hand with one blade: the whole hand.
+// A tap on a blade's dot (a STAFF or FOLD card): just that blade, picked only
+// (a linked pair stays linked: ApplyColour). A hand with one blade, or SAME
+// COLOUR on (iosSaberWheel_BladesPickable 0): the whole hand, as its card.
 void iosSaberWheel_PickBlade(int hand, int blade);
+int iosSaberWheel_BladesPickable(int hand); // a hand in use with two blades, SAME COLOUR off: its dots pick a blade
 int iosSaberWheel_GetPickedHand(void);  // the card outlined in gold
-int iosSaberWheel_GetPickedBlade(void); // the dot ringed in gold: 0, 1; -1 for the whole hand
+// The dot ringed in gold: 0, 1; -1 for the whole hand (and while SAME COLOUR
+// is on: every blade is painted; the blade picked before is back once it is
+// off, unless a colour was set meanwhile, which links every pair again). A
+// blade picked on a hand whose hilt goes to one blade: its whole hand, for good.
+int iosSaberWheel_GetPickedBlade(void);
 enum { IOSSABERWHEEL_PAINT_ALL = 0, IOSSABERWHEEL_PAINT_HAND, IOSSABERWHEEL_PAINT_BLADE };
 int iosSaberWheel_PaintKind(void);      // ALL (SAME COLOUR on), the picked HAND, or one BLADE
 // A colour tapped on the ring (iosSaber's id): SAME COLOUR on, every blade of
 // both hands; a whole hand, both its blades (linked again); a blade, that one
-// (a linked first blade: the second follows)
+// (a linked first blade: the second follows; a linked second blade: split
+// from the first, with that colour, if it isn't the first's as shown)
 void iosSaberWheel_ApplyColour(int id);
 // The colour the hub names and the ring shows as picked (as shown): the
 // picked blade's, or the picked hand's first blade's
@@ -83,7 +92,7 @@ typedef struct {
     int bLinked;     // two dots: joined, one name (linked); or each with its own
     int aColour[2];  // each blade's colour as shown ([1] is [0] with one blade, or linked)
     int bPicked;     // the gold outline: the ring paints this hand (or one of its blades)
-    int pickedBlade; // the gold ring round a dot: 0, 1; -1 none (the whole hand, or not picked)
+    int pickedBlade; // the gold ring round a dot: 0, 1; -1 none (the whole hand, not picked, or SAME COLOUR on)
 } iosSaberWheelCard;
 void iosSaberWheel_GetCard(int hand, iosSaberWheelCard* pOut);
 
