@@ -881,11 +881,12 @@ cancels, and the game holds still while the wheel is open.
   colour's name), picks how every colour looks. Tap it to switch. The wheel
   stays open and changes at once, and so does the blade in your hand. The
   app remembers it.
-  - **REFORGED** (the default): most colours glow like the film blades, a
-    white-hot middle in a haze of colour. In Jedi Knight there's no green
-    on the wheel, because ORIGINAL is the game's own green (16 colours).
-  - **CLASSIC:** every colour's earlier look, from before the film-style
-    glow, with green on the wheel in both games (17 colours).
+  - **CLASSIC** (the default): every colour's earlier look, from before the
+    film-style glow, with green on the wheel in both games (17 colours).
+    If you picked REFORGED before, you keep it.
+  - **REFORGED:** most colours glow like the film blades, a white-hot middle
+    in a haze of colour. In Jedi Knight there's no green on the wheel,
+    because ORIGINAL is the game's own green (16 colours).
   - In Jedi Knight, a green you kept (picked in CLASSIC) shows as
     ORIGINAL while REFORGED is on, and is shown to other players as
     ORIGINAL too. Switch back to CLASSIC and it's green again.
@@ -893,8 +894,8 @@ cancels, and the game holds still while the wheel is open.
   HILT, picks the blade's look. Tap it to switch. The wheel stays open, and
   the blade in your hand changes at once. The app remembers it (a BEAM you
   set before stays on). The CROSS hilt keeps its own blade whatever FILM
-  says, so the switch is dimmed while your hilt is CROSS (it still works,
-  for other players' blades and for the NORMAL hilt).
+  says, so the switch is dimmed while every saber you hold is CROSS (it
+  still works, for other players' blades and for the other hilts).
   - **Off** (the default): the game's own blade, which narrows to a point.
   - **On:** a blade as in the films, as long as the game's own (switching
     doesn't change the length) and slim to the films' proportions, the same
@@ -924,13 +925,21 @@ cancels, and the game holds still while the wheel is open.
   your hand. It's dim while you don't have the saber.
 - **SINGLE or DUAL**, beside the wheel: one saber, or one in each hand.
   With DUAL, **LEFT**, **BOTH** and **RIGHT** choose which blade a colour
-  goes to. Each keeps its own colours.
+  goes to. Each hand keeps its own saber: your one saber is the right hand's,
+  and with DUAL the left hand's joins it.
 - **HILT**, under DUAL, picks what your sabers are, and it goes with SINGLE
   or DUAL alike (with DUAL, both sabers get it). It shows the hilt you have.
-  Tap it for the next one: **NORMAL** (the game's own saber) or **CROSS**
-  (a crossguard). The wheel stays open, the saber in your hand changes at
-  once, and the app remembers it. If you picked CROSS before this version,
-  you now have SINGLE with the CROSS hilt, in the same colour.
+  Tap it for the next one: **NORMAL** (the game's own saber), **CROSS** (a
+  crossguard), **STAFF** (Darth Maul's double-bladed saber) or **FOLD**
+  (Dark Rey's folding double saber). The wheel stays open, the saber in
+  your hand changes at once, and the app remembers it. If you picked CROSS
+  before this version, you now have SINGLE with the CROSS hilt, in the same
+  colour.
+- **STAFF and FOLD:** a blade out of each end of the hilt, both in your
+  colour. FOLD folds its two halves side by side, or opens into a staff: it
+  lights folded and opens on your first swing, and folds again 5 seconds
+  after your last. Only the look changes: the saber hits as the game's own,
+  and the second blade doesn't hit anything.
 - **The CROSS hilt:** a jagged blade that crackles and comes to a point,
   two short blades coming out of two small dark metal vents either side of
   the top of the hilt, and a strong glow in the blade's colour (on a bright
@@ -1156,8 +1165,9 @@ Things to know:
 
 ### Your lightsaber in multiplayer
 
-Other players see your saber as you set it on the SABER wheel: its colour,
-two sabers if you chose them, and your hilt. Players on a build from before
+Other players see your saber as you set it on the SABER wheel: every
+blade's colour, two sabers if you chose them, each saber's hilt, and a FOLD
+open or folded. Players on a build from before
 the HILT button see one saber with the CROSS hilt as their CROSS, and two
 sabers with the CROSS hilt as two plain sabers. Players on a build from
 before CROSS (v0.8-beta2 and older) see a CROSS as one plain saber in its

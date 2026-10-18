@@ -154,7 +154,8 @@ Tick what works, note what doesn't (a photo of the screen helps).
       On the left: SINGLE (one saber), DUAL (two sabers; then LEFT / BOTH /
       RIGHT on the right choose which blade a colour goes to) and HILT,
       which shows the hilt you have; a tap goes to the next, NORMAL (the
-      game's own) or CROSS (a crossguard: a jagged, crackling blade that
+      game's own), STAFF (a blade out of each end), FOLD (two halves that
+      fold side by side or open into a staff) or CROSS (a crossguard: a jagged, crackling blade that
       comes to a point, two short blades out of small metal vents either
       side of the hilt, a strong glow; only the main blade hits; carried
       low between swings, in Kylo Ren's guard, the swing itself the game's
@@ -166,9 +167,10 @@ Tick what works, note what doesn't (a photo of the screen helps).
       The gap at the bottom (or a tap off the wheel) closes it. A slide from
       SABER opens it to slide to a colour.
 - [ ] CLASSIC / REFORGED (at the top of the saber wheel's middle): a tap
-      switches the colours' look, and the wheel stays open. REFORGED (to
-      start): the film-style glow, and in Jedi Knight 16 colours (no green).
-      CLASSIC: the earlier look, 17 colours in both games. It changes how
+      switches the colours' look, and the wheel stays open. CLASSIC (to
+      start, unless you picked REFORGED before): the earlier look, 17
+      colours in both games. REFORGED: the film-style glow, and in Jedi
+      Knight 16 colours (no green). It changes how
       you see every blade, yours and other players', and the blade in hand
       changes at once. In Jedi Knight a green you kept shows as ORIGINAL
       while REFORGED is on, and other players see it as ORIGINAL too.
