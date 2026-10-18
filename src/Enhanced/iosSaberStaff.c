@@ -91,13 +91,6 @@
 
 // ------------------------------------------------------------ the hilts
 
-static int iosSaberStaff_testHilt = -1;
-
-void iosSaberStaff_SetTestHilt(int hilt)
-{
-    iosSaberStaff_testHilt = (hilt >= 0 && hilt < IOSSABER_NUM_HILTS) ? hilt : -1;
-}
-
 int iosSaberStaff_IsDouble(int hilt)
 {
     return hilt == IOSSABER_HILT_STAFF || hilt == IOSSABER_HILT_FOLD;
@@ -105,27 +98,18 @@ int iosSaberStaff_IsDouble(int hilt)
 
 int iosSaberStaff_SaberInHand(SithThing* pThing, int hand)
 {
-    // (two sabers, the right one thrown: the left one held as one saber, in the right hand)
-    if (hand == 0 && pThing && pThing == sithPlayer_g_pLocalPlayerThing && iosSaber_GetStyle() == IOSSABER_STYLE_DUAL
-        && iosSaberThrow_HandsInHand() == 2)
-        return 1;
-    return hand ? 1 : 0;
+    return iosSaber_SaberInHand(pThing, hand);
 }
 
 int iosSaberStaff_SaberHilt(SithThing* pThing, int saber)
 {
-    if (saber < 0 || saber > 1) return IOSSABER_HILT_NORMAL;
-    if (iosSaberStaff_testHilt >= 0 && pThing && pThing == sithPlayer_g_pLocalPlayerThing) {
-        const int style = iosSaber_GetStyle();
-        if (style == IOSSABER_STYLE_DUAL || (style == IOSSABER_STYLE_SINGLE && saber == 0)) return iosSaberStaff_testHilt;
-    }
-    return iosSaber_HandHilt(pThing, saber);
+    return iosSaber_SaberHilt(pThing, saber);
 }
 
 int iosSaberStaff_HiltOf(SithThing* pThing, int hand)
 {
     if (hand < 0 || hand > 1) return IOSSABER_HILT_NORMAL;
-    return iosSaberStaff_SaberHilt(pThing, iosSaberStaff_SaberInHand(pThing, hand));
+    return iosSaber_HandHilt(pThing, hand);
 }
 
 // (the hilt just drawn the saber's: the blade lit, or the model the game's saber hand or hilt; as iosSaber's)
@@ -862,7 +846,7 @@ int iosSaberStaff_DrawPovBlades(SithThing* pActor, rdThing* pLine, const rdModel
     rdMatrix34 held, second;
     if (!pLine || !pLine->polyline || !iosSaberStaff_HeldFrame(pActor, hand, 1, pPovModel, pHand, &held)) return 0;
     iosSaberStaff_PovBlade(pActor, pLine, &held, blade, hand * 2);
-    if (iosSaberStaff_SecondBlade(pActor, hand, 1, &held, &second)) iosSaberStaff_PovBlade(pActor, pLine, &second, blade, hand * 2 + 1);
+    if (iosSaberStaff_SecondBlade(pActor, hand, 1, &held, &second)) iosSaberStaff_PovBlade(pActor, pLine, &second, blade | IOSSABER_BLADE_SECOND, hand * 2 + 1);
     return 1;
 }
 
@@ -1047,10 +1031,10 @@ int iosSaberStaff_DrawThrown(SithThing* pThing, int* pRet)
         }
         pThing->orient = o;
         pThing->renderData.rdFrameNum = 0; // (its joints built again, at this place)
-        iosSaber_BeginThrown(pThing);
+        iosSaber_BeginThrownBlade(pThing, copy); // (each in its blade's colour)
         const int r = rdThing_Draw(&pThing->renderData, &pThing->orient);
         if (!copy) ret = r;
-        iosSaber_EndThrown(pThing);
+        iosSaber_EndThrownBlade(pThing, copy);
     }
     pThing->orient = saved;
     *pRet = ret;

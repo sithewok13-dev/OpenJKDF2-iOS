@@ -96,6 +96,7 @@ int iosSaberThrowJk_OnFists(void);
 // hilt (its hand's) it was thrown in, or -1
 int iosSaberThrowJk_HandsInHand(void);
 int iosSaberThrowJk_ThrownColour(struct SithThing* pThing);
+int iosSaberThrowJk_ThrownBladeColour(struct SithThing* pThing, int blade); // (blade 1: STAFF's and FOLD's second)
 int iosSaberThrowJk_ThrownStyle(struct SithThing* pThing);
 int iosSaberThrowJk_ThrownHilt(struct SithThing* pThing);
 int iosSaberThrowJk_ThrownHand(struct SithThing* pThing); // (0 the right saber or the one, 1 the left; -1)

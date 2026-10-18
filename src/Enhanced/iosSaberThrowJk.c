@@ -88,6 +88,7 @@ typedef struct {
     SithSector* pLastSector;
     double secThrown;
     int colour;         // the SABER wheel's id it was thrown in
+    int colour2;        // (and its second blade's: STAFF's and FOLD's other one)
     int style;          // and the style (iosSaber's)
     int hilt;           // and its hand's hilt (iosSaber's)
 } iosSaberThrowJkHand;
@@ -445,8 +446,9 @@ static int iosSaberThrowJk_Throw(SithThing* p, int hand, int bDual)
     h->pLastSector = t->sector;
     h->secThrown = sithTime_g_secGameTime;
     h->style = bDual ? IOSSABER_STYLE_DUAL : (iosSaber_StyleNumBlades(style) == 1 ? style : IOSSABER_STYLE_SINGLE);
-    h->colour = iosSaber_GetShownColour(h->style, bDual ? hand : 0);
-    h->hilt = iosSaber_HandHilt(p, bDual ? hand : 0);
+    h->colour = iosSaber_GetShownBladeColour(bDual ? hand : 0, 0);
+    h->colour2 = iosSaber_GetShownBladeColour(bDual ? hand : 0, 1);
+    h->hilt = iosSaber_SaberHilt(p, bDual ? hand : 0);
     iosSaberThrowJk_secLast = sithTime_g_secGameTime;
     iosSaberThrowJk_pPlayer = p;
     iosSaberFold_Released(hand, t); // (FOLD: thrown folded or open)
@@ -673,6 +675,12 @@ int iosSaberThrowJk_ThrownColour(SithThing* pThing)
 {
     const iosSaberThrowJkHand* h = iosSaberThrowJk_HandOf(pThing);
     return h ? h->colour : -1;
+}
+
+int iosSaberThrowJk_ThrownBladeColour(SithThing* pThing, int blade)
+{
+    const iosSaberThrowJkHand* h = iosSaberThrowJk_HandOf(pThing);
+    return h ? (blade == 1 ? h->colour2 : h->colour) : -1;
 }
 
 int iosSaberThrowJk_ThrownStyle(SithThing* pThing)

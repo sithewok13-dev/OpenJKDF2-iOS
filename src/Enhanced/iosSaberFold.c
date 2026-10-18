@@ -19,6 +19,8 @@
 #include "World/sithThing.h"
 #include "World/sithWorld.h"
 #include "jk.h"
+#include "Dss/sithMulti.h"
+#include "Main/jkPlayerLook.h"
 
 // The click (the game's own: the thermal detonator's arming click, in both games)
 #define IOSSABERFOLD_CLICK "ThermClick01.wav"
@@ -337,8 +339,11 @@ static void iosSaberFold_Caught(SithThing* p, int saber, uint32_t now)
 
 // ------------------------------------------------------------ once a frame
 
+static void iosSaberFold_TickOthers(void); // (below)
+
 void iosSaberFold_Tick(void)
 {
+    iosSaberFold_TickOthers();
     SithThing* p = iosSaberFold_Player();
     if (!p) return;
     const uint32_t now = iosSaberFold_Now();
@@ -449,6 +454,29 @@ void iosSaberFold_SetOpenBits(SithThing* pThing, int bits)
     s->bits = bits;
     if (bMoved && (pThing->jkFlags & JKFLAG_SABERON) && (iosSaberStaff_HiltOf(pThing, 0) == IOSSABER_HILT_FOLD || iosSaberStaff_HiltOf(pThing, 1) == IOSSABER_HILT_FOLD))
         iosSaberFold_Click(pThing);
+}
+
+// Each other player's FOLD as their game sent it (the look's flags, jkPlayerLook)
+static void iosSaberFold_TickOthers(void)
+{
+#ifdef QOL_IMPROVEMENTS
+    if (!sithNet_isMulti) return;
+    for (uint32_t i = 0; i < jkPlayer_maxPlayers; i++) {
+        SithThing* t = jkPlayer_playerInfos[i].pLocalPlayer;
+        if (!t || t == sithPlayer_g_pLocalPlayerThing || t->type != SITH_THING_PLAYER) continue;
+        const jkPlayerLook* pLook = jkPlayerLook_ForThing(t);
+        if (!pLook) continue;
+        int bits = 0;
+        for (int k = 0; k < 2; k++)
+            if (pLook->flags & JKPLAYERLOOK_FLAG_FOLD_OPEN(k)) bits |= 1 << k;
+        iosSaberFold_SetOpenBits(t, bits);
+    }
+#endif
+}
+
+int iosSaberFold_LocalOpen(int hand)
+{
+    return iosSaberFold_IsOpen(sithPlayer_g_pLocalPlayerThing, hand);
 }
 
 int iosSaberFold_OpenBits(SithThing* pThing)

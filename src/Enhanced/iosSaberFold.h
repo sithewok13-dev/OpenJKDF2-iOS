@@ -62,6 +62,8 @@ void iosSaberFold_SetHeldOpen(int bOpen);
 // opening (its look, for the SABER icon); 0 for a folded one, and for any
 // other saber. Changes are seen by asking again (the icon compares).
 int iosSaberFold_IsOpen(struct SithThing* pThing, int hand);
+// ...the local player's (the SABER button's picture: iosSaberWheel)
+int iosSaberFold_LocalOpen(int hand);
 
 // ---- for drawing (iosSaberStaff)
 // How far open a thing's saber is now (saber 0: the right's, 1: the left's; 0
@@ -73,9 +75,10 @@ float iosSaberFold_OpenFraction(struct SithThing* pThing, int saber);
 float iosSaberFold_ThrownOpenFraction(int saber);
 int iosSaberFold_ThrownHilt(int saber);
 
-// ---- multiplayer (the look's flags, jkPlayerLook): bit 0 the right FOLD
-// open (where it is going), bit 1 the left; another player's set as their
-// game sent it (each saber snapping there, on our clock, as it changes)
+// ---- multiplayer (the look's flags, jkPlayerLook: each hand's FOLD open):
+// bit 0 the right FOLD open (where it is going), bit 1 the left; another
+// player's set as their game sent it (each saber snapping there, on our
+// clock, as it changes; iosSaberFold_Tick, from the look as last heard)
 int iosSaberFold_OpenBits(struct SithThing* pThing);
 void iosSaberFold_SetOpenBits(struct SithThing* pThing, int bits);
 

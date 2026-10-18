@@ -61,6 +61,9 @@ void iosSaberThrow_Reset(void);
 // A thrown saber of the local player's, as it is drawn: the colour (the
 // SABER wheel's id) it is thrown in, or -1 to leave it as the game made it
 int iosSaberThrow_ThrownColour(SithThing* pThing);
+// ...and each of its blades' (0 the first, as above; 1 the second: STAFF's
+// and FOLD's other blade, the first's while linked)
+int iosSaberThrow_ThrownBladeColour(SithThing* pThing, int blade);
 // And the style it is thrown from (iosSaber's: DUAL for each of two sabers;
 // the game's own throw, the one-blade style in hand, SINGLE), or -1
 int iosSaberThrow_ThrownStyle(SithThing* pThing);

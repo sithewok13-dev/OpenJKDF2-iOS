@@ -65,9 +65,9 @@ static int iosSaberThrow_pendingHand = -1;       // a throw due (tapped again wi
 static double iosSaberThrow_secPending = 0.0;
 static SithThing* iosSaberThrow_pPlayer = NULL;  // the player it is all for (another: everything back)
 static int iosSaberThrow_bGiving = 0;            // (giving the saber back itself: not a catch)
-// The colour (and hilt) each saber thrown last flies in, kept through a reset (the cheat's saber taken
-// back in mid-flight: it flies on in its colour till it strikes)
-static struct { int thingIdx; uint32_t signature; int colour; int hilt; } iosSaberThrow_aFlyColour[2] = { { -1, 0, 0, 0 }, { -1, 0, 0, 0 } };
+// The colours (each blade's: STAFF's and FOLD's second too) and hilt each saber thrown last flies in,
+// kept through a reset (the cheat's saber taken back in mid-flight: it flies on in its colour till it strikes)
+static struct { int thingIdx; uint32_t signature; int colour; int colour2; int hilt; } iosSaberThrow_aFlyColour[2] = { { -1, 0, 0, 0, 0 }, { -1, 0, 0, 0, 0 } };
 
 static SithThing* iosSaberThrow_Player(void)
 {
@@ -220,11 +220,12 @@ static int iosSaberThrow_Throw(SithThing* p, int hand)
     h->signature = pSaber->signature;
     h->lastPos = pSaber->position;
     h->secThrown = sithTime_g_secGameTime;
-    h->colour = iosSaber_GetShownColour(IOSSABER_STYLE_DUAL, hand);
+    h->colour = iosSaber_GetShownBladeColour(hand, 0);
     iosSaberThrow_aFlyColour[hand].thingIdx = pSaber->idx;
     iosSaberThrow_aFlyColour[hand].signature = pSaber->signature;
     iosSaberThrow_aFlyColour[hand].colour = h->colour;
-    iosSaberThrow_aFlyColour[hand].hilt = iosSaber_HandHilt(p, hand);
+    iosSaberThrow_aFlyColour[hand].colour2 = iosSaber_GetShownBladeColour(hand, 1);
+    iosSaberThrow_aFlyColour[hand].hilt = iosSaber_SaberHilt(p, hand);
     iosSaberThrow_secLast = sithTime_g_secGameTime;
     iosSaberFold_Released(hand, pSaber); // (FOLD: thrown folded or open)
 
@@ -382,9 +383,22 @@ int iosSaberThrow_ThrownColour(SithThing* pThing)
     static const char* aTpl[7] = { "+fsab_blue", "+fsab_green", "+fsab_yellow", "+fsab_orange", "+fsab_red", "+fsab_dred", "+fsab_purple" };
     for (int i = 0; i < 7; i++) {
         if (pThing->pTemplate == sithTemplate_GetTemplate(aTpl[i]))
-            return iosSaber_GetShownColour(iosSaberThrow_OneBladeStyle(), 0);
+            return iosSaber_GetShownBladeColour(IOSSABER_HAND_RIGHT, 0);
     }
     return -1;
+}
+
+int iosSaberThrow_ThrownBladeColour(SithThing* pThing, int blade)
+{
+    if (!Main_bMotsCompat) return iosSaberThrowJk_ThrownBladeColour(pThing, blade);
+    const int id = iosSaberThrow_ThrownColour(pThing);
+    if (id < 0 || blade != 1) return id;
+    for (int k = 0; k < 2; k++) {
+        if (iosSaberThrow_aFlyColour[k].thingIdx == pThing->idx && iosSaberThrow_aFlyColour[k].signature == pThing->signature)
+            return iosSaberThrow_aFlyColour[k].colour2;
+    }
+    // (the game's own throw: the saber in hand's, as it is now)
+    return iosSaber_GetShownBladeColour(IOSSABER_HAND_RIGHT, 1);
 }
 
 int iosSaberThrow_ThrownStyle(SithThing* pThing)
@@ -407,7 +421,7 @@ int iosSaberThrow_ThrownHilt(SithThing* pThing)
             return iosSaberThrow_aFlyColour[k].hilt;
     }
     // (the game's own throw: the saber in hand's, as it is now)
-    return iosSaber_HandHilt(iosSaberThrow_Player(), 0);
+    return iosSaber_SaberHilt(iosSaberThrow_Player(), 0);
 }
 
 int iosSaberThrow_ThrownHand(SithThing* pThing)

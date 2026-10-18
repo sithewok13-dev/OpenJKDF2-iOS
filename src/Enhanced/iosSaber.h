@@ -1,6 +1,7 @@
 // Added: entire file. The player's lightsaber as they choose it: its style
-// (one saber or two), its hilt (the game's own, or one with a crossguard) and
-// each blade's colour, picked on the touch overlay's SABER wheel.
+// (one saber or two), each hand's hilt (the game's own, a crossguard, a staff
+// or a folding staff) and each blade's colour, picked on the SABER wheel
+// (iosSaberWheel: the wheel's choices, for every input).
 //
 // Only how it looks changes, for the local player (and, in multiplayer, for
 // each other player as their game sends it: jkPlayerLook): the game's own
@@ -18,9 +19,9 @@
 // true-colour copy of its texture (std3D_AddToTextureCache's pTrueColour).
 // Made once per level, for the colours in use (2 small textures each).
 //
-// Two looks, the player's choice (the saber wheel's switch): REFORGED (the
-// default), most colours glowing like the film blades; and CLASSIC, every
-// colour as first made. It changes how every blade is drawn here, the
+// Two looks, the player's choice (the saber wheel's switch): CLASSIC (the
+// default), every colour as first made; and REFORGED, most colours glowing
+// like the film blades. It changes how every blade is drawn here, the
 // player's and other players' alike. Colours keep their keys and ids, and
 // nothing new is sent; but what the player sees of their own blade is what
 // other players are sent (iosSaber_GetShownColour): in Jedi Knight a green
@@ -56,37 +57,31 @@ void iosSaber_ToggleLook(void);            // the other one
 const char* iosSaber_LookName(int look);    // "CLASSIC", "REFORGED": as the switch shows it and it is kept
 int iosSaber_LookByName(const char* name);  // -1 if none
 
-// ---- styles: how many sabers. Only the ones that work can be picked
-// (iosSaber_StyleAvailable); each keeps its own blade colours, so going from
-// one style to another and back finds them as they were. Any hilt (below)
-// goes with either.
+// ---- styles: how many sabers (one, the right hand's; or one in each hand).
+// Only the ones that work can be picked (iosSaber_StyleAvailable). Each hand
+// keeps its own saber (below) either way: the left hand's waits for the
+// second saber.
 //   SINGLE  the game's one saber
 //   DUAL    a saber in each hand
 // The numbers are the ones other players' games are sent (jkPlayerLook);
 // builds before the hilts had CROSS as a third style (2), which is still
 // sent to them for one saber with a crossguard.
 enum { IOSSABER_STYLE_SINGLE = 0, IOSSABER_STYLE_DUAL, IOSSABER_NUM_STYLES };
-#define IOSSABER_MAX_BLADES 2
+#define IOSSABER_MAX_BLADES 2 // (hands with a saber: one per hand)
 int iosSaber_StyleAvailable(int style);
 const char* iosSaber_StyleName(int style);  // "SINGLE", "DUAL": as the wheel shows it and it is kept; NULL for no such style
-int iosSaber_StyleNumBlades(int style);
+int iosSaber_StyleNumBlades(int style);     // (its sabers, one per hand)
 // A style as it was kept (its name), or -1. A hilt's name (CROSS, kept as a
 // style by builds before the hilts) is SINGLE with that hilt in *pHilt (left
 // as it is otherwise; pHilt may be NULL): the settings' move to the hilts
 int iosSaber_StyleByName(const char* name, int* pHilt);
 int iosSaber_GetStyle(void);
 void iosSaber_SetStyle(int style);
-int iosSaber_GetColour(int style, int blade);  // as picked and kept
-void iosSaber_SetColour(int style, int blade, int id);
-// As it is shown (drawn, thrown, sent to other players): one this game's
-// wheel lacks in the look is the game's own (REFORGED, Jedi Knight: a green
-// kept is ORIGINAL, the game's green; CLASSIC shows it green again)
-int iosSaber_GetShownColour(int style, int blade);
 
-// ---- hilts: what the player's sabers are, both hands alike, with either
-// style (the saber wheel's HILT, a tap for the next). Each blade's shape and
-// the hilt's own parts (iosSaberShape), how it is carried (iosSaberStance)
-// and how it sounds (iosSaberSound) go by it.
+// ---- hilts: what each hand's saber is (the saber wheel's hand cards, each
+// with its own HILT; iosSaberWheel). Each blade's shape and the hilt's own
+// parts (iosSaberShape, iosSaberStaff), how it is carried (iosSaberStance,
+// iosSaberStaff) and how it sounds (iosSaberSound) go by it, hand by hand.
 //   NORMAL  the game's own: its blade the shape switch's (SPIKE or FILM),
 //           carried, swung and heard as the game has it
 //   CROSS   a crossguard: the blade jagged, crackling and pointed, two short
@@ -94,39 +89,82 @@ int iosSaber_GetShownColour(int style, int blade);
 //           carried low, in Kylo Ren's guard; its hum rougher, lower and
 //           crackling. Only how it looks, is carried and sounds: the blade
 //           strikes as the game's own, the side blades not at all.
-//   STAFF   Maul's double-bladed staff (not here yet: not available)
-//   FOLD    Dark Rey's folding double saber (not here yet: not available)
-// HILT goes round them in this order, past those not available. The numbers
-// are the ones other players' games are sent (jkPlayerLook, two bits: four
-// at most); one a game doesn't have it draws as NORMAL.
+//   STAFF   Darth Maul's double-bladed saber: two hilts end to end, a blade
+//           out of each (iosSaberStaff)
+//   FOLD    Dark Rey's folding double saber: two hilts hinged at their
+//           pommels, folded side by side or open into a staff (iosSaberStaff,
+//           iosSaberFold)
+// Every one strikes as the game's own saber: its one blade where the game has
+// it (STAFF's and FOLD's second blade never strikes). HILT goes round them in
+// this order, past those not available. The numbers are the ones other
+// players' games are sent (jkPlayerLook, two bits a hand: four at most); one
+// a game doesn't have it draws as NORMAL.
 enum { IOSSABER_HILT_NORMAL = 0, IOSSABER_HILT_CROSS, IOSSABER_HILT_STAFF, IOSSABER_HILT_FOLD, IOSSABER_NUM_HILTS };
 int iosSaber_HiltAvailable(int hilt);       // 1: it can be picked (and is drawn as itself for other players)
 const char* iosSaber_HiltName(int hilt);    // "NORMAL", "CROSS", "STAFF", "FOLD": as HILT shows it and it is kept; NULL for none
 int iosSaber_HiltByName(const char* name);  // -1 if none (available or not)
 // Whether its blades keep a shape of their own whatever the shape's switch
-// says (CROSS): the switch is dimmed on the wheel while it is picked
+// says (CROSS): the switch is dimmed on the wheel while every hilt in use has
 int iosSaber_HiltKeepsShape(int hilt);
-int iosSaber_GetHilt(void);                 // the local player's
-void iosSaber_SetHilt(int hilt);            // (only one available)
+int iosSaber_HiltNumBlades(int hilt);       // 1, or 2 (STAFF, FOLD)
 // The one HILT goes to next from this one: the next available, round again
 // (itself if no other is)
 int iosSaber_NextHilt(int hilt);
-// The hilt in a thing's hand (0: right, 1: left) as it is drawn: the player's
-// hilt in each hand the style has a saber in; NORMAL for a hand it hasn't,
-// and for anyone whose saber isn't a player's choice (the local player's,
-// or in multiplayer another player's as their game sent it)
+
+// ---- each hand's saber, the local player's choice (hand 0 the right, 1 the
+// left; blade 0 its first, 1 its second: STAFF's and FOLD's other end):
+// its hilt and each blade's colour, kept with one saber or two
+enum { IOSSABER_HAND_RIGHT = 0, IOSSABER_HAND_LEFT, IOSSABER_NUM_HANDS };
+#define IOSSABER_HAND_BLADES 2
+int iosSaber_GetHandHilt(int hand);
+// (only one available; a STAFF or FOLD new to the hand starts linked, below)
+void iosSaber_SetHandHilt(int hand, int hilt);
+// Each blade's colour as picked and kept. A hand's two blades are linked (to
+// start, and a new STAFF or FOLD): the second shows the first's colour, its
+// own kept for when they are split (iosSaberWheel does that)
+int iosSaber_GetBladeColour(int hand, int blade);
+void iosSaber_SetBladeColour(int hand, int blade, int id); // (blade 1 sets its own, linked or not)
+int iosSaber_GetBladeLinked(int hand);
+void iosSaber_SetBladeLinked(int hand, int bLinked);
+// As it is shown (drawn, thrown, sent to other players): one this game's
+// wheel lacks in the look is the game's own (REFORGED, Jedi Knight: a green
+// kept is ORIGINAL, the game's green; CLASSIC shows it green again)
+int iosSaber_GetShownBladeColour(int hand, int blade);
+// (as builds before the hands had them, for what still asks so: a style's
+// blade is a hand, its colour that hand's first blade's; setting it colours
+// the whole hand, linked)
+int iosSaber_GetColour(int style, int blade);
+void iosSaber_SetColour(int style, int blade, int id);
+int iosSaber_GetShownColour(int style, int blade);
+// (likewise: the right hand's hilt; setting it sets both hands')
+int iosSaber_GetHilt(void);
+void iosSaber_SetHilt(int hilt);
+
+// The hilt of a thing's saber (saber 0 the right one, 1 the left), wherever
+// it is: the player's in each hand the style has a saber in; NORMAL for a
+// hand it hasn't, and for anyone whose saber isn't a player's choice (the
+// local player's, or in multiplayer another player's as their game sent it)
 struct SithThing;
+int iosSaber_SaberHilt(struct SithThing* pThing, int saber);
+// Which saber (0 the right one, 1 the left) is in a hand now: the hand's own,
+// but the local player's left one, held as one saber in the right hand, with
+// the right one thrown (iosSaberThrow)
+int iosSaber_SaberInHand(struct SithThing* pThing, int hand);
+// The hilt in a thing's hand (0: right, 1: left) as it is drawn now: the
+// hilt of the saber in it (above)
 int iosSaber_HandHilt(struct SithThing* pThing, int hand);
 
 // ---- the engine's side.
 // Round the drawing of one of a thing's blades (blade 0: the right hand's, 1:
-// the left's): its colour put on, then the game's put back. Nothing changes
+// the left's; with IOSSABER_BLADE_SECOND, that hand's second blade, STAFF's
+// and FOLD's other one): its colour put on, then the game's put back. Nothing changes
 // for anyone but the local player (and, in multiplayer, the other players
 // whose games sent their choice), or for the game's own colour.
 // Its shape, spike or beam (or the crossguard's, the CROSS hilt), is put on here too
 // (iosSaberShape), whatever the colour.
 struct SithThing;
 struct rdThing;
+#define IOSSABER_BLADE_SECOND 2
 void iosSaber_BeginBlade(struct SithThing* pThing, struct rdThing* pLine, int blade);
 void iosSaber_EndBlade(struct rdThing* pLine);
 
@@ -151,8 +189,6 @@ void iosSaber_PoseArms(struct rdThing* pRdThing);
 // (they are made again, from the next level's palette, when next drawn)
 void iosSaber_FreeWorld(void);
 
-// A thing drawn (sithRender_RenderThing): a saber the player threw, in its
-// colour (iosSaberThrow_ThrownColour) just while it is drawn, between these
 // A player's saber hilt just drawn (jkPlayer: first person the hand, the point
 // of view model; third person the weapon mesh; pHilt that model, pOrient the
 // blade's frame there): with the CROSS hilt, its vents (iosSaberShape_DrawVents), the
@@ -164,8 +200,14 @@ void iosSaber_DrawHilt(struct SithThing* pThing, struct rdThing* pLine, struct r
 // second saber's)
 void iosSaber_DrawHandHilt(struct SithThing* pThing, struct rdThing* pLine, struct rdMatrix34* pOrient, const struct rdModel3* pHilt, int hand);
 
+// A thing drawn (sithRender_RenderThing): a saber the player threw, in its
+// colour (iosSaberThrow_ThrownColour) just while it is drawn, between these;
+// ...Blade: one of its blades (0 the first, 1 the second: a thrown STAFF or
+// FOLD drawn as two, iosSaberStaff), in that blade's colour
 void iosSaber_BeginThrown(struct SithThing* pThing);
 void iosSaber_EndThrown(struct SithThing* pThing);
+void iosSaber_BeginThrownBlade(struct SithThing* pThing, int blade);
+void iosSaber_EndThrownBlade(struct SithThing* pThing, int blade);
 
 #ifdef __cplusplus
 }

@@ -1268,9 +1268,9 @@ static void jkPlayer_DrawSecondBlades(SithThing *thing, rdMatrix34 *pHeld0, rdMa
     rdThing* pLine = &thing->playerInfo->polylineThing;
     rdMatrix34 second;
     if (bStaff0 && iosSaberStaff_SecondBlade(thing, 0, 0, pHeld0, &second) && !JKPLAYER_SELFIE_HIDES_BLADE(&second, pLine))
-        JKPLAYER_DRAW_BLADE(thing, pLine, &second, 0);
+        JKPLAYER_DRAW_BLADE(thing, pLine, &second, 0 | IOSSABER_BLADE_SECOND); // (in its own colour)
     if (bStaff1 && iosSaberStaff_SecondBlade(thing, 1, 0, pHeld1, &second) && !JKPLAYER_SELFIE_HIDES_BLADE(&second, pLine))
-        JKPLAYER_DRAW_BLADE(thing, pLine, &second, 1);
+        JKPLAYER_DRAW_BLADE(thing, pLine, &second, 1 | IOSSABER_BLADE_SECOND);
 }
 #endif
 

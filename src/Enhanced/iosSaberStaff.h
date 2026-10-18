@@ -45,19 +45,16 @@ struct rdMatrix34;
 // ---- the hilts
 // The hilt of the saber in a thing's hand as it is drawn (0: the right, 1:
 // the left): iosSaber_HandHilt's (two sabers with the right one thrown, the
-// one in hand the left's), or the test switch's below
+// one in hand the left's)
 int iosSaberStaff_HiltOf(struct SithThing* pThing, int hand);
-// The hilt of a thing's saber (0: the right one, 1: the left one), wherever it is
+// The hilt of a thing's saber (0: the right one, 1: the left one), wherever
+// it is (iosSaber_SaberHilt)
 int iosSaberStaff_SaberHilt(struct SithThing* pThing, int saber);
 // Which saber (0 the right one, 1 the left) is in a hand now (two sabers with
-// the right one thrown: the left one is in the right hand)
+// the right one thrown: the left one is in the right hand; iosSaber_SaberInHand)
 int iosSaberStaff_SaberInHand(struct SithThing* pThing, int hand);
 // STAFF or FOLD: one of these
 int iosSaberStaff_IsDouble(int hilt);
-// For testing, until the hilt is the player's choice: the local player's
-// sabers' hilt (one saber's, SINGLE; both, DUAL), whatever iosSaber says (-1:
-// as iosSaber says)
-void iosSaberStaff_SetTestHilt(int hilt);
 
 // ---- drawing (jkPlayer: bPov 1 the first person hand, 0 third person)
 // Where a hand's saber is drawn (its blade's frame, as rdPolyline_Draw takes
