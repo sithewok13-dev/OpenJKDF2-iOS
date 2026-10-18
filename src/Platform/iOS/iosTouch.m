@@ -175,7 +175,8 @@ extern int jkHud_bChatOpen;
 // read every frame), it opens the saber wheel (iosSaberWheel: a card for each
 // hand, its hilt and each blade's colour), its picture the sabers as they
 // are. With a FOLD lit in hand, a tap flips it instead (a slide or a hold
-// still opens the wheel). Every choice is remembered (keepSaberChoices).
+// still opens the wheel). Every choice is remembered (keepSaberChoices),
+// but the hand the ring paints: the RIGHT card's, each time the app starts.
 // The CHEAT button (right of SABER): cheat mode. Switched on in MENU's tray
 // (off unless switched on; remembered), it shows, and sithewok goes on;
 // switched off, sithewok goes off and it hides. Held still this long
@@ -1469,7 +1470,7 @@ typedef struct {
 - (void)saberParts:(CGRect*)aFrame shown:(int*)aShown;
 - (BOOL)throwChipSpot:(CGPoint*)pOrigin;
 - (int)formerChips:(CGRect*)aOut;
-- (void)useSaberChip:(int)chip;
+- (int)useSaberChip:(int)chip;
 - (void)endBurst;
 - (void)setShowFps:(int)bShow;
 - (void)setTrayOpen:(int)bOpen;
@@ -3187,19 +3188,20 @@ static int iosTouch_SaberChipUsable(int chip)
 // (the second of a linked pair: split); HILT the hand's next hilt (SAME HILT:
 // both hands); "+ 2ND SABER" two sabers, the x one; the switches on or off
 // -- each kept at once, the wheel left open with a tick, to tap a colour. Or
-// EQUIP: the saber in hand, the wheel closed. (Not there to use: nothing.)
-- (void)useSaberChip:(int)chip
+// EQUIP: the saber in hand, the wheel closed. (Not there to use: nothing,
+// and 0.)
+- (int)useSaberChip:(int)chip
 {
-    if (!iosTouch_SaberChipUsable(chip)) return;
+    if (!iosTouch_SaberChipUsable(chip)) return 0;
     if (chip == IOSTOUCH_CHIP_EQUIP) {
         // the saber in hand, as set (colours, one or two): the wheel closes
         // with nothing else changed, and the game takes it once it runs again
         // (as NEXT WPN's wheel does); not had, nothing
-        if (![self canEquipSaber]) return;
+        if (![self canEquipSaber]) return 0;
         const int bin = iosGame_IsMots() ? 131 : 10;
         [self closeWheelSelecting:-1];
         if (bin != iosGame_GetCurWeapon()) iosGame_SelectWeapon(bin);
-        return;
+        return 1;
     }
     NSUserDefaults* d = [NSUserDefaults standardUserDefaults];
     const int hand = iosTouch_ChipHand(chip);
@@ -3224,7 +3226,7 @@ static int iosTouch_SaberChipUsable(int chip)
         [d setObject:[NSString stringWithUTF8String:iosSaberShape_Name(iosSaberShape_Get())] forKey:IOSTOUCH_SABERSHAPE_DEFAULTS_KEY];
         break;
     case IOSTOUCH_CHIP_THROW:
-        if (aSaberChips[IOSTOUCH_CHIP_THROW].hidden) return; // (no room for it here: not offered)
+        if (aSaberChips[IOSTOUCH_CHIP_THROW].hidden) return 0; // (no room for it here: not offered)
         // THROW on or off, remembered: Saber Throw on the Force wheel (or not) from its next opening
         iosSaberThrowJk_Toggle();
         [d setBool:iosSaberThrowJk_Get() ? YES : NO forKey:IOSTOUCH_SABERTHROW_DEFAULTS_KEY];
@@ -3268,21 +3270,23 @@ static int iosTouch_SaberChipUsable(int chip)
     [self layoutSaberChips];
     [self refreshWheelLooks];
     [self refreshSaberIcons];
+    return 1;
 }
 
 // Where a touch inside a card lands (the card's frame r; the hand's blades
 // and whether they are linked): its HILT button, the LEFT card's x (its top
 // right, 40 by 28), and on a card with two blades each blade's dot -- split,
-// each half of the colours' row; linked (two dots joined, one name), the
-// first dot, and the second with what follows it to the card's middle
+// each half of the colours' row (the dot and its name); linked (two dots
+// joined, one name), the first dot, and the second up to the name (the name
+// is both blades': the card's)
 static CGRect IOSTouch_CardPartFrame(CGRect r, int part, int bLinked)
 {
     const CGFloat x = r.origin.x, y = r.origin.y, w = r.size.width;
-    const CGFloat rowY = y + 20.0, rowH = IOSTOUCH_SABER_HILT_Y - 20.0, mid = w * 0.5, split = 18.7;
+    const CGFloat rowY = y + 20.0, rowH = IOSTOUCH_SABER_HILT_Y - 20.0, mid = w * 0.5, split = 18.7, name = 31.0;
     if (part == 0) return CGRectMake(x + IOSTOUCH_SABER_HILT_X, y + IOSTOUCH_SABER_HILT_Y, IOSTOUCH_SABER_HILT_W, IOSTOUCH_SABER_HILT_H);
     if (part == 1) return CGRectMake(x + w - IOSTOUCH_SABER_CLOSE_W, y, IOSTOUCH_SABER_CLOSE_W, IOSTOUCH_SABER_CLOSE_H);
     if (part == 2) return CGRectMake(x, rowY, bLinked ? split : mid, rowH);
-    return bLinked ? CGRectMake(x + split, rowY, mid - split, rowH) : CGRectMake(x + mid, rowY, w - mid, rowH);
+    return bLinked ? CGRectMake(x + split, rowY, name - split, rowH) : CGRectMake(x + mid, rowY, w - mid, rowH);
 }
 
 // The saber wheel's part (or a touch inside a card: IOSTOUCH_CHIP_HILT_R...)
@@ -3293,7 +3297,9 @@ static CGRect IOSTouch_CardPartFrame(CGRect r, int part, int bLinked)
     if (!iosTouch_bWheelOpen || iosTouch_wheelKind != IOSTOUCH_WHEEL_SABER) return -1;
     for (int k = 0; k < 2; k++) {
         UILabel* card = aSaberChips[k ? IOSTOUCH_CHIP_CARD_L : IOSTOUCH_CHIP_CARD_R];
-        if (card.hidden || !CGRectContainsPoint(card.frame, p)) continue;
+        if (card.hidden || !CGRectContainsPoint(CGRectInset(card.frame, -IOSTOUCH_SABER_PART_TOUCH, -IOSTOUCH_SABER_PART_TOUCH), p)) continue;
+        // (a touch just round the card: as at its edge -- under HILT, HILT; beside the x, the x)
+        p = CGPointMake(MIN(MAX(p.x, card.frame.origin.x), CGRectGetMaxX(card.frame) - 0.01), MIN(MAX(p.y, card.frame.origin.y), CGRectGetMaxY(card.frame) - 0.01));
         if (CGRectContainsPoint(IOSTouch_CardPartFrame(card.frame, 0, 0), p)) return k ? IOSTOUCH_CHIP_HILT_L : IOSTOUCH_CHIP_HILT_R;
         if (k && CGRectContainsPoint(IOSTouch_CardPartFrame(card.frame, 1, 0), p)) return IOSTOUCH_CHIP_CLOSE;
         const int hand = k ? IOSSABER_HAND_LEFT : IOSSABER_HAND_RIGHT;
@@ -6232,7 +6238,8 @@ void iosTouch_PadSaberChip(int chip)
     case IOSPAD_CHIP_AUTO: part = IOSTOUCH_CHIP_AUTO; break; // (while a FOLD is in either hand)
     default: return;
     }
-    [iosTouch_pOverlay useSaberChip:part];
+    // (one that can't be made now -- SAME COLOUR with one saber, AUTO with no FOLD, THROW not offered -- does nothing)
+    if (![iosTouch_pOverlay useSaberChip:part]) return;
     iosTouch_padSlot = -1;
     if (iosTouch_bWheelOpen) [iosTouch_pOverlay refreshWheelLooks];
 }

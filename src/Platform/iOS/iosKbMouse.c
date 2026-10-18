@@ -99,6 +99,7 @@ static struct {
     unsigned nRel, nAbs, nClicks, nWheel, nKeys;
     float relSum, lastWheel;
     int lastTouch; // 0 none yet, 1 a pointer click, 2 a finger
+    int saberPrompt; // the saber wheel's prompt as last set (iosKbMouse_SaberPromptState)
 } iosKbMouse_s = { .wheelKey = -1 };
 
 // ------------------------------------------------------------ the game
@@ -180,17 +181,28 @@ static const char* iosKbMouse_KeyName(int sc)
     return (n && n[0]) ? n : "the key";
 }
 
+// What the saber wheel's keys can do now, as bits: two sabers; a second to
+// be had; more than one card or blade to pick; AUTO shown; THROW offered
+// (the prompt is set again whenever this changes, however it changed)
+static int iosKbMouse_SaberPromptState(void)
+{
+    const int bTwo = iosSaberWheel_NumSabers() > 1;
+    return bTwo | (iosSaber_StyleAvailable(IOSSABER_STYLE_DUAL) << 1)
+           | ((bTwo || iosSaber_HiltNumBlades(iosSaberWheel_GetHilt(0)) > 1) << 2)
+           | (iosSaberWheel_ShowAuto() << 3) | (iosSaberThrowJk_Offered() << 4);
+}
+
 static void iosKbMouse_SetWheelPrompt(void)
 {
     char t[256];
     if (iosKbMouse_s.wheelKind == IOSPAD_WHEEL_SABER) {
         // (what each key does now: 2 with more than one card or blade to
         // pick, 8 and 9 with two sabers, 0 with a FOLD, 6 where THROW is)
-        const int bTwo = iosSaberWheel_NumSabers() > 1;
-        const int bPick = bTwo || iosSaber_HiltNumBlades(iosSaberWheel_GetHilt(0)) > 1;
-        snprintf(t, sizeof(t), "Mouse: colour   Click: set   1: %s   %s7: hilt   %s%s3: equip   4: look   5: film   %sEsc: close",
-                 bTwo ? "one saber" : "2nd saber", bPick ? "2: blade   " : "", bTwo ? "8: same colour   9: same hilt   " : "",
-                 iosSaberWheel_ShowAuto() ? "0: auto   " : "", iosSaberThrowJk_Offered() ? "6: throw   " : "");
+        const int st = iosKbMouse_SaberPromptState(), bTwo = st & 1;
+        snprintf(t, sizeof(t), "Mouse: colour   Click: set   %s%s7: hilt   %s%s3: equip   4: look   5: film   %sEsc: close",
+                 bTwo ? "1: one saber   " : (st & 2) ? "1: 2nd saber   " : "", (st & 4) ? "2: blade   " : "", bTwo ? "8: same colour   9: same hilt   " : "",
+                 (st & 8) ? "0: auto   " : "", (st & 16) ? "6: throw   " : "");
+        iosKbMouse_s.saberPrompt = st;
     }
     else if (iosKbMouse_s.wheelState == IOSKBM_WS_HELD)
         snprintf(t, sizeof(t), "Mouse: point   Let go of %s: pick   Right click or Esc: cancel", iosKbMouse_KeyName(iosKbMouse_s.wheelKey));
@@ -359,7 +371,8 @@ static void iosKbMouse_WheelInput(void)
             iosKbMouse_WheelReset();
             return;
         }
-        if (bChip) iosKbMouse_SetWheelPrompt(); // (what the keys do now)
+        // (what the keys do now: again whenever it changes, by a key here or a touch)
+        if (bChip || iosKbMouse_SaberPromptState() != iosKbMouse_s.saberPrompt) iosKbMouse_SetWheelPrompt();
     }
     if (st == IOSKBM_WS_HELD && key >= 0 && !iosKbMouse_s.aDown[key]) {
         // let go: what it points at; nothing pointed at, it stays open to click
