@@ -359,7 +359,7 @@ never cover them, and long lines wrap between words.
 | **QUICK LOAD** | top right | **Hold** for about a third of a second: a ring fills, then your quick save loads. To cancel, lift or slide off before the ring fills. |
 | **MENU** | top right corner | **Tap** opens the game's menu (objectives, map, Jedi powers, save, load, setup and more). **Hold** opens a small tray just under it, see below. |
 | **CAMERA** (the camera symbol) | top, in the middle | **Hold still:** a selfie. **Tap:** a photo. **Slide sideways:** a burst. **Slide down:** Action Freeze. **Slide up:** the cinematic burst. See [The camera](#the-camera). |
-| **SABER** (a lightsaber) | top, right of CAMERA (once you have the lightsaber) | Opens the saber wheel: blade colours, one saber, two, or one with a crossguard. See [The lightsaber: SABER](#the-lightsaber-saber). |
+| **SABER** (your sabers) | top, right of CAMERA (once you have the lightsaber) | Opens the saber wheel: one saber or two, each hand's hilt, each blade's colour. With a FOLD in your hand, a **tap** flips it. See [The lightsaber: SABER](#the-lightsaber-saber). |
 | **CHEAT** (the red Sith emblem) | top, right of SABER (cheat mode only) | **Hold** for half a second: `sithewok` off or on. Red while it's on. See [Cheats](#cheats). |
 | **VIEW** (1P or 3P) | top, right of CHEAT (once switched on in MENU's tray) | **Tap:** first person or third person, at once. |
 
@@ -370,7 +370,8 @@ a slide starts a burst or Action Freeze instead: see [The camera](#the-camera)).
 BACTA and CHEAT need a hold, so a brush past does nothing. NEXT WPN and FORCE
 WHEEL act on a quick tap when you lift, or open their wheel when you slide or
 hold (see [Tap, slide or hold](#tap-slide-or-hold)). SABER opens its wheel
-however you touch it. While
+however you touch it, but with a FOLD in your hand a quick tap flips the FOLD
+(slide or hold to open the wheel). While
 `sithewok` is on, JUMP and ACT show a small red second line (FLY, NOCLIP)
 for their cheat holds: see [Cheats](#cheats). DUCK only ever crouches.
 
@@ -476,12 +477,27 @@ switch the controller off and they come back.
   the right stick at a power or weapon and let go of the button to pick it.
   Point at the gap at the bottom, or press B, to cancel. If you open it without
   pointing anywhere, it stays open: point and press A, or step round with the
-  D-pad. On the saber wheel, A sets the colour, X switches SINGLE and DUAL
-  ("style" on the screen), LB steps through the hilts ("hilt"), Y which
-  blade a colour goes to, L3
-  switches CLASSIC and REFORGED ("look"), D-pad up turns FILM on or off
-  ("film"), D-pad down turns THROW on or off ("throw", Jedi Knight only), and
-  R3 takes the saber in hand ("equip").
+  D-pad. On the saber wheel:
+
+  | Button | On the saber wheel |
+  | --- | --- |
+  | Right stick | Point at a colour (D-pad right steps round) |
+  | A / Cross | Set the colour (the wheel stays open) |
+  | Y / Triangle | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades |
+  | LB / L1 | The next hilt for the card you picked |
+  | X / Square | Add the second saber, or go back to one |
+  | RB / R1 | SAME COLOUR on or off (two sabers) |
+  | LT / L2 | SAME HILT on or off (two sabers) |
+  | RT / R2 | AUTO on or off (with a FOLD) |
+  | D-pad up | FILM on or off |
+  | D-pad down | THROW on or off (Jedi Knight only) |
+  | L3 | CLASSIC or REFORGED |
+  | R3 | Take the saber in hand ("equip") |
+  | B / Circle, D-pad left | Close (D-pad left sets the colour pointed at first) |
+
+  The line at the bottom of the screen shows what each button does right
+  now. With a FOLD in your hand, picking the lightsaber again on the weapon
+  wheel flips it.
 - **Quick save and quick load** need a short hold (a ring fills at the top of
   the screen), so a stray press never saves or loads.
 - **Controller options** (hold Start): look speed across and up and down,
@@ -549,11 +565,27 @@ Turn on FPS in MENU's tray to see what the app gets (below).
   Move the mouse toward a power or weapon and let go of the key to pick it.
   If you let go without pointing anywhere, the wheel stays open: point with
   the mouse or the scroll wheel and click. Right click or Esc cancels. On the
-  saber wheel, a click sets the colour, 1 switches SINGLE and DUAL ("style"
-  on the screen), 7 steps through the hilts ("hilt"), 2 which blade a colour
-  goes to, 3 takes the saber in hand ("equip"), 4 switches CLASSIC and
-  REFORGED ("look"), 5 turns FILM on or off ("film"), and 6 turns THROW on
-  or off ("throw", Jedi Knight only).
+  saber wheel:
+
+  | Key | On the saber wheel |
+  | --- | --- |
+  | Mouse, scroll wheel | Point at a colour |
+  | Click | Set the colour (the wheel stays open) |
+  | 1 | Add the second saber, or go back to one |
+  | 2 | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades |
+  | 3 | Take the saber in hand ("equip") |
+  | 4 | CLASSIC or REFORGED |
+  | 5 | FILM on or off |
+  | 6 | THROW on or off (Jedi Knight only) |
+  | 7 | The next hilt for the card you picked |
+  | 8 | SAME COLOUR on or off (two sabers) |
+  | 9 | SAME HILT on or off (two sabers) |
+  | 0 | AUTO on or off (with a FOLD) |
+  | Esc, right click | Close |
+
+  The line at the bottom of the screen shows what each key does right now.
+  With a FOLD in your hand, pressing the lightsaber's weapon key again (or
+  picking it again on the weapon wheel) flips it.
 - **Your own keys and buttons:** Setup > Controls > Keyboard and Setup >
   Controls > Mouse change any of them; the mouse sensitivity is there too.
   Whatever key you put on next/previous power or weapon gets the wheel when
@@ -867,11 +899,63 @@ quick load drops a pick that is still waiting.
 ## The lightsaber: SABER
 
 New in v0.6. Once you have the lightsaber (or while `sithewok` is on), a
-**SABER** button appears on the top row, right of CAMERA. It shows your blade
-(or two crossed blades) in your colours, and opens the **saber wheel**, the
-same way as the other wheels: tap or hold it to open the wheel and then tap a
-colour, or slide off it towards a colour and lift. The gap at the bottom
-cancels, and the game holds still while the wheel is open.
+**SABER** button appears on the top row, right of CAMERA. Its picture shows
+your sabers as they are: each in its hilt's shape (a plain blade, CROSS with
+its guard, STAFF with a blade out of each end, FOLD folded or open) and each
+blade in its own colour, two crossed in an X when you hold two.
+
+Tap or hold SABER to open the **saber wheel** and then tap a colour, or slide
+off it towards a colour and lift. The gap at the bottom cancels, and the game
+holds still while the wheel is open. **With a FOLD in your hand, a tap on
+SABER flips it** (open or folded, with a click) instead. A slide, or a short
+hold until its ring fills, still opens the wheel.
+
+While the saber wheel is open, JUMP, ACT, ALT, FIRE, DUCK and FORCE are hidden
+to make room (they can't be used while a wheel is open anyway), and they come
+back when it closes. The buttons along the top stay. A tap on an empty spot
+closes the wheel and changes nothing.
+
+### A card for each hand
+
+Beside the colour ring there's a card for each hand: **RIGHT** on the right of
+the ring, and with two sabers **LEFT** on the left. Each card shows that
+hand's colours and has its own **HILT** button.
+
+- **Tap a card** to choose which hand the ring paints: its edge turns gold.
+  The line under the colour's name, in the middle of the wheel, says where a
+  colour goes: "colour for the right saber", "colour for the left saber",
+  "colour for both sabers", or "right saber, blade 2".
+- **Each blade has its own colour.** A card shows a dot and the colour's name
+  for each blade. NORMAL and CROSS have one blade, STAFF and FOLD two.
+  - A new STAFF or FOLD starts with both blades the same colour: two joined
+    dots and one name.
+  - **Tap the second dot** to give blade 2 its own colour: the dots split, a
+    gold ring goes round the second, and the next colour you tap goes to that
+    blade only. Tap the first dot for blade 1 alone.
+  - **Tap the card itself** to paint the whole saber again: both blades take
+    the colour and join up.
+- **HILT** on a card changes only that hand's saber. Tap it for the next one:
+  **NORMAL** (the game's own saber), **CROSS** (Kylo Ren's crossguard saber),
+  **STAFF** (Darth Maul's double-bladed saber) or **FOLD** (Dark Rey's
+  folding double saber), then round again. Each hand can have its own, for
+  example CROSS in the left hand and STAFF in the right. Fighting and hits
+  are the same for every hilt. If you picked CROSS in an older version, you
+  get one saber with the CROSS hilt, in the same colour.
+- **One saber or two:** with one saber there's only the RIGHT card, and a
+  dashed **+ 2ND SABER** box where the LEFT card goes. Tap it for a second
+  saber in your left hand (it comes back the way you left it). With two, the
+  LEFT card has a small **x** in its top right corner: tap it to go back to
+  one saber. It's a separate small spot, so a tap on the card can't drop
+  your saber by mistake.
+- **SAME COLOUR and SAME HILT**, two switches under the LEFT card (with two
+  sabers). With SAME COLOUR on, a colour you tap goes to every blade of both
+  sabers. With SAME HILT on, a HILT tap changes both sabers. Both are off to
+  start, so nothing changes unless you switch them on.
+- Every tap on a card, a dot, HILT, + 2ND SABER, the x or a switch gives a
+  small tick, is remembered at once, and leaves the wheel open, so you can
+  set everything in one go.
+
+### The rest of the wheel
 
 - **The colours:** ORIGINAL (the game's own, unchanged: green in Jedi
   Knight, orange in Mysteries of the Sith), red, crimson, orange, amber,
@@ -890,12 +974,12 @@ cancels, and the game holds still while the wheel is open.
   - In Jedi Knight, a green you kept (picked in CLASSIC) shows as
     ORIGINAL while REFORGED is on, and is shown to other players as
     ORIGINAL too. Switch back to CLASSIC and it's green again.
-- **FILM** (it was called BEAM), an on/off switch under SINGLE, DUAL and
-  HILT, picks the blade's look. Tap it to switch. The wheel stays open, and
-  the blade in your hand changes at once. The app remembers it (a BEAM you
-  set before stays on). The CROSS hilt keeps its own blade whatever FILM
-  says, so the switch is dimmed while every saber you hold is CROSS (it
-  still works, for other players' blades and for the other hilts).
+- **FILM** (it was called BEAM), an on/off switch under the RIGHT card, picks
+  the blade's look. Tap it to switch. The wheel stays open, and the blade in
+  your hand changes at once. The app remembers it (a BEAM you set before
+  stays on). The CROSS hilt keeps its own blade whatever FILM says, so the
+  switch is dimmed while every saber you hold is CROSS (it still works, for
+  other players' blades and for the other hilts).
   - **Off** (the default): the game's own blade, which narrows to a point.
   - **On:** a blade as in the films, as long as the game's own (switching
     doesn't change the length) and slim to the films' proportions, the same
@@ -918,35 +1002,42 @@ cancels, and the game holds still while the wheel is open.
     players on other builds keep the game's blade.
   - Only the look changes: the reach and damage of every attack stay as the
     game has them.
-- **The wheel stays open** after you pick a colour, so you can change both
-  blades in one go. Close it with the gap at the bottom, or by tapping outside
-  the wheel.
+- **AUTO**, an on/off switch under FILM, shows only while a FOLD is in either
+  hand (see below). On to start.
+- **The wheel stays open** after you pick a colour, so you can change every
+  blade in one go. Close it with the gap at the bottom, or by tapping an empty
+  spot.
 - **EQUIP**, in the middle of the wheel, closes it and puts the lightsaber in
   your hand. It's dim while you don't have the saber.
-- **SINGLE or DUAL**, beside the wheel: one saber, or one in each hand.
-  With DUAL, **LEFT**, **BOTH** and **RIGHT** choose which blade a colour
-  goes to. Each hand keeps its own saber: your one saber is the right hand's,
-  and with DUAL the left hand's joins it.
-- **HILT**, under DUAL, picks what your sabers are, and it goes with SINGLE
-  or DUAL alike (with DUAL, both sabers get it). It shows the hilt you have.
-  Tap it for the next one: **NORMAL** (the game's own saber), **CROSS** (a
-  crossguard), **STAFF** (Darth Maul's double-bladed saber) or **FOLD**
-  (Dark Rey's folding double saber). The wheel stays open, the saber in
-  your hand changes at once, and the app remembers it. If you picked CROSS
-  before this version, you now have SINGLE with the CROSS hilt, in the same
-  colour.
-- **STAFF and FOLD:** a blade out of each end of the hilt, both in your
-  colour. FOLD folds its two halves side by side, or opens into a staff: it
-  lights folded and opens on your first swing, and folds again 5 seconds
-  after your last. Only the look changes: the saber hits as the game's own,
-  and the second blade doesn't hit anything.
+
+### The hilts, two sabers and Saber Throw
+
+- **STAFF and FOLD:** a blade out of each end of the hilt, each in its own
+  colour. Only the look changes: the saber hits as the game's own, and the
+  second blade doesn't hit anything.
+- **FOLD** folds its two halves side by side, or opens into a staff. It
+  lights folded.
+  - **AUTO on** (the default): it opens on your first swing and folds again
+    5 seconds after your last (never before a swing).
+  - **AUTO off:** it only changes when you flip it, and stays the way you
+    left it, across levels and loads.
+  - **Flip it yourself:** tap SABER, pick the lightsaber again on the weapon
+    wheel while it's in your hand (touch or controller), or press the
+    lightsaber's weapon key again on a keyboard. Your flip always wins:
+    folded by hand, it stays folded until 5 seconds go by without a swing;
+    opened by hand, it stays open until you swing and then 5 seconds go by.
+  - Two FOLDs open and fold together. A thrown FOLD flies the way it left
+    your hand (a folded one snaps open just after the throw).
+- **Mixed pairs:** with two sabers each arm holds its own saber its own way:
+  a CROSS low at the side, a STAFF or FOLD as a staff, a NORMAL in the usual
+  two-saber stance. Only CROSS crackles.
 - **The CROSS hilt:** a jagged blade that crackles and comes to a point,
   two short blades coming out of two small dark metal vents either side of
   the top of the hilt, and a strong glow in the blade's colour (on a bright
   wall it only tints). It works with every colour, in both CLASSIC and
   REFORGED, and shows in first and third person and in Action Freeze. With
-  DUAL you hold two of them, one in each hand. A thrown CROSS saber (Saber Throw in Mysteries
-  of the Sith, THROW in Jedi Knight, each of the two with DUAL) gets the
+  two sabers you can hold two of them, one in each hand. A thrown CROSS saber (Saber Throw in Mysteries
+  of the Sith, THROW in Jedi Knight, each of the two with two sabers) gets the
   glow, the vents and the two short blades too. Only the look changes: the
   main blade hits as usual, and the vents and the short side blades don't
   hit anything.
@@ -983,7 +1074,8 @@ cancels, and the game holds still while the wheel is open.
 - **Only the look changes,** and only in your own single-player game: the
   saber's damage, your saves and the levels are untouched. The colours show
   in first and third person, in selfies and in Action Freeze. The app
-  remembers your colours, style and hilt.
+  remembers one saber or two, each hand's hilt, every blade's colour and the
+  switches.
 - A lightsaber that only `sithewok` gave you goes away again when the cheat
   goes off (see [Cheats](#cheats)). One the game gave you stays.
 - **Saber Throw** (Mysteries of the Sith): a thrown saber flies in its own
