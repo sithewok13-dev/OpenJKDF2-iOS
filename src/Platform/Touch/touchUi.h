@@ -30,11 +30,17 @@
 //     cinematic burst. Its options: the tray's camera switch held 0.45 s
 //     (PHOTO, SELFIES 1/3/5, FREEZE ON/OFF); none of it in multiplayer (the
 //     engine says no, as on iOS);
-//   - SABER (once the saber is had, or with sithewok on): the saber wheel, every
-//     blade colour, SINGLE or DUAL, HILT (NORMAL, CROSS: a tap for the next)
-//     and the FILM switch under them, which
-//     blade a colour goes to (LEFT, BOTH, RIGHT), the look (CLASSIC, REFORGED)
-//     and EQUIP; a tap or a hold opens it to tap, a slide to slide.
+//   - SABER (once the saber is had, or with sithewok on; its picture each
+//     saber in its hilt's shape, each blade in its colour): the saber wheel,
+//     every blade colour round it, a card for each hand on its own side
+//     (the RIGHT card; the LEFT card with two sabers, its x back to one; "+
+//     2ND SABER" with one), each with its blades' colours (tap a card: its
+//     whole hand; a blade's dot: that blade) and its own HILT button (NORMAL,
+//     CROSS, STAFF, FOLD: a tap for the next); SAME COLOUR and SAME HILT under
+//     the LEFT card, FILM and FOLD's AUTO under the RIGHT, the look (CLASSIC,
+//     REFORGED) and EQUIP in the middle; the action buttons hidden while it is
+//     open. A tap or a hold opens it to tap, a slide to slide; with a FOLD lit
+//     in hand, a tap flips it instead (a slide or a 0.3 s hold opens the wheel).
 //
 // Units: "points" throughout -- on Android, density-independent pixels
 // (dp), times a size factor for large tablets (touchUiSdl.c). Times are
@@ -186,12 +192,14 @@ enum {
 enum { TOUCHUI_GYRO_OFF = 0, TOUCHUI_GYRO_TOUCH, TOUCHUI_GYRO_ALWAYS };
 enum { TOUCHUI_HAPTIC_TICK = 1, TOUCHUI_HAPTIC_TAP = 2 };
 enum { TOUCHUI_WHEEL_FORCE = 0, TOUCHUI_WHEEL_WEAPONS, TOUCHUI_WHEEL_SABER };
-// The saber wheel's choices beside the ring (HILT, the hilt picked: a tap for
-// the next; the blade's shape, FILM on or off, under SINGLE, DUAL and HILT;
-// THROW at the top right, Jedi Knight's), and in its middle (EQUIP, the
-// colours' look)
-enum { TOUCHUI_CHIP_SINGLE = 0, TOUCHUI_CHIP_DUAL, TOUCHUI_CHIP_LEFT, TOUCHUI_CHIP_BOTH, TOUCHUI_CHIP_RIGHT, TOUCHUI_CHIP_EQUIP,
-       TOUCHUI_CHIP_LOOK, TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_HILT, TOUCHUI_CHIP_THROW, TOUCHUI_NUM_CHIPS };
+// The saber wheel's choices (the shared wheel's, INPUTWHEEL_CHIP_*, by
+// number): each hand's card (0 the right, 1 the left), its HILT button, its
+// blades' dots (two each: STAFF, FOLD); "+ 2ND SABER"; the LEFT card's x;
+// SAME COLOUR, SAME HILT; EQUIP and the colours' look in the middle; FILM;
+// FOLD's AUTO; THROW at the top right, Jedi Knight's
+enum { TOUCHUI_CHIP_CARD = 0, TOUCHUI_CHIP_HILT = 2, TOUCHUI_CHIP_DOT = 4, TOUCHUI_CHIP_ADD = 8, TOUCHUI_CHIP_REMOVE,
+       TOUCHUI_CHIP_SAME_COLOUR, TOUCHUI_CHIP_SAME_HILT, TOUCHUI_CHIP_EQUIP, TOUCHUI_CHIP_LOOK, TOUCHUI_CHIP_SHAPE,
+       TOUCHUI_CHIP_AUTO, TOUCHUI_CHIP_THROW, TOUCHUI_NUM_CHIPS };
 
 // Once, before anything else. The settings file (key=value lines) is read
 // now, if there is one, and written whenever a remembered setting changes.
@@ -242,11 +250,6 @@ int touchUi_TakeHaptics(void);
 // Gyro aiming. Available: the device has the sensors. Wanted: the sensors
 // should be running now (shown, on, not hidden for another input).
 void touchUi_SetGyroAvailable(int bAvailable);
-// The saber wheel's blade choice (one of two) is the shared wheel's
-// (Platform/Input/inputWheel.c: a pad and the keys set it too), remembered
-// here: hands it the one remembered (at the start, once the platform's own
-// settings are in, so this one wins); after that it is kept in step
-void touchUi_ShareSaberTarget(void);
 int touchUi_IsGyroWanted(void);
 int touchUi_GetGyroMode(void);
 float touchUi_GetGyroSens(void);
@@ -310,8 +313,8 @@ int touchUi_GetBurstShots(void); // -1: no burst going
 int touchUi_IsSelfieUp(void);
 int touchUi_IsFreezing(void);
 int touchUi_IsCinemaUp(void);
-int touchUi_GetSaberTarget(void); // TOUCHUI_CHIP_LEFT, _BOTH or _RIGHT
 int touchUi_GetSaberChip(int chip, float* pX, float* pY); // its middle (0 if not shown)
+int touchUi_AreActionsHidden(void); // the action buttons hidden: the saber wheel open
 void touchUi_GetFreezeClose(float* pX, float* pY);
 
 #ifdef __cplusplus

@@ -6,6 +6,7 @@
 #include "Platform/Touch/touchUi.h"
 #include "Platform/Input/inputWheel.h" // the wheels: their maps, the pick, the drawing
 #include "Enhanced/iosSaberWheel.h"     // the saber wheel's choices, and how they are kept
+#include "Enhanced/iosSaber.h"          // (the hilts and hands by number: the SABER button's picture)
 
 #include <math.h>
 #include <stdio.h>
@@ -276,7 +277,7 @@ static struct {
     int bKindsOpen;
     // settings
     int bShowFps, bShowCheat, bShowView, bThirdPerson, bSwapped, jumpStyle;
-    int bShowCamera, cameraKinds, selfieShots, bFreezeOn, saberTarget;
+    int bShowCamera, cameraKinds, selfieShots, bFreezeOn;
     int gyroMode, gyroLastMode, gyroSens;
     // what the buttons show
     int bCheatOn;
@@ -363,7 +364,6 @@ static void tu_EndFreeze(void);
 static void tu_EndCinema(void);
 static void tu_LayoutWheel(void);
 static void tu_WheelClosed(void);
-static int tu_SaberTargetToWheel(int t);
 
 // ------------------------------------------------------------ settings
 
@@ -398,8 +398,7 @@ static void tu_SaveSettings(void)
     fprintf(f, "gyroMode=%d\ngyroLastMode=%d\ngyroSens=%.1f\nshowFps=%d\nshowCheat=%d\nshowView=%d\nthirdPerson=%d\njumpStyle=%d\nswapped=%d\n",
             tu.gyroMode, tu.gyroLastMode, (double)tu_aGyroSens[tu.gyroSens], tu.bShowFps, tu.bShowCheat, tu.bShowView,
             tu.bThirdPerson, tu.jumpStyle, tu.bSwapped);
-    fprintf(f, "showCamera=%d\ncameraKinds=%d\nselfieShots=%d\nfreeze=%d\nsaberTarget=%d\n", tu.bShowCamera, tu.cameraKinds,
-            tu.selfieShots, tu.bFreezeOn, tu.saberTarget);
+    fprintf(f, "showCamera=%d\ncameraKinds=%d\nselfieShots=%d\nfreeze=%d\n", tu.bShowCamera, tu.cameraKinds, tu.selfieShots, tu.bFreezeOn);
     // the saber: the look and shape by their names, THROW; the saber wheel's choices, each by its name
     if (G(SaberGetLook) && G(SaberLookName)) {
         const char* name = tu.game->SaberLookName(tu.game->SaberGetLook());
@@ -429,7 +428,6 @@ static void tu_LoadSettings(void)
     tu.cameraKinds = TOUCHUI_CAPTURE_CLEAN;
     tu.selfieShots = 3;
     tu.bFreezeOn = 1;
-    tu.saberTarget = TOUCHUI_CHIP_BOTH;
     // (the saber wheel's choices: each by its name, and what builds before kept, moved)
     iosSaberWheel_BeginLoad();
     FILE* f = tu.settingsPath[0] ? fopen(tu.settingsPath, "r") : NULL;
@@ -461,8 +459,7 @@ static void tu_LoadSettings(void)
         else if (!strcmp(k, "cameraKinds")) tu.cameraKinds = (n & 7) ? (n & 7) : TOUCHUI_CAPTURE_CLEAN;
         else if (!strcmp(k, "selfieShots")) tu.selfieShots = (n == 1 || n == 5) ? n : 3;
         else if (!strcmp(k, "freeze")) tu.bFreezeOn = n != 0;
-        else if (!strcmp(k, "saberTarget"))
-            tu.saberTarget = (n == TOUCHUI_CHIP_LEFT || n == TOUCHUI_CHIP_RIGHT) ? n : TOUCHUI_CHIP_BOTH;
+        else if (!strcmp(k, "saberTarget")) {} // (LEFT, BOTH, RIGHT: what the cards' picks replaced)
         else if (!strcmp(k, "saberThrow")) {
             if (G(SaberSetThrow)) tu.game->SaberSetThrow(n != 0);
         }
@@ -533,6 +530,19 @@ static int tu_Hidden(int i)
     if (i == BTN_CHEAT) return !tu.bShowCheat;
     if (i == BTN_VIEW) return !tu.bShowView;
     return 0;
+}
+
+// The action buttons and the move stick: hidden while the saber wheel is
+// open (every touch is the wheel's then; they keep their places, so THROW
+// and the group names are laid out round them as ever)
+static int tu_ActionsHidden(void)
+{
+    return inputWheel_IsOpen() && inputWheel_GetKind() == INPUTWHEEL_SABER;
+}
+
+static int tu_IsActionButton(int i)
+{
+    return i == BTN_FIRE || i == BTN_ALT || i == BTN_DUCK || i == BTN_ACT || i == BTN_JUMP || i == BTN_FORCE;
 }
 
 static int tu_IsWheelPress(const tuSlot* s)
@@ -1568,39 +1578,18 @@ int touchUi_IsPhotoModeUp(void) { return tu_PhotoModeUp(); }
 
 // ------------------------------------------------------------ the saber (iosTouch.m's)
 
-static int tu_SaberStyle(void) { return G(SaberGetStyle) ? tu.game->SaberGetStyle() : TOUCHUI_SABER_SINGLE; }
-static int tu_SaberNumBlades(int st) { return G(SaberStyleNumBlades) ? tu.game->SaberStyleNumBlades(st) : 1; }
 
-// The blade a colour goes to with two: the touch overlay's numbers
-// (TOUCHUI_CHIP_LEFT, _BOTH, _RIGHT) and the wheel's (INPUTWHEEL_SABER_*).
-// The wheel's is the one in use (a pad and the keys set it too); kept here
-// as it changes, to remember.
-static int tu_SaberTargetToWheel(int t)
-{
-    return t == TOUCHUI_CHIP_LEFT ? INPUTWHEEL_SABER_LEFT : t == TOUCHUI_CHIP_RIGHT ? INPUTWHEEL_SABER_RIGHT : INPUTWHEEL_SABER_BOTH;
-}
-
-static int tu_SaberTargetFromWheel(int t)
-{
-    return t == INPUTWHEEL_SABER_LEFT ? TOUCHUI_CHIP_LEFT : t == INPUTWHEEL_SABER_RIGHT ? TOUCHUI_CHIP_RIGHT : TOUCHUI_CHIP_BOTH;
-}
-
-static void tu_SaberTargetFromShared(void)
-{
-    const int t = tu_SaberTargetFromWheel(inputWheel_GetSaberTarget());
-    if (t == tu.saberTarget) return;
-    tu.saberTarget = t;
-    tu_SaveSettings();
-}
-
-// One of the saber wheel's choices tapped: one saber or two (each keeps its
-// own colours), HILT (the next hilt), which of the two a colour goes to, the colours' look (the
-// wheel made again in it), or the blade's shape (FILM on or off) -- the wheel
-// stays open to tap a colour; or EQUIP:
-// the saber in hand, the wheel closed
+// One of the saber wheel's choices tapped (a card, a blade's dot, a HILT,
+// + 2ND SABER or the x, a switch, the colours' look: the wheel made again in
+// it) -- with a tick, saved, the wheel staying open to tap a colour; or
+// EQUIP: the saber in hand, the wheel closed
 // (the overlay's choices are the shared wheel's, by number)
-typedef char tu_assertChips[((int)TOUCHUI_CHIP_EQUIP == (int)INPUTWHEEL_CHIP_EQUIP && (int)TOUCHUI_CHIP_LOOK == (int)INPUTWHEEL_CHIP_LOOK
-                             && (int)TOUCHUI_CHIP_SHAPE == (int)INPUTWHEEL_CHIP_SHAPE && (int)TOUCHUI_CHIP_HILT == (int)INPUTWHEEL_CHIP_HILT
+typedef char tu_assertChips[((int)TOUCHUI_CHIP_CARD == (int)INPUTWHEEL_CHIP_CARD && (int)TOUCHUI_CHIP_HILT == (int)INPUTWHEEL_CHIP_HILT
+                             && (int)TOUCHUI_CHIP_DOT == (int)INPUTWHEEL_CHIP_DOT && (int)TOUCHUI_CHIP_ADD == (int)INPUTWHEEL_CHIP_ADD
+                             && (int)TOUCHUI_CHIP_REMOVE == (int)INPUTWHEEL_CHIP_REMOVE && (int)TOUCHUI_CHIP_SAME_COLOUR == (int)INPUTWHEEL_CHIP_SAME_COLOUR
+                             && (int)TOUCHUI_CHIP_SAME_HILT == (int)INPUTWHEEL_CHIP_SAME_HILT
+                             && (int)TOUCHUI_CHIP_EQUIP == (int)INPUTWHEEL_CHIP_EQUIP && (int)TOUCHUI_CHIP_LOOK == (int)INPUTWHEEL_CHIP_LOOK
+                             && (int)TOUCHUI_CHIP_SHAPE == (int)INPUTWHEEL_CHIP_SHAPE && (int)TOUCHUI_CHIP_AUTO == (int)INPUTWHEEL_CHIP_AUTO
                              && (int)TOUCHUI_CHIP_THROW == (int)INPUTWHEEL_CHIP_THROW
                              && (int)TOUCHUI_NUM_CHIPS == (int)INPUTWHEEL_NUM_CHIPS) ? 1 : -1];
 static void tu_UseSaberChip(int chip)
@@ -1612,7 +1601,6 @@ static void tu_UseSaberChip(int chip)
         return;
     }
     if (chip == TOUCHUI_CHIP_EQUIP) return; // (no saber to take)
-    tu_SaberTargetFromShared();
     tu_SaveSettings();
     tu.bWheelTapMode = 1;
     for (int i = 0; i < TU_MAX_TOUCHES; i++) {
@@ -1753,7 +1741,6 @@ static int tu_OpenWheel(int kind, int button, int bTapMode)
     tu.wheelKind = kind;
     tu.wheelButton = button;
     tu.pWheelMap = inputWheel_GetOpenMap();
-    tu_SaberTargetFromShared();
     tu_IgnoreFingers();
     // a tap on either wheel button not read yet would undo the pick
     tu.aPulseQueue[tu_aButtons[BTN_WHEEL].scancode] = 0;
@@ -2102,7 +2089,10 @@ static void tu_TouchUp(tuSlot* s, float px, float py, double t, int bCancelled)
             }
         }
         else if (t - s->tDown < TU_WHEEL_HOLD && s->button == BTN_SABER) {
-            tu_OpenWheelFrom(s, 1); // SABER has no key: a tap opens its wheel, to tap a colour
+            // SABER has no key: a tap opens its wheel, to tap a colour; with a
+            // FOLD lit in hand it flips it instead (the click comes with the snap)
+            if (!iosSaberWheel_TapFlips()) tu_OpenWheelFrom(s, 1);
+            else if (iosSaberWheel_Flip()) tu_Haptic(TOUCHUI_HAPTIC_TAP);
         }
         else if (t - s->tDown < TU_WHEEL_HOLD) {
             // a quick tap: the next power (E) or weapon (G)
@@ -2244,10 +2234,7 @@ void touchUi_Reset(void)
 void touchUi_Tick(double known, double now)
 {
     // (the saber's choices picked with a pad or the keys, the overlay up or hidden: remembered)
-    if (tu.game) {
-        tu_SaberTargetFromShared();
-        if (tu_SaberKeptChanged()) tu_SaveSettings();
-    }
+    if (tu.game && tu_SaberKeptChanged()) tu_SaveSettings();
     if (!tu.bShown) return;
     if (tu.bWheelOpen && !inputWheel_IsOpen()) tu_WheelClosed(); // (closed from outside: only in case)
     const double dt = tu.prevTickNow > 0.0 ? now - tu.prevTickNow : 0.0;
@@ -2619,7 +2606,6 @@ void touchUi_Init(const touchUiGame* pGame, const char* pSettingsPath)
     tu_LoadSettings();
     if (tu.bSettingsMoved) tu_SaveSettings(); // (kept as this build keeps them at once: CROSS a hilt)
     tu_SaberKept(tu.aSaberKept);
-    touchUi_ShareSaberTarget();
     if (G(SetCheatShown)) tu.game->SetCheatShown(tu.bShowCheat);
     if (G(SetThirdPerson)) tu.game->SetThirdPerson(tu.bThirdPerson);
     if (G(SetForceJumpStyle)) tu.game->SetForceJumpStyle(tu.jumpStyle);
@@ -2805,11 +2791,7 @@ int touchUi_GetBurstShots(void) { return tu.bBurst ? tu.burstShots : -1; }
 int touchUi_IsSelfieUp(void) { return tu.bSelfie; }
 int touchUi_IsFreezing(void) { return tu.bFreezing; }
 int touchUi_IsCinemaUp(void) { return tu.bCinema; }
-void touchUi_ShareSaberTarget(void)
-{
-    inputWheel_SetSaberTarget(tu_SaberTargetToWheel(tu.saberTarget));
-}
-int touchUi_GetSaberTarget(void) { return tu_SaberTargetFromWheel(inputWheel_GetSaberTarget()); }
+int touchUi_AreActionsHidden(void) { return tu_ActionsHidden(); }
 int touchUi_GetSaberChip(int chip, float* pX, float* pY)
 {
     float x = 0.0f, y = 0.0f;
@@ -2906,22 +2888,77 @@ static void tu_DrawCameraFilled(float cx, float cy, touchUiColor c)
     touchUiDraw_Circle(&tu_draw, cx, cy + 1.2f, 2.8f, c, 0.0f, touchUi_Clear());
 }
 
-// A saber's picture (iosTouch.m's IOSTouch_AddSaberIcon): a short hilt and
-// the blade up to the right (bMirror: to the left) in the blade's colour,
-// glowing, a white core along it
-static void tu_DrawSaberIcon(float cx, float cy, float r, int bMirror, unsigned char cr, unsigned char cg, unsigned char cb)
+// A piece of the SABER button's picture: from t0 to t1 along the axis (ux,
+// uy) from (cx, cy), off across it, w wide (a line: round ends)
+static void tu_IconSeg(float cx, float cy, float ux, float uy, float t0, float t1, float off, float w, touchUiColor c)
 {
-    const float sx = bMirror ? -1.0f : 1.0f;
-    const float h0x = cx + sx * r * -0.42f, h0y = cy + r * 0.42f, h1x = cx + sx * r * -0.18f, h1y = cy + r * 0.18f;
-    const float tx = cx + sx * r * 0.46f, ty = cy - r * 0.46f;
-    const touchUiColor blade = touchUi_Rgba(cr / 255.0f, cg / 255.0f, cb / 255.0f, 1.0f);
-    touchUiColor glow = blade;
-    glow.a = 0.35f;
-    const float bw = TU_MAX(r * 0.17f, 3.0f);
-    touchUiDraw_Line(&tu_draw, h1x, h1y, tx, ty, bw + 4.0f, glow);
-    touchUiDraw_Line(&tu_draw, h1x, h1y, tx, ty, bw, blade);
-    touchUiDraw_Line(&tu_draw, h1x, h1y, tx, ty, TU_MAX(r * 0.06f, 1.2f), touchUi_White(0.9f));
-    touchUiDraw_Line(&tu_draw, h0x, h0y, h1x, h1y, TU_MAX(r * 0.2f, 3.5f), touchUi_Rgba(0.78f, 0.78f, 0.78f, 1.0f));
+    const float nx = -uy, ny = ux;
+    touchUiDraw_Line(&tu_draw, cx + ux * t0 + nx * off, cy + uy * t0 + ny * off, cx + ux * t1 + nx * off, cy + uy * t1 + ny * off, w, c);
+}
+
+// One saber of the SABER button's picture (iosTouch.m's IOSTouch_AddSaberIcon,
+// hiltmock/icon.py): along the button's diagonal (the right hand's up to the
+// right, bMirror the left hand's up to the left), in its hilt's shape --
+// NORMAL a blade; CROSS a small guard by the emitter; STAFF a blade out of
+// each end; FOLD folded two blades side by side, open a staff with a hinge
+// dot -- each blade in its colour, glowing, a white core along it
+static void tu_DrawSaberIcon(float cx, float cy, float r, int bMirror, int hilt, int bOpen, const unsigned char aRgb[2][3])
+{
+    const float ux = bMirror ? -0.70710678f : 0.70710678f, uy = -0.70710678f;
+    const float hw = TU_MAX(0.2f * r, 3.5f), bw = TU_MAX(0.17f * r, 3.0f), cw = TU_MAX(0.06f * r, 1.2f);
+    const float a = -0.594f * r, b = -0.2546f * r, tip = 0.6505f * r, h = 0.2f * r, o = 0.105f * r;
+    // (its pieces along the axis: blades t0, t1, off, w, each its own colour; hilts t0, t1, off, w)
+    float aBlade[2][4], aHilt[2][4];
+    int nBlades = 1, nHilts = 1, bGuard = 0, bHinge = 0;
+    const float aNormalBlade[4] = { b, tip, 0.0f, bw }, aNormalHilt[4] = { a, b, 0.0f, hw };
+    memcpy(aBlade[0], aNormalBlade, sizeof(aNormalBlade));
+    memcpy(aHilt[0], aNormalHilt, sizeof(aNormalHilt));
+    if (hilt == IOSSABER_HILT_STAFF || (hilt == IOSSABER_HILT_FOLD && bOpen)) {
+        const float aB[2][4] = { { h, tip, 0.0f, bw }, { -h, -tip, 0.0f, bw } };
+        memcpy(aBlade, aB, sizeof(aB));
+        nBlades = 2;
+        if (hilt == IOSSABER_HILT_STAFF) {
+            const float aH[4] = { -h, h, 0.0f, hw };
+            memcpy(aHilt[0], aH, sizeof(aH));
+        }
+        else {
+            const float aH[2][4] = { { -h, -0.9f, 0.0f, hw }, { 0.9f, h, 0.0f, hw } };
+            memcpy(aHilt, aH, sizeof(aH));
+            nHilts = 2;
+            bHinge = 1;
+        }
+    }
+    else if (hilt == IOSSABER_HILT_FOLD) {
+        const float aB[2][4] = { { b, tip, -o, bw * 0.78f }, { b, tip, o, bw * 0.78f } };
+        const float aH[2][4] = { { a, b, -o, hw * 0.7f }, { a, b, o, hw * 0.7f } };
+        memcpy(aBlade, aB, sizeof(aB));
+        memcpy(aHilt, aH, sizeof(aH));
+        nBlades = nHilts = 2;
+    }
+    else if (hilt == IOSSABER_HILT_CROSS) bGuard = 1;
+    touchUiColor aC[2];
+    for (int k = 0; k < 2; k++) aC[k] = touchUi_Rgba(aRgb[k][0] / 255.0f, aRgb[k][1] / 255.0f, aRgb[k][2] / 255.0f, 1.0f);
+    // (CROSS's guard: short blades out to each side, near the emitter)
+    const float q = b - 1.6f, nx = -uy, ny = ux;
+    for (int pass = 0; pass < 3; pass++) { // the glow, the blades, their cores
+        for (int k = 0; k < nBlades; k++) {
+            touchUiColor c = pass == 2 ? touchUi_White(0.9f) : aC[k];
+            if (pass == 0) c.a = 0.35f;
+            const float w = pass == 0 ? aBlade[k][3] + 4.0f : pass == 1 ? aBlade[k][3] : TU_MIN(cw, aBlade[k][3] * 0.4f);
+            tu_IconSeg(cx, cy, ux, uy, aBlade[k][0], aBlade[k][1], aBlade[k][2], w, c);
+        }
+        for (int sg = -1; bGuard && sg <= 1; sg += 2) {
+            touchUiColor c = pass == 2 ? touchUi_White(0.86f) : aC[0];
+            if (pass == 0) c.a = 0.35f;
+            const float w = pass == 0 ? 2.4f + 3.0f : pass == 1 ? 2.4f : 2.4f * 0.38f;
+            const float px = cx + ux * q, py = cy + uy * q;
+            const float x0 = px + nx * 2.0f * sg, y0 = py + ny * 2.0f * sg, x1 = px + nx * 5.6f * sg, y1 = py + ny * 5.6f * sg;
+            touchUiDraw_Line(&tu_draw, x0, y0, x1, y1, w, c);
+        }
+    }
+    for (int k = 0; k < nHilts; k++)
+        tu_IconSeg(cx, cy, ux, uy, aHilt[k][0], aHilt[k][1], aHilt[k][2], aHilt[k][3], touchUi_Rgba(0.78f, 0.78f, 0.78f, 1.0f));
+    if (bHinge) touchUiDraw_Circle(&tu_draw, cx, cy, 1.7f, touchUi_Rgba(120.0f / 255.0f, 120.0f / 255.0f, 124.0f / 255.0f, 1.0f), 0.6f, touchUi_Rgba(0.9f, 0.9f, 0.9f, 1.0f));
 }
 
 // Whether a thumb still on MENU after its tray opened is over this tray button
@@ -3023,13 +3060,16 @@ static void tu_DrawButton(int i)
     else if (i == BTN_TRAYCAM) tu_DrawCameraIcon(b->x, b->y, text);
     else if (i == BTN_CAMERA) tu_DrawCameraFilled(b->x, b->y, text);
     else if (i == BTN_SABER) {
-        // in the blades' colours, as picked (the game's own: its colour now)
-        const int st = tu_SaberStyle();
-        unsigned char aRgb[2][3] = { { 160, 160, 160 }, { 160, 160, 160 } };
-        for (int k = 0; k < 2 && G(SaberColourRGB) && G(SaberGetColour); k++)
-            tu.game->SaberColourRGB(tu.game->SaberGetColour(st, k), &aRgb[k][0], &aRgb[k][1], &aRgb[k][2]);
-        if (tu_SaberNumBlades(st) >= 2) tu_DrawSaberIcon(b->x, b->y, b->radius, 1, aRgb[1][0], aRgb[1][1], aRgb[1][2]);
-        tu_DrawSaberIcon(b->x, b->y, b->radius, 0, aRgb[0][0], aRgb[0][1], aRgb[0][2]);
+        // each saber in its hilt's shape, each blade in its colour as shown
+        // (the game's own: its colour now); two in an X, the left hand's under
+        iosSaberWheelIcon ic;
+        iosSaberWheel_GetIcon(&ic);
+        for (int k = ic.numSabers - 1; k >= 0; k--) {
+            unsigned char aRgb[2][3] = { { 160, 160, 160 }, { 160, 160, 160 } };
+            for (int j = 0; j < 2 && G(SaberColourRGB); j++)
+                tu.game->SaberColourRGB(ic.aHand[k].aColour[j], &aRgb[j][0], &aRgb[j][1], &aRgb[j][2]);
+            tu_DrawSaberIcon(b->x, b->y, b->radius, k == IOSSABER_HAND_LEFT, ic.aHand[k].hilt, ic.aHand[k].bOpen, aRgb);
+        }
     }
     else if (label[0]) tu_DrawLabel(label, b->x, b->y, size, xscale, 2.0f * b->radius, text);
 
@@ -3164,7 +3204,7 @@ const touchUiDrawList* touchUi_Draw(double now)
         return &tu_draw;
     }
     for (int i = 0; i < BTN_TRAY_FIRST; i++) {
-        if (tu_Hidden(i) || (tu.bWheelOpen && i == tu.wheelButton)) continue;
+        if (tu_Hidden(i) || (tu.bWheelOpen && i == tu.wheelButton) || (tu_IsActionButton(i) && tu_ActionsHidden())) continue;
         tu_DrawButton(i);
         if (i == BTN_FORCE) tu_DrawForceMeter(now);
     }
@@ -3194,7 +3234,7 @@ const touchUiDrawList* touchUi_Draw(double now)
         touchUiDraw_Text(&tu_draw, num, bx, by, 12.0f, 1.0f, TU_GOLD(0.95f));
     }
     tu_DrawFps();
-    tu_DrawStick();
+    if (!tu_ActionsHidden()) tu_DrawStick();
     if (tu.bWheelOpen) {
         tu_DrawWheel();
         tu_DrawButton(tu.wheelButton); // (lit, above the dimmed screen)
