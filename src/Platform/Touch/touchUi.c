@@ -41,6 +41,11 @@
 #define TU_CLUSTER_GAP 30.0f
 #define TU_TOUCH_SLOP 6.0f
 #define TU_WHEEL_XSCALE 0.82f // (the labels' font: bold, condensed, as the wheels')
+// A button's label is as big as fits its round, TU_LABEL_MARGIN inside its
+// border (FORCE's: inside the force meter's ring), down to TU_LABEL_MIN
+// (iosTouch.m's IOSTOUCH_LABEL_MIN, _MARGIN): tu_DrawLabel
+#define TU_LABEL_MIN 8.0f
+#define TU_LABEL_MARGIN 1.5f
 #define TU_WHEEL_POP 10.0f // (as inputWheel.c's: a finger this far past the ring still points)
 #define TU_WHEEL_OPEN_SLIDE 10.0f
 #define TU_WHEEL_HOLD 0.3
@@ -2837,12 +2842,32 @@ static float tu_FontSize(const char* label, float radius)
     return radius >= 40 ? 16.0f : (radius >= 25 ? 13.0f : 10.0f);
 }
 
-// A label in a button's circle, shrunk to fit its width (to 0.6 of its size)
-static void tu_DrawLabel(const char* text, float x, float y, float size, float xscale, float maxW, touchUiColor c)
+// A label in a button's circle, as big as it fits the round, not the square
+// (iosTouch.m's IOSTouch_FitRound): at most size, down to TU_LABEL_MIN, its
+// widest line's ends inside radius R of the middle. One that doesn't fit at
+// the smallest goes condensed (the wheels' xscale), as big as that fits; one
+// that still doesn't is narrowed further at the smallest (to 0.6 at most).
+static void tu_DrawLabel(const char* text, float x, float y, float size, float xscale, float R, touchUiColor c)
 {
-    float w;
-    touchUiDraw_MeasureText(text, size, xscale, &w, NULL);
-    if (w > maxW && w > 0.0f) size *= TU_MAX(0.6f, maxW / w);
+    int lines = 1;
+    for (const char* p = text; *p; p++) lines += *p == '\n';
+    // (the width is the size times w1; the lines are 1.19 of the size apart,
+    // the bottom one's foot a quarter of it above the block's foot: the top
+    // line's cap tops and the bottom one's foot this far from the middle)
+    float w1;
+    touchUiDraw_MeasureText(text, 1.0f, 1.0f, &w1, NULL);
+    const float far = lines * 0.595f - 0.25f, lo = TU_MIN(size, TU_LABEL_MIN);
+    for (int pass = xscale < 1.0f ? 1 : 0; pass < 2; pass++) {
+        if (pass) xscale = TU_MIN(xscale, TU_WHEEL_XSCALE);
+        const float half = w1 * xscale * 0.5f, fit = R / sqrtf(half * half + far * far);
+        if (fit >= lo) {
+            touchUiDraw_Text(&tu_draw, text, x, y, TU_MIN(size, fit), xscale, c);
+            return;
+        }
+    }
+    size = lo;
+    const float room = 2.0f * sqrtf(TU_MAX(R * R - size * far * size * far, 0.0f)), w = w1 * xscale * size;
+    if (w > room && w > 0.0f) xscale *= TU_MAX(0.6f, room / w);
     touchUiDraw_Text(&tu_draw, text, x, y, size, xscale, c);
 }
 
@@ -3088,7 +3113,10 @@ static void tu_DrawButton(int i)
             tu_DrawSaberIcon(b->x, b->y, b->radius, k == IOSSABER_HAND_LEFT, ic.aHand[k].hilt, ic.aHand[k].bOpen, aRgb);
         }
     }
-    else if (label[0]) tu_DrawLabel(label, b->x, b->y, size, xscale, 2.0f * b->radius, text);
+    else if (label[0]) {
+        // (inside the 1.5 pt border; FORCE's inside the force meter's ring, whose inside is 4 pt in)
+        tu_DrawLabel(label, b->x, b->y, size, xscale, b->radius - (i == BTN_FORCE ? 4.0f : 1.5f) - TU_LABEL_MARGIN, text);
+    }
 
     // sithewok's own uses of JUMP and ACT, named under their labels
     if (tu.bCheatOn && (i == BTN_JUMP || i == BTN_ACT)) {

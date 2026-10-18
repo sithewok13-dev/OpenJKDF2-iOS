@@ -25,6 +25,7 @@ static struct {
     int bMots;
     int aPowerLevel[64]; // >0: learned, at that level (1..4); -1: learned at 0
     int curPower;
+    const char* forceName; // (FORCE's power's name; NULL: SPEED)
     int aWeaponOwned[160], aWeaponAmmo[160], aWeaponSel[160];
     int curWeapon;
     int aItem[64];
@@ -61,7 +62,7 @@ static struct {
 #define SC(st, b) fg.aBladeColour[(b) & 1][0]
 
 static int F_IsMots(void) { return fg.bMots; }
-static const char* F_GetForcePowerName(void) { return fg.curPower >= 0 ? "SPEED" : NULL; }
+static const char* F_GetForcePowerName(void) { return fg.curPower >= 0 ? (fg.forceName ? fg.forceName : "SPEED") : NULL; }
 static int F_IsPowerAvailable(int bin) { return bin >= 0 && bin < 64 && fg.aPowerLevel[bin] != 0; }
 static int F_GetPowerLevel(int bin) { return (bin >= 0 && bin < 64 && fg.aPowerLevel[bin] > 0) ? fg.aPowerLevel[bin] : 0; }
 static const char* F_GetPowerName(int bin)
@@ -3064,6 +3065,70 @@ static int drawnText(const char* t)
     return 0;
 }
 
+// A button's label as drawn (the text item at its middle that says t): how
+// far its widest line's ends are inside radius inner of the middle (the lines
+// 1.19 of the size apart, the bottom one's foot a quarter of it above the
+// block's), its size and xscale; and the same at 10 pt, full width
+static int labelMargin(int btn, const char* t, float inner, float* pMargin, float* pSize, float* pXs, float* pMargin10)
+{
+    float bx, by;
+    bxy(btn, &bx, &by);
+    const touchUiDrawList* l = touchUi_Draw(T);
+    for (int i = 0; i < l->numItems; i++) {
+        const touchUiDrawItem* it = &l->aItems[i];
+        if (it->type != TOUCHUI_DRAW_TEXT || strcmp(l->aPool + it->text, t) || fabsf(it->x0 - bx) > 0.01f || fabsf(it->y0 - by) > 0.01f) continue;
+        int lines = 1;
+        for (const char* p = t; *p; p++) lines += *p == '\n';
+        float w, w10;
+        touchUiDraw_MeasureText(t, it->size, it->xscale, &w, NULL);
+        touchUiDraw_MeasureText(t, 10.0f, 1.0f, &w10, NULL);
+        const float far = lines * 0.595f - 0.2496f;
+        *pMargin = inner - sqrtf(w * w * 0.25f + it->size * far * it->size * far);
+        *pMargin10 = inner - sqrtf(w10 * w10 * 0.25f + 10.0f * far * 10.0f * far);
+        *pSize = it->size;
+        *pXs = it->xscale;
+        return 1;
+    }
+    return 0;
+}
+
+// FORCE's label with every power's name (iosGame_GetPowerName's: Jedi
+// Knight's and Mysteries of the Sith's) and the tray's CONTROLS both ways:
+// the widest line's ends 1.5 pt inside the round (FORCE's: inside the force
+// meter's ring, 4 pt in; CONTROLS's: inside its 1.5 pt border), never under
+// 8 pt; a name that fits at 10 pt stays so
+static void test_label_fit(void)
+{
+    static const char* aNames[] = { "JUMP", "SPEED", "SEEING", "PULL", "HEALING", "PERSUADE", "BLINDING", "ABSORB", "PROTECT", "THROW",
+                                    "GRIP", "LIGHTNING", "DESTRUCT", "DEADLY SIGHT", "DEFENSE", "FAR SIGHT", "PROJECT", "SABER THROW", "PUSH", "CHAIN LIGHT" };
+    float r, m, size, xs, m10;
+    setup();
+    touchUi_GetButton(TOUCHUI_BTN_FORCE, NULL, NULL, &r);
+    fg.curPower = 21;
+    for (int k = 0; k < (int)(sizeof(aNames) / sizeof(aNames[0])); k++) {
+        char t[32];
+        snprintf(t, sizeof t, "FORCE\n%s", aNames[k]);
+        fg.forceName = aNames[k];
+        tick();
+        g_case = "fit: FORCE's label with every power's name: inside the force meter's ring, 8 pt or more, a name that fits at 10 pt so";
+        CHECK(labelMargin(TOUCHUI_BTN_FORCE, t, r - 4.0f, &m, &size, &xs, &m10));
+        CHECK(m >= 1.5f - 0.01f && size >= 8.0f - 0.001f && xs >= 0.6f - 0.001f);
+        if (m10 >= 1.5f) CHECK(fabsf(size - 10.0f) < 0.001f && fabsf(xs - 1.0f) < 0.001f);
+        printf("  FORCE %-12s %.2f pt x%.2f, %.2f pt inside the ring\n", aNames[k], size, xs, m);
+    }
+    fg.forceName = NULL;
+    g_case = "fit: the tray's CONTROLS, NORMAL and SWAPPED: inside its border, 8 pt or more";
+    touchUi_GetButton(TOUCHUI_BTN_TRAYCTRL, NULL, NULL, &r);
+    for (int bSwap = 0; bSwap < 2; bSwap++) {
+        openTrayT();
+        CHECK(labelMargin(TOUCHUI_BTN_TRAYCTRL, bSwap ? "CONTROLS\nSWAPPED" : "CONTROLS\nNORMAL", r - 1.5f, &m, &size, &xs, &m10));
+        CHECK(m >= 1.5f - 0.01f && size >= 8.0f - 0.001f && xs >= 0.6f - 0.001f);
+        printf("  CONTROLS %s: %.2f pt x%.2f, %.2f pt inside the border\n", bSwap ? "SWAPPED" : "NORMAL", size, xs, m);
+        downOn(2, TOUCHUI_BTN_TRAYCTRL); upOn(2, TOUCHUI_BTN_TRAYCTRL); // (swaps; the tray closes)
+        closeTrayT();
+    }
+}
+
 // The LEFT card's x against its colours' row, at every touch size: the x's
 // touch the card's top right, 40 x 22 (the x drawn 4..24 pt down); from 22 pt
 // down the row's (the colour's name, a dot); a tap there never drops the
@@ -3576,6 +3641,7 @@ int main(void)
     test_saber_fit();
     test_saber_x_row();
     test_prompt_lines();
+    test_label_fit();
     test_shared_wheel();
     test_other_photo_and_cancel();
     test_level_tray();

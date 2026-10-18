@@ -140,6 +140,12 @@ extern int jkHud_bChatOpen;
 // IOSTOUCH_WHEEL_TITLE_MIN of its size; a weapon's name that would need to go
 // smaller ("STORMTROOPER RIFLE") goes on two lines instead
 #define IOSTOUCH_WHEEL_TITLE_MIN 0.6
+// A button's label that changes (FORCE's power, the tray's settings) is as
+// big as fits its round, IOSTOUCH_LABEL_MARGIN inside its border (FORCE's:
+// inside the force meter's ring), down to IOSTOUCH_LABEL_MIN; one too long
+// for that goes condensed (IOSTouch_FitRound)
+#define IOSTOUCH_LABEL_MIN 8.0
+#define IOSTOUCH_LABEL_MARGIN 1.5
 // QUICK SAVE and QUICK LOAD have to be held this long, so a stray tap can't
 // save over the quicksave or throw away progress
 #define IOSTOUCH_QUICKSAVE_HOLD 0.3
@@ -1689,6 +1695,28 @@ static UIFont* IOSTouch_WheelFont(CGFloat size)
     return [UIFont boldSystemFontOfSize:size];
 }
 
+// A round button's label as big as it fits the round, not the square: the
+// largest size, from size down a quarter point at a time to
+// IOSTOUCH_LABEL_MIN, at which its widest line's ends are inside the circle
+// of radius R round its middle. (The label's own shrinking fits the square,
+// so a long line ran into the edge either side: FORCE's "SABER THROW".) One
+// that doesn't fit at the smallest goes in the condensed font (the wheel's),
+// as big as that fits; a label already condensed starts there.
+static void IOSTouch_FitRound(UILabel* l, CGFloat size, CGFloat R, int bCondensed)
+{
+    // (the system font's lines are 1.19 of its size apart, its descent 0.24:
+    // the top line's cap tops and the bottom line's foot that far from the middle)
+    const CGFloat lines = (CGFloat)[[l.text componentsSeparatedByString:@"\n"] count];
+    for (int pass = bCondensed ? 1 : 0; pass < 2; pass++) {
+        for (CGFloat s = size; s >= IOSTOUCH_LABEL_MIN; s -= 0.25) {
+            l.font = pass ? IOSTouch_WheelFont(s) : [UIFont boldSystemFontOfSize:s];
+            const CGFloat w = [l sizeThatFits:CGSizeMake(1000.0, 1000.0)].width, far = s * (lines * 0.595 - 0.24);
+            if (w * w * 0.25 + far * far <= R * R) return;
+        }
+    }
+    // (none fits: the smallest, condensed)
+}
+
 // A wheel group's colour, mixed k of the way to it from the wheel's dark grey
 static UIColor* IOSTouch_WheelColour(const iosTouchWheelGroup* g, CGFloat k)
 {
@@ -1875,14 +1903,7 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         [self insertSubview:trayBack belowSubview:aButtonViews[BTN_TRAY_FIRST]];
         for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) aButtonViews[i].hidden = YES;
         iosTouch_GyroSetup();
-        // GYRO and SENS say what they are set to on a second line: at the size
-        // of a two-line label, condensed so "ALWAYS" fits a circle this small
-        const int aTwoLine[] = { BTN_TRAYGYRO, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_GYROOPT_MODE, BTN_GYROOPT_SENS, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE };
-        for (int k = 0; k < IOSTOUCH_COUNT(aTwoLine); k++) {
-            const int i = aTwoLine[k];
-            aButtonViews[i].font = IOSTouch_WheelFont(IOSTouch_FontSize("GYRO\nALWAYS", iosTouch_aButtons[i].radius));
-        }
-        [self refreshGyroLabels];
+        [self refreshGyroLabels]; // (and their fonts)
         UIImageSymbolConfiguration* cfg = [UIImageSymbolConfiguration configurationWithPointSize:14 weight:UIImageSymbolWeightSemibold];
         UIImage* kb = [UIImage systemImageNamed:@"keyboard" withConfiguration:cfg];
         if (kb) {
@@ -4141,6 +4162,15 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     static NSString* aJumpName[IOSGAME_JUMP_NUM_STYLES] = { @"JUMP\nSMOOTH", @"JUMP\nSTEPS", @"JUMP\nCLASSIC" };
     aButtonViews[BTN_TRAYJUMP].text = aJumpName[iosTouch_jumpStyle];
     aButtonViews[BTN_TRAYCTRL].text = iosTouch_bSwapped ? @"CONTROLS\nSWAPPED" : @"CONTROLS\nNORMAL";
+    // GYRO and SENS say what they are set to on a second line: at the size
+    // of a two-line label, condensed so "ALWAYS" fits a circle this small,
+    // and smaller where a line is longer ("CONTROLS"), inside the 1.5 pt border
+    static const int aTwoLine[] = { BTN_TRAYGYRO, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_GYROOPT_MODE, BTN_GYROOPT_SENS, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE };
+    for (int k = 0; k < IOSTOUCH_COUNT(aTwoLine); k++) {
+        const int i = aTwoLine[k];
+        const CGFloat r = iosTouch_aButtons[i].radius;
+        IOSTouch_FitRound(aButtonViews[i], IOSTouch_FontSize("GYRO\nALWAYS", r), r - 1.5 - IOSTOUCH_LABEL_MARGIN, 1);
+    }
 }
 
 // A tray button picked: it does its thing, and the tray closes -- except
@@ -5737,7 +5767,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         forceLabelName = name;
         UILabel* l = aButtonViews[BTN_FORCE];
         l.text = name ? [NSString stringWithFormat:@"FORCE\n%s", name] : @"FORCE";
-        l.font = [UIFont boldSystemFontOfSize:(name ? 10 : 13)];
+        // (inside the force meter's ring, whose inside is 4 pt in)
+        IOSTouch_FitRound(l, name ? 10 : 13, iosTouch_aButtons[BTN_FORCE].radius - 4.0 - IOSTOUCH_LABEL_MARGIN, 0);
         bLooksChanged = 1;
     }
 
