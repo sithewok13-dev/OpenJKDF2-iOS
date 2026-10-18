@@ -94,8 +94,10 @@ static void iosSaberFold_Click(SithThing* pThing)
 // ------------------------------------------------------------ the local player's
 
 typedef struct {
-    int bOut;            // out on a throw
+    int bOut;            // out on a throw (or caught, not lit again yet: bBack)
     int bSeenAway;       // (seen out of the hand since: back in it is the catch)
+    int bBack;           // caught: in the hand again (drawn there, as caught), until it is lit
+    int bByInventory;    // (Mysteries of the Sith's own throw, no hand of the throws': back once the saber is had again, the game's throw taking it while it flies)
     int hilt;            // the hilt it was thrown with
     int bOpenAtRelease;  // thrown open (else folded, snapping open as it flies)
     int bClicked;        // (its snap's click played)
@@ -153,6 +155,12 @@ static uint32_t iosSaberFold_Now(void)
     return sithTime_g_msecGameTime;
 }
 
+// (a saber of the local player's out of the hand now: thrown, not caught yet)
+static int iosSaberFold_Flying(int saber)
+{
+    return iosSaberFold_s.aOut[saber].bOut && !iosSaberFold_s.aOut[saber].bBack;
+}
+
 // Both sabers in hand toward target (each from where it is); one click if either moves and a FOLD is lit
 static void iosSaberFold_Target(int target, int bClick)
 {
@@ -161,7 +169,7 @@ static void iosSaberFold_Target(int target, int bClick)
     SithThing* p = iosSaberFold_s.pPlayer;
     int bMoved = 0;
     for (int k = 0; k < 2; k++) {
-        if (iosSaberFold_s.aOut[k].bOut) continue;
+        if (iosSaberFold_Flying(k)) continue;
         // (heard for a FOLD in hand: the one in the right hand, and the left one with two)
         const int bShown = p && (k == iosSaberStaff_SaberInHand(p, 0) || (k == 1 && iosSaber_HasSecondBlade(p))) && iosSaberStaff_SaberHilt(p, k) == IOSSABER_HILT_FOLD;
         if (iosSaberFold_SnapTo(&iosSaberFold_s.aSaber[k], iosSaberFold_s.target, now) && bShown) bMoved = 1;
@@ -181,7 +189,7 @@ static void iosSaberFold_Fresh(void)
 void iosSaberFold_Reset(void)
 {
     memset(iosSaberFold_s.aOut, 0, sizeof(iosSaberFold_s.aOut));
-    iosSaberFold_s.bWasThrowing = 0;
+    iosSaberFold_s.bWasThrowing = 1; // (a game loaded with Mysteries of the Sith's throw power still on: not a throw now)
     iosSaberFold_s.bWasOn = 0;
     iosSaberFold_s.bTime = 0;
     iosSaberFold_s.pPlayer = NULL;
@@ -210,7 +218,7 @@ void iosSaberFold_SetHeldOpen(int bOpen)
     if (iosSaberFold_s.bAuto) return;
     iosSaberFold_s.target = bOpen ? 1 : 0;
     for (int k = 0; k < 2; k++)
-        if (!iosSaberFold_s.aOut[k].bOut) iosSaberFold_SnapSet(&iosSaberFold_s.aSaber[k], iosSaberFold_s.target);
+        if (!iosSaberFold_Flying(k)) iosSaberFold_SnapSet(&iosSaberFold_s.aSaber[k], iosSaberFold_s.target);
 }
 
 int iosSaberFold_CanFlip(void)
@@ -281,13 +289,13 @@ float iosSaberFold_ThrownOpenFraction(int saber)
 {
     if (saber < 0 || saber > 1) return 1.0f;
     // (not known to be out yet, as it is drawn the moment it leaves the hand: as it was in the hand)
-    if (!iosSaberFold_s.aOut[saber].bOut) return iosSaberFold_SnapNow(&iosSaberFold_s.aSaber[saber], iosSaberFold_Now());
+    if (!iosSaberFold_Flying(saber)) return iosSaberFold_SnapNow(&iosSaberFold_s.aSaber[saber], iosSaberFold_Now());
     return iosSaberFold_OutFraction(&iosSaberFold_s.aOut[saber], iosSaberFold_Now());
 }
 
 int iosSaberFold_ThrownHilt(int saber)
 {
-    if (saber < 0 || saber > 1 || !iosSaberFold_s.aOut[saber].bOut) return -1;
+    if (saber < 0 || saber > 1 || !iosSaberFold_Flying(saber)) return -1;
     return iosSaberFold_s.aOut[saber].hilt;
 }
 
@@ -312,17 +320,20 @@ static SithThing* iosSaberFold_FindThrown(SithThing* p)
     return NULL;
 }
 
-// A saber back in its hand: AUTO on, open (as it flew), folding 5 s on without a swing; off, as the
-// player left it (thrown folded: snapping shut, with the click)
+// A saber back in its hand (the moment it is, not once it is lit again: drawn in the hand from then on,
+// as caught): AUTO on, open (as it flew), folding 5 s on without a swing; off, as the player left it
+// (thrown folded: snapping shut, with the click)
 static void iosSaberFold_Caught(SithThing* p, int saber, uint32_t now)
 {
     iosSaberFoldOut* o = &iosSaberFold_s.aOut[saber];
     const float f = iosSaberFold_OutFraction(o, now);
-    o->bOut = 0;
+    o->bBack = 1;
+    // (in the hand as it flew, part way through its snap open if caught that soon: the snaps on go from there)
     iosSaberFoldSnap* s = &iosSaberFold_s.aSaber[saber];
     s->from = f;
     s->target = f >= 0.5f;
-    s->bMoving = 0;
+    s->startMs = now;
+    s->bMoving = f != (float)s->target;
     if (o->hilt != IOSSABER_HILT_FOLD) {
         iosSaberFold_SnapSet(s, iosSaberFold_s.target);
         return;
@@ -356,6 +367,7 @@ void iosSaberFold_Tick(void)
     if (iosSaberFold_s.bTime && (now < iosSaberFold_s.lastMs || now - iosSaberFold_s.lastMs > 60000u)) {
         // (the clock gone back, or far on: a game loaded)
         memset(iosSaberFold_s.aOut, 0, sizeof(iosSaberFold_s.aOut));
+        iosSaberFold_s.bWasThrowing = 1;
         iosSaberFold_Fresh();
     }
     iosSaberFold_s.bTime = 1;
@@ -369,22 +381,37 @@ void iosSaberFold_Tick(void)
     }
     iosSaberFold_s.bWasDead = bDead;
 
-    // Mysteries of the Sith's own throw (one saber): its power going on is the saber leaving the hand
+    // Mysteries of the Sith's own throw (one saber): its power going on is the saber leaving the hand (on
+    // already as a game is loaded or a level begun, it is not)
     const int bThrowing = Main_bMotsCompat && iosSaber_GetStyle() != IOSSABER_STYLE_DUAL && sithInventory_IsInventoryActivated(p, IOSSABERFOLD_MOTS_THROW_BIN);
-    if (bThrowing && !iosSaberFold_s.bWasThrowing && !iosSaberFold_s.aOut[0].bOut) iosSaberFold_Released(0, iosSaberFold_FindThrown(p), 0);
+    if (bThrowing && !iosSaberFold_s.bWasThrowing && !iosSaberFold_s.aOut[0].bOut) {
+        iosSaberFold_Released(0, iosSaberFold_FindThrown(p), 0);
+        iosSaberFold_s.aOut[0].bByInventory = 1;
+    }
     iosSaberFold_s.bWasThrowing = bThrowing;
 
-    // sabers out: away from the hand, then back in it (the catch); the thrown snap's click
+    // sabers out: away from the hand, then back in it (the catch: the throws' hands say so, or for
+    // Mysteries of the Sith's own throw, the saber had again), then lit again (the throw over: not lit
+    // afresh); the thrown snap's click
     const int mask = iosSaberThrow_HandsInHand();
+    const int bHad = sithInventory_GetInventory(p, iosSaberFold_SaberBin()) > 0.0;
     const int bLit = (p->jkFlags & JKFLAG_SABERON) && p->actorParams.pPlayer->curWeaponID == iosSaberFold_SaberBin();
     int bCaught = 0;
     for (int k = 0; k < 2; k++) {
         iosSaberFoldOut* o = &iosSaberFold_s.aOut[k];
         if (!o->bOut) continue;
         if (now < o->releaseMs || now - o->releaseMs > IOSSABERFOLD_OUT_MAX_MS) { o->bOut = 0; continue; }
-        if (!(mask & (1 << k)) || !bLit) o->bSeenAway = 1;
+        if (o->bBack) {
+            if (!bLit) continue;
+            o->bOut = 0;
+            bCaught = 1;
+            if (iosSaberFold_s.bAuto && o->hilt == IOSSABER_HILT_FOLD) iosSaberFold_s.lastSwingMs = now; // (AUTO's 5 s from when it is lit in hand)
+            continue;
+        }
+        if (!(o->bByInventory ? bHad : (mask & (1 << k)))) o->bSeenAway = 1;
         else if (o->bSeenAway) {
             iosSaberFold_Caught(p, k, now);
+            if (bLit) o->bOut = 0;
             bCaught = 1;
             continue;
         }
@@ -517,7 +544,7 @@ float iosSaberFold_OpenFraction(SithThing* pThing, int saber)
     if (!pThing || saber < 0 || saber > 1) return 0.0f;
     const uint32_t now = iosSaberFold_Now();
     if (pThing == sithPlayer_g_pLocalPlayerThing) {
-        if (iosSaberFold_s.aOut[saber].bOut) return iosSaberFold_OutFraction(&iosSaberFold_s.aOut[saber], now);
+        if (iosSaberFold_Flying(saber)) return iosSaberFold_OutFraction(&iosSaberFold_s.aOut[saber], now);
         return iosSaberFold_SnapNow(&iosSaberFold_s.aSaber[saber], now);
     }
     const iosSaberFoldSlot* s = iosSaberFold_Find(pThing);

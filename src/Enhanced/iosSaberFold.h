@@ -22,7 +22,8 @@
 //    snaps open 0.25 s after (clear of the thrower), with the click; two are
 //    each their own. Caught with AUTO on: open (it was open in flight), and
 //    AUTO folds it 5 s after if no swing comes; AUTO off: as it was thrown
-//    (snapping shut on the catch). A throw is not a swing.
+//    (snapping shut on the catch: as it is back in the hand, before it is lit
+//    again). A throw is not a swing.
 // Other players' (multiplayer): as their game sends it (iosSaberFold_SetOpenBits,
 // the look's trailing flags byte, jkPlayerLook); folded until then.
 //
