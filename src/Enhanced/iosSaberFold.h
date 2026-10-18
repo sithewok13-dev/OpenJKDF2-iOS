@@ -88,8 +88,10 @@ void iosSaberFold_Tick(void);
 // A swing begun (jkSaber_Enable, through iosSaberStaff_Swing)
 void iosSaberFold_Swing(struct SithThing* pThing);
 // A saber of the local player's thrown (the throw's own code, as it leaves
-// the hand: saber 0 the right, 1 the left; pSaber the thing flying)
-void iosSaberFold_Released(int saber, struct SithThing* pSaber);
+// the hand: saber 0 the right, 1 the left; pSaber the thing flying; shown,
+// the saber whose look it had in the hand: its own, or with one saber, the
+// one saber's, 0, whichever hand's it is)
+void iosSaberFold_Released(int saber, struct SithThing* pSaber, int shown);
 // A new level or a load (jkDev, with the throws' reset): every saber in hand,
 // folded with AUTO on (as the player left it with AUTO off)
 void iosSaberFold_Reset(void);
