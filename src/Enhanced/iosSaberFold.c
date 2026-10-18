@@ -110,11 +110,14 @@ static struct {
     SithThing* pPlayer;
     uint32_t signature;
     int bAuto;
-    int target;          // both sabers' (folded 0, open 1)
-    int bHeldFolded;     // folded by hand: AUTO doesn't open it until IOSSABERFOLD_CALM_MS without a swing
-    uint32_t heldMs;
-    int bSwung;          // a swing since it opened: AUTO may fold it
+    // each saber's own ([0] the right hand's, [1] the left's)
+    int aTarget[2];      // folded 0, open 1 (with AUTO off: as the player left it)
+    int aHeldFolded[2];  // folded by hand: AUTO doesn't open it until IOSSABERFOLD_CALM_MS without a swing
+    uint32_t aHeldMs[2];
+    int aSwung[2];       // a swing since it opened: AUTO may fold it
     uint32_t lastSwingMs;
+    int bKeyAgain;       // (the saber's key flipped the right hand's of two: pressed again soon, the left's)
+    uint32_t keyMs;
     int bWasOn;          // a FOLD lit in hand, last tick
     int bWasThrowing;    // Mysteries of the Sith's own throw out, last tick
     int bWasDead;
@@ -161,29 +164,51 @@ static int iosSaberFold_Flying(int saber)
     return iosSaberFold_s.aOut[saber].bOut && !iosSaberFold_s.aOut[saber].bBack;
 }
 
-// Both sabers in hand toward target (each from where it is); one click if either moves and a FOLD is lit
-static void iosSaberFold_Target(int target, int bClick)
+// (a saber of the player's a FOLD in hand: the one in the right hand, and the left one with two)
+static int iosSaberFold_Shown(SithThing* p, int saber)
+{
+    return p && (saber == iosSaberStaff_SaberInHand(p, 0) || (saber == 1 && iosSaber_HasSecondBlade(p))) && iosSaberStaff_SaberHilt(p, saber) == IOSSABER_HILT_FOLD;
+}
+
+// (the FOLDs lit in hand now, by saber: bit 0 the right hand's, bit 1 the left's)
+static int iosSaberFold_InHand(SithThing* p)
+{
+    int mask = 0;
+    for (int k = 0; k < 2 && iosSaberFold_LitFold(p); k++)
+        if (!iosSaberFold_Flying(k) && iosSaberFold_Shown(p, k)) mask |= 1 << k;
+    return mask;
+}
+
+// Those sabers (by bit, as above; none out on a throw) toward target, each from where it is; 1 if a FOLD in
+// hand moves (iosSaberFold_Clicked)
+static int iosSaberFold_Target(int mask, int target)
 {
     const uint32_t now = iosSaberFold_Now();
-    iosSaberFold_s.target = target ? 1 : 0;
     SithThing* p = iosSaberFold_s.pPlayer;
     int bMoved = 0;
     for (int k = 0; k < 2; k++) {
-        if (iosSaberFold_Flying(k)) continue;
-        // (heard for a FOLD in hand: the one in the right hand, and the left one with two)
-        const int bShown = p && (k == iosSaberStaff_SaberInHand(p, 0) || (k == 1 && iosSaber_HasSecondBlade(p))) && iosSaberStaff_SaberHilt(p, k) == IOSSABER_HILT_FOLD;
-        if (iosSaberFold_SnapTo(&iosSaberFold_s.aSaber[k], iosSaberFold_s.target, now) && bShown) bMoved = 1;
+        if (!(mask & (1 << k)) || iosSaberFold_Flying(k)) continue;
+        iosSaberFold_s.aTarget[k] = target ? 1 : 0;
+        if (iosSaberFold_SnapTo(&iosSaberFold_s.aSaber[k], iosSaberFold_s.aTarget[k], now) && iosSaberFold_Shown(p, k)) bMoved = 1;
     }
-    if (bMoved && bClick && iosSaberFold_LitFold(p)) iosSaberFold_Click(p);
+    return bMoved;
 }
 
-// Folded at once (AUTO on: lit afresh, a level, a load, a death); with AUTO off, as the player left it
+// (one click for whatever moved at once, a FOLD lit)
+static void iosSaberFold_Clicked(int bMoved)
+{
+    if (bMoved && iosSaberFold_LitFold(iosSaberFold_s.pPlayer)) iosSaberFold_Click(iosSaberFold_s.pPlayer);
+}
+
+// Folded at once (AUTO on: lit afresh, a level, a load, a death); with AUTO off, each as the player left it
 static void iosSaberFold_Fresh(void)
 {
-    if (iosSaberFold_s.bAuto) iosSaberFold_s.target = 0;
-    for (int k = 0; k < 2; k++) iosSaberFold_SnapSet(&iosSaberFold_s.aSaber[k], iosSaberFold_s.target);
-    iosSaberFold_s.bHeldFolded = 0;
-    iosSaberFold_s.bSwung = 0;
+    for (int k = 0; k < 2; k++) {
+        if (iosSaberFold_s.bAuto) iosSaberFold_s.aTarget[k] = 0;
+        iosSaberFold_SnapSet(&iosSaberFold_s.aSaber[k], iosSaberFold_s.aTarget[k]);
+        iosSaberFold_s.aHeldFolded[k] = 0;
+        iosSaberFold_s.aSwung[k] = 0;
+    }
 }
 
 void iosSaberFold_Reset(void)
@@ -204,21 +229,32 @@ int iosSaberFold_GetAuto(void)
 void iosSaberFold_SetAuto(int bOn)
 {
     iosSaberFold_s.bAuto = bOn ? 1 : 0;
-    iosSaberFold_s.bHeldFolded = 0;
-    iosSaberFold_s.bSwung = 0; // (on: AUTO folds it after the next swing, not at once)
+    for (int k = 0; k < 2; k++) {
+        iosSaberFold_s.aHeldFolded[k] = 0;
+        iosSaberFold_s.aSwung[k] = 0; // (on: AUTO folds it after the next swing, not at once)
+    }
+}
+
+int iosSaberFold_GetSaberHeldOpen(int saber)
+{
+    return (saber == 0 || saber == 1) && iosSaberFold_s.aTarget[saber];
+}
+
+void iosSaberFold_SetSaberHeldOpen(int saber, int bOpen)
+{
+    if (iosSaberFold_s.bAuto || saber < 0 || saber > 1) return;
+    iosSaberFold_s.aTarget[saber] = bOpen ? 1 : 0;
+    if (!iosSaberFold_Flying(saber)) iosSaberFold_SnapSet(&iosSaberFold_s.aSaber[saber], iosSaberFold_s.aTarget[saber]);
 }
 
 int iosSaberFold_GetHeldOpen(void)
 {
-    return iosSaberFold_s.target;
+    return iosSaberFold_GetSaberHeldOpen(0);
 }
 
 void iosSaberFold_SetHeldOpen(int bOpen)
 {
-    if (iosSaberFold_s.bAuto) return;
-    iosSaberFold_s.target = bOpen ? 1 : 0;
-    for (int k = 0; k < 2; k++)
-        if (!iosSaberFold_Flying(k)) iosSaberFold_SnapSet(&iosSaberFold_s.aSaber[k], iosSaberFold_s.target);
+    for (int k = 0; k < 2; k++) iosSaberFold_SetSaberHeldOpen(k, bOpen);
 }
 
 int iosSaberFold_CanFlip(void)
@@ -227,21 +263,49 @@ int iosSaberFold_CanFlip(void)
     return p && !(p->flags & SITH_TF_DEAD) && iosSaberFold_LitFold(p);
 }
 
+// Those FOLDs in hand (by saber bit) flipped, each from how it is; one click for them all
+static int iosSaberFold_FlipSabers(int mask)
+{
+    if (!mask || !iosSaberFold_CanFlip()) return 0;
+    const uint32_t now = iosSaberFold_Now();
+    int fold = 0, open = 0;
+    for (int k = 0; k < 2; k++) {
+        if (!(mask & (1 << k))) continue;
+        if (iosSaberFold_s.aTarget[k]) fold |= 1 << k;
+        else open |= 1 << k;
+        // (folded by hand: held so; opened by hand: open until a swing and the calm after)
+        iosSaberFold_s.aHeldFolded[k] = iosSaberFold_s.aTarget[k];
+        iosSaberFold_s.aHeldMs[k] = now;
+        iosSaberFold_s.aSwung[k] = 0;
+    }
+    const int bMoved = iosSaberFold_Target(fold, 0);
+    iosSaberFold_Clicked(iosSaberFold_Target(open, 1) || bMoved);
+    return 1;
+}
+
 int iosSaberFold_Flip(void)
 {
-    if (!iosSaberFold_CanFlip()) return 0;
+    SithThing* p = iosSaberFold_Player();
+    return p && iosSaberFold_FlipSabers(iosSaberFold_InHand(p));
+}
+
+int iosSaberFold_TapFlip(int bAgain)
+{
+    SithThing* p = iosSaberFold_Player();
+    const int mask = p ? iosSaberFold_InHand(p) : 0;
+    if (mask != 3) return iosSaberFold_FlipSabers(mask); // (one FOLD in hand: every tap flips it)
+    if (!iosSaberFold_FlipSabers(bAgain ? 2 : 1)) return 0;
+    return bAgain ? 1 : 2;
+}
+
+int iosSaberFold_KeyFlip(void)
+{
     const uint32_t now = iosSaberFold_Now();
-    if (iosSaberFold_s.target) {
-        iosSaberFold_Target(0, 1);
-        iosSaberFold_s.bHeldFolded = 1;
-        iosSaberFold_s.heldMs = now;
-    }
-    else {
-        iosSaberFold_Target(1, 1);
-        iosSaberFold_s.bHeldFolded = 0;
-    }
-    iosSaberFold_s.bSwung = 0;
-    return 1;
+    const int bAgain = iosSaberFold_s.bKeyAgain && now >= iosSaberFold_s.keyMs && now - iosSaberFold_s.keyMs < IOSSABERFOLD_AGAIN_MS;
+    const int r = iosSaberFold_TapFlip(bAgain);
+    iosSaberFold_s.bKeyAgain = r == 2;
+    iosSaberFold_s.keyMs = now;
+    return r != 0;
 }
 
 void iosSaberFold_Swing(SithThing* pThing)
@@ -250,11 +314,17 @@ void iosSaberFold_Swing(SithThing* pThing)
     if (!p || pThing != p) return;
     iosSaberFold_s.lastSwingMs = iosSaberFold_Now();
     if (!iosSaberFold_LitFold(p)) return;
-    if (iosSaberFold_s.target) iosSaberFold_s.bSwung = 1;
-    else if (iosSaberFold_s.bAuto && !iosSaberFold_s.bHeldFolded) {
-        iosSaberFold_Target(1, 1);
-        iosSaberFold_s.bSwung = 1;
+    // AUTO: each folded one opens (both together), but one folded by hand
+    int open = 0;
+    for (int k = 0; k < 2; k++) {
+        if (iosSaberFold_Flying(k)) continue;
+        if (iosSaberFold_s.aTarget[k]) iosSaberFold_s.aSwung[k] = 1;
+        else if (iosSaberFold_s.bAuto && !iosSaberFold_s.aHeldFolded[k]) {
+            open |= 1 << k;
+            iosSaberFold_s.aSwung[k] = 1;
+        }
     }
+    iosSaberFold_Clicked(iosSaberFold_Target(open, 1));
 }
 
 // ------------------------------------------------------------ throws
@@ -335,16 +405,21 @@ static void iosSaberFold_Caught(SithThing* p, int saber, uint32_t now)
     s->startMs = now;
     s->bMoving = f != (float)s->target;
     if (o->hilt != IOSSABER_HILT_FOLD) {
-        iosSaberFold_SnapSet(s, iosSaberFold_s.target);
+        iosSaberFold_SnapSet(s, iosSaberFold_s.aTarget[saber]);
         return;
     }
     if (iosSaberFold_s.bAuto) {
-        iosSaberFold_s.bHeldFolded = 0;
-        iosSaberFold_s.bSwung = 1;
+        // (as a swing: the other in hand opens with it, but one folded by hand)
+        int open = 1 << saber;
+        iosSaberFold_s.aHeldFolded[saber] = 0;
+        for (int k = 0; k < 2; k++) {
+            if (k != saber && !iosSaberFold_Flying(k) && !iosSaberFold_s.aTarget[k] && !iosSaberFold_s.aHeldFolded[k]) open |= 1 << k;
+            if (open & (1 << k)) iosSaberFold_s.aSwung[k] = 1;
+        }
         iosSaberFold_s.lastSwingMs = now;
-        iosSaberFold_Target(1, 1);
+        iosSaberFold_Clicked(iosSaberFold_Target(open, 1));
     }
-    else if (iosSaberFold_SnapTo(s, iosSaberFold_s.target, now))
+    else if (iosSaberFold_SnapTo(s, iosSaberFold_s.aTarget[saber], now))
         iosSaberFold_Click(p);
 }
 
@@ -427,15 +502,21 @@ void iosSaberFold_Tick(void)
     iosSaberFold_s.bWasOn = bOn;
     if (!bOn) return;
 
-    // folded by hand: AUTO opens it again once 5 s have gone by without a swing
-    const uint32_t calmFrom = iosSaberFold_s.bHeldFolded && (int32_t)(iosSaberFold_s.heldMs - iosSaberFold_s.lastSwingMs) > 0
-                              ? iosSaberFold_s.heldMs : iosSaberFold_s.lastSwingMs;
-    if (iosSaberFold_s.bHeldFolded && now - calmFrom >= IOSSABERFOLD_CALM_MS) iosSaberFold_s.bHeldFolded = 0;
-    // AUTO: open, swung, and 5 s without a swing (nor anything else going on): folded
-    if (iosSaberFold_s.bAuto && iosSaberFold_s.target && iosSaberFold_s.bSwung && now - iosSaberFold_s.lastSwingMs >= IOSSABERFOLD_CALM_MS
-        && !iosSaberStaff_IsBusy(p)) {
-        iosSaberFold_Target(0, 1);
-        iosSaberFold_s.bSwung = 0;
+    // each: folded by hand, AUTO opens it again once 5 s have gone by without a swing; AUTO, open, swung,
+    // and 5 s without a swing (nor anything else going on): folded (both together)
+    int fold = 0;
+    for (int k = 0; k < 2; k++) {
+        if (iosSaberFold_Flying(k)) continue;
+        const uint32_t calmFrom = iosSaberFold_s.aHeldFolded[k] && (int32_t)(iosSaberFold_s.aHeldMs[k] - iosSaberFold_s.lastSwingMs) > 0
+                                  ? iosSaberFold_s.aHeldMs[k] : iosSaberFold_s.lastSwingMs;
+        if (iosSaberFold_s.aHeldFolded[k] && now - calmFrom >= IOSSABERFOLD_CALM_MS) iosSaberFold_s.aHeldFolded[k] = 0;
+        if (iosSaberFold_s.bAuto && iosSaberFold_s.aTarget[k] && iosSaberFold_s.aSwung[k] && now - iosSaberFold_s.lastSwingMs >= IOSSABERFOLD_CALM_MS)
+            fold |= 1 << k;
+    }
+    if (fold && !iosSaberStaff_IsBusy(p)) {
+        iosSaberFold_Clicked(iosSaberFold_Target(fold, 0));
+        for (int k = 0; k < 2; k++)
+            if (fold & (1 << k)) iosSaberFold_s.aSwung[k] = 0;
     }
 }
 

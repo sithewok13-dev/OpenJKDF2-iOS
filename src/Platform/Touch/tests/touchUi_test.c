@@ -45,7 +45,7 @@ static struct {
     // second blade linked to the first (to start), each hand's hilt
     int aBladeColour[2][2], aUnlinked[2];
     int aHilt[2], bCrossOk, bStaffOk, bFoldOk; // (0 NORMAL, 1 CROSS, 2 STAFF, 3 FOLD; CROSS on, STAFF and FOLD off as setup leaves them)
-    int bFoldAuto, bFoldOpen, bFoldLit, foldFlips; // (iosSaberFold's: AUTO, held open, a FOLD lit in hand)
+    int bFoldAuto, bFoldOpen, bFoldOpenL, bFoldLit, foldFlips; // (iosSaberFold's: AUTO, held open (the right hand's, the left's), a FOLD lit in hand)
     int saberLook; // (0 CLASSIC, the default, as setup leaves it; 1 REFORGED)
     int bRealNames; // (the colours' names as the game's: for how they fit)
     int saberShape; // (0 SPIKE, the default; 1 FILM)
@@ -285,14 +285,34 @@ void iosSaber_SetBladeLinked(int hand, int b) { if (hand == 0 || hand == 1) fg.a
 int iosSaber_GetShownBladeColour(int hand, int b) { const int id = iosSaber_GetBladeColour(hand, b); return iosSaber_ColourOnWheel(id) ? id : 0; }
 const char* iosSaber_ColourKey(int id) { return F_SaberColourKey(id); }
 int iosSaber_ColourByKey(const char* k) { return k ? F_SaberColourByKey(k) : -1; }
-// (iosSaberFold's: AUTO, how it was left, the SABER tap's flip)
+// (iosSaberFold's: AUTO, how each hand's was left, the SABER tap's flips: with a FOLD in each hand the
+// right one, or the left one as the quick second tap; one in hand, that one -- a FOLD lit with no FOLD
+// hilt set here: the right hand's)
 int iosSaberFold_GetAuto(void) { return fg.bFoldAuto; }
 void iosSaberFold_SetAuto(int b) { fg.bFoldAuto = b != 0; }
+int iosSaberFold_GetSaberHeldOpen(int k) { return k == 0 ? fg.bFoldOpen : (k == 1 ? fg.bFoldOpenL : 0); }
+void iosSaberFold_SetSaberHeldOpen(int k, int b) { if (fg.bFoldAuto) return; if (k == 0) fg.bFoldOpen = b != 0; else if (k == 1) fg.bFoldOpenL = b != 0; }
 int iosSaberFold_GetHeldOpen(void) { return fg.bFoldOpen; }
-void iosSaberFold_SetHeldOpen(int b) { if (!fg.bFoldAuto) fg.bFoldOpen = b != 0; }
+void iosSaberFold_SetHeldOpen(int b) { iosSaberFold_SetSaberHeldOpen(0, b); iosSaberFold_SetSaberHeldOpen(1, b); }
 int iosSaberFold_CanFlip(void) { return fg.bFoldLit; }
-int iosSaberFold_Flip(void) { if (!fg.bFoldLit) return 0; fg.bFoldOpen = !fg.bFoldOpen; fg.foldFlips++; return 1; }
-int iosSaberFold_LocalOpen(int hand) { return (hand == 0 || hand == 1) && fg.aHilt[hand] == 3 && fg.bFoldLit && fg.bFoldOpen; }
+static int fgFoldHands(void)
+{
+    if (!fg.bFoldLit) return 0;
+    const int m = (fg.aHilt[0] == 3 ? 1 : 0) | ((fg.saberStyle == 1 && fg.aHilt[1] == 3) ? 2 : 0);
+    return m ? m : 1;
+}
+static void fgFlipHands(int m) { if (m & 1) fg.bFoldOpen = !fg.bFoldOpen; if (m & 2) fg.bFoldOpenL = !fg.bFoldOpenL; fg.foldFlips++; }
+int iosSaberFold_Flip(void) { const int m = fgFoldHands(); if (!m) return 0; fgFlipHands(m); return 1; }
+int iosSaberFold_TapFlip(int bAgain)
+{
+    const int m = fgFoldHands();
+    if (!m) return 0;
+    if (m != 3) { fgFlipHands(m); return 1; }
+    fgFlipHands(bAgain ? 2 : 1);
+    return bAgain ? 1 : 2;
+}
+int iosSaberFold_KeyFlip(void) { return iosSaberFold_TapFlip(0) != 0; }
+int iosSaberFold_LocalOpen(int hand) { return (hand == 0 || hand == 1) && fg.aHilt[hand] == 3 && fg.bFoldLit && (hand ? fg.bFoldOpenL : fg.bFoldOpen); }
 static int g_platHaptics = 0, g_platTicks = 0;
 void platServices_Haptic(int kind) { g_platHaptics |= kind == 0 ? TOUCHUI_HAPTIC_TICK : TOUCHUI_HAPTIC_TAP; if (kind == 0) g_platTicks++; }
 
@@ -2752,6 +2772,47 @@ static void test_saber_cards(void)
     }
     fg.curWeapon = 2; fg.bFoldLit = 0;
 
+    // (SABER's tap with a FOLD in each hand: the right one at once; a second tap down within
+    // IOSSABERWHEEL_TAP_AGAIN_SECS of the first's lift, the left one too)
+#define SABER_TAP() do { down(1, sx, sy); wait(0.1); up(1, sx, sy); } while (0)
+    g_case = "SABER, a FOLD in each hand: a tap flips the right one at once, a second tap soon after the left one too";
+    fg.saberStyle = 1; fg.aHilt[0] = fg.aHilt[1] = 3; fg.bFoldLit = 1; fg.bFoldOpen = fg.bFoldOpenL = 0; fg.foldFlips = 0;
+    tick(); takeHaptics();
+    SABER_TAP();
+    CHECK(fg.foldFlips == 1 && fg.bFoldOpen && !fg.bFoldOpenL && !touchUi_IsWheelOpen() && (takeHaptics() & TOUCHUI_HAPTIC_TAP));
+    wait(0.2); SABER_TAP();
+    CHECK(fg.foldFlips == 2 && fg.bFoldOpen && fg.bFoldOpenL && !touchUi_IsWheelOpen() && (takeHaptics() & TOUCHUI_HAPTIC_TAP));
+    g_case = "SABER, a FOLD in each hand: a third quick tap starts again, the right one";
+    wait(0.2); SABER_TAP();
+    CHECK(fg.foldFlips == 3 && !fg.bFoldOpen && fg.bFoldOpenL);
+    g_case = "SABER, a FOLD in each hand, one open and one folded: a double tap swaps them";
+    wait(0.5); SABER_TAP(); wait(0.3); SABER_TAP();
+    CHECK(fg.foldFlips == 5 && fg.bFoldOpen && !fg.bFoldOpenL && !touchUi_IsWheelOpen());
+    g_case = "SABER, a FOLD in each hand, one open and one folded: one tap makes them match";
+    wait(0.5); SABER_TAP();
+    CHECK(fg.foldFlips == 6 && !fg.bFoldOpen && !fg.bFoldOpenL);
+    g_case = "SABER, a FOLD in each hand: the second tap down 0.4 s after the first's lift is a first again (the right one)";
+    wait(0.5); SABER_TAP(); wait(0.4); SABER_TAP();
+    CHECK(fg.foldFlips == 8 && !fg.bFoldOpen && !fg.bFoldOpenL);
+    g_case = "SABER, a FOLD in each hand: the second touch held 0.3 s opens the wheel (the left one not flipped)";
+    wait(0.5); SABER_TAP(); wait(0.1); down(1, sx, sy); wait(0.31);
+    CHECK(touchUi_IsWheelOpen() && fg.foldFlips == 9 && fg.bFoldOpen && !fg.bFoldOpenL);
+    up(1, sx, sy); tapColour(-1);
+    g_case = "SABER, a FOLD in each hand: the second touch a 10 pt slide opens the wheel at once (no flip)";
+    wait(0.5); SABER_TAP(); wait(0.1); down(1, sx, sy); move(1, sx, sy + 10.5f);
+    CHECK(touchUi_IsWheelOpen() && fg.foldFlips == 10 && !fg.bFoldOpen && !fg.bFoldOpenL);
+    up(1, sx, sy + 10.5f); tapColour(-1);
+    g_case = "SABER, one FOLD (the left hand's, a NORMAL in the right): every tap flips it, quick ones too";
+    fg.aHilt[0] = 0; fg.foldFlips = 0;
+    wait(0.5); SABER_TAP(); wait(0.1); SABER_TAP(); wait(0.1); SABER_TAP();
+    CHECK(fg.foldFlips == 3 && fg.bFoldOpenL && !fg.bFoldOpen && !touchUi_IsWheelOpen());
+    g_case = "SABER, one FOLD (the right hand's, a STAFF in the left): every quick tap flips it";
+    fg.aHilt[0] = 3; fg.aHilt[1] = 2; fg.foldFlips = 0;
+    wait(0.5); SABER_TAP(); wait(0.1); SABER_TAP();
+    CHECK(fg.foldFlips == 2 && !fg.bFoldOpen && fg.bFoldOpenL);
+#undef SABER_TAP
+    fg.saberStyle = 0; fg.aHilt[1] = 0; fg.bFoldLit = 0; fg.bFoldOpenL = 0;
+
     g_case = "cards: one saber: the RIGHT card never outlined in gold; its dot's gold ring all the same";
     setup();
     fg.bSaberBtn = 1; fg.bStaffOk = 1; fg.aHilt[0] = 2;
@@ -2857,7 +2918,7 @@ static void test_saber_cards(void)
         for (int k = 0; k < (int)(sizeof(aPic) / sizeof(aPic[0])); k++) {
             setup();
             fg.bSaberBtn = 1; fg.bStaffOk = fg.bFoldOk = 1; fg.saberStyle = aPic[k].two; fg.aHilt[0] = aPic[k].h0; fg.aHilt[1] = aPic[k].h1;
-            fg.bFoldLit = aPic[k].open; fg.bFoldOpen = aPic[k].open;
+            fg.bFoldLit = aPic[k].open; fg.bFoldOpen = fg.bFoldOpenL = aPic[k].open;
             fg.aBladeColour[0][0] = 1; fg.aBladeColour[0][1] = 11; fg.aUnlinked[0] = 1; fg.aBladeColour[1][0] = 7;
             tick();
             float bx, by, br;
@@ -3443,7 +3504,7 @@ static void test_saber_wheel_state(void)
     iosSaberWheel_SetAuto(1);
     g_case = "wheel state: SABER's picture: each hand's hilt, FOLD open or not, each blade's colour";
     fg.aHilt[0] = 2; fg.aUnlinked[0] = 1; fg.aBladeColour[0][0] = 1; fg.aBladeColour[0][1] = 11;
-    fg.bFoldLit = 1; fg.bFoldOpen = 1;
+    fg.bFoldLit = 1; fg.bFoldOpen = fg.bFoldOpenL = 1;
     iosSaberWheel_GetIcon(&ic);
     CHECK(ic.numSabers == 2 && ic.aHand[0].hilt == 2 && ic.aHand[0].aColour[0] == 1 && ic.aHand[0].aColour[1] == 11 && !ic.aHand[0].bOpen
           && ic.aHand[1].hilt == 3 && ic.aHand[1].bOpen);
@@ -3491,16 +3552,42 @@ static void test_saber_wheel_state(void)
         char aName[32][40], aVal[32][IOSSABERWHEEL_KEPT_LEN];
         const int n = iosSaberWheel_NumKept();
         iosSaberWheel_SetSameHilt(1);
-        fg.bFoldAuto = 0; fg.bFoldOpen = 1;
+        fg.bFoldAuto = 0; fg.bFoldOpen = 1; fg.bFoldOpenL = 0;
         for (int i = 0; i < n && i < 32; i++) { snprintf(aName[i], 40, "%s", iosSaberWheel_KeptName(i)); iosSaberWheel_GetKept(i, aVal[i], IOSSABERWHEEL_KEPT_LEN); }
         const int st = fg.saberStyle, h0 = fg.aHilt[0], h1 = fg.aHilt[1], c00 = fg.aBladeColour[0][0], c01 = iosSaber_GetBladeColour(0, 1), u0 = fg.aUnlinked[0];
         iosSaberWheel_BeginLoad();
-        fg.bFoldAuto = 1; fg.bFoldOpen = 0;
+        fg.bFoldAuto = 1; fg.bFoldOpen = 0; fg.bFoldOpenL = 1;
         CHECK(fg.saberStyle == 0 && fg.aHilt[0] == 0 && fg.aBladeColour[0][0] == 0 && !iosSaberWheel_GetSameHilt());
         for (int i = 0; i < n && i < 32; i++) iosSaberWheel_LoadKept(aName[i], aVal[i]);
         iosSaberWheel_EndLoad();
-        CHECK(n == 13 && fg.saberStyle == st && fg.aHilt[0] == h0 && fg.aHilt[1] == h1 && fg.aBladeColour[0][0] == c00 && iosSaber_GetBladeColour(0, 1) == c01
-              && fg.aUnlinked[0] == u0 && iosSaberWheel_GetSameHilt() && !iosSaberWheel_GetSameColour() && !fg.bFoldAuto && fg.bFoldOpen);
+        CHECK(n == 15 && fg.saberStyle == st && fg.aHilt[0] == h0 && fg.aHilt[1] == h1 && fg.aBladeColour[0][0] == c00 && iosSaber_GetBladeColour(0, 1) == c01
+              && fg.aUnlinked[0] == u0 && iosSaberWheel_GetSameHilt() && !iosSaberWheel_GetSameColour() && !fg.bFoldAuto && fg.bFoldOpen && !fg.bFoldOpenL);
+        g_case = "wheel kept: FoldOpen alone (a build before kept one for both): both hands";
+        iosSaberWheel_BeginLoad(); iosSaberWheel_LoadKept("FoldAuto", "0"); iosSaberWheel_LoadKept("FoldOpen", "1"); iosSaberWheel_EndLoad();
+        CHECK(!fg.bFoldAuto && fg.bFoldOpen && fg.bFoldOpenL);
+        g_case = "wheel kept: FoldOpenRight and FoldOpenLeft, each its own (FoldOpen, the right's, as kept)";
+        iosSaberWheel_BeginLoad(); iosSaberWheel_LoadKept("FoldAuto", "0"); iosSaberWheel_LoadKept("FoldOpen", "0");
+        iosSaberWheel_LoadKept("FoldOpenRight", "0"); iosSaberWheel_LoadKept("FoldOpenLeft", "1"); iosSaberWheel_EndLoad();
+        CHECK(!fg.bFoldOpen && fg.bFoldOpenL);
+        g_case = "wheel kept: FoldOpen changed by a build before since (not the right's as kept): both hands as it says";
+        iosSaberWheel_BeginLoad(); iosSaberWheel_LoadKept("FoldAuto", "0"); iosSaberWheel_LoadKept("FoldOpen", "1");
+        iosSaberWheel_LoadKept("FoldOpenRight", "0"); iosSaberWheel_LoadKept("FoldOpenLeft", "0"); iosSaberWheel_EndLoad();
+        CHECK(fg.bFoldOpen && fg.bFoldOpenL);
+        g_case = "wheel kept: FoldOpen as the right hand's, each hand under its own name";
+        {
+            char v0[IOSSABERWHEEL_KEPT_LEN] = "", vr[IOSSABERWHEEL_KEPT_LEN] = "", vl[IOSSABERWHEEL_KEPT_LEN] = "";
+            fg.bFoldOpen = 1; fg.bFoldOpenL = 0;
+            for (int i = 0; i < n && i < 32; i++) {
+                if (!strcmp(iosSaberWheel_KeptName(i), "FoldOpen")) iosSaberWheel_GetKept(i, v0, sizeof(v0));
+                if (!strcmp(iosSaberWheel_KeptName(i), "FoldOpenRight")) iosSaberWheel_GetKept(i, vr, sizeof(vr));
+                if (!strcmp(iosSaberWheel_KeptName(i), "FoldOpenLeft")) iosSaberWheel_GetKept(i, vl, sizeof(vl));
+            }
+            CHECK(!strcmp(v0, "1") && !strcmp(vr, "1") && !strcmp(vl, "0"));
+            fg.bFoldAuto = 1;
+            for (int i = 0; i < n && i < 32; i++)
+                if (!strncmp(iosSaberWheel_KeptName(i), "FoldOpen", 8)) { iosSaberWheel_GetKept(i, v0, sizeof(v0)); CHECK(!strcmp(v0, "0")); }
+            fg.bFoldAuto = 0;
+        }
         printf("  kept:");
         for (int i = 0; i < n && i < 32; i++) printf(" %s=%s", aName[i], aVal[i]);
         printf("\n");

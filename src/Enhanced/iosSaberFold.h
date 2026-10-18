@@ -7,23 +7,29 @@
 // sideways and down through half a turn round the hinge, with a mechanical
 // click made from the game's own sounds).
 //
-// The local player's:
+// The local player's (each saber its own: with two, one in each hand):
 //  - It ignites folded (lit, picked, a new level, a load, a death).
-//  - AUTO (on to start): the first swing opens it, and it folds again once
-//    5 s have gone by without one (never before a swing). Off: it changes
-//    only when the player flips it, and stays as they left it (lit again, a
-//    new level, a load: kept, the platform keeping it with the AUTO switch).
-//  - A flip always wins: folded by hand, it stays folded (AUTO opening it no
-//    more) until 5 s go by without a swing; opened by hand, it stays open
-//    until a swing and then 5 s without one.
-//  - Two FOLD sabers (DUAL) fold and open together.
+//  - AUTO (AUTO OPEN, on to start): the first swing opens it, and it folds
+//    again once 5 s have gone by without one (never before a swing); two
+//    open and fold together. Off: each changes only when the player flips
+//    it, and stays as they left it (lit again, a new level, a load: kept,
+//    the platform keeping each with the AUTO switch).
+//  - A flip always wins, for that saber: folded by hand, it stays folded
+//    (AUTO opening it no more) until 5 s go by without a swing; opened by
+//    hand, it stays open until a swing and then 5 s without one.
+//  - The flips: SABER's tap (iosSaberFold_TapFlip) the right hand's FOLD, a
+//    second tap soon after the left's too (so a double tap flips both; one
+//    FOLD in hand, every tap flips it); the saber's key the same
+//    (iosSaberFold_KeyFlip); the saber picked again on a weapon wheel, both
+//    (iosSaberFold_Flip).
 //  - Thrown (Mysteries of the Sith's throw, and Jedi Knight's, iosSaberThrow):
 //    thrown open, it flies open; thrown folded, it leaves the hand folded and
 //    snaps open 0.25 s after (clear of the thrower), with the click; two are
-//    each their own. Caught with AUTO on: open (it was open in flight), and
-//    AUTO folds it 5 s after if no swing comes; AUTO off: as it was thrown
-//    (snapping shut on the catch: as it is back in the hand, before it is lit
-//    again). A throw is not a swing.
+//    each their own. Caught with AUTO on: open (it was open in flight; the
+//    other in hand opening with it, as on a swing, unless folded by hand),
+//    and AUTO folds it 5 s after if no swing comes; AUTO off: as the player
+//    left that saber (thrown folded: snapping shut on the catch, as it is
+//    back in the hand, before it is lit again). A throw is not a swing.
 // Other players' (multiplayer): as their game sends it (iosSaberFold_SetOpenBits,
 // the look's trailing flags byte, jkPlayerLook); folded until then.
 //
@@ -44,19 +50,34 @@ struct SithThing;
 #define IOSSABERFOLD_SNAP_MS 300          // (the snap: open from folded, or back)
 #define IOSSABERFOLD_CALM_MS 5000         // (AUTO folds it this long after the last swing)
 #define IOSSABERFOLD_THROWN_SNAP_MS 250   // (thrown folded: it snaps open this long after it leaves the hand)
+#define IOSSABERFOLD_AGAIN_MS 350         // (a second tap or press this soon: the left hand's too, as JUMP's double tap)
 
 // ---- for the overlays (touch, pad, keyboard)
 // Whether the local player has a FOLD saber lit in hand now (either hand's),
-// so SABER's tap flips it (iosSaberFold_Flip) instead of opening the wheel
+// so SABER's tap flips it (iosSaberFold_TapFlip) instead of opening the wheel
 int iosSaberFold_CanFlip(void);
-// The local player's FOLD sabers flipped (both together): folded to open, or
-// open to folded; 0 if there is none to flip (iosSaberFold_CanFlip)
+// The local player's FOLDs in hand flipped (each from how it is: folded to
+// open, open to folded; two the same flip together, two apart swap); 0 if
+// there is none to flip (iosSaberFold_CanFlip)
 int iosSaberFold_Flip(void);
+// SABER's tap: with a FOLD in each hand, the right hand's flipped, or with
+// bAgain (a second tap within IOSSABERFOLD_AGAIN_MS of one that gave 2) the
+// left's; with one in hand, that one. 2: the right one of two flipped (a tap
+// again soon flips the left), 1: flipped, 0: none to flip
+int iosSaberFold_TapFlip(int bAgain);
+// The saber's key pressed again (Jedi Knight's): as a tap, a second press
+// within IOSSABERFOLD_AGAIN_MS (the game's clock) being the second tap; 0 if
+// there is none to flip
+int iosSaberFold_KeyFlip(void);
 // AUTO (see above), remembered by the platform
 int iosSaberFold_GetAuto(void);
 void iosSaberFold_SetAuto(int bOn);
-// With AUTO off, how the player left it (1: open), for the platform to keep
-// and give back at start; with AUTO on, whatever it is now
+// With AUTO off, how the player left each saber (0 the right hand's, 1 the
+// left's; 1: open), for the platform to keep and give back at start; with
+// AUTO on, whatever it is now. (GetHeldOpen: the right's; SetHeldOpen: both,
+// as builds before kept it, one for both)
+int iosSaberFold_GetSaberHeldOpen(int saber);
+void iosSaberFold_SetSaberHeldOpen(int saber, int bOpen);
 int iosSaberFold_GetHeldOpen(void);
 void iosSaberFold_SetHeldOpen(int bOpen);
 // Whether a thing's saber in that hand (0: the right, 1: the left) is open or

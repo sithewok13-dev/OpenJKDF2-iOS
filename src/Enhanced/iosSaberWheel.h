@@ -116,8 +116,16 @@ typedef struct {
 } iosSaberWheelIcon;
 void iosSaberWheel_GetIcon(iosSaberWheelIcon* pOut);
 // With a FOLD lit in hand, a tap on SABER flips it (a slide or a 0.3 s hold
-// opens the wheel); else any touch opens the wheel, as ever
+// opens the wheel); else any touch opens the wheel, as ever. With a FOLD in
+// each hand, the tap flips the right one, and a second tap soon after (down
+// within IOSSABERWHEEL_TAP_AGAIN_SECS of the lift of a tap that gave 2) the
+// left one too: TapFlip gives 2 for the right one of two, 1 for any other
+// flip, 0 for none (iosSaberFold_TapFlip). Flip: every FOLD in hand (the
+// saber picked again on a weapon wheel); KeyFlip: the saber's key, as taps
+#define IOSSABERWHEEL_TAP_AGAIN_SECS 0.35 // (IOSSABERFOLD_AGAIN_MS: JUMP's double tap's)
 int iosSaberWheel_TapFlips(void);
+int iosSaberWheel_TapFlip(int bAgain);
+int iosSaberWheel_KeyFlip(void);
 int iosSaberWheel_Flip(void); // (1 if it flipped: the click comes with the snap)
 
 // ---- how the platforms keep it (each its own store: iOS NSUserDefaults,
@@ -130,7 +138,9 @@ int iosSaberWheel_Flip(void); // (1 if it flipped: the click comes with the snap
 //   LinkRight, LinkLeft          1: the second blade follows the first
 //   SameColour, SameHilt         0 or 1
 //   FoldAuto                     1 (to start) or 0
-//   FoldOpen                     with AUTO off, how FOLD was left (1 open)
+//   FoldOpenRight, FoldOpenLeft  with AUTO off, how each hand's FOLD was left (1 open)
+//   FoldOpen                     the same for both, as builds before kept it (read
+//                                when the hands' aren't kept; kept as the right's)
 // Saved when one differs from what was last saved (a pad or the keys change
 // them too: compare often, as GetKept gives them).
 #define IOSSABERWHEEL_KEPT_LEN 32

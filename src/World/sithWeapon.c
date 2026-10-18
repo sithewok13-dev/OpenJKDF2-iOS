@@ -1168,9 +1168,10 @@ int sithWeapon_ProcessWeaponControls(SithThing *pThing, flex_t secDeltaTime)
                 if (!Main_bMotsCompat) {
 #ifdef JK_ENHANCED
                     // Added: the saber's own key again while it is in hand (no weapon switch under way), a FOLD lit: it flips
+                    // (with one in each hand, the right one; pressed twice quickly, both)
                     if (pThing == sithPlayer_g_pLocalPlayerThing && sithWeapon_8BD024 == -1 && iosSaberWheel_TapFlips()
                         && sithInventory_SelectWeaponFollowing(inputFunc - INPUT_FUNC_ACTIVATE) == sithInventory_GetCurrentWeapon(pThing)) {
-                        iosSaberWheel_Flip();
+                        iosSaberWheel_KeyFlip();
                         break;
                     }
 #endif

@@ -175,8 +175,9 @@ Tick what works, note what doesn't (a photo of the screen helps).
       both hands), both off to start, and only working with two sabers (with
       one they wait, still on, for the second). A tap from just over the
       LEFT card's colour down is the card's, never its x. Under the RIGHT card: FILM and,
-      while a FOLD is in either hand, AUTO (FOLD opens on the first swing and
-      folds after 5 s without one; off: only when you flip it). Every tap
+      while a FOLD is in either hand, AUTO OPEN (FOLD opens on the first swing
+      and folds after 5 s without one, two together; off: only when you flip
+      it, each kept as you left it). Every tap
       there ticks and leaves the wheel open; the sabers, colours and switches
       are kept (the picked card starts on RIGHT each time the game starts). JUMP, FIRE, DUCK and
       the other action buttons hide while the saber wheel is open; the top
@@ -186,9 +187,12 @@ Tick what works, note what doesn't (a photo of the screen helps).
       The gap at the bottom (or a tap off the wheel) closes it. A slide from
       SABER opens it to slide to a colour.
 - [ ] With a FOLD lit in your hand, a tap on SABER flips it (folded or open,
-      with a click); a slide or a 0.3 s hold on SABER opens the wheel. Picking
-      the saber again on the weapon wheel flips it too, and in Jedi Knight
-      its key (0) again while it's in hand. In Mysteries of the Sith the
+      with a click); a slide or a 0.3 s hold on SABER opens the wheel. With a
+      FOLD in each hand, a tap flips the right one and a second tap soon after
+      (within 0.35 s) the left one too: a double tap flips both (one open and
+      one folded: they swap; one tap makes them match). Picking the saber
+      again on the weapon wheel flips it too (both), and in Jedi Knight its
+      key (0) again while it's in hand (twice quickly: both). In Mysteries of the Sith the
       saber shares key 1 with the fists: 1 switches to the fists, as in the
       game, so flip it there with SABER or the weapon wheel.
 - [ ] CLASSIC / REFORGED (at the top of the saber wheel's middle): a tap

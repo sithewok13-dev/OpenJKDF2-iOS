@@ -359,7 +359,7 @@ never cover them, and long lines wrap between words.
 | **QUICK LOAD** | top right | **Hold** for about a third of a second: a ring fills, then your quick save loads. To cancel, lift or slide off before the ring fills. |
 | **MENU** | top right corner | **Tap** opens the game's menu (objectives, map, Jedi powers, save, load, setup and more). **Hold** opens a small tray just under it, see below. |
 | **CAMERA** (the camera symbol) | top, in the middle | **Hold still:** a selfie. **Tap:** a photo. **Slide sideways:** a burst. **Slide down:** Action Freeze. **Slide up:** the cinematic burst. See [The camera](#the-camera). |
-| **SABER** (your sabers) | top, right of CAMERA (once you have the lightsaber) | Opens the saber wheel: one saber or two, each hand's hilt, each blade's colour. With a FOLD in your hand, a **tap** flips it. See [The lightsaber: SABER](#the-lightsaber-saber). |
+| **SABER** (your sabers) | top, right of CAMERA (once you have the lightsaber) | Opens the saber wheel: one saber or two, each hand's hilt, each blade's colour. With a FOLD in your hand, a **tap** flips it (with one in each hand: a tap the right one, a double tap both). See [The lightsaber: SABER](#the-lightsaber-saber). |
 | **CHEAT** (the red Sith emblem) | top, right of SABER (cheat mode only) | **Hold** for half a second: `sithewok` off or on. Red while it's on. See [Cheats](#cheats). |
 | **VIEW** (1P or 3P) | top, right of CHEAT (once switched on in MENU's tray) | **Tap:** first person or third person, at once. |
 
@@ -371,7 +371,8 @@ BACTA and CHEAT need a hold, so a brush past does nothing. NEXT WPN and FORCE
 WHEEL act on a quick tap when you lift, or open their wheel when you slide or
 hold (see [Tap, slide or hold](#tap-slide-or-hold)). SABER opens its wheel
 however you touch it, but with a FOLD in your hand a quick tap flips the FOLD
-(slide or hold to open the wheel). While
+(with one in each hand, a tap flips the right one and a double tap both;
+slide or hold to open the wheel). While
 `sithewok` is on, JUMP and ACT show a small red second line (FLY, NOCLIP)
 for their cheat holds: see [Cheats](#cheats). DUCK only ever crouches.
 
@@ -497,7 +498,8 @@ switch the controller off and they come back.
 
   The line at the bottom of the screen shows what each button does right
   now (on two lines when it's too long for one). With a FOLD in your hand,
-  picking the lightsaber again on the weapon wheel flips it.
+  picking the lightsaber again on the weapon wheel flips it (with one in each
+  hand, both).
 - **Quick save and quick load** need a short hold (a ring fills at the top of
   the screen), so a stray press never saves or loads.
 - **Controller options** (hold Start): look speed across and up and down,
@@ -585,8 +587,10 @@ Turn on FPS in MENU's tray to see what the app gets (below).
 
   The line at the bottom of the screen shows what each key does right now
   (on two lines when it's too long for one). With a FOLD in your hand,
-  picking the lightsaber again on the weapon wheel flips it. In Jedi Knight,
-  so does pressing its key (0) again while it's in your hand. In Mysteries of
+  picking the lightsaber again on the weapon wheel flips it (with one in each
+  hand, both). In Jedi Knight, so does pressing its key (0) again while it's
+  in your hand: with a FOLD in each hand, once flips the right one, twice
+  quickly both. In Mysteries of
   the Sith the lightsaber shares key 1 with the fists, and 1 switches to the
   fists as it always has: flip a FOLD there with SABER or the weapon wheel.
 - **Your own keys and buttons:** Setup > Controls > Keyboard and Setup >
@@ -910,8 +914,10 @@ blade in its own colour, two crossed in an X when you hold two.
 Tap or hold SABER to open the **saber wheel** and then tap a colour, or slide
 off it towards a colour and lift. The gap at the bottom cancels, and the game
 holds still while the wheel is open. **With a FOLD in your hand, a tap on
-SABER flips it** (open or folded, with a click) instead. A slide, or a short
-hold until its ring fills, still opens the wheel.
+SABER flips it** (open or folded, with a click) instead. With a FOLD in each
+hand, a tap flips the right one and a quick second tap the left one too, so
+a double tap flips both. A slide, or a short hold until its ring fills,
+still opens the wheel.
 
 While the saber wheel is open, JUMP, ACT, ALT, FIRE, DUCK and FORCE are hidden
 to make room (they can't be used while a wheel is open anyway), and they come
@@ -1010,8 +1016,8 @@ hand's colours and has its own **HILT** button.
     players on other builds keep the game's blade.
   - Only the look changes: the reach and damage of every attack stay as the
     game has them.
-- **AUTO**, an on/off switch under FILM, shows only while a FOLD is in either
-  hand (see below). On to start.
+- **AUTO OPEN**, an on/off switch under FILM, shows only while a FOLD is in
+  either hand (see below). On to start.
 - **The wheel stays open** after you pick a colour, so you can change every
   blade in one go. Close it with the gap at the bottom, or by tapping an empty
   spot.
@@ -1025,18 +1031,25 @@ hand's colours and has its own **HILT** button.
   second blade doesn't hit anything.
 - **FOLD** folds its two halves side by side, or opens into a staff. It
   lights folded.
-  - **AUTO on** (the default): it opens on your first swing and folds again
-    5 seconds after your last (never before a swing).
-  - **AUTO off:** it only changes when you flip it, and stays the way you
-    left it, across levels and loads.
+  - **AUTO OPEN on** (the default): it opens on your first swing and folds
+    again 5 seconds after your last (never before a swing). Two FOLDs open
+    and fold together.
+  - **AUTO OPEN off:** it only changes when you flip it, and stays the way
+    you left it, across levels and loads. With two, each stays the way you
+    left it.
   - **Flip it yourself:** tap SABER, or pick the lightsaber again on the
     weapon wheel while it's in your hand (touch or controller). On a
     keyboard in Jedi Knight, its key (0) again does it too (in Mysteries of
     the Sith, key 1 switches to the fists instead). Your flip always wins:
     folded by hand, it stays folded until 5 seconds go by without a swing;
     opened by hand, it stays open until you swing and then 5 seconds go by.
-  - Two FOLDs open and fold together. A thrown FOLD flies the way it left
-    your hand (a folded one snaps open just after the throw).
+  - **With a FOLD in each hand,** each is its own: a tap on SABER flips the
+    right one, and a quick second tap the left one too (a double tap flips
+    both: two open ones fold, one open and one folded swap). The key (0)
+    works the same way, once or twice quickly. The weapon wheel flips both.
+    With one FOLD and another hilt, every tap flips the FOLD.
+  - A thrown FOLD flies the way it left your hand (a folded one snaps open
+    just after the throw) and comes back the way you left it.
 - **Mixed pairs:** with two sabers each arm holds its own saber its own way:
   a CROSS low at the side, a STAFF or FOLD as a staff, a NORMAL in the usual
   two-saber stance. Only CROSS crackles.
