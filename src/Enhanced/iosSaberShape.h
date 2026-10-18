@@ -127,14 +127,17 @@ int iosSaberShape_ThrownAxis(const struct rdModel3* m, const struct rdMaterial* 
 void iosSaberShape_SetGuardFacing(int bOn);
 // The metal hilt parts are made of, by kind: CROSS's vents' (TUBE, CLAMP,
 // HOLE), and STAFF's and FOLD's hilts' (iosSaberStaff): SILVER, BLACK, RED,
-// DARK (grey). MetalsReady makes them if need be (0: they can't be);
+// DARK (grey); FOLD's polished silver and its red bands (CHROME, REDBAND:
+// brighter, and less shaded by which way they face, so a FOLD held upright
+// reads silver with red bands). MetalsReady makes them if need be (0: they can't be);
 // MetalPoly draws one flat face of a part, camera space (aCorner, n of them
 // round its outside, at most IOSSABERSHAPE_METAL_MAX_CORNERS; aUV each
 // corner's, 0..1), as the vents' faces are: solid, shaded by which way it
 // faces a light above and in front of the eye, left out facing away; drawn
 // as pLine's blade is (its texture mode), so with the hand in first person
 enum { IOSSABERSHAPE_METAL_TUBE = 0, IOSSABERSHAPE_METAL_CLAMP, IOSSABERSHAPE_METAL_HOLE,
-       IOSSABERSHAPE_METAL_SILVER, IOSSABERSHAPE_METAL_BLACK, IOSSABERSHAPE_METAL_RED, IOSSABERSHAPE_METAL_DARK, IOSSABERSHAPE_NUM_METALS };
+       IOSSABERSHAPE_METAL_SILVER, IOSSABERSHAPE_METAL_BLACK, IOSSABERSHAPE_METAL_RED, IOSSABERSHAPE_METAL_DARK,
+       IOSSABERSHAPE_METAL_CHROME, IOSSABERSHAPE_METAL_REDBAND, IOSSABERSHAPE_NUM_METALS };
 #define IOSSABERSHAPE_METAL_MAX_CORNERS 12
 struct rdVector2;
 int iosSaberShape_MetalsReady(void);

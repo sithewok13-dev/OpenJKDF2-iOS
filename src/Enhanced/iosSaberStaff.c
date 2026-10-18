@@ -95,6 +95,12 @@
 // blade's base (where the two meet, its pommel); FOLD's gap, of the length
 #define IOSSABERSTAFF_THROWN_HILT 0.22f
 #define IOSSABERSTAFF_THROWN_GAP 0.046f
+// The level of detail, by the hilt's length on the screen (pixels; first person always the most):
+// this long or more, every part (the close-up look); shorter, the small parts left out (the grip's
+// rings and grooves, the shroud's fins, the buttons, the emitter's rings: none of them a pixel
+// wide by then), fewer sides; shorter still, only the hilt's main bands
+#define IOSSABERSTAFF_LOD_NEAR_PX 64.0f
+#define IOSSABERSTAFF_LOD_FAR_PX 20.0f
 
 // ------------------------------------------------------------ the hilts
 
@@ -273,6 +279,7 @@ static void iosSaberStaff_Side(int bPov, int hand, const rdMatrix34* pHeld, rdVe
 
 static rdMatrix34 iosSaberStaff_toCam; // (the part being built: its frame to the camera's)
 static rdThing* iosSaberStaff_pLine;
+static int iosSaberStaff_lod; // (the hilt being built's level of detail: 0 every part, 1 the small ones left out, 2 the main bands)
 
 static void iosSaberStaff_Part(const rdMatrix34* pHeld, const rdMatrix34* pLocal)
 {
@@ -335,7 +342,8 @@ static void iosSaberStaff_Box(int kind, flex_t x, flex_t y, flex_t z, flex_t hx,
 
 enum {
     IOSSABERSTAFF_SILVER = IOSSABERSHAPE_METAL_SILVER, IOSSABERSTAFF_BLACK = IOSSABERSHAPE_METAL_BLACK,
-    IOSSABERSTAFF_RED = IOSSABERSHAPE_METAL_RED, IOSSABERSTAFF_DARK = IOSSABERSHAPE_METAL_DARK
+    IOSSABERSTAFF_RED = IOSSABERSHAPE_METAL_RED, IOSSABERSTAFF_DARK = IOSSABERSHAPE_METAL_DARK,
+    IOSSABERSTAFF_CHROME = IOSSABERSHAPE_METAL_CHROME, IOSSABERSTAFF_REDBAND = IOSSABERSHAPE_METAL_REDBAND
 };
 
 // Maul's half: from the middle (y = 0) out to its emitter (y = L). Out from the
@@ -345,6 +353,31 @@ enum {
 // core in a cage of eight silver bars, rings at both ends); the grooved emitter.
 static void iosSaberStaff_MaulHalf(flex_t L, flex_t R)
 {
+    if (iosSaberStaff_lod == 2) {
+        // (far: the silver body, its two black rings, the shroud's cage, the emitter, end to end)
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, 0, L * 0.24f, R * 1.02f, R * 1.02f, 6, 0, 0, 1);
+        iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, L * 0.24f, L * 0.265f, R * 1.02f, R * 1.02f, 6, 0, 0, 0);
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.265f, L * 0.58f, R * 1.02f, R * 1.02f, 6, 0, 0, 0);
+        iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, L * 0.58f, L * 0.61f, R * 1.02f, R * 1.02f, 6, 0, 0, 0);
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.61f, L * 0.84f, R * 1.02f, R * 1.02f, 6, 0, 0, 0);
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.84f, L * 1.0f, R * 1.2f, R * 1.15f, 6, 0, 0, 1 | 2);
+        return;
+    }
+    if (iosSaberStaff_lod == 1) {
+        // (further off: the black rings, the silver body and grip, the red button, the shroud's cage, the emitter)
+        const int S = 8;
+        iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, 0, L * 0.025f, R * 1.06f, R * 1.06f, S, 0, 0, 1);
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.025f, L * 0.24f, R * 1.03f, R * 1.03f, S, 0, 0, 0);
+        iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, L * 0.24f, L * 0.265f, R * 1.08f, R * 1.08f, S, 0, 0, 1 | 2);
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.265f, L * 0.58f, R, R, S, 0, 0, 0);
+        iosSaberStaff_Box(IOSSABERSTAFF_RED, 0, L * 0.36f, R * 1.0f, R * 0.32f, R * 0.32f, R * 0.18f, 0);
+        iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, L * 0.58f, L * 0.61f, R * 1.08f, R * 1.08f, S, 0, 0, 1 | 2);
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.61f, L * 0.64f, R * 1.05f, R * 1.2f, S, 0, 0, 1);
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.64f, L * 0.84f, R * 1.0f, R * 1.0f, S, 0, 0, 0); // (the cage: its bars, as one)
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.84f, L * 0.935f, R * 1.22f, R * 1.22f, S, 0, 0, 1 | 2);
+        iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.935f, L * 1.0f, R * 1.15f, R * 1.1f, S, 0, 0, 2);
+        return;
+    }
     const int S = IOSSABERSTAFF_SIDES;
     iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, 0, L * 0.025f, R * 1.06f, R * 1.06f, S, 0, 0, 1);
     iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.025f, L * 0.08f, R, R, S, 0, 0, 0);
@@ -374,26 +407,37 @@ static void iosSaberStaff_MaulHalf(flex_t L, flex_t R)
 }
 
 // Dark Rey's half: from its pommel (y = 0, at the hinge) to its emitter (y = L):
-// a silver body, three thin red bands, a dark ridged grip near the hinge, a
-// black flared emitter with two black prongs
+// a black pommel ring, a short dark grip, a polished silver body with three
+// wide red bands, a black flared emitter with two black prongs. The grip, body
+// and bands are one run of pieces end to end, never one over another (so close
+// together as a hilt is thin, the depth buffer can't tell which is in front:
+// neither shows true), each step out closed by its own end; the body and bands
+// are FOLD's own metals, so it reads silver with red bands held upright as
+// well as open and turned in the hand.
 static void iosSaberStaff_ReyHalf(flex_t L, flex_t R)
 {
-    const int S = IOSSABERSTAFF_SIDES;
-    iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, 0, L * 0.06f, R * 1.02f, R * 1.02f, S, 0, 0, 1);
-    iosSaberStaff_Tube(IOSSABERSTAFF_SILVER, L * 0.06f, L * 0.74f, R * 0.95f, R * 0.95f, S, 0, 0, 0);
-    static const float aBand[3] = { 0.22f, 0.40f, 0.58f };
-    for (int k = 0; k < 3; k++)
-        iosSaberStaff_Tube(IOSSABERSTAFF_RED, L * aBand[k], L * (aBand[k] + 0.035f), R * 1.0f, R * 1.0f, S, 0, 0, 1 | 2);
-    for (int k = 0; k < 3; k++) {
-        const flex_t y = L * (0.08f + k * 0.035f);
-        iosSaberStaff_Tube(IOSSABERSTAFF_DARK, y, y + L * 0.02f, R * 1.0f, R * 1.0f, S, 0, 0, 1 | 2);
+    // the grip, then the body: where each piece begins (the last: where the body ends), silver and red by turns
+    static const float aY[] = { 0.05f, 0.16f, 0.24f, 0.325f, 0.43f, 0.515f, 0.62f, 0.705f, 0.74f };
+    const int nPieces = (int)(sizeof(aY) / sizeof(aY[0])) - 1;
+    const int lod = iosSaberStaff_lod, S = lod == 2 ? 6 : (lod ? 8 : IOSSABERSTAFF_SIDES);
+    // the pommel (far: the grip silver too, from the pommel)
+    if (lod < 2) iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, 0, L * aY[0], R * 1.02f, R * 1.02f, S, 0, 0, 1 | 2);
+    for (int i = 0; i < nPieces; i++) {
+        const int kind = !i ? (lod == 2 ? IOSSABERSTAFF_CHROME : IOSSABERSTAFF_DARK) : ((i & 1) ? IOSSABERSTAFF_CHROME : IOSSABERSTAFF_REDBAND);
+        const flex_t y0 = (lod == 2 && !i) ? 0 : L * aY[i];
+        iosSaberStaff_Tube(kind, y0, L * aY[i + 1], R * 0.95f, R * 0.95f, S, 0, 0, (lod == 2 && !i) ? 1 : 0);
     }
-    iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, L * 0.74f, L * 0.92f, R * 1.0f, R * 1.15f, S, 0, 0, 1);
+    // the emitter
+    if (lod == 2) {
+        iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, L * aY[nPieces], L * 0.96f, R * 1.0f, R * 1.1f, S, 0, 0, 1 | 2);
+        return;
+    }
+    iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, L * aY[nPieces], L * 0.92f, R * 1.0f, R * 1.15f, S, 0, 0, 1);
     iosSaberStaff_Tube(IOSSABERSTAFF_BLACK, L * 0.92f, L * 0.96f, R * 1.15f, R * 0.9f, S, 0, 0, 2);
     for (int k = 0; k < 2; k++) {
         const flex_t sx = k ? -1.0f : 1.0f;
         iosSaberStaff_Box(IOSSABERSTAFF_BLACK, sx * R * 1.0f, L * 0.98f, 0, R * 0.22f, L * 0.08f, R * 0.32f, 0);
-        iosSaberStaff_Box(IOSSABERSTAFF_BLACK, sx * R * 0.95f, L * 1.07f, 0, R * 0.14f, L * 0.04f, R * 0.22f, 0);
+        if (!lod) iosSaberStaff_Box(IOSSABERSTAFF_BLACK, sx * R * 0.95f, L * 1.07f, 0, R * 0.14f, L * 0.04f, R * 0.22f, 0);
     }
 }
 
@@ -730,6 +774,19 @@ int iosSaberStaff_SecondBlade(SithThing* pThing, int hand, int bPov, const rdMat
     return 1;
 }
 
+// The level of detail for a hilt of length L held so (pHeld: the blade's base): by its length on the
+// screen at its depth; first person, or at or behind the eye, every part
+static int iosSaberStaff_Lod(int bPov, const rdMatrix34* pHeld, flex_t L)
+{
+    if (bPov || !rdCamera_g_pCurCamera || rdCamera_g_pCurCamera->focalLength <= (flex_t)0) return 0;
+    rdMatrix34 toCam;
+    rdMatrix_Multiply34(&toCam, &rdCamera_g_pCurCamera->orient, pHeld);
+    const flex_t depth = toCam.scale.y;
+    if (depth <= L) return 0;
+    const flex_t px = L * rdCamera_g_pCurCamera->focalLength / depth;
+    return px >= (flex_t)IOSSABERSTAFF_LOD_NEAR_PX ? 0 : (px >= (flex_t)IOSSABERSTAFF_LOD_FAR_PX ? 1 : 2);
+}
+
 void iosSaberStaff_DrawHilt(SithThing* pThing, int hand, int bPov, rdThing* pLine, const rdMatrix34* pHeld)
 {
     if (!pThing || !pLine || !pLine->polyline || !pHeld || !rdCamera_g_pCurCamera || hand < 0 || hand > 1) return;
@@ -738,6 +795,7 @@ void iosSaberStaff_DrawHilt(SithThing* pThing, int hand, int bPov, rdThing* pLin
     flex_t L, R;
     iosSaberStaff_Size(pThing, bPov, &L, &R);
     iosSaberStaff_pLine = pLine;
+    iosSaberStaff_lod = iosSaberStaff_Lod(bPov, pHeld, L);
     const rdVector3 x = { 1, 0, 0 }, y = { 0, 1, 0 }, pommel = { 0, -L, 0 };
     rdMatrix34 held, free;
     iosSaberStaff_Axes(&held, &x, &y, &pommel);
@@ -767,7 +825,7 @@ void iosSaberStaff_DrawHilt(SithThing* pThing, int hand, int bPov, rdThing* pLin
         at.y = -L;
         iosSaberStaff_Axes(&pin, &s, &n, &at);
         iosSaberStaff_Part(pHeld, &pin);
-        iosSaberStaff_Tube(IOSSABERSTAFF_DARK, -R * 1.15f, R * 1.15f, R * 0.45f, R * 0.45f, 8, 0, 0, 1 | 2);
+        if (iosSaberStaff_lod < 2) iosSaberStaff_Tube(IOSSABERSTAFF_DARK, -R * 1.15f, R * 1.15f, R * 0.45f, R * 0.45f, 8, 0, 0, 1 | 2);
     }
     iosSaberStaff_FreeFrame(f, L, R, &s, &free);
     iosSaberStaff_Part(pHeld, &free);

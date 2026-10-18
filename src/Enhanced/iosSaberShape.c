@@ -327,7 +327,9 @@ static iosSaberShapeGlow* iosSaberShape_Glow(const unsigned char rgb[3], int gai
 // heat-blued sheen in bands along them (blue, purple, gold); the clamps that
 // hold them to the hilt black; their open ends darker still. STAFF's and
 // FOLD's (iosSaberStaff): brushed silver (fine lines across, a bright streak),
-// black, a deep red, and a dark grey.
+// black, a deep red, and a dark grey; FOLD's polished silver (brighter, finer
+// lines, a stronger streak) and its bands' bright red, both over a narrower
+// range of shades.
 #define IOSSABERSHAPE_METAL_LEVELS 6
 static rdMaterial iosSaberShape_aMetal[IOSSABERSHAPE_NUM_METALS][IOSSABERSHAPE_METAL_LEVELS];
 static int iosSaberShape_metalLoaded = 0; // 1: loaded; -1: tried, and couldn't be
@@ -360,6 +362,19 @@ static void iosSaberShape_MetalTexels(uint8_t* pOut, int w, int h, int kind, int
             }
             else if (kind == IOSSABERSHAPE_METAL_DARK) {
                 c[0] = 78 * shade + 10; c[1] = 80 * shade + 10; c[2] = 86 * shade + 11;
+            }
+            else if (kind == IOSSABERSHAPE_METAL_CHROME || kind == IOSSABERSHAPE_METAL_REDBAND) {
+                // (0.72 facing away from the light to 1 facing it)
+                const float sh = 0.72f + 0.28f * (float)level / (IOSSABERSHAPE_METAL_LEVELS - 1);
+                const float t = (x + 0.5f) / w, k = 0.93f + 0.07f * sinf(t * 46.0f) * sinf(t * 9.0f);
+                const float hi = expf(-((t - 0.5f) * (t - 0.5f)) / 0.015f) * 70.0f * sh;
+                if (kind == IOSSABERSHAPE_METAL_CHROME) {
+                    c[0] = (222 * sh + hi) * k; c[1] = (226 * sh + hi) * k; c[2] = (234 * sh + hi) * k;
+                }
+                else {
+                    c[0] = (205 * sh + hi * 0.5f) * k; c[1] = (22 * sh + hi * 0.25f) * k; c[2] = (30 * sh + hi * 0.25f) * k;
+                }
+                for (int q = 0; q < 3; q++) if (c[q] > 255) c[q] = 255;
             }
             else if (kind == IOSSABERSHAPE_METAL_CLAMP) {
                 c[0] = 34 * shade; c[1] = 34 * shade; c[2] = 38 * shade;
