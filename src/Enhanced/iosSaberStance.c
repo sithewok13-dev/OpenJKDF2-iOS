@@ -8,6 +8,8 @@
 #include <string.h>
 
 #include "Enhanced/iosSaber.h"
+#include "Enhanced/iosSaberFold.h"
+#include "Enhanced/iosSaberStaff.h"
 #include "Enhanced/iosStance.h"
 #include "Enhanced/iosSelfie.h"
 #include "Enhanced/iosPhotoCam.h"
@@ -52,16 +54,21 @@ typedef struct {
     float bladeOut, bladeDown;
     int bBlade;
 } iosSaberStanceArm;
-enum { IOSSABERSTANCE_ONE = 0, IOSSABERSTANCE_FREE, IOSSABERSTANCE_TWO, IOSSABERSTANCE_NUM_ARMS };
+// STAFF (one of two sabers, iosSaberStaff; FOLD open alike): its hand out by the hip,
+// the staff across the body's side, its front blade ahead, in and up, the back
+// one behind, out and down, clear of the legs and the floor (bladeOut and bladeDown below 0: in, up)
+enum { IOSSABERSTANCE_ONE = 0, IOSSABERSTANCE_FREE, IOSSABERSTANCE_TWO, IOSSABERSTANCE_STAFF, IOSSABERSTANCE_NUM_ARMS };
 // standing (walking, running, jumping), then crouched: the blade more level,
 // its point clear of the floor
 static const iosSaberStanceArm iosSaberStance_aArm[2][IOSSABERSTANCE_NUM_ARMS] = {
-    { [IOSSABERSTANCE_ONE]  = { 18.0f, 12.0f, 35.0f, 75.0f, 36.0f, 1 },
-      [IOSSABERSTANCE_FREE] = {  8.0f,  2.0f, 18.0f,  0.0f,  0.0f, 0 },
-      [IOSSABERSTANCE_TWO]  = { 22.0f, 12.0f, 35.0f, 58.0f, 28.0f, 1 } },
-    { [IOSSABERSTANCE_ONE]  = { 16.0f, 26.0f, 30.0f, 46.0f, 10.0f, 1 },
-      [IOSSABERSTANCE_FREE] = { 10.0f, 12.0f, 22.0f,  0.0f,  0.0f, 0 },
-      [IOSSABERSTANCE_TWO]  = { 24.0f, 26.0f, 30.0f, 54.0f, 10.0f, 1 } },
+    { [IOSSABERSTANCE_ONE]   = { 18.0f, 12.0f, 35.0f, 75.0f, 36.0f, 1 },
+      [IOSSABERSTANCE_FREE]  = {  8.0f,  2.0f, 18.0f,  0.0f,  0.0f, 0 },
+      [IOSSABERSTANCE_TWO]   = { 22.0f, 12.0f, 35.0f, 58.0f, 28.0f, 1 },
+      [IOSSABERSTANCE_STAFF] = { 26.0f, 12.0f, 60.0f, -18.0f, -22.0f, 1 } },
+    { [IOSSABERSTANCE_ONE]   = { 16.0f, 26.0f, 30.0f, 46.0f, 10.0f, 1 },
+      [IOSSABERSTANCE_FREE]  = { 10.0f, 12.0f, 22.0f,  0.0f,  0.0f, 0 },
+      [IOSSABERSTANCE_TWO]   = { 24.0f, 26.0f, 30.0f, 54.0f, 10.0f, 1 },
+      [IOSSABERSTANCE_STAFF] = { 26.0f, 26.0f, 40.0f, -15.0f, -10.0f, 1 } },
 };
 
 // First person: the arm in view turned round its hand, its blade tipped out
@@ -74,6 +81,10 @@ static const iosSaberStancePov iosSaberStance_aPov[2] = {
     { 32.0f, 12.0f, 0.004f, 0.0f, 0.0f },
     { 22.0f, 10.0f, 0.010f, -0.003f, 0.0f },
 };
+// ...a STAFF or FOLD (open) as one of two: the arm moved up a little and out ahead (further from the
+// eye), so the staff, turned across the view in the hand (iosSaberStaff), shows both its blades, the
+// back one clear of the arm
+static const iosSaberStancePov iosSaberStance_staffPov = { 0.0f, 0.0f, 0.0f, -0.005f, 0.033f };
 
 // ------------------------------------------------------------ the weights
 
@@ -147,6 +158,15 @@ static int iosSaberStance_IsBusy(const SithThing* t)
         if (!iosSaberStance_IsCarry(t, tr->keyframe)) return 1;
     }
     return 0;
+}
+
+// How much of a hand's saber is a staff carried as one of two (iosSaberStaff): STAFF 1, FOLD as
+// open as it is (eased), anything else, or one saber, 0
+static float iosSaberStance_StaffShare(SithThing* t, int hand)
+{
+    const int hilt = iosSaber_HandHilt(t, hand);
+    if (!iosSaberStaff_IsDouble(hilt) || !iosSaber_HasSecondBlade(t)) return 0.0f;
+    return hilt == IOSSABER_HILT_STAFF ? 1.0f : iosSaberStance_Smooth(iosSaberFold_OpenFraction(t, iosSaber_SaberInHand(t, hand)));
 }
 
 // ------------------------------------------------------------ third person
@@ -342,14 +362,16 @@ void iosSaberStance_PoseArms(rdThing* pRdThing)
     // (a player's body: only players have a style of their own)
     if (!t || t->type != SITH_THING_PLAYER || pRdThing != &t->renderData || !pRdThing->model3 || !pRdThing->paJointMatrices || !t->pPuppetClass) return;
     const int bRight = iosSaber_HandHilt(t, 0) == IOSSABER_HILT_CROSS, bLeft = iosSaber_HandHilt(t, 1) == IOSSABER_HILT_CROSS;
-    if (!bRight && !bLeft) return;
+    // (with two sabers, a STAFF or FOLD hand too: its share, FOLD's as open as it is, kept up folded)
+    const int bTwo = iosSaber_HasSecondBlade(t);
+    const int bStaffR = bTwo && iosSaberStaff_IsDouble(iosSaber_HandHilt(t, 0)), bStaffL = bTwo && iosSaberStaff_IsDouble(iosSaber_HandHilt(t, 1));
+    if (!bRight && !bLeft && !bStaffR && !bStaffL) return;
     // (a selfie poses the arms itself)
     if (iosSelfie_IsActive()) return;
     const uint32_t now = sithTime_g_msecGameTime;
     iosSaberStanceSlot* s = iosSaberStance_SlotOf(t, now);
     if (pRdThing->model3 != s->pModel) iosSaberStance_FindArms(s, pRdThing->model3);
     if (!s->bArms) return;
-    const int bTwo = iosSaber_HasSecondBlade(t);
     // (crouched or not, eased by the same clock; then the guard's weights)
     const float crouched = (t->physicsParams.flags & SITH_PF_CROUCHING) ? 1.0f : 0.0f;
     if (!s->blend.bTime || now < s->blend.lastMs || now - s->blend.lastMs > IOSSABERSTANCE_GAP_MS) s->crouch = crouched;
@@ -367,20 +389,24 @@ void iosSaberStance_PoseArms(rdThing* pRdThing)
     const int primary = t->pPuppetClass->aJoints[JOINTTYPE_PRIMARYWEAP];
     for (int side = 0; side < 2; side++) {
         // the right arm with its saber; the left with its own (two sabers), or free (one)
+        // (with two, a STAFF or FOLD hand carries it as a staff, FOLD as much as it is open)
         int kind, weapon = -1;
+        float share = 1.0f;
         if (side == 0) {
-            if (!bRight) continue;
-            kind = bTwo ? IOSSABERSTANCE_TWO : IOSSABERSTANCE_ONE;
+            if (bRight) kind = bTwo ? IOSSABERSTANCE_TWO : IOSSABERSTANCE_ONE;
+            else if (bStaffR) { kind = IOSSABERSTANCE_STAFF; share = iosSaberStance_StaffShare(t, 0); }
+            else continue;
             weapon = primary;
         } else if (bTwo) {
-            if (!bLeft) continue;
-            kind = IOSSABERSTANCE_TWO;
+            if (bLeft) kind = IOSSABERSTANCE_TWO;
+            else if (bStaffL) { kind = IOSSABERSTANCE_STAFF; share = iosSaberStance_StaffShare(t, 1); }
+            else continue;
             weapon = jkSaber_SecondaryJoint(t);
         } else {
             if (!bRight) continue;
             kind = IOSSABERSTANCE_FREE;
         }
-        const float w = iosSaberStance_Smooth(s->blend.aP[side]);
+        const float w = iosSaberStance_Smooth(s->blend.aP[side]) * share;
         if (w <= 0.0f) continue;
         iosSaberStance_PoseArm(pRdThing, t, s, side, weapon, kind, w);
     }
@@ -403,14 +429,30 @@ static struct {
     uint32_t lastFrame;
 } iosSaberStance_pov;
 
+// A hand's first person guard: CROSS's low guard, or (two sabers) a STAFF's or FOLD's, as much as it is
+// open (*pShare); NULL: none
+static const iosSaberStancePov* iosSaberStance_PovOf(SithThing* pActor, int hand, float* pShare)
+{
+    const int hilt = iosSaber_HandHilt(pActor, hand), bTwo = iosSaber_HasSecondBlade(pActor);
+    *pShare = 1.0f;
+    if (hilt == IOSSABER_HILT_CROSS) return &iosSaberStance_aPov[bTwo ? 1 : 0];
+    if (bTwo && iosSaberStaff_IsDouble(hilt)) {
+        *pShare = iosSaberStance_StaffShare(pActor, hand);
+        return &iosSaberStance_staffPov;
+    }
+    return NULL;
+}
+
 int iosSaberStance_PovPlace(SithThing* pActor, rdThing* pPov, int hand, const rdVector3* pPivot, rdMatrix34* pPlace)
 {
     if (!pActor || !pPov || !pPov->model3 || !pPlace || hand < 0 || hand > 1) return 0;
-    if (iosSaber_HandHilt(pActor, hand) != IOSSABER_HILT_CROSS) {
+    float share, shareL;
+    const iosSaberStancePov* g = iosSaberStance_PovOf(pActor, hand, &share);
+    // (the right arm's call keeps the weights going whenever either arm has a guard: the left's follows the right's swings)
+    if (!g && (hand || !iosSaber_HasSecondBlade(pActor) || !iosSaberStance_PovOf(pActor, 1, &shareL))) {
         if (!hand) iosSaberStance_pov.bLastPlace = 0;
         return 0;
     }
-    const int bTwo = iosSaber_HasSecondBlade(pActor);
     rdVector3 pivot;
     if (!hand) {
         // (once a frame, with the right arm: how far into the guard; its hand as it was last drawn)
@@ -432,6 +474,10 @@ int iosSaberStance_PovPlace(SithThing* pActor, rdThing* pPov, int hand, const rd
             if (now - iosSaberStance_pov.aBusy[i].ms >= IOSSABERSTANCE_ECHO_MS) break;
         }
         iosSaberStance_Blend(&iosSaberStance_pov.left, bPast, 0, now);
+        if (!g) { // (the left arm's guard only)
+            iosSaberStance_pov.bLastPlace = 0;
+            return 0;
+        }
         if (iosSaberStance_pov.pModel != pPov->model3) {
             iosSaberStance_pov.pModel = pPov->model3;
             iosSaberStance_pov.rhand = -1;
@@ -461,10 +507,9 @@ int iosSaberStance_PovPlace(SithThing* pActor, rdThing* pPov, int hand, const rd
         if (!pPivot) return 0;
         pivot = *pPivot;
     }
-    const float w = iosSaberStance_Smooth(hand ? iosSaberStance_pov.left.aP[0] : iosSaberStance_pov.blend.aP[0]);
+    const float w = iosSaberStance_Smooth(hand ? iosSaberStance_pov.left.aP[0] : iosSaberStance_pov.blend.aP[0]) * share;
     rdMatrix34 out = *pPlace;
     if (w > 0.0f) {
-        const iosSaberStancePov* g = &iosSaberStance_aPov[bTwo ? 1 : 0];
         rdVector3 pyr = { w * g->pitch, 0.0f, w * g->roll };
         rdMatrix34 m;
         rdMatrix_BuildRotate34(&m, &pyr);

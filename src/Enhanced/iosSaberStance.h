@@ -6,6 +6,15 @@
 // sabers the hands further apart. The free hand (one saber) lets go of the
 // hilt the game holds in both hands, and hangs by the side.
 //
+// The same for a STAFF or FOLD (open: as far as it is) when it is one of two
+// sabers (iosSaberStaff): its arm out by the hip, the staff along the body's
+// side, its front blade ahead, a little in and up, the back one behind, out
+// and down, so both show and the back blade clears the legs and the floor
+// (the game's own two-saber pose holds it upright, the back blade in the
+// legs); first person, that arm moved up a little and out ahead, the staff
+// turned across the view in the hand (iosSaberStaff). The other hand keeps its
+// own (the game's, CROSS's guard, or a staff's). One saber: iosSaberStaff's own.
+//
 // Only how it looks. Third person, each arm's joints are turned (shoulder,
 // elbow, wrist) once the game has posed the body, toward the guard's
 // directions in the body's own frame (so it fits any person's model); first

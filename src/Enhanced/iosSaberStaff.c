@@ -11,6 +11,7 @@
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberFold.h"
 #include "Enhanced/iosSaberShape.h"
+#include "Enhanced/iosSaberStance.h"
 #include "Enhanced/iosSaberThrow.h"
 #include "Enhanced/iosSelfie.h"
 #include "Enhanced/iosPhotoCam.h"
@@ -54,6 +55,12 @@
 // (along the blade from its base: the hand's middle)
 #define IOSSABERSTAFF_TILT_DEG 45.0f
 #define IOSSABERSTAFF_GRIP_Y (-0.01f)
+// One of two sabers, first person: turned in the hand (round its grip, as far as the arm is in its
+// guard, iosSaberStance) to lean across the view this far from upright (degrees, its front blade
+// toward the middle) and into it this far (degrees: its front blade away from the eye, its back
+// blade toward it, faded there as ever); third person the arm carries it so, not the hand
+#define IOSSABERSTAFF_TWO_POV_LEAN 74.0f
+#define IOSSABERSTAFF_TWO_POV_INTO 3.0f
 // The left arm's turns at the shoulder (degrees): on the staff beside the right
 // hand (roll), and let go (pitch)
 #define IOSSABERSTAFF_GRIP_ROLL (-20.0f)
@@ -638,6 +645,34 @@ static float iosSaberStaff_LocalSpin(SithThing* t, float rest, float* pLetGo)
 
 // ------------------------------------------------------------ where it is held
 
+// pHand turned round its grip, w of the way, so its blade points along pWant (a direction seen from the
+// camera: x right, y ahead, z up); 0 if it can't be (pOut as pHand)
+static int iosSaberStaff_PointInView(const rdMatrix34* pHand, const rdVector3* pWant, float w, rdMatrix34* pOut)
+{
+    *pOut = *pHand;
+    if (!rdCamera_g_pCurCamera || w <= 0.0f) return 0;
+    rdMatrix34 fromCam;
+    rdMatrix_InvertOrtho34(&fromCam, &rdCamera_g_pCurCamera->orient);
+    rdVector3 want, now = pHand->lvec, n, grip, off, turned;
+    rdMatrix_TransformVector34(&want, pWant, &fromCam);
+    if (!iosSaberStaff_Unit(&want) || !iosSaberStaff_Unit(&now)) return 0;
+    iosSaberStaff_Cross(&n, &now, &want);
+    const flex_t sn = stdMath_Sqrt(iosSaberStaff_Dot(&n, &n)), c = iosSaberStaff_Dot(&now, &want);
+    if (sn < (flex_t)1e-5) return 0; // (already; or straight opposite: left)
+    n.x /= sn; n.y /= sn; n.z /= sn;
+    const float a = atan2f((float)sn, (float)c) * w;
+    iosSaberStaff_Turn(&pOut->rvec, &pHand->rvec, &n, a);
+    iosSaberStaff_Turn(&pOut->lvec, &pHand->lvec, &n, a);
+    iosSaberStaff_Turn(&pOut->uvec, &pHand->uvec, &n, a);
+    // (the grip stays where it is: the origin turned round it)
+    rdVector_Copy3(&grip, &pHand->scale);
+    rdVector_ScaleAdd3Acc(&grip, &pHand->lvec, IOSSABERSTAFF_GRIP_Y);
+    rdVector_Sub3(&off, &pHand->scale, &grip);
+    iosSaberStaff_Turn(&turned, &off, &n, a);
+    rdVector_Add3(&pOut->scale, &grip, &turned);
+    return 1;
+}
+
 int iosSaberStaff_HeldFrame(SithThing* pThing, int hand, int bPov, const rdModel3* pHilt, const rdMatrix34* pHand, rdMatrix34* pOut)
 {
     *pOut = *pHand;
@@ -645,8 +680,19 @@ int iosSaberStaff_HeldFrame(SithThing* pThing, int hand, int bPov, const rdModel
     const int hilt = iosSaberStaff_HiltOf(pThing, hand);
     if (!iosSaberStaff_IsDouble(hilt) || !iosSaberStaff_InHand(pThing, pHilt)) return 0;
     if (hand && !iosSaber_HasSecondBlade(pThing)) return 0;
-    // (a selfie poses the arms and the saber itself; two sabers are held as the two-saber style has them)
-    if ((pThing == sithPlayer_g_pLocalPlayerThing && iosSelfie_IsActive()) || iosSaber_HasSecondBlade(pThing)) return 1;
+    // (a selfie poses the arms and the saber itself)
+    if (pThing == sithPlayer_g_pLocalPlayerThing && iosSelfie_IsActive()) return 1;
+    if (iosSaber_HasSecondBlade(pThing)) {
+        // two sabers: the arm carries each as a staff (iosSaberStance), third person by its joints; first
+        // person turned across the view in the hand too, as far as that arm is in its guard
+        if (!bPov || pThing != sithPlayer_g_pLocalPlayerThing) return 1;
+        const float open = hilt == IOSSABER_HILT_STAFF ? 1.0f : iosSaberFold_OpenFraction(pThing, iosSaberStaff_SaberInHand(pThing, hand));
+        const float w = iosSaberStance_Weight(pThing, 2 + hand) * iosSaberStaff_Smooth(open);
+        const float lean = IOSSABERSTAFF_TWO_POV_LEAN * (float)M_PI / 180.0f, into = IOSSABERSTAFF_TWO_POV_INTO * (float)M_PI / 180.0f;
+        const rdVector3 want = { (hand ? 1.0f : -1.0f) * sinf(lean) * cosf(into), sinf(into), cosf(lean) * cosf(into) };
+        iosSaberStaff_PointInView(pHand, &want, w, pOut);
+        return 1;
+    }
     const iosSaberStaffSlot* s = iosSaberStaff_SlotOf(pThing);
     const float open = hilt == IOSSABER_HILT_STAFF ? 1.0f : iosSaberFold_OpenFraction(pThing, iosSaberStaff_SaberInHand(pThing, hand));
     float deg = iosSaberStaff_LocalSpin(pThing, s->rest, NULL);

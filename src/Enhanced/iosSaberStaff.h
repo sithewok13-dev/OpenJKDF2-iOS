@@ -21,6 +21,12 @@
 //    few centimetres of the eye fades there (drawn see-through, cut short),
 //    so the back blade never fills the view. FOLD folded: the two blades side
 //    by side across the view, the same distance from the eye.
+//  - One of two sabers (each hand its own): carried as a staff by its arm
+//    (iosSaberStance's guard: out by the hip, the front blade ahead and up,
+//    the back one behind and down, clear of the legs and the floor), blended
+//    out for swings as the low guard is; first person that arm a little up
+//    and ahead, the staff turned across the view in the hand, both blades in
+//    sight (the fade as above). No tilt in the hand third person, no grip.
 //  - Thrown (either throw): spinning flat like a buzzsaw, two of the game's
 //    thrown sabers end to end (FOLD folded: side by side, snapping open as it
 //    flies, iosSaberFold). Drawn only: the throw flies and strikes as ever.
