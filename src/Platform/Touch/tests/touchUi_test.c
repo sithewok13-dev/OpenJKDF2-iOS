@@ -1716,7 +1716,7 @@ static int layoutClear(float W, float H, float l, float t, float r, float b, int
     inputWheel_GetGeometry(&cx, &cy, &r0, &r1);
     const float top = fmaxf(t, 8.0f) + (bTouch ? 52.0f : 0.0f);
     static const int aOuter[] = { TOUCHUI_CHIP_CARD, TOUCHUI_CHIP_CARD + 1, TOUCHUI_CHIP_ADD, TOUCHUI_CHIP_SAME_COLOUR, TOUCHUI_CHIP_SAME_HILT,
-                                  TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_AUTO, TOUCHUI_CHIP_THROW, TOUCHUI_CHIP_EQUIP };
+                                  TOUCHUI_CHIP_SHAPE, TOUCHUI_CHIP_AUTO, TOUCHUI_CHIP_THROW, TOUCHUI_CHIP_EQUIP, TOUCHUI_CHIP_RANDOM };
     const int nOuter = (int)(sizeof(aOuter) / sizeof(aOuter[0]));
     int bOk = 1, n = 0;
     float rc[4], ro[4];
@@ -3350,6 +3350,254 @@ static void test_saber_x_row(void)
     }
 }
 
+// RANDOM (iosSaberWheel_Random, through the shared wheel and the touch
+// overlay): its spot, a tap, a hold, sliding off, and what it changes
+// (iosSaberWheel's own checks, every rule over many seeds, are in its unit
+// test; here, as the overlay works it)
+static int randomRingDrawn(void)
+{
+    float rc[4];
+    if (!chipRect(TOUCHUI_CHIP_RANDOM, rc)) return 0;
+    const touchUiDrawList* l = touchUi_Draw(T);
+    int n = 0;
+    for (int i = 0; i < l->numItems; i++) {
+        const touchUiDrawItem* it = &l->aItems[i];
+        if ((it->type != TOUCHUI_DRAW_LINE && it->type != TOUCHUI_DRAW_ARC) || it->stroke.r < 0.99f || fabsf(it->stroke.g - 0.85f) > 0.01f || fabsf(it->stroke.b - 0.3f) > 0.01f) continue;
+        if (it->x0 >= rc[0] - 1.0f && it->x0 <= rc[0] + rc[2] + 1.0f && it->y0 >= rc[1] - 1.0f && it->y0 <= rc[1] + rc[3] + 1.0f) n++;
+    }
+    return n;
+}
+
+static void openSaberWheel(void)
+{
+    float sx, sy;
+    bxy(TOUCHUI_BTN_SABER, &sx, &sy);
+    down(1, sx, sy); wait(0.1); up(1, sx, sy);
+    tick();
+}
+
+// (each hand's look now: hilt, linked, each blade's colour as shown)
+typedef struct { int aHilt[2], aLinked[2], aShown[2][2], aCol[2][2]; } randomLook;
+static void randomTake(randomLook* p)
+{
+    for (int h = 0; h < 2; h++) {
+        p->aHilt[h] = fg.aHilt[h];
+        p->aLinked[h] = !fg.aUnlinked[h];
+        for (int b = 0; b < 2; b++) { p->aShown[h][b] = iosSaber_GetShownBladeColour(h, b); p->aCol[h][b] = fg.aBladeColour[h][b]; }
+    }
+}
+// (a tap's or a hold's change, hand by hand: a new hilt (bHilts) or the same, each colour shown now none it showed)
+static int randomChanged(const randomLook* a, int nHands, int bHilts)
+{
+    int bOk = 1;
+    for (int h = 0; h < nHands; h++) {
+        if (bHilts ? (fg.aHilt[h] == a->aHilt[h] || !iosSaber_HiltAvailable(fg.aHilt[h])) : fg.aHilt[h] != a->aHilt[h]) bOk = 0;
+        const int n0 = (iosSaber_HiltNumBlades(a->aHilt[h]) > 1 && !a->aLinked[h]) ? 2 : 1, n1 = (iosSaber_HiltNumBlades(fg.aHilt[h]) > 1 && fg.aUnlinked[h]) ? 2 : 1;
+        for (int b = 0; b < n1; b++)
+            for (int k = 0; k < n0; k++) if (iosSaber_GetShownBladeColour(h, b) == a->aShown[h][k]) bOk = 0;
+        if (n1 == 2 && iosSaber_GetShownBladeColour(h, 0) == iosSaber_GetShownBladeColour(h, 1)) bOk = 0;
+    }
+    return bOk;
+}
+
+static void test_saber_random(void)
+{
+    float rx, ry;
+    g_case = "random: RANDOM under AUTO's spot (FILM's x, two switch rows under FILM), the same spot with AUTO shown or not, one saber or two, in all six states; named, with its die";
+    {
+        int bOk = 1;
+        float x0 = -1.0f, y0 = -1.0f;
+        for (int st = 0; st < 6; st++) {
+            setup();
+            fg.bSaberBtn = 1;
+            saberState(st);
+            tick();
+            openSaberWheel();
+            float rc[4], fc[4];
+            if (!chipRect(TOUCHUI_CHIP_RANDOM, rc) || !chipRect(TOUCHUI_CHIP_SHAPE, fc)) { printf("  random: state %d: not shown\n", st); bOk = 0; }
+            else {
+                if (x0 < 0.0f) { x0 = rc[0]; y0 = rc[1]; }
+                if (fabsf(rc[0] - x0) > 0.01f || fabsf(rc[1] - y0) > 0.01f || fabsf(rc[0] - fc[0]) > 0.01f || fabsf(rc[1] - (fc[1] + 2.0f * (28.0f + 6.0f))) > 0.01f
+                    || fabsf(rc[2] - 64.0f) > 0.01f || fabsf(rc[3] - 28.0f) > 0.01f) { printf("  random: state %d at %.1f,%.1f (FILM %.1f,%.1f)\n", st, rc[0], rc[1], fc[0], fc[1]); bOk = 0; }
+            }
+            if (!drawnText("RANDOM") || randomRingDrawn()) bOk = 0;
+        }
+        CHECK(bOk);
+    }
+    g_case = "random: a tap (one saber, STAFF and FOLD on offer): each time another hilt and other colours (none it showed), one tick, the wheel open to tap, saved; the left hand kept; the style, the look, FILM, AUTO, THROW kept";
+    {
+        setup();
+        fg.bSaberBtn = 1;
+        fg.bStaffOk = fg.bFoldOk = 1;
+        fg.aHilt[1] = 2; fg.aBladeColour[1][0] = 4; fg.aBladeColour[1][1] = 9; fg.aUnlinked[1] = 1; // (the left hand's, kept for the second saber)
+        tick();
+        openSaberWheel();
+        touchUi_GetSaberChip(TOUCHUI_CHIP_RANDOM, &rx, &ry);
+        int bOk = 1, aSeen[4] = { 0, 0, 0, 0 };
+        for (int k = 0; k < 40; k++) {
+            randomLook a;
+            randomTake(&a);
+            const int look = fg.saberLook, shape = fg.saberShape, autoOn = fg.bFoldAuto, thr = fg.bThrow, style = fg.saberStyle;
+            g_platTicks = 0;
+            down(2, rx, ry); wait(0.1); up(2, rx, ry);
+            tick();
+            char want[64];
+            snprintf(want, sizeof(want), "saberHiltRight=%s\n", iosSaber_HiltName(fg.aHilt[0]));
+            if (!randomChanged(&a, 1, 1) || g_platTicks != 1 || !touchUi_IsWheelOpen() || !touchUi_IsWheelTapMode() || !settingsHave(want)
+                || fg.aHilt[1] != 2 || fg.aBladeColour[1][0] != 4 || fg.aBladeColour[1][1] != 9 || !fg.aUnlinked[1]
+                || look != fg.saberLook || shape != fg.saberShape || autoOn != fg.bFoldAuto || thr != fg.bThrow || style != fg.saberStyle) {
+                printf("  random tap %d: hilt %d -> %d, colour %d -> %d, ticks %d\n", k, a.aHilt[0], fg.aHilt[0], a.aShown[0][0], iosSaber_GetShownBladeColour(0, 0), g_platTicks);
+                bOk = 0;
+            }
+            aSeen[fg.aHilt[0]]++;
+        }
+        printf("  random: one saber, 40 taps: NORMAL %d, CROSS %d, STAFF %d, FOLD %d\n", aSeen[0], aSeen[1], aSeen[2], aSeen[3]);
+        CHECK(bOk && aSeen[0] && aSeen[1] && aSeen[2] && aSeen[3]);
+    }
+    g_case = "random: only the hilts the game offers (STAFF and FOLD not: NORMAL and CROSS by turns), the colours only from this wheel (Jedi Knight, REFORGED: never GREEN)";
+    {
+        setup();
+        fg.bSaberBtn = 1;
+        fg.saberLook = 1;
+        tick();
+        openSaberWheel();
+        touchUi_GetSaberChip(TOUCHUI_CHIP_RANDOM, &rx, &ry);
+        int bOk = 1;
+        for (int k = 0; k < 60; k++) {
+            const int h0 = fg.aHilt[0];
+            down(2, rx, ry); wait(0.05); up(2, rx, ry);
+            if (fg.aHilt[0] == h0 || fg.aHilt[0] > 1 || fg.aBladeColour[0][0] == 7) bOk = 0;
+        }
+        CHECK(bOk);
+    }
+    g_case = "random: two sabers, SAME HILT and SAME COLOUR off then on: each hand its own new hilt and colours; SAME HILT, one new hilt for both; SAME COLOUR, every blade one new colour, joined";
+    {
+        setup();
+        fg.bSaberBtn = 1;
+        fg.bStaffOk = fg.bFoldOk = 1;
+        saberState(4); // (two: STAFF split, FOLD joined)
+        tick();
+        openSaberWheel();
+        int bOk = 1, nSplit = 0, nJoinedNew = 0;
+        for (int k = 0; k < 120; k++) {
+            const int sameH = (k / 30) & 1, sameC = (k / 60) & 1;
+            iosSaberWheel_SetSameHilt(sameH);
+            iosSaberWheel_SetSameColour(sameC);
+            // (a STAFF or FOLD split every other time, so its two new colours are seen too)
+            if (k & 1) for (int h = 0; h < 2; h++) if (iosSaber_HiltNumBlades(fg.aHilt[h]) > 1) { fg.aUnlinked[h] = 1; fg.aBladeColour[h][1] = (fg.aBladeColour[h][0] + 3) % 17; }
+            tick();
+            touchUi_GetSaberChip(TOUCHUI_CHIP_RANDOM, &rx, &ry);
+            randomLook a;
+            randomTake(&a);
+            down(2, rx, ry); wait(0.05); up(2, rx, ry);
+            int ok = randomChanged(&a, 2, 1);
+            if (sameH && (fg.aHilt[0] != fg.aHilt[1] || fg.aHilt[0] == a.aHilt[1])) ok = 0;
+            if (sameC) {
+                const int c = iosSaber_GetShownBladeColour(0, 0);
+                for (int h = 0; h < 2; h++) {
+                    if (fg.aUnlinked[h]) ok = 0;
+                    for (int b = 0; b < 2; b++) for (int o = 0; o < 2; o++) if (a.aShown[o][b] == c && (b == 0 || !a.aLinked[o])) ok = 0;
+                    if (iosSaber_GetShownBladeColour(h, 0) != c || iosSaber_GetShownBladeColour(h, 1) != c) ok = 0;
+                }
+            }
+            for (int h = 0; h < 2; h++) {
+                if (iosSaber_HiltNumBlades(a.aHilt[h]) < 2 && iosSaber_HiltNumBlades(fg.aHilt[h]) > 1) { nJoinedNew++; if (fg.aUnlinked[h]) ok = 0; }
+                if (!sameC && iosSaber_HiltNumBlades(a.aHilt[h]) > 1 && iosSaber_HiltNumBlades(fg.aHilt[h]) > 1 && fg.aUnlinked[h] != !a.aLinked[h]) ok = 0;
+                nSplit += iosSaber_HiltNumBlades(fg.aHilt[h]) > 1 && fg.aUnlinked[h];
+            }
+            if (!ok) { printf("  random two %d (same hilt %d colour %d): hilts %d,%d -> %d,%d\n", k, sameH, sameC, a.aHilt[0], a.aHilt[1], fg.aHilt[0], fg.aHilt[1]); bOk = 0; }
+            if (fg.saberStyle != 1) bOk = 0;
+        }
+        printf("  random: two sabers, 120 taps: %d split STAFF/FOLD after, %d new STAFF/FOLD joined\n", nSplit, nJoinedNew);
+        CHECK(bOk && nSplit > 0 && nJoinedNew > 0);
+        iosSaberWheel_SetSameHilt(0);
+        iosSaberWheel_SetSameColour(0);
+    }
+    g_case = "random: held 0.3 s: its gold ring fills meanwhile, then new colours only (the hilts kept), once, with one tick, while still held; the lift after does nothing more";
+    {
+        setup();
+        fg.bSaberBtn = 1;
+        fg.bStaffOk = fg.bFoldOk = 1;
+        saberState(4);
+        tick();
+        openSaberWheel();
+        touchUi_GetSaberChip(TOUCHUI_CHIP_RANDOM, &rx, &ry);
+        randomLook a;
+        randomTake(&a);
+        g_platTicks = 0;
+        const int ringBefore = randomRingDrawn();
+        down(2, rx, ry); wait(0.15);
+        const int ringMid = randomRingDrawn(), ticksMid = g_platTicks, hiltsMid = fg.aHilt[0] == a.aHilt[0] && fg.aHilt[1] == a.aHilt[1];
+        const int colMid = fg.aBladeColour[0][0] == a.aCol[0][0];
+        wait(0.2);
+        const int changedHeld = randomChanged(&a, 2, 0), ticksHeld = g_platTicks, ringHeld = randomRingDrawn();
+        randomLook b;
+        randomTake(&b);
+        wait(0.3); up(2, rx, ry); tick();
+        randomLook c;
+        randomTake(&c);
+        const int same = !memcmp(&b, &c, sizeof(b));
+        printf("  random hold: ring before %d, at 0.15 s %d, after %d; ticks %d, %d, %d\n", ringBefore, ringMid, ringHeld, ticksMid, ticksHeld, g_platTicks);
+        CHECK(!ringBefore && ringMid > 0 && ticksMid == 0 && hiltsMid && colMid && changedHeld && ticksHeld == 1 && !ringHeld && same && g_platTicks == 1
+              && touchUi_IsWheelOpen());
+    }
+    g_case = "random: let go at 0.25 s (before the hold): the tap (new hilts too); slid off before 0.3 s: nothing (no tick, no change), even back on it; slid on from elsewhere: nothing, the wheel open";
+    {
+        setup();
+        fg.bSaberBtn = 1;
+        fg.bStaffOk = fg.bFoldOk = 1;
+        saberState(1);
+        tick();
+        openSaberWheel();
+        touchUi_GetSaberChip(TOUCHUI_CHIP_RANDOM, &rx, &ry);
+        randomLook a, b, c;
+        randomTake(&a);
+        down(2, rx, ry); wait(0.25); up(2, rx, ry); tick();
+        const int bTap = randomChanged(&a, 2, 1);
+        randomTake(&b);
+        g_platTicks = 0;
+        down(2, rx, ry); wait(0.1); move(2, rx, ry + 40.0f); wait(0.05); move(2, rx, ry); wait(0.4); up(2, rx, ry); tick();
+        randomTake(&c);
+        const int bSlid = !memcmp(&b, &c, sizeof(b)) && g_platTicks == 0 && touchUi_IsWheelOpen() && !randomRingDrawn();
+        float fx, fy;
+        touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &fx, &fy);
+        down(2, fx, fy - 60.0f); wait(0.05); move(2, rx, ry); wait(0.05); up(2, rx, ry); tick();
+        randomTake(&c);
+        const int bOn = !memcmp(&b, &c, sizeof(b)) && g_platTicks == 0 && touchUi_IsWheelOpen();
+        printf("  random: tap at 0.25 s %d, slid off %d, slid on %d\n", bTap, bSlid, bOn);
+        CHECK(bTap && bSlid && bOn);
+    }
+    g_case = "random: a pad's or the keys' (inputWheel_SaberRandom, INPUTWHEEL_CHIP_RANDOM): the same, with a tick; their hold's ring drawn while set; nothing with no saber wheel open";
+    {
+        setup();
+        fg.bSaberBtn = 1;
+        fg.bStaffOk = fg.bFoldOk = 1;
+        tick();
+        const int bShut = !inputWheel_SaberRandom(0) && !inputWheel_SaberChip(INPUTWHEEL_CHIP_RANDOM);
+        inputWheel_Open(INPUTWHEEL_SABER, 1);
+        inputWheelScreen scr = { 852, 393, 59, 0, 59, 21 };
+        inputWheel_Layout(&scr);
+        randomLook a;
+        randomTake(&a);
+        g_platTicks = 0;
+        const int r1 = inputWheel_SaberChip(INPUTWHEEL_CHIP_RANDOM);
+        const int bTap = r1 && randomChanged(&a, 1, 1) && g_platTicks == 1;
+        randomTake(&a);
+        const int r2 = inputWheel_SaberRandom(1);
+        const int bHold = r2 && randomChanged(&a, 1, 0) && g_platTicks == 2 && inputWheel_IsOpen();
+        static touchUiDrawList dl;
+        touchUiDraw_Begin(&dl);
+        inputWheel_SetRandomHold(0.5f);
+        inputWheel_Draw(&dl, &scr);
+        int nGold = 0;
+        for (int i = 0; i < dl.numItems; i++) if ((dl.aItems[i].type == TOUCHUI_DRAW_LINE || dl.aItems[i].type == TOUCHUI_DRAW_ARC) && dl.aItems[i].stroke.r > 0.99f && fabsf(dl.aItems[i].stroke.b - 0.3f) < 0.01f) nGold++;
+        inputWheel_Close(-1);
+        const int bCleared = !inputWheel_IsOpen();
+        printf("  random pad: shut %d tap %d hold %d ring parts at half %d\n", bShut, bTap, bHold, nGold);
+        CHECK(bShut && bTap && bHold && nGold >= 2 && bCleared);
+    }
+}
+
 // The pad's and the keys' prompt along the bottom (inputOverlay.c's, iosPadPanel.m's):
 // at 13 pt, on as few lines as fit at 0.8 of it or more (one where it does; two from
 // 568 pt wide, as iOS's, but the PlayStation's in words at 568, three; four at the
@@ -3360,10 +3608,10 @@ static void test_saber_x_row(void)
 static void test_prompt_lines(void)
 {
     static const char* const aPrompt[] = {
-        "Right stick: colour   A: set   Y: pick   LB: hilt   X: one saber   RB: same colour   LT: same hilt   RT: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
-        "Right stick: colour   Cross: set   Triangle: pick   L1: hilt   Square: one saber   R1: same colour   L2: same hilt   R2: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   Circle: close",
-        "Mouse: colour   Click: set   1: one saber   2: pick   7: hilt   8: same colour   9: same hilt   0: auto open   3: equip   4: look   5: film   6: saber throw   Esc: close",
-        "Right stick: colour   A: set   LB: hilt   X: 2nd saber   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
+        "Right stick: colour   A: set   Y: pick   LB: hilt   View: random   X: one saber   RB: same colour   LT: same hilt   RT: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
+        "Right stick: colour   Cross: set   Triangle: pick   L1: hilt   Create: random   Square: one saber   R1: same colour   L2: same hilt   R2: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   Circle: close",
+        "Mouse: colour   Click: set   1: one saber   2: pick   7: hilt   R: random   8: same colour   9: same hilt   0: auto open   3: equip   4: look   5: film   6: saber throw   Esc: close",
+        "Right stick: colour   A: set   LB: hilt   View: random   X: 2nd saber   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
     };
     static const float aW[] = { 568, 640, 667, 693, 720, 732, 780, 812, 852, 874, 912, 932, 956, 1024, 1366, 427, 480, 400, 320 };
     int bOk = 1, nTwo = 0, nMore = 0;
@@ -3800,6 +4048,7 @@ int main(void)
     test_saber_cards();
     test_saber_fit();
     test_saber_x_row();
+    test_saber_random();
     test_prompt_lines();
     test_label_fit();
     test_shared_wheel();

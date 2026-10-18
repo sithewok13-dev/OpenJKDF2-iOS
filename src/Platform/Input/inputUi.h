@@ -41,6 +41,7 @@
 #define inputUi_WheelHot iosTouch_PadWheelHot
 #define inputUi_WheelClose iosTouch_PadWheelClose
 #define inputUi_SaberChip iosTouch_PadSaberChip
+#define inputUi_SaberChipHold iosTouch_PadSaberHold
 #define inputUi_IsPhotoModeUp iosTouch_IsPhotoModeUp
 #define inputUi_WantsPointer iosTouch_WantsPointer
 #define inputUi_Camera iosTouch_KbmCamera
@@ -95,6 +96,8 @@ int inputUi_WheelHot(int* pbPickable);
 int inputUi_WheelClose(int bSelect);
 // The saber wheel's choices (IOSPAD_CHIP_*)
 void inputUi_SaberChip(int chip);
+// RANDOM's ring while the button or key for it is held (0..1; 0: none)
+void inputUi_SaberChipHold(float progress);
 
 // Whether a photo mode is up (a selfie, Action Freeze, the cinematic burst):
 // the pad and the keys leave the game alone then

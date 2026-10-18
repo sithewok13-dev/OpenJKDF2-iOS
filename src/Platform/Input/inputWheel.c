@@ -283,6 +283,7 @@ static struct {
     float cardsX, cardsY;
     float chipX[INPUTWHEEL_NUM_CHIPS], chipY[INPUTWHEEL_NUM_CHIPS], chipW[INPUTWHEEL_NUM_CHIPS], chipH[INPUTWHEEL_NUM_CHIPS];
     int aChipShown[INPUTWHEEL_NUM_CHIPS];
+    float randomHold; // (RANDOM's ring: inputWheel_SetRandomHold)
     // THROW's spot (its middle) for the screen and the ring it was found for (inputWheel_ThrowSpot)
     int bThrowFound, bThrowSpot;
     float throwKey[9], throwX, throwY;
@@ -334,6 +335,7 @@ int inputWheel_Open(int kind, int bTapMode)
     inputWheel_s.bNeedle = 0;
     inputWheel_s.bCancelShown = 0;
     inputWheel_s.bThrowFound = 0; // (found again: the opener's buttons may be others now)
+    inputWheel_s.randomHold = 0.0f;
     iosGame_SetHold(1);
     return 1;
 }
@@ -467,6 +469,7 @@ int inputWheel_Close(int slice)
     inputWheel_s.pfnHint = NULL;
     inputWheel_s.pfnClear = NULL;
     inputWheel_s.topClear = 0.0f;
+    inputWheel_s.randomHold = 0.0f;
     iosGame_SetHold(0);
     return 0;
 }
@@ -488,7 +491,7 @@ static int inputWheel_ChipWanted(int chip)
         return (hand == IOSSABER_HAND_RIGHT || bTwo) && iosSaber_HiltNumBlades(iosSaberWheel_GetHilt(hand)) > 1;
     }
     switch (chip) {
-    case INPUTWHEEL_CHIP_CARD: case INPUTWHEEL_CHIP_SHAPE: case INPUTWHEEL_CHIP_EQUIP: case INPUTWHEEL_CHIP_LOOK: return 1;
+    case INPUTWHEEL_CHIP_CARD: case INPUTWHEEL_CHIP_SHAPE: case INPUTWHEEL_CHIP_EQUIP: case INPUTWHEEL_CHIP_LOOK: case INPUTWHEEL_CHIP_RANDOM: return 1;
     case INPUTWHEEL_CHIP_HILT: return bHilts;
     case INPUTWHEEL_CHIP_CARD + 1: case INPUTWHEEL_CHIP_REMOVE: case INPUTWHEEL_CHIP_SAME_COLOUR: return bTwo;
     case INPUTWHEEL_CHIP_HILT + 1: return bTwo && bHilts;
@@ -570,9 +573,27 @@ int inputWheel_SaberChip(int chip)
         // (while sithewok holds it on: a tick, nothing changed -- THROW stays as the player set it)
         if (!iosSaberThrowJk_CheatHeld()) iosSaberThrowJk_Toggle();
     }
+    else if (chip == INPUTWHEEL_CHIP_RANDOM) {
+        return inputWheel_SaberRandom(0);
+    }
     else return 0;
     inputWheel_SaberChose();
     return 1;
+}
+
+int inputWheel_SaberRandom(int bColoursOnly)
+{
+    if (!inputWheel_s.bOpen || inputWheel_s.kind != INPUTWHEEL_SABER) return 0;
+    // each saber held a new look (the hilts through HILT's own way: a FOLD
+    // new to a hand brings AUTO, a STAFF its stance), drawn with it at once
+    iosSaberWheel_Random(bColoursOnly);
+    inputWheel_SaberChose();
+    return 1;
+}
+
+void inputWheel_SetRandomHold(float progress)
+{
+    inputWheel_s.randomHold = progress > 0.0f ? INPUTWHEEL_MIN(progress, 1.0f) : 0.0f;
 }
 
 void inputWheel_SaberPickNext(void)
@@ -631,7 +652,7 @@ static const int inputWheel_aChipOrder[INPUTWHEEL_NUM_CHIPS] = {
     INPUTWHEEL_CHIP_REMOVE, INPUTWHEEL_CHIP_HILT, INPUTWHEEL_CHIP_HILT + 1,
     INPUTWHEEL_CHIP_DOT, INPUTWHEEL_CHIP_DOT + 1, INPUTWHEEL_CHIP_DOT + 2, INPUTWHEEL_CHIP_DOT + 3,
     INPUTWHEEL_CHIP_CARD, INPUTWHEEL_CHIP_CARD + 1, INPUTWHEEL_CHIP_ADD, INPUTWHEEL_CHIP_SAME_COLOUR, INPUTWHEEL_CHIP_SAME_HILT,
-    INPUTWHEEL_CHIP_SHAPE, INPUTWHEEL_CHIP_AUTO, INPUTWHEEL_CHIP_EQUIP, INPUTWHEEL_CHIP_LOOK, INPUTWHEEL_CHIP_THROW,
+    INPUTWHEEL_CHIP_SHAPE, INPUTWHEEL_CHIP_AUTO, INPUTWHEEL_CHIP_RANDOM, INPUTWHEEL_CHIP_EQUIP, INPUTWHEEL_CHIP_LOOK, INPUTWHEEL_CHIP_THROW,
 };
 
 // How far a point is from a choice's box (0 inside)
@@ -1065,6 +1086,21 @@ static int inputWheel_ThrowSpot(const inputWheelScreen* s, float* pX, float* pY)
     return inputWheel_s.bThrowSpot;
 }
 
+// (RANDOM at a box's top left: in the safe area, under the opener's top row,
+// INPUTWHEEL_RANDOM_RING beyond the popped ring -- as the cards and their
+// switches, by the buttons the opener hides while the saber wheel is open)
+#define INPUTWHEEL_RANDOM_RING 14.0f
+static int inputWheel_RandomFits(const inputWheelScreen* s, float x, float y)
+{
+    const float w = INPUTWHEEL_CHIP_W, h = INPUTWHEEL_CHIP_H;
+    const float left = INPUTWHEEL_MAX_F(s->inL, 8.0f), right = s->w - INPUTWHEEL_MAX_F(s->inR, 8.0f);
+    const float top = INPUTWHEEL_MAX_F(INPUTWHEEL_MAX_F(s->inT, 8.0f), inputWheel_s.topClear), bottom = s->h - INPUTWHEEL_MAX_F(s->inB, 8.0f);
+    if (x < left || x + w > right || y < top || y + h > bottom) return 0;
+    const float cx = inputWheel_s.cx, cy = inputWheel_s.cy;
+    const float nx = INPUTWHEEL_MAX_F(x, INPUTWHEEL_MIN(cx, x + w)), ny = INPUTWHEEL_MAX_F(y, INPUTWHEEL_MIN(cy, y + h));
+    return hypotf(nx - cx, ny - cy) >= inputWheel_s.R1 + INPUTWHEEL_POP + INPUTWHEEL_RANDOM_RING;
+}
+
 // (one of the saber wheel's choices put at a box: left, top, width, height)
 static void inputWheel_PlaceChip(int i, float x, float y, float w, float h)
 {
@@ -1079,11 +1115,12 @@ static void inputWheel_PlaceChip(int i, float x, float y, float w, float h)
 // sizes): EQUIP in the middle under the hint, the look's switch in the
 // middle over the colour's name, in Jedi Knight THROW at the top right
 // (inputWheel_ThrowSpot); the RIGHT card INPUTWHEEL_CARD_OUT right of the
-// popped ring, FILM and AUTO under it; the LEFT card (or "+ 2ND SABER") as
+// popped ring, FILM and AUTO under it, RANDOM under AUTO's spot (AUTO shown
+// or not, so it never moves); the LEFT card (or "+ 2ND SABER") as
 // far left of it, SAME COLOUR and SAME HILT under it. Both cards level, the
 // column of a card and two switches in the middle of the ring's height,
 // under the opener's top row (topClear) and under THROW where it is above
-// the RIGHT card; kept on the screen.
+// the RIGHT card; kept on the screen, RANDOM too.
 static void inputWheel_LayoutChips(const inputWheelScreen* s)
 {
     const int bSaber = inputWheel_s.bOpen && inputWheel_s.kind == INPUTWHEEL_SABER;
@@ -1160,6 +1197,20 @@ static void inputWheel_LayoutChips(const inputWheelScreen* s)
     }
     inputWheel_PlaceChip(INPUTWHEEL_CHIP_SHAPE, xr + (W - INPUTWHEEL_CHIP_W) * 0.5f, yu, INPUTWHEEL_CHIP_W, SH);
     if (inputWheel_ChipWanted(INPUTWHEEL_CHIP_AUTO)) inputWheel_PlaceChip(INPUTWHEEL_CHIP_AUTO, xr + (W - INPUTWHEEL_CHIP_W) * 0.5f, yu2, INPUTWHEEL_CHIP_W, SH);
+    // RANDOM under AUTO's spot (AUTO shown or not: it never moves, and a
+    // second tap never lands on an AUTO that a FOLD brought); where that is
+    // off the screen or on the ring (a short window; the cards over the
+    // ring), right of AUTO's spot; where neither is, not here to touch (a
+    // pad and the keys still have it). (Nothing else made room for it.)
+    {
+        const float ax = xr + (W - INPUTWHEEL_CHIP_W) * 0.5f;
+        float rx = ax, ry = yu2 + SH + INPUTWHEEL_SWITCH_GAP;
+        if (!inputWheel_RandomFits(s, rx, ry)) {
+            rx = ax + INPUTWHEEL_CHIP_W + INPUTWHEEL_SWITCH_GAP;
+            ry = yu2;
+        }
+        if (inputWheel_RandomFits(s, rx, ry)) inputWheel_PlaceChip(INPUTWHEEL_CHIP_RANDOM, rx, ry, INPUTWHEEL_CHIP_W, SH);
+    }
 }
 
 // ------------------------------------------------------------ drawing
@@ -1424,6 +1475,54 @@ static void inputWheel_DrawAddSlot(void)
 // The saber wheel's choices where they were laid out: the cards, the
 // switches (lit when on: their own switch), EQUIP (dim while there is no
 // saber to take) and the look
+// RANDOM (as iosTouch.m's): a die (three pips, corner to corner) and its
+// name; while it is held, a gold ring round its edge filling clockwise from
+// its top middle
+#define INPUTWHEEL_RANDOM_DIE 13.0f
+#define INPUTWHEEL_RANDOM_DIE_X 7.0f
+static void inputWheel_DrawRandom(void)
+{
+    touchUiDrawList* l = inputWheel_pDraw;
+    const int i = INPUTWHEEL_CHIP_RANDOM;
+    const float x = inputWheel_s.chipX[i], y = inputWheel_s.chipY[i], w = inputWheel_s.chipW[i], h = inputWheel_s.chipH[i];
+    const float x0 = x - w * 0.5f, d = INPUTWHEEL_RANDOM_DIE;
+    touchUiDraw_RRect(l, x0, y - h * 0.5f, w, h, h * 0.5f, touchUi_Black(0.55f), 1.5f, touchUi_White(0.4f));
+    const float dx = x0 + INPUTWHEEL_RANDOM_DIE_X;
+    touchUiDraw_RRect(l, dx, y - d * 0.5f, d, d, 3.0f, touchUi_White(0.16f), 1.2f, touchUi_White(0.9f));
+    for (int k = -1; k <= 1; k++) touchUiDraw_Circle(l, dx + d * 0.5f + k * 3.2f, y - k * 3.2f, 1.3f, touchUi_White(1.0f), 0.0f, touchUi_Clear());
+    // (the name in the room right of the die, a little condensed if it must be)
+    const float bx = dx + d + 3.0f, bw = x0 + w - 5.0f - bx;
+    float tw, xscale = 1.0f, size = 10.0f;
+    touchUiDraw_MeasureText("RANDOM", size, 1.0f, &tw, NULL);
+    if (tw > bw) xscale = INPUTWHEEL_MAX_F(INPUTWHEEL_XSCALE, bw / tw);
+    if (tw * xscale > bw) size = INPUTWHEEL_MAX_F(8.0f, floorf(size * bw / (tw * xscale) * 2.0f) / 2.0f);
+    touchUiDraw_Text(l, "RANDOM", bx + bw * 0.5f, y, size, xscale, touchUi_White(1.0f));
+    const float p = inputWheel_s.randomHold;
+    if (p <= 0.0f) return;
+    // the ring: the top from the middle to the right, the right end, the
+    // bottom, the left end, the top back to the middle -- this far along
+    const float r = h * 0.5f - 1.25f, s = w - h, lw = 2.5f, top = y - r, bot = y + r;
+    float left = p * (2.0f * s + 2.0f * (float)M_PI * r), seg;
+    const touchUiColor gold = INPUTWHEEL_GOLD(1.0f);
+    seg = INPUTWHEEL_MIN(left, s * 0.5f);
+    touchUiDraw_Line(l, x, top, x + seg, top, lw, gold);
+    left -= seg;
+    if (left <= 0.0f) return;
+    seg = INPUTWHEEL_MIN(left, (float)M_PI * r);
+    touchUiDraw_Arc(l, x + s * 0.5f, y, r, lw, 0.0f, seg / r, 0, gold);
+    left -= seg;
+    if (left <= 0.0f) return;
+    seg = INPUTWHEEL_MIN(left, s);
+    touchUiDraw_Line(l, x + s * 0.5f, bot, x + s * 0.5f - seg, bot, lw, gold);
+    left -= seg;
+    if (left <= 0.0f) return;
+    seg = INPUTWHEEL_MIN(left, (float)M_PI * r);
+    touchUiDraw_Arc(l, x - s * 0.5f, y, r, lw, (float)M_PI, seg / r, 0, gold);
+    left -= seg;
+    if (left <= 0.0f) return;
+    touchUiDraw_Line(l, x - s * 0.5f, top, x - s * 0.5f + INPUTWHEEL_MIN(left, s * 0.5f), top, lw, gold);
+}
+
 static void inputWheel_DrawChips(void)
 {
     touchUiDrawList* l = inputWheel_pDraw;
@@ -1451,6 +1550,7 @@ static void inputWheel_DrawChips(void)
         inputWheel_DrawShapeSwitch(l, aSwitch[k].name, x, y, w, bOn);
         l->alpha = 1.0f;
     }
+    if (inputWheel_s.aChipShown[INPUTWHEEL_CHIP_RANDOM]) inputWheel_DrawRandom();
     for (int k = 0; k < 2; k++) {
         const int i = k ? INPUTWHEEL_CHIP_LOOK : INPUTWHEEL_CHIP_EQUIP;
         if (!inputWheel_s.aChipShown[i]) continue;

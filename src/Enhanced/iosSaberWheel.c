@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberFold.h"
@@ -282,6 +283,136 @@ int iosSaberWheel_GetAuto(void)
 void iosSaberWheel_SetAuto(int bOn)
 {
     iosSaberFold_SetAuto(bOn);
+}
+
+// ------------------------------------------------------------ RANDOM
+
+static unsigned int iosSaberWheel_dice; // (0: not seeded yet)
+
+void iosSaberWheel_SeedRandom(unsigned int seed)
+{
+    iosSaberWheel_dice = seed ? seed : 0x9E3779B9u; // (xorshift never leaves 0)
+}
+
+// (0 .. n - 1, n > 0: xorshift32, seeded from the clock at the first throw)
+static int iosSaberWheel_Roll(int n)
+{
+    if (!iosSaberWheel_dice) iosSaberWheel_SeedRandom((unsigned int)time(NULL) * 2654435761u ^ (unsigned int)clock());
+    unsigned int x = iosSaberWheel_dice;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    iosSaberWheel_dice = x;
+    return (int)(x % (unsigned int)n);
+}
+
+// (two colours that look the same on the wheel: the same one, or the same
+// swatch -- ORIGINAL and the game's own blade's colour)
+static int iosSaberWheel_LooksSame(int a, int b)
+{
+    if (a == b) return 1;
+    unsigned char ra, ga, ba, rb, gb, bb;
+    iosSaber_ColourRGB(a, &ra, &ga, &ba);
+    iosSaber_ColourRGB(b, &rb, &gb, &bb);
+    return ra == rb && ga == gb && ba == bb;
+}
+
+// A colour on this game's wheel in this look that looks like none of the n
+// in aNot, at random; -1 if there is none
+static int iosSaberWheel_RandomColour(const int* aNot, int n)
+{
+    int aOk[64], k = 0;
+    for (int id = 0; id < iosSaber_NumColours() && k < 64; id++) {
+        if (!iosSaber_ColourOnWheel(id)) continue;
+        int bOut = 0;
+        for (int i = 0; i < n && !bOut; i++) bOut = iosSaberWheel_LooksSame(id, aNot[i]);
+        if (!bOut) aOk[k++] = id;
+    }
+    return k ? aOk[iosSaberWheel_Roll(k)] : -1;
+}
+
+// An available hilt none of the n in aNot is, at random; -1 if there is none
+static int iosSaberWheel_RandomHilt(const int* aNot, int n)
+{
+    int aOk[IOSSABER_NUM_HILTS], k = 0;
+    for (int h = 0; h < IOSSABER_NUM_HILTS; h++) {
+        if (!iosSaber_HiltAvailable(h)) continue;
+        int bOut = 0;
+        for (int i = 0; i < n; i++) bOut |= h == aNot[i];
+        if (!bOut) aOk[k++] = h;
+    }
+    return k ? aOk[iosSaberWheel_Roll(k)] : -1;
+}
+
+// (the colours a hand shows now: its first blade's, and its second's when
+// it has one of its own; how many)
+static int iosSaberWheel_ShownColours(int hand, int* aOut)
+{
+    aOut[0] = iosSaber_GetShownBladeColour(hand, 0);
+    if (iosSaberWheel_Blades(hand) < 2 || iosSaber_GetBladeLinked(hand)) return 1;
+    aOut[1] = iosSaber_GetShownBladeColour(hand, 1);
+    return 2;
+}
+
+int iosSaberWheel_Random(int bColoursOnly)
+{
+    const int numHands = iosSaberWheel_NumSabers();
+    // (what every saber held shows now, before its hilt changes)
+    int aWas[IOSSABER_NUM_HANDS][2], aNumWas[IOSSABER_NUM_HANDS];
+    for (int h = 0; h < numHands; h++) aNumWas[h] = iosSaberWheel_ShownColours(h, aWas[h]);
+    int bChanged = 0;
+    if (!bColoursOnly) {
+        // a hilt other than its own, as its HILT sets it (SAME HILT: both
+        // hands to one, neither's own -- or, with too few hilts for that,
+        // the right's not)
+        int aHilt[IOSSABER_NUM_HANDS];
+        for (int h = 0; h < numHands; h++) aHilt[h] = iosSaber_GetHandHilt(h);
+        if (iosSaberWheel_SameHiltActs()) {
+            int hilt = iosSaberWheel_RandomHilt(aHilt, numHands);
+            if (hilt < 0) hilt = iosSaberWheel_RandomHilt(aHilt, 1);
+            if (hilt >= 0) iosSaberWheel_SetHilt(IOSSABER_HAND_RIGHT, hilt);
+            bChanged |= hilt >= 0;
+        }
+        else {
+            for (int h = 0; h < numHands; h++) {
+                const int hilt = iosSaberWheel_RandomHilt(&aHilt[h], 1);
+                if (hilt >= 0) iosSaberWheel_SetHilt(h, hilt);
+                bChanged |= hilt >= 0;
+            }
+        }
+    }
+    if (iosSaberWheel_SameColourActs()) {
+        // every blade one colour no blade shows now, every pair linked
+        // again, as a colour tapped with SAME COLOUR on
+        int aNot[IOSSABER_NUM_HANDS * 2], n = 0;
+        for (int h = 0; h < numHands; h++)
+            for (int i = 0; i < aNumWas[h]; i++) aNot[n++] = aWas[h][i];
+        const int id = iosSaberWheel_RandomColour(aNot, n);
+        if (id >= 0) {
+            for (int h = 0; h < IOSSABER_NUM_HANDS; h++) iosSaberWheel_PaintHand(h, id);
+            iosSaberWheel_s.pickBlade = -1;
+            bChanged = 1;
+        }
+    }
+    else {
+        for (int h = 0; h < numHands; h++) {
+            const int id = iosSaberWheel_RandomColour(aWas[h], aNumWas[h]);
+            if (id < 0) continue;
+            bChanged = 1;
+            if (iosSaberWheel_Blades(h) < 2 || iosSaber_GetBladeLinked(h)) {
+                // one blade, or two joined: one colour (as a colour tapped for the whole hand)
+                iosSaberWheel_PaintHand(h, id);
+                continue;
+            }
+            // split: two, neither one the hand shows now, nor each other's
+            int aNot[3] = { aWas[h][0], aWas[h][aNumWas[h] - 1], id };
+            const int id2 = iosSaberWheel_RandomColour(aNot, 3);
+            iosSaber_SetBladeColour(h, 0, id);
+            iosSaber_SetBladeColour(h, 1, id2 >= 0 ? id2 : id);
+        }
+    }
+    iosSaberWheel_Settle(NULL, NULL);
+    return bChanged;
 }
 
 // ------------------------------------------------------------ the SABER button

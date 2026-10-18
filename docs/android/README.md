@@ -177,7 +177,8 @@ Tick what works, note what doesn't (a photo of the screen helps).
       LEFT card's colour down is the card's, never its x. Under the RIGHT card: FILM and,
       while a FOLD is in either hand, AUTO OPEN (FOLD opens on the first swing
       and folds after 5 s without one, two together; off: only when you flip
-      it, each kept as you left it). Every tap
+      it, each kept as you left it). Under where AUTO OPEN goes (always there,
+      AUTO OPEN shown or not, so nothing moves): RANDOM, a small die. Every tap
       there ticks and leaves the wheel open; the sabers, colours and switches
       are kept (the picked card starts on RIGHT each time the game starts). JUMP, FIRE, DUCK and
       the other action buttons hide while the saber wheel is open; the top
@@ -195,6 +196,19 @@ Tick what works, note what doesn't (a photo of the screen helps).
       key (0) again while it's in hand (twice quickly: both). In Mysteries of the Sith the
       saber shares key 1 with the fists: 1 switches to the fists, as in the
       game, so flip it there with SABER or the weapon wheel.
+- [ ] RANDOM (under the RIGHT card's switches): a tap gives every saber you
+      hold (one or two) a different hilt and a different colour (never the
+      one it has, nor one that looks the same); a STAFF or FOLD with joined
+      dots one new colour, split dots two; a saber that becomes a STAFF or
+      FOLD starts joined, as with HILT. Held 0.3 s (a gold ring fills round
+      it, as QUICK SAVE's): new colours only, the hilts stay; let go sooner,
+      the tap; slid off, nothing. SAME HILT on: both get the same new hilt;
+      SAME COLOUR on: every blade the same new colour. It never changes one
+      saber or two, CLASSIC / REFORGED, FILM, AUTO OPEN or SABER THROW; the
+      colours come from the wheel as you see it. A tick, kept at once, the
+      wheel stays open. Where there's no room under AUTO OPEN's spot (a short
+      window), it sits right of it; in a window too narrow for that too
+      (320 wide), only the pad's and the keys' RANDOM is there.
 - [ ] CLASSIC / REFORGED (at the top of the saber wheel's middle): a tap
       switches the colours' look, and the wheel stays open. CLASSIC (to
       start, unless you picked REFORGED before): the earlier look, 17
@@ -225,7 +239,8 @@ Tick what works, note what doesn't (a photo of the screen helps).
       SAME HILT; RT / 0 AUTO OPEN (with a FOLD in hand); D-pad up / 5 FILM; D-pad
       down / 6 SABER THROW (Jedi Knight; with `sithewok` on it shows on, a
       little dim, and a press leaves it as you set it); L3 / 4 the look; R3 / 3
-      EQUIP. The prompt
+      EQUIP; Back (View, Share, -) / R RANDOM (held 0.3 s: new colours only,
+      RANDOM's ring filling meanwhile). The prompt
       at the bottom lists them (on two lines, or more in a narrow window,
       when one line is too narrow for it; never cut off).
 - [ ] A narrow window (half a desktop screen, a square one, one standing up,

@@ -77,10 +77,12 @@ typedef struct {
 // blades) just that blade. The LEFT card's x: back to one saber. Under the
 // LEFT card SAME COLOUR and SAME HILT; under the RIGHT card FILM (the blade's
 // shape: dim while every hilt in use is CROSS, iosSaberWheel_FilmDimmed) and,
-// while a FOLD is in either hand, FOLD's AUTO. In the middle the colours' look
-// (CLASSIC / REFORGED) and EQUIP (the saber in hand). In Jedi Knight, single
-// player, THROW at the ring's top right (Saber Throw on the Force wheel,
-// iosSaberThrowJk), where it always was.
+// while a FOLD is in either hand, FOLD's AUTO; RANDOM under AUTO's spot (AUTO
+// shown or not: a new hilt and new colours for each saber held; held 0.3 s,
+// a ring filling round it, new colours only: iosSaberWheel_Random). In the
+// middle the colours' look (CLASSIC / REFORGED) and EQUIP (the saber in
+// hand). In Jedi Knight, single player, THROW at the ring's top right (Saber
+// Throw on the Force wheel, iosSaberThrowJk), where it always was.
 // Per hand (0 the right, 1 the left: IOSSABER_HAND_*): INPUTWHEEL_CHIP_CARD +
 // hand, INPUTWHEEL_CHIP_HILT + hand, INPUTWHEEL_CHIP_DOT + 2 * hand + blade.
 enum {
@@ -92,8 +94,12 @@ enum {
     INPUTWHEEL_CHIP_SAME_COLOUR, INPUTWHEEL_CHIP_SAME_HILT,
     INPUTWHEEL_CHIP_EQUIP, INPUTWHEEL_CHIP_LOOK,
     INPUTWHEEL_CHIP_SHAPE,                         // FILM
-    INPUTWHEEL_CHIP_AUTO, INPUTWHEEL_CHIP_THROW, INPUTWHEEL_NUM_CHIPS
+    INPUTWHEEL_CHIP_AUTO, INPUTWHEEL_CHIP_THROW,
+    INPUTWHEEL_CHIP_RANDOM,                        // (a tap: a new hilt and new colours; held, inputWheel_SaberRandom)
+    INPUTWHEEL_NUM_CHIPS
 };
+// RANDOM held this long (as QUICK SAVE): new colours only, the hilts kept
+#define INPUTWHEEL_RANDOM_HOLD 0.3
 
 // ------------------------------------------------------------ the maps
 
@@ -168,6 +174,13 @@ int inputWheel_SaberChip(int chip);
 void inputWheel_SaberPickNext(void);
 // Whether EQUIP can take the saber now (the player has it and can switch to it)
 int inputWheel_CanEquipSaber(void);
+// RANDOM (iosSaberWheel_Random): bColoursOnly, as it does held (new colours
+// only); else as its tap (INPUTWHEEL_CHIP_RANDOM). With a tick, the wheel
+// open; 0 (nothing) if it isn't the saber wheel that is open.
+int inputWheel_SaberRandom(int bColoursOnly);
+// RANDOM's ring while it is held (a finger on it, or the button or key for
+// it), filled this far (0..1; 0: none). Kept until set again or the wheel closes.
+void inputWheel_SetRandomHold(float progress);
 
 // Called for each new slice pointed at, after the tick (a pad's rumble);
 // NULL for none. Set by whoever opens the wheel, kept until it closes.

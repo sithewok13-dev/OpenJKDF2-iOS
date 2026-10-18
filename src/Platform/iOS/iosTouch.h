@@ -146,6 +146,8 @@ int iosTouch_PadWheelHot(int* pbPickable);
 int iosTouch_PadWheelClose(int bSelect);
 // The saber wheel's choices (IOSPAD_CHIP_*)
 void iosTouch_PadSaberChip(int chip);
+// RANDOM's ring while a pad's button or a key for it is held (0..1; 0: none)
+void iosTouch_PadSaberHold(float progress);
 // Whether a photo mode is up: a selfie, Action Freeze, the cinematic burst,
 // or iOS asking for Photos access (the pad leaves the game alone then)
 int iosTouch_IsPhotoModeUp(void);
