@@ -488,9 +488,9 @@ switch the controller off and they come back.
   | X / Square | Add the second saber, or go back to one |
   | RB / R1 | SAME COLOUR on or off (two sabers) |
   | LT / L2 | SAME HILT on or off (two sabers) |
-  | RT / R2 | AUTO on or off (with a FOLD) |
+  | RT / R2 | AUTO OPEN on or off (with a FOLD) |
   | D-pad up | FILM on or off |
-  | D-pad down | THROW on or off (Jedi Knight only) |
+  | D-pad down | SABER THROW on or off (Jedi Knight only) |
   | L3 | CLASSIC or REFORGED |
   | R3 | Take the saber in hand ("equip") |
   | B / Circle, D-pad left | Close (D-pad left sets the colour pointed at first) |
@@ -576,11 +576,11 @@ Turn on FPS in MENU's tray to see what the app gets (below).
   | 3 | Take the saber in hand ("equip") |
   | 4 | CLASSIC or REFORGED |
   | 5 | FILM on or off |
-  | 6 | THROW on or off (Jedi Knight only) |
+  | 6 | SABER THROW on or off (Jedi Knight only) |
   | 7 | The next hilt for the card you picked |
   | 8 | SAME COLOUR on or off (two sabers) |
   | 9 | SAME HILT on or off (two sabers) |
-  | 0 | AUTO on or off (with a FOLD) |
+  | 0 | AUTO OPEN on or off (with a FOLD) |
   | Esc, right click, L again | Close |
 
   The line at the bottom of the screen shows what each key does right now
@@ -828,11 +828,11 @@ yet or not (powers you haven't learned are dark):
 - **Right side, red: dark side.** From the top: Throw, Grip, Lightning,
   Destruction, Deadly Sight.
 - **The gap at the bottom** means *cancel*.
-- **Saber Throw** (Jedi Knight, with **THROW** on in the saber wheel, or while
-  `sithewok` is on): at the very top, between Speed and Seeing. The slices
-  get a little narrower to make room, so on most screens the stars are a
-  little smaller, and so are the names Destruct and Deadly Sight. Every power
-  still shows its stars. See [THROW](#the-lightsaber-saber).
+- **Saber Throw** (Jedi Knight, with **SABER THROW** on in the saber wheel, or
+  while `sithewok` is on): at the very top, between Speed and Seeing. The
+  slices get a little narrower to make room, so on most screens the stars are
+  a little smaller, and so are the names Destruct and Deadly Sight. Every power
+  still shows its stars. See [SABER THROW](#the-lightsaber-saber).
 
 **Stars:** under the name of each power you've learned, a row of four stars
 shows its level, one gold star per level (a power at level 2 shows two gold
@@ -1003,15 +1003,15 @@ hand's colours and has its own **HILT** button.
   - It works with every colour, ORIGINAL included, in both CLASSIC and
     REFORGED. It shows in first and third person, with two sabers, in selfies
     and Action Freeze. A thrown saber gets the glow too (Saber Throw in
-    Mysteries of the Sith, and THROW in Jedi Knight).
+    Mysteries of the Sith, and SABER THROW in Jedi Knight).
   - It's a setting for your own screen. It changes your blade, and in
     multiplayer the blades of players whose game sends their saber choice
     (except a CROSS, which keeps its own). Enemy Jedi (the bosses) and
     players on other builds keep the game's blade.
   - Only the look changes: the reach and damage of every attack stay as the
     game has them.
-- **AUTO**, an on/off switch under FILM, shows only while a FOLD is in either
-  hand (see below). On to start.
+- **AUTO OPEN**, an on/off switch under FILM, shows only while a FOLD is in
+  either hand (see below). On to start.
 - **The wheel stays open** after you pick a colour, so you can change every
   blade in one go. Close it with the gap at the bottom, or by tapping an empty
   spot.
@@ -1025,9 +1025,9 @@ hand's colours and has its own **HILT** button.
   second blade doesn't hit anything.
 - **FOLD** folds its two halves side by side, or opens into a staff. It
   lights folded.
-  - **AUTO on** (the default): it opens on your first swing and folds again
+  - **AUTO OPEN on** (the default): it opens on your first swing and folds again
     5 seconds after your last (never before a swing).
-  - **AUTO off:** it only changes when you flip it, and stays the way you
+  - **AUTO OPEN off:** it only changes when you flip it, and stays the way you
     left it, across levels and loads.
   - **Flip it yourself:** tap SABER, or pick the lightsaber again on the
     weapon wheel while it's in your hand (touch or controller). On a
@@ -1046,7 +1046,7 @@ hand's colours and has its own **HILT** button.
   wall it only tints). It works with every colour, in both CLASSIC and
   REFORGED, and shows in first and third person and in Action Freeze. With
   two sabers you can hold two of them, one in each hand. A thrown CROSS saber (Saber Throw in Mysteries
-  of the Sith, THROW in Jedi Knight, each of the two with two sabers) gets the
+  of the Sith, SABER THROW in Jedi Knight, each of the two with two sabers) gets the
   glow, the vents and the two short blades too. Only the look changes: the
   main blade hits as usual, and the vents and the short side blades don't
   hit anything.
@@ -1095,8 +1095,8 @@ hand's colours and has its own **HILT** button.
   it. Each throw costs the power's usual Force, and with both thrown she's
   on her fists until one comes back, as in the original. With one saber,
   Saber Throw is exactly the original.
-- **THROW** (Jedi Knight only), an on/off switch at the top right of the
-  saber wheel, gives Kyle Mysteries of the Sith's Saber Throw. Tap it to
+- **SABER THROW** (Jedi Knight only), an on/off switch at the top right of
+  the saber wheel, gives Kyle Mysteries of the Sith's Saber Throw. Tap it to
   switch. The wheel stays open, and the app remembers it. It's off to start.
   - **On:** Saber Throw is on the Force wheel for the whole game, at the top
     between Speed and Seeing. Pick it there and use it with **FORCE**. Off
@@ -1122,8 +1122,11 @@ hand's colours and has its own **HILT** button.
     the left, as in Mysteries of the Sith. The thrown saber has your colour,
     look, FILM and hilt.
   - With `sithewok` on, Saber Throw is on the wheel at four stars even with
-    THROW off, and costs no Force. It's never in multiplayer or co-op, and
-    Mysteries of the Sith has no THROW switch (it has its own Saber Throw).
+    SABER THROW off, and costs no Force. The switch then shows on (a little
+    dim) and a tap leaves your own setting alone: with the cheat off it's
+    back the way you set it. It's never in multiplayer or co-op, and
+    Mysteries of the Sith has no SABER THROW switch (it has its own Saber
+    Throw).
 
 ## Saving and loading
 

@@ -224,8 +224,8 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
        IOSTOUCH_CHIP_LOOK,  // (in the middle, over the colour's name: the colours' look, CLASSIC or REFORGED)
        IOSTOUCH_CHIP_SHAPE, // (under the RIGHT card: the blade's shape, FILM on or off -- SPIKE, the game's;
                             // dim while every hilt in use has blades of its own shape, CROSS's)
-       IOSTOUCH_CHIP_AUTO,  // (under FILM, while a FOLD is in either hand: FOLD's AUTO, iosSaberFold)
-       IOSTOUCH_CHIP_THROW, // (at the top right, beside the ring: THROW, a switch, Saber Throw on the Force wheel;
+       IOSTOUCH_CHIP_AUTO,  // (under FILM, while a FOLD is in either hand: FOLD's AUTO, iosSaberFold; "AUTO OPEN")
+       IOSTOUCH_CHIP_THROW, // (at the top right, beside the ring: THROW, a switch, Saber Throw on the Force wheel ("SABER THROW");
                             // Jedi Knight's, single player only: iosSaberThrowJk)
        IOSTOUCH_NUM_CHIPS,
        // (touches inside the cards, with no view of their own: each card's
@@ -233,9 +233,12 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
        IOSTOUCH_CHIP_HILT_R = IOSTOUCH_NUM_CHIPS, IOSTOUCH_CHIP_HILT_L, IOSTOUCH_CHIP_CLOSE,
        IOSTOUCH_CHIP_DOT_R0, IOSTOUCH_CHIP_DOT_R1, IOSTOUCH_CHIP_DOT_L0, IOSTOUCH_CHIP_DOT_L1 };
 // The switches (FILM, AUTO, THROW, SAME COLOUR, SAME HILT): a track this big
-// at their right, its knob to the right and gold while on
+// at their right, its knob to the right and gold while on. A name on two
+// lines (AUTO OPEN, SABER THROW) starts IOSTOUCH_SWITCH_INSET2 further in,
+// its corners clear of the switch's round end.
 #define IOSTOUCH_SWITCH_W 20.0
 #define IOSTOUCH_SWITCH_H 12.0
+#define IOSTOUCH_SWITCH_INSET2 4.0
 // A card (a hand's, or "+ 2ND SABER"), this far out from the popped ring;
 // the switches under each card, this far under it and apart, SAME COLOUR and
 // SAME HILT as wide as the card, FILM, AUTO, THROW and EQUIP
@@ -260,6 +263,7 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 #define IOSTOUCH_SABER_PART_TOUCH 3.0
 #define IOSTOUCH_SABER_CHIP_TOUCH 6.0
 #define IOSTOUCH_SABER_CHIP_DIM 0.4 // (FILM while every hilt in use is CROSS: it doesn't change those blades)
+#define IOSTOUCH_SABER_CHIP_HELD 0.7 // (SABER THROW while sithewok holds it on: on, a little dim)
 // The look's switch: this big at most, its middle this far over the wheel's,
 // smaller to keep it inside the middle on a small wheel (inputWheel.c's the same)
 #define IOSTOUCH_SABER_LOOK_W 76.0
@@ -1717,6 +1721,19 @@ static void IOSTouch_FitRound(UILabel* l, CGFloat size, CGFloat R, int bCondense
     // (none fits: the smallest, condensed)
 }
 
+// A label as big as fits room across (its widest line): at size; else in the
+// condensed font, as big as that fits, down to IOSTOUCH_LABEL_MIN (a
+// switch's long name, as the shared overlay condenses one)
+static void IOSTouch_FitWidth(UILabel* l, CGFloat size, CGFloat room)
+{
+    l.font = [UIFont boldSystemFontOfSize:size];
+    if ([l sizeThatFits:CGSizeMake(1000.0, 1000.0)].width <= room) return;
+    for (CGFloat s = size; s >= IOSTOUCH_LABEL_MIN; s -= 0.25) {
+        l.font = IOSTouch_WheelFont(s);
+        if ([l sizeThatFits:CGSizeMake(1000.0, 1000.0)].width <= room) return;
+    }
+}
+
 // A wheel group's colour, mixed k of the way to it from the wheel's dark grey
 static UIColor* IOSTouch_WheelColour(const iosTouchWheelGroup* g, CGFloat k)
 {
@@ -2210,16 +2227,20 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         {
             // the switches: the name on the left, a small on/off switch on the right
             const int aSw[5] = { IOSTOUCH_CHIP_SHAPE, IOSTOUCH_CHIP_AUTO, IOSTOUCH_CHIP_THROW, IOSTOUCH_CHIP_SAMECOLOUR, IOSTOUCH_CHIP_SAMEHILT };
-            NSString* aSwText[5] = { @"FILM", @"AUTO", @"THROW", @"SAME COLOUR", @"SAME HILT" };
+            NSString* aSwText[5] = { @"FILM", @"AUTO\nOPEN", @"SABER\nTHROW", @"SAME COLOUR", @"SAME HILT" };
             for (int k = 0; k < 5; k++) {
                 UILabel* c = aSaberChips[aSw[k]];
                 const CGFloat w = c.bounds.size.width;
-                UILabel* name = [[UILabel alloc] initWithFrame:CGRectMake(4.0, 0.0, w - 13.0 - IOSTOUCH_SWITCH_W, IOSTOUCH_SABER_CHIP_H)];
+                const int bTwoLines = [aSwText[k] rangeOfString:@"\n"].location != NSNotFound;
+                const CGFloat x0 = 4.0 + (bTwoLines ? IOSTOUCH_SWITCH_INSET2 : 0.0);
+                UILabel* name = [[UILabel alloc] initWithFrame:CGRectMake(x0, 0.0, w - 9.0 - x0 - IOSTOUCH_SWITCH_W, IOSTOUCH_SABER_CHIP_H)];
                 name.text = aSwText[k];
+                name.numberOfLines = bTwoLines ? 2 : 1;
                 name.textAlignment = NSTextAlignmentCenter;
                 name.font = [UIFont boldSystemFontOfSize:10];
                 name.adjustsFontSizeToFitWidth = YES;
                 name.minimumScaleFactor = 0.8;
+                if (bTwoLines) IOSTouch_FitWidth(name, 10.0, name.bounds.size.width); // (SABER THROW condensed)
                 name.textColor = [UIColor whiteColor];
                 [c addSubview:name];
                 UIView* track = [[UIView alloc] initWithFrame:CGRectMake(w - 7.0 - IOSTOUCH_SWITCH_W, (IOSTOUCH_SABER_CHIP_H - IOSTOUCH_SWITCH_H) * 0.5,
@@ -3250,6 +3271,9 @@ static int iosTouch_SaberChipUsable(int chip)
         break;
     case IOSTOUCH_CHIP_THROW:
         if (aSaberChips[IOSTOUCH_CHIP_THROW].hidden) return 0; // (no room for it here: not offered)
+        // (while sithewok holds it on: a tick, nothing changed -- THROW stays as
+        // the player set it, for when the cheat is off)
+        if (iosSaberThrowJk_CheatHeld()) break;
         // THROW on or off, remembered: Saber Throw on the Force wheel (or not) from its next opening
         iosSaberThrowJk_Toggle();
         [d setBool:iosSaberThrowJk_Get() ? YES : NO forKey:IOSTOUCH_SABERTHROW_DEFAULTS_KEY];
@@ -3727,7 +3751,9 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
             if (iosSaberWheel_FilmDimmed()) l.alpha = IOSTOUCH_SABER_CHIP_DIM;
             break;
         case IOSTOUCH_CHIP_THROW:
-            [self setSwitch:i on:iosSaberThrowJk_Get()];
+            // (on while sithewok holds Saber Throw on the Force wheel, a little dim; else THROW as set)
+            [self setSwitch:i on:iosSaberThrowJk_Get() || iosSaberThrowJk_CheatHeld()];
+            if (iosSaberThrowJk_CheatHeld()) l.alpha = IOSTOUCH_SABER_CHIP_HELD;
             break;
         case IOSTOUCH_CHIP_AUTO:
             [self setSwitch:i on:iosSaberWheel_GetAuto()];

@@ -1,5 +1,5 @@
 // Added: entire file. Saber Throw in Jedi Knight, which has none of its own:
-// a THROW switch on the saber wheel (off unless switched on; remembered by
+// a THROW switch on the saber wheel ("SABER THROW"; off unless switched on; remembered by
 // the platform around this: the iOS overlay in NSUserDefaults, elsewhere the
 // cvar enh_saberThrow, Android's touch overlay in its own settings too) puts
 // SABER THROW on the Force wheel for the whole game. The sithewok cheat puts
@@ -62,6 +62,10 @@ int iosSaberThrowJk_Offered(void);
 // Whether SABER THROW is on the Force wheel now: THROW on, or sithewok on
 // (offered). Dimmed there, iosGame_IsPowerAvailable, while it can't be used.
 int iosSaberThrowJk_OnWheel(void);
+// Whether sithewok holds it there now (offered, the cheat on): the switch
+// shows on, a little dim, and leaves THROW as the player set it (a tap only
+// ticks), whatever THROW says
+int iosSaberThrowJk_CheatHeld(void);
 
 // jkHudInv_InitItems, before the game's items are read: the power let go
 // (registered again, after them, once a level runs); and after: whether they

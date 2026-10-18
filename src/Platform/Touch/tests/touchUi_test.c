@@ -244,6 +244,7 @@ int iosSaberThrowJk_Get(void) { return F_SaberGetThrow(); }
 void iosSaberThrowJk_Toggle(void) { F_SaberSetThrow(!fg.bThrow); }
 int iosSaberThrowJk_Offered(void) { return !F_IsMots() && !fg.bThrowHidden; }
 int iosSaberThrowJk_OnWheel(void) { return iosSaberThrowJk_Offered() && (fg.bThrow || fg.bCheat); }
+int iosSaberThrowJk_CheatHeld(void) { return iosSaberThrowJk_Offered() && fg.bCheat; }
 int iosSaber_GetShownColour(int st, int b) { const int id = F_SaberGetColour(st, b); return iosSaber_ColourOnWheel(id) ? id : 0; }
 const char* iosSaber_ColourName(int id) { return F_SaberColourName(id); }
 void iosSaber_ColourRGB(int id, unsigned char* r, unsigned char* g, unsigned char* b) { F_SaberColourRGB(id, r, g, b); if (!fg.saberLook && !fg.bRealNames) *g = 50; }
@@ -1946,20 +1947,29 @@ static void test_saber_throw(void)
     fg.bSaberBtn = 1;
     tick();
     bxy(TOUCHUI_BTN_SABER, &sx, &sy);
-    g_case = "throw: THROW at the top right of the saber wheel, off to start, drawn as a switch";
+    g_case = "throw: SABER THROW at the top right of the saber wheel, off to start, drawn as a switch";
     down(1, sx, sy); wait(0.1); up(1, sx, sy);
     touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
-    CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_THROW, &tx, &ty) && tx > cx && ty < cy && fg.bThrow == 0 && drawnText("THROW") && drawnText("FILM"));
-    g_case = "throw: the switches' names (THROW smaller, FILM) in the middle of the room left of the switch, 4 pt in from the edge, short of the track, as on iOS";
+    CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_THROW, &tx, &ty) && tx > cx && ty < cy && fg.bThrow == 0 && drawnText("SABER\nTHROW") && drawnText("FILM"));
+    g_case = "throw: the switches' names (SABER THROW on two lines, 8 pt further in, condensed and smaller; FILM) in the middle of the room left of the switch, short of the track, as on iOS";
     {
-        float nx = 0.0f, ny = 0.0f, ns = 0.0f, nw = 0.0f, fx = 0.0f, fy = 0.0f, fsz = 0.0f, fw = 0.0f, fcx = 0.0f, fcy = 0.0f;
-        const int bName = drawnTextAt("THROW", &nx, &ny, &ns) && drawnTextAt("FILM", &fx, &fy, &fsz) && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &fcx, &fcy);
-        touchUiDraw_MeasureText("THROW", ns, 1.0f, &nw, NULL);
+        float nx = 0.0f, ny = 0.0f, ns = 0.0f, nxs = 0.0f, nw = 0.0f, fx = 0.0f, fy = 0.0f, fsz = 0.0f, fw = 0.0f, fcx = 0.0f, fcy = 0.0f;
+        int bName = drawnTextAt("FILM", &fx, &fy, &fsz) && touchUi_GetSaberChip(TOUCHUI_CHIP_SHAPE, &fcx, &fcy), bThrowName = 0;
+        const touchUiDrawList* dl = touchUi_Draw(T);
+        for (int i = 0; i < dl->numItems; i++)
+            if (dl->aItems[i].type == TOUCHUI_DRAW_TEXT && !strcmp(dl->aPool + dl->aItems[i].text, "SABER\nTHROW")) {
+                nx = dl->aItems[i].x0; ny = dl->aItems[i].y0; ns = dl->aItems[i].size; nxs = dl->aItems[i].xscale; bThrowName = 1;
+            }
+        touchUiDraw_MeasureText("SABER\nTHROW", ns, nxs, &nw, NULL);
         touchUiDraw_MeasureText("FILM", fsz, 1.0f, &fw, NULL);
-        const float boxL = tx - 32.0f + 4.0f, boxR = tx + 32.0f - 7.0f - 20.0f - 2.0f; // (the room: 4 pt in, 2 short of the track)
-        printf("  THROW's name: %.1f pt, %.1f..%.1f in the room %.1f..%.1f; FILM's %.1f pt, its middle %.1f from its chip's\n", ns, nx - nw * 0.5f, nx + nw * 0.5f, boxL, boxR, fsz, fx - fcx);
-        CHECK(bName && ns >= 8.0f && ns < 10.0f && nx - nw * 0.5f >= boxL - 0.01f && nx + nw * 0.5f <= boxR + 0.01f && fabsf(nx - (boxL + boxR) * 0.5f) < 0.01f
-              && fsz == 10.0f && fabsf(fx - (fcx - 12.5f)) < 0.01f);
+        const float boxL = tx - 32.0f + 8.0f, boxR = tx + 32.0f - 7.0f - 20.0f - 2.0f; // (the room: 8 pt in, a name on two lines, 2 short of the track)
+        // (its lines' corners inside the round end, 1.5 pt in from its border's inside: the lines 1.19 of the size apart)
+        const float far = ns * (2.0f * 0.595f - 0.2496f), ex = (tx - 32.0f + 14.0f) - (nx - nw * 0.5f);
+        const float corner = ex > 0.0f ? sqrtf(ex * ex + far * far) : 0.0f;
+        printf("  SABER THROW's name: %.1f pt x%.2f, %.1f..%.1f in the room %.1f..%.1f (corner %.2f from the round end's middle); FILM's %.1f pt, its middle %.1f from its chip's\n",
+               ns, nxs, nx - nw * 0.5f, nx + nw * 0.5f, boxL, boxR, corner, fsz, fx - fcx);
+        CHECK(bName && bThrowName && ns >= 8.0f && ns <= 10.0f && nxs >= 0.82f - 0.001f && nx - nw * 0.5f >= boxL - 0.01f && nx + nw * 0.5f <= boxR + 0.01f
+              && fabsf(nx - (boxL + boxR) * 0.5f) < 0.01f && fabsf(ny - ty) < 0.01f && corner <= 14.0f - 1.5f - 1.5f && fsz == 10.0f && fabsf(fx - (fcx - 12.5f)) < 0.01f);
     }
     g_case = "throw: tapped: on, one tick, the wheel stays open (to tap), the game still held, remembered; again: off";
     g_platTicks = 0;
@@ -2662,11 +2672,11 @@ static void test_saber_cards(void)
           && !touchUi_GetSaberChip(CARD(1), NULL, NULL) && !touchUi_GetSaberChip(TOUCHUI_CHIP_SAME_COLOUR, NULL, NULL) && fg.aHilt[1] == 3 && SC(1, 1) == 14);
     g_case = "cards: + 2ND SABER: two again, the left hand as it was kept (FOLD), the ring painting it";
     CHECK(tapChip(TOUCHUI_CHIP_ADD) && fg.saberStyle == 1 && fg.aHilt[1] == 3 && iosSaberWheel_GetPickedHand() == 1 && cardGold(1) && drawnText("FOLD"));
-    g_case = "cards: AUTO under FILM on the right, only while a FOLD is in either hand; a tap switches it (a tick, saved, open)";
+    g_case = "cards: AUTO OPEN under FILM on the right, only while a FOLD is in either hand; a tap switches it (a tick, saved, open)";
     {
         float f[4], a[4], c[4];
         CHECK(chipRect(TOUCHUI_CHIP_AUTO, a) && chipRect(TOUCHUI_CHIP_SHAPE, f) && chipRect(CARD(0), c) && fabsf(a[0] - f[0]) < 0.01f
-              && a[1] >= f[1] + f[3] + 5.99f && fabsf(f[0] + f[2] * 0.5f - c[0] - c[2] * 0.5f) < 0.01f && drawnText("AUTO"));
+              && a[1] >= f[1] + f[3] + 5.99f && fabsf(f[0] + f[2] * 0.5f - c[0] - c[2] * 0.5f) < 0.01f && drawnText("AUTO\nOPEN"));
     }
     g_platTicks = 0;
     CHECK(tapChip(TOUCHUI_CHIP_AUTO) && !fg.bFoldAuto && g_platTicks == 1 && touchUi_IsWheelOpen() && settingsHave("saberFoldAuto=0\n"));
@@ -2947,7 +2957,8 @@ static void test_saber_fit(void)
         CHECK(21.0f + wColour <= CW - 8.0f && 10.0f + 21.5f + wColour <= CW - 8.0f && wHilt <= 88.0f - 12.0f + 0.2f && wSameC <= 71.0f + 0.01f && wSameH <= 71.0f
               && wPlus <= CW - 8.0f && textW("RIGHT", 11.0f, 1.0f) <= CW - 20.0f && textW("LEFT", 11.0f, 1.0f) <= CW - 20.0f - 40.0f);
         CHECK(bladeMin >= 7.5f && bladeX >= 0.7f && wBlade <= 34.0f + 0.01f);
-        CHECK(textW("FILM", 10.0f, 1.0f) <= 64.0f - 33.0f && textW("AUTO", 10.0f, 1.0f) <= 64.0f - 33.0f);
+        // (AUTO OPEN and SABER THROW on two lines, 4 pt further in: a little condensed, at 10 pt; SABER THROW smaller, 8 pt at the least)
+        CHECK(textW("FILM", 10.0f, 1.0f) <= 64.0f - 33.0f && textW("AUTO\nOPEN", 10.0f, 0.82f) <= 64.0f - 37.0f && textW("SABER\nTHROW", 8.0f, 0.82f) <= 64.0f - 37.0f);
     }
     // (bTouch: 1 the touch overlay's, else as a pad and the keys open it; at: the cards
     // beside the ring (0), under it (1: a narrow, square or standing window), or left
@@ -3063,6 +3074,63 @@ static int drawnText(const char* t)
     for (int i = 0; i < l->numItems; i++)
         if (l->aItems[i].type == TOUCHUI_DRAW_TEXT && !strcmp(l->aPool + l->aItems[i].text, t)) return 1;
     return 0;
+}
+
+// Whether the switch whose chip's middle is (x, y) is drawn on (its knob at
+// the track's right), off (at its left), or neither (-1): inputWheel.c's
+static int knobOn(float x, float y)
+{
+    const touchUiDrawList* l = touchUi_Draw(T);
+    for (int i = 0; i < l->numItems; i++) {
+        const touchUiDrawItem* it = &l->aItems[i];
+        if (it->type != TOUCHUI_DRAW_CIRCLE || fabsf(it->r - 4.0f) > 0.01f || fabsf(it->y0 - y) > 0.01f) continue;
+        if (fabsf(it->x0 - (x + 19.0f)) < 0.01f) return 1;
+        if (fabsf(it->x0 - (x + 11.0f)) < 0.01f) return 0;
+    }
+    return -1;
+}
+
+// SABER THROW while sithewok holds Saber Throw on the Force wheel: the switch
+// shows on, a little dim, whatever THROW says; a tap (and the pad's or keys'
+// call) only ticks, THROW kept as the player set it; the cheat off again,
+// the switch shows THROW as set
+static void test_saber_throw_cheat(void)
+{
+    float sx, sy, tx = 0.0f, ty = 0.0f, cx, cy, r0, r1, px, py;
+    for (int bOwn = 0; bOwn < 2; bOwn++) {
+        setup();
+        fg.bSaberBtn = 1;
+        fg.bThrow = bOwn;
+        fg.bCheat = 1;
+        tick();
+        bxy(TOUCHUI_BTN_SABER, &sx, &sy);
+        down(1, sx, sy); wait(0.1); up(1, sx, sy);
+        touchUi_GetWheelGeometry(&cx, &cy, &r0, &r1);
+        polar(cx, cy, 270.0f, (r0 + r1) * 0.5f, &px, &py);
+        g_case = bOwn ? "throw, the cheat on, THROW on: SABER THROW shows on, a little dim"
+                      : "throw, the cheat on, THROW off: SABER THROW shows on all the same, a little dim";
+        CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_THROW, &tx, &ty));
+        CHECK(knobOn(tx, ty) == 1 && fabsf(drawnTextAlpha("SABER\nTHROW") - 0.7f) < 0.01f);
+        g_case = "throw, the cheat on: a tap only ticks, the wheel open, THROW as the player set it (kept); the pad's and keys' call the same";
+        g_platTicks = 0;
+        down(2, tx, ty); up(2, tx, ty);
+        const int ticks = g_platTicks;
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_THROW);
+        tick();
+        CHECK(fg.bThrow == bOwn && ticks == 1 && touchUi_IsWheelOpen() && knobOn(tx, ty) == 1 && settingsHave(bOwn ? "saberThrow=1" : "saberThrow=0"));
+        down(2, px, py); up(2, px, py);
+        CHECK(!touchUi_IsWheelOpen());
+        g_case = "throw, the cheat off again: SABER THROW shows THROW as the player set it, not dim";
+        fg.bCheat = 0;
+        tick();
+        down(1, sx, sy); wait(0.1); up(1, sx, sy);
+        CHECK(touchUi_IsWheelOpen() && touchUi_GetSaberChip(TOUCHUI_CHIP_THROW, &tx, &ty) && knobOn(tx, ty) == bOwn
+              && fabsf(drawnTextAlpha("SABER\nTHROW") - (bOwn ? 1.0f : 0.6f)) < 0.01f);
+        g_case = "throw, the cheat off again: a tap switches it as ever";
+        down(2, tx, ty); up(2, tx, ty);
+        CHECK(fg.bThrow == !bOwn && knobOn(tx, ty) == !bOwn);
+        down(2, px, py); up(2, px, py);
+    }
 }
 
 // A button's label as drawn (the text item at its middle that says t): how
@@ -3223,17 +3291,18 @@ static void test_saber_x_row(void)
 
 // The pad's and the keys' prompt along the bottom (inputOverlay.c's, iosPadPanel.m's):
 // at 13 pt, on as few lines as fit at 0.8 of it or more (one where it does; two from
-// 568 pt wide, as iOS's; four at the most, then to 0.6), each as short as it can be;
+// 568 pt wide, as iOS's, but the PlayStation's in words at 568, three; four at the
+// most, then to 0.6), each as short as it can be;
 // every part whole, "close"
-// last. The fullest prompts (two sabers, a FOLD, Jedi Knight's THROW) as iosPad.c
+// last. The fullest prompts (two sabers, a FOLD, Jedi Knight's SABER THROW) as iosPad.c
 // and iosKbMouse.c make them (the PlayStation's buttons in words, as drawn here).
 static void test_prompt_lines(void)
 {
     static const char* const aPrompt[] = {
-        "Right stick: colour   A: set   Y: pick   LB: hilt   X: one saber   RB: same colour   LT: same hilt   RT: auto   D-pad up: film   D-pad down: throw   L3: look   R3: equip   B: close",
-        "Right stick: colour   Cross: set   Triangle: pick   L1: hilt   Square: one saber   R1: same colour   L2: same hilt   R2: auto   D-pad up: film   D-pad down: throw   L3: look   R3: equip   Circle: close",
-        "Mouse: colour   Click: set   1: one saber   2: pick   7: hilt   8: same colour   9: same hilt   0: auto   3: equip   4: look   5: film   6: throw   Esc: close",
-        "Right stick: colour   A: set   LB: hilt   X: 2nd saber   D-pad up: film   D-pad down: throw   L3: look   R3: equip   B: close",
+        "Right stick: colour   A: set   Y: pick   LB: hilt   X: one saber   RB: same colour   LT: same hilt   RT: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
+        "Right stick: colour   Cross: set   Triangle: pick   L1: hilt   Square: one saber   R1: same colour   L2: same hilt   R2: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   Circle: close",
+        "Mouse: colour   Click: set   1: one saber   2: pick   7: hilt   8: same colour   9: same hilt   0: auto open   3: equip   4: look   5: film   6: saber throw   Esc: close",
+        "Right stick: colour   A: set   LB: hilt   X: 2nd saber   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
     };
     static const float aW[] = { 568, 640, 667, 693, 720, 732, 780, 812, 852, 874, 912, 932, 956, 1024, 1366, 427, 480, 400, 320 };
     int bOk = 1, nTwo = 0, nMore = 0;
@@ -3273,7 +3342,10 @@ static void test_prompt_lines(void)
                                && w * scale <= maxW + 0.01f
                                && !strncmp(t + strlen(t) - 5, "close", 5);
             if (!bRight) { printf("  prompt %d at %.0f: %d lines [%s]\n", i, aW[k], lines, t); bOk = 0; }
-            if (aW[k] >= 568.0f) { worst = fminf(worst, scale); if (lines > 2) { printf("  prompt %d at %.0f: %d lines\n", i, aW[k], lines); bOk = 0; } }
+            // (but the PlayStation's buttons in words at 568, the longest of all since AUTO OPEN and
+            // SABER THROW: three lines, a hair too long for two at 0.8)
+            const int bLong = i == 1 && aW[k] == 568.0f;
+            if (aW[k] >= 568.0f) { worst = fminf(worst, scale); if (lines > (bLong ? 3 : 2)) { printf("  prompt %d at %.0f: %d lines\n", i, aW[k], lines); bOk = 0; } }
             nTwo += lines == 2;
             nMore += lines > 2;
             if (aW[k] == 568.0f || aW[k] == 640.0f || aW[k] == 693.0f || aW[k] == 720.0f || aW[k] == 732.0f || aW[k] == 320.0f)
@@ -3281,7 +3353,7 @@ static void test_prompt_lines(void)
         }
     g_case = "prompt: the fullest prompts (Xbox, PlayStation in words, the keys) from 320 to 1366 pt wide: as few lines as fit at 0.8 or more, the best break; every part whole, close last; never wider than the room";
     CHECK(bOk && nTwo > 0 && nMore > 0);
-    g_case = "prompt: from 568 pt wide (568, 640, 693, 720, 732 and every phone): one line or two, at 0.8 of 13 pt or more";
+    g_case = "prompt: from 568 pt wide (568, 640, 693, 720, 732 and every phone): one line or two (the PlayStation's in words at 568: three), at 0.8 of 13 pt or more";
     CHECK(worst >= 0.8f);
 }
 
@@ -3636,6 +3708,7 @@ int main(void)
     test_saber_shape();
     test_saber_hilt();
     test_saber_throw();
+    test_saber_throw_cheat();
     test_saber_wheel_state();
     test_saber_cards();
     test_saber_fit();

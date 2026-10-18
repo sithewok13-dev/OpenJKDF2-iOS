@@ -124,8 +124,9 @@ Each item: what it does, and the numbers to keep (from iosTouch.m; points).
 6. **Saber wheel** (SABER on the top row, once the saber is had): tap or hold
    opens it to tap a colour, a slide to slide to one (18-degree slices). A
    card for each hand beside the ring (its colour, its own HILT), SAME
-   COLOUR / SAME HILT under the LEFT card, FILM and FOLD's AUTO under the
-   RIGHT; the action buttons hidden while it is open. With a FOLD lit in
+   COLOUR / SAME HILT under the LEFT card, FILM and FOLD's AUTO OPEN under the
+   RIGHT, SABER THROW at the top right (Jedi Knight; shown on, a little dim,
+   while `sithewok` holds it on); the action buttons hidden while it is open. With a FOLD lit in
    hand, a tap on SABER flips it (a slide or a hold opens the wheel).
 7. **QUICK SAVE / QUICK LOAD (standard):** a 0.3 s hold with a ring filling;
    fires once when full, finger still down. Sliding off cancels (even off and

@@ -201,7 +201,7 @@ static void iosKbMouse_SetWheelPrompt(void)
         const int st = iosKbMouse_SaberPromptState(), bTwo = st & 1;
         snprintf(t, sizeof(t), "Mouse: colour   Click: set   %s%s7: hilt   %s%s3: equip   4: look   5: film   %sEsc: close",
                  bTwo ? "1: one saber   " : (st & 2) ? "1: 2nd saber   " : "", (st & 4) ? "2: pick   " : "", bTwo ? "8: same colour   9: same hilt   " : "",
-                 (st & 8) ? "0: auto   " : "", (st & 16) ? "6: throw   " : "");
+                 (st & 8) ? "0: auto open   " : "", (st & 16) ? "6: saber throw   " : "");
         iosKbMouse_s.saberPrompt = st;
     }
     else if (iosKbMouse_s.wheelState == IOSKBM_WS_HELD)

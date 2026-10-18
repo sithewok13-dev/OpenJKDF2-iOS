@@ -29,7 +29,7 @@
 //         every slice. On the saber wheel: A sets the colour (it stays
 //         open), Y picks the next card or blade, LB the picked hand's next
 //         hilt, X adds or takes away the second saber, RB SAME COLOUR, LT
-//         SAME HILT, RT AUTO, D-pad up FILM, D-pad down THROW, L3 the look,
+//         SAME HILT, RT AUTO OPEN, D-pad up FILM, D-pad down SABER THROW, L3 the look,
 //         R3 takes the saber (IOSPAD_CHIP_*).
 //       - Start (Menu, Options, +): a tap opens the game menu as MENU does;
 //         held 0.45 s, the controller options (iosPadPanel: LOOK X, LOOK Y,

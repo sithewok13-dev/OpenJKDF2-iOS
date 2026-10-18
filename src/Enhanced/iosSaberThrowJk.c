@@ -138,6 +138,11 @@ int iosSaberThrowJk_OnWheel(void)
     return iosSaberThrowJk_Offered() && (iosSaberThrowJk_bOn || jkDev_Custom_SithEwokIsOn());
 }
 
+int iosSaberThrowJk_CheatHeld(void)
+{
+    return iosSaberThrowJk_Offered() && jkDev_Custom_SithEwokIsOn();
+}
+
 // The local player in a Jedi Knight level, single player; NULL elsewhere
 static SithThing* iosSaberThrowJk_Player(void)
 {

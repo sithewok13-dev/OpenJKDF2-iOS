@@ -175,7 +175,7 @@ Tick what works, note what doesn't (a photo of the screen helps).
       both hands), both off to start, and only working with two sabers (with
       one they wait, still on, for the second). A tap from just over the
       LEFT card's colour down is the card's, never its x. Under the RIGHT card: FILM and,
-      while a FOLD is in either hand, AUTO (FOLD opens on the first swing and
+      while a FOLD is in either hand, AUTO OPEN (FOLD opens on the first swing and
       folds after 5 s without one; off: only when you flip it). Every tap
       there ticks and leaves the wheel open; the sabers, colours and switches
       are kept (the picked card starts on RIGHT each time the game starts). JUMP, FIRE, DUCK and
@@ -218,8 +218,10 @@ Tick what works, note what doesn't (a photo of the screen helps).
       card or blade (RIGHT, its blades, LEFT, its blades; only the cards with
       SAME COLOUR on; blade 2 picked stays joined); X / 1 add or take away the
       second saber; LB / 7 the picked card's HILT; RB / 8 SAME COLOUR; LT / 9
-      SAME HILT; RT / 0 AUTO (with a FOLD in hand); D-pad up / 5 FILM; D-pad
-      down / 6 THROW (Jedi Knight); L3 / 4 the look; R3 / 3 EQUIP. The prompt
+      SAME HILT; RT / 0 AUTO OPEN (with a FOLD in hand); D-pad up / 5 FILM; D-pad
+      down / 6 SABER THROW (Jedi Knight; with `sithewok` on it shows on, a
+      little dim, and a press leaves it as you set it); L3 / 4 the look; R3 / 3
+      EQUIP. The prompt
       at the bottom lists them (on two lines, or more in a narrow window,
       when one line is too narrow for it; never cut off).
 - [ ] A narrow window (half a desktop screen, a square one, one standing up,
@@ -230,7 +232,7 @@ Tick what works, note what doesn't (a photo of the screen helps).
       and they come back.
 - [ ] Quit and start again: GYRO, SENS, FPS, CHEAT, VIEW, CONTROLS, the
       camera options and the saber's colours (each blade's), one saber or
-      two, each hand's hilt, SAME COLOUR, SAME HILT, AUTO, look and FILM
+      two, each hand's hilt, SAME COLOUR, SAME HILT, AUTO OPEN, look and FILM
       are kept, also when picked with a pad or the keys.
 
 **Start up**

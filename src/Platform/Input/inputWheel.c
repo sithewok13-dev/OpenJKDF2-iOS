@@ -65,6 +65,7 @@
 #define INPUTWHEEL_CHIP_TIGHT_GAP 6.0f
 #define INPUTWHEEL_CHIP_TOUCH 6.0f
 #define INPUTWHEEL_CHIP_DIM 0.4f // (the shape's switch while CROSS is the hilt: it doesn't change those blades)
+#define INPUTWHEEL_CHIP_HELD 0.7f // (SABER THROW while sithewok holds it on: on, a little dim)
 // The saber wheel's hand cards (hiltmock/hilt2.py's): a card, its corners;
 // how far right (left) of the popped ring; to the switch under it, and on
 // to the next; its HILT button (in from the card's left, down from its top);
@@ -566,7 +567,8 @@ int inputWheel_SaberChip(int chip)
         // THROW on or off: Saber Throw on the Force wheel (or not) from its next opening
         // (only while its switch shows: the pad's and keyboard's key too)
         if (!inputWheel_s.aChipShown[INPUTWHEEL_CHIP_THROW]) return 0;
-        iosSaberThrowJk_Toggle();
+        // (while sithewok holds it on: a tick, nothing changed -- THROW stays as the player set it)
+        if (!iosSaberThrowJk_CheatHeld()) iosSaberThrowJk_Toggle();
     }
     else return 0;
     inputWheel_SaberChose();
@@ -1235,20 +1237,26 @@ static void inputWheel_DrawStar(float cx, float cy, float k, int bFilled, int bP
 }
 
 // The shape's switch: its name, then a small on/off switch (a track, its knob
-// to the right and gold when on), so it reads as a switch, not a choice
+// to the right and gold when on), so it reads as a switch, not a choice. A
+// name on two lines (AUTO OPEN, SABER THROW) starts INPUTWHEEL_SWITCH_INSET2
+// further in, its corners clear of the switch's round end (iosTouch.m's).
 #define INPUTWHEEL_SWITCH_W 20.0f
 #define INPUTWHEEL_SWITCH_H 12.0f
+#define INPUTWHEEL_SWITCH_INSET2 4.0f
 static void inputWheel_DrawShapeSwitch(touchUiDrawList* l, const char* name, float x, float y, float w, int bOn)
 {
     const float tx = x + w * 0.5f - 7.0f - INPUTWHEEL_SWITCH_W; // (the track's left)
     float size = 10.0f, tw;
     // (the name in the middle of the room left of the switch, 4 pt in from the edge and
-    // 2 short of the track, as iosTouch.m's label: smaller if it is long, as THROW is)
-    // (a wide switch's long name, SAME COLOUR: a little condensed first, at its size)
-    const float bx = x - w * 0.5f + 4.0f, bw = w - 13.0f - INPUTWHEEL_SWITCH_W;
+    // 2 short of the track, as iosTouch.m's label: smaller if it is long)
+    // (a wide switch's long name, SAME COLOUR, or one on two lines, SABER THROW: a little
+    // condensed first, at its size)
+    const int bTwoLines = strchr(name, '\n') != NULL;
+    const float bx = x - w * 0.5f + 4.0f + (bTwoLines ? INPUTWHEEL_SWITCH_INSET2 : 0.0f);
+    const float bw = x + w * 0.5f - 9.0f - INPUTWHEEL_SWITCH_W - bx;
     float xscale = 1.0f;
     touchUiDraw_MeasureText(name, size, 1.0f, &tw, NULL);
-    if (tw > bw && w > INPUTWHEEL_CHIP_W) {
+    if (tw > bw && (w > INPUTWHEEL_CHIP_W || bTwoLines)) {
         xscale = INPUTWHEEL_MAX_F(INPUTWHEEL_XSCALE, bw / tw);
         tw *= xscale;
     }
@@ -1423,7 +1431,7 @@ static void inputWheel_DrawChips(void)
     inputWheel_DrawAddSlot();
     static const struct { int chip; const char* name; } aSwitch[] = {
         { INPUTWHEEL_CHIP_SAME_COLOUR, "SAME COLOUR" }, { INPUTWHEEL_CHIP_SAME_HILT, "SAME HILT" }, { INPUTWHEEL_CHIP_SHAPE, "FILM" },
-        { INPUTWHEEL_CHIP_AUTO, "AUTO" }, { INPUTWHEEL_CHIP_THROW, "THROW" },
+        { INPUTWHEEL_CHIP_AUTO, "AUTO\nOPEN" }, { INPUTWHEEL_CHIP_THROW, "SABER\nTHROW" },
     };
     for (int k = 0; k < INPUTWHEEL_COUNT(aSwitch); k++) {
         const int i = aSwitch[k].chip;
@@ -1433,9 +1441,11 @@ static void inputWheel_DrawChips(void)
         else if (i == INPUTWHEEL_CHIP_SAME_HILT) bOn = iosSaberWheel_GetSameHilt();
         else if (i == INPUTWHEEL_CHIP_SHAPE) bOn = iosSaberShape_Get() == IOSSABERSHAPE_BEAM;
         else if (i == INPUTWHEEL_CHIP_AUTO) bOn = iosSaberWheel_GetAuto();
-        else bOn = iosSaberThrowJk_Get();
-        // (FILM dim while every hilt in use is CROSS: it doesn't change those blades)
+        else bOn = iosSaberThrowJk_Get() || iosSaberThrowJk_CheatHeld(); // (on while sithewok holds it on)
+        // (FILM dim while every hilt in use is CROSS: it doesn't change those blades;
+        // SABER THROW a little dim while sithewok holds it on)
         l->alpha = (i == INPUTWHEEL_CHIP_SHAPE && iosSaberWheel_FilmDimmed()) ? INPUTWHEEL_CHIP_DIM : bOn ? 1.0f : 0.8f;
+        if (i == INPUTWHEEL_CHIP_THROW && iosSaberThrowJk_CheatHeld()) l->alpha = INPUTWHEEL_CHIP_HELD;
         const float x = inputWheel_s.chipX[i], y = inputWheel_s.chipY[i], w = inputWheel_s.chipW[i], h = inputWheel_s.chipH[i];
         touchUiDraw_RRect(l, x - w * 0.5f, y - h * 0.5f, w, h, h * 0.5f, touchUi_Black(0.55f), 1.5f, touchUi_White(0.4f));
         inputWheel_DrawShapeSwitch(l, aSwitch[k].name, x, y, w, bOn);
