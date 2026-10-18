@@ -2515,6 +2515,15 @@ static int goldRings(void)
     return n;
 }
 
+// (the pad's words for the middle, as iosPad_WheelHint's)
+static const char* padHint(int bPickable, int bCancel) { return bCancel ? "B to close" : bPickable ? "A to set" : "point the stick"; }
+static int listHasText(const touchUiDrawList* l, const char* t)
+{
+    for (int i = 0; i < l->numItems; i++)
+        if (l->aItems[i].type == TOUCHUI_DRAW_TEXT && !strcmp(l->aPool + l->aItems[i].text, t)) return 1;
+    return 0;
+}
+
 static void test_saber_cards(void)
 {
     float sx, sy, x, y, rc[4];
@@ -2697,6 +2706,34 @@ static void test_saber_cards(void)
     tapSaber();
     CHECK(touchUi_IsWheelOpen() && !cardGold(0) && goldRings() == 0 && tapChip(DOT(0, 1)) && !cardGold(0) && goldRings() == 1 && iosSaberWheel_GetPickedBlade() == 1);
     tapColour(-1);
+
+    g_case = "pad / keys: the middle in the opener's words with one saber; what the ring paints with two, or a blade picked";
+    {
+        touchUi_SetShown(0);
+        tick();
+        fg.saberStyle = 0; fg.aHilt[0] = 2;
+        iosSaberWheel_PickHand(0); // (the whole hand: as a pad finds it)
+        inputWheel_Open(INPUTWHEEL_SABER, 1);
+        inputWheel_SetHintFn(padHint);
+        static touchUiDrawList list;
+        inputWheelScreen sc = { 853.33f, 480.0f, 0, 0, 0, 0 };
+        touchUiDraw_Begin(&list); inputWheel_Draw(&list, &sc);
+        const int bOne = listHasText(&list, "point the stick") && !listHasText(&list, "tap a colour");
+        iosSaberWheel_PickBlade(0, 1);
+        touchUiDraw_Begin(&list); inputWheel_Draw(&list, &sc);
+        const int bBlade = listHasText(&list, "right saber, blade 2");
+        iosSaberWheel_PickHand(0);
+        inputWheel_SaberChip(INPUTWHEEL_CHIP_ADD);
+        touchUiDraw_Begin(&list); inputWheel_Draw(&list, &sc);
+        const int bTwo = listHasText(&list, "colour for the left saber");
+        inputWheel_Point(3, 1, 0.0f);
+        touchUiDraw_Begin(&list); inputWheel_Draw(&list, &sc);
+        const int bHot = listHasText(&list, "A to set");
+        CHECK(bOne && bBlade && bTwo && bHot);
+        inputWheel_Close(-1);
+        touchUi_SetShown(1);
+        tick();
+    }
 
     g_case = "pad / keys (the shared wheel's calls): the next card or blade, round: RIGHT, its blades (STAFF), LEFT, its blades (FOLD); only what is shown";
     setup();

@@ -1536,10 +1536,12 @@ void inputWheel_Draw(touchUiDrawList* pList, const inputWheelScreen* pScreen)
         else if (bWeapons) hint = inputWheel_s.bTapMode ? "tap a weapon" : "slide toward a weapon";
         else hint = inputWheel_s.bTapMode ? "tap a power" : "slide toward a power";
     }
-    if (inputWheel_s.pfnHint && !(bSaber && hot == -1 && !bCancel)) {
+    // (on the saber wheel pointing at nothing, what the ring paints, where
+    // there is more than one thing it could: two sabers, or a blade picked)
+    const int bPaintSaid = bSaber && hot == -1 && !bCancel && (iosSaberWheel_NumSabers() > 1 || iosSaberWheel_GetPickedBlade() >= 0);
+    if (inputWheel_s.pfnHint && !bPaintSaid) {
         // what letting go of the pad's button (or A, a click) does, in the
-        // opener's words (why a slice can't be picked stays as it is; on the
-        // saber wheel pointing at nothing, what the ring paints stays)
+        // opener's words (why a slice can't be picked stays as it is)
         const int bPickable = hot >= 0 && inputWheel_s.aEarned[hot];
         const char* h = (hot >= 0 && !bPickable) ? NULL : inputWheel_s.pfnHint(bPickable, bCancel);
         if (h) {
