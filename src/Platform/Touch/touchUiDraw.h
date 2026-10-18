@@ -71,6 +71,13 @@ void touchUiDraw_Text(touchUiDrawList* l, const char* text, float x, float y, fl
 // Text measuring (the label font's metrics: touchUiFont.h). Width of the
 // widest line and height of all the lines, at size points.
 void touchUiDraw_MeasureText(const char* text, float size, float xscale, float* pW, float* pH);
+// A line of parts (three spaces between each two), for a width maxW (t no
+// longer than 511): broken in as few lines as fit at fitMin of size (one
+// where it does; maxLines at the most, to be made smaller still), each as
+// short as it can be (a '\n' for three spaces). pW: its width at size (its
+// widest line's). The number of lines. (The pad's and the keys' prompt;
+// iosPadPanel.m's the same, on one line or two.)
+int touchUiDraw_BreakLines(char* t, float size, float fitMin, float maxW, int maxLines, float* pW);
 // The height of one line of text, at size points (as UIKit's labels have it)
 float touchUiDraw_LineHeight(float size);
 

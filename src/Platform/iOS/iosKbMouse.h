@@ -31,8 +31,8 @@
 //     way it last moved, held at the rim); letting go of the key picks it;
 //     with nothing pointed at, the wheel stays open: a click picks, the
 //     scroll wheel steps through it, a right click or Escape closes it.
-//     L opens the saber wheel (once there is a saber): a click sets a
-//     colour, 1 adds or takes away the second saber, 2 picks the next card
+//     L opens the saber wheel (once there is a saber; L again closes it):
+//     a click sets a colour, 1 adds or takes away the second saber, 2 picks the next card
 //     or blade, 3 takes the saber, 4 the look, 5 FILM, 6 THROW, 7 the
 //     picked hand's hilt, 8 SAME COLOUR, 9 SAME HILT, 0 AUTO (IOSPAD_CHIP_*).
 //   - Shortcuts for what is touch-only, where nothing else is bound to the

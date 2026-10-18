@@ -50,9 +50,16 @@ extern int std3D_windowFbo;
 // top of the screen
 #define INPUTOVERLAY_RING_R 26.0f
 #define INPUTOVERLAY_RING_TOP 64.0f
-// The prompts: this tall, this far over the bottom
+// The prompts: this tall (on one line), this far over the bottom; at 13 pt,
+// on as few lines as fit at INPUTOVERLAY_PROMPT_FIT of that or more (one
+// where it does; two from 568 pt wide; four at the most, then smaller to
+// INPUTOVERLAY_PROMPT_MIN). iosPadPanel.m's the same.
 #define INPUTOVERLAY_PROMPT_H 28.0f
+#define INPUTOVERLAY_PROMPT_LINES 4
 #define INPUTOVERLAY_PROMPT_GAP 6.0f
+#define INPUTOVERLAY_PROMPT_PT 13.0f
+#define INPUTOVERLAY_PROMPT_FIT 0.8f
+#define INPUTOVERLAY_PROMPT_MIN 0.6f
 // The FPS readout counts frames over at least this long
 #define INPUTOVERLAY_FPS_PERIOD 0.5
 
@@ -253,7 +260,8 @@ void inputUi_SaberChip(int chip)
     case IOSPAD_CHIP_THROW: inputWheel_SaberChip(INPUTWHEEL_CHIP_THROW); break; // (nothing where it isn't offered)
     default: break;
     }
-    if (inputWheel_IsOpen()) inputWheel_Point(-1, 0, 0.0f);
+    // (one made lets go of the colour pointed at, as a tap's does; one that
+    // can't be made now does nothing at all and keeps it: inputWheel_SaberChip)
     inputOverlay_OutsideWheelIsOpen();
 }
 
@@ -432,18 +440,19 @@ static void inputOverlay_DrawPrompt(void)
     inputOverlay_Bounds(&left, &top, &right, &bottom);
     char t[256];
     inputWheel_Ascii(inputOverlay_s.prompt, t, sizeof(t));
-    float tw = 0.0f, size = 13.0f;
-    touchUiDraw_MeasureText(t, size, 1.0f, &tw, NULL);
     const float maxW = right - left - 28.0f;
+    float tw = 0.0f, size = INPUTOVERLAY_PROMPT_PT;
+    const int lines = touchUiDraw_BreakLines(t, INPUTOVERLAY_PROMPT_PT, INPUTOVERLAY_PROMPT_FIT, maxW, INPUTOVERLAY_PROMPT_LINES, &tw);
     if (tw > maxW) {
-        size *= INPUTOVERLAY_MAX(0.6f, maxW / tw);
-        tw = INPUTOVERLAY_MIN(tw * size / 13.0f, maxW);
+        size *= INPUTOVERLAY_MAX(INPUTOVERLAY_PROMPT_MIN, maxW / tw);
+        tw = INPUTOVERLAY_MIN(tw * size / INPUTOVERLAY_PROMPT_PT, maxW);
     }
-    const float w = INPUTOVERLAY_MIN(right - left, tw + 28.0f);
-    const float y = bottom - INPUTOVERLAY_PROMPT_GAP - INPUTOVERLAY_PROMPT_H;
-    touchUiDraw_RRect(&inputOverlay_draw, roundf((left + right - w) * 0.5f), y, w, INPUTOVERLAY_PROMPT_H, INPUTOVERLAY_PROMPT_H * 0.5f,
+    // (a line 28 pt tall; each more, its line's height more)
+    const float w = INPUTOVERLAY_MIN(right - left, tw + 28.0f), h = INPUTOVERLAY_PROMPT_H + (lines - 1) * ceilf(touchUiDraw_LineHeight(size));
+    const float y = bottom - INPUTOVERLAY_PROMPT_GAP - h;
+    touchUiDraw_RRect(&inputOverlay_draw, roundf((left + right - w) * 0.5f), y, w, h, INPUTOVERLAY_PROMPT_H * 0.5f,
                       touchUi_Black(0.55f), 0.0f, touchUi_Clear());
-    touchUiDraw_Text(&inputOverlay_draw, t, (left + right) * 0.5f, y + INPUTOVERLAY_PROMPT_H * 0.5f, size, 1.0f, touchUi_White(1.0f));
+    touchUiDraw_Text(&inputOverlay_draw, t, (left + right) * 0.5f, y + h * 0.5f, size, 1.0f, touchUi_White(1.0f));
 }
 
 static void inputOverlay_DrawFps(void)

@@ -27,9 +27,16 @@ UIView* iosTouch_OverlayView(void);
 // top of the screen (the safe area's), under the touch controls' top row
 #define IOSPADPANEL_RING_R 26.0
 #define IOSPADPANEL_RING_TOP 64.0
-// The prompts along the bottom: this tall, this far over the bottom
+// The prompts along the bottom: this tall (on two lines, IOSPADPANEL_PROMPT_H2),
+// this far over the bottom; on one line only where it fits at
+// IOSPADPANEL_PROMPT_ONE of its size or more, smaller to fit on two to
+// IOSPADPANEL_PROMPT_MIN (inputOverlay.c's the same)
 #define IOSPADPANEL_PROMPT_H 28.0
+#define IOSPADPANEL_PROMPT_H2 44.0
 #define IOSPADPANEL_PROMPT_GAP 6.0
+#define IOSPADPANEL_PROMPT_PT 13.0
+#define IOSPADPANEL_PROMPT_ONE 0.8
+#define IOSPADPANEL_PROMPT_MIN 0.6
 
 static UIColor* iosPadPanel_Gold(CGFloat a)
 {
@@ -266,6 +273,13 @@ void iosPadPanel_HoldRing(int kind, float progress)
     }
 }
 
+// (a text's width on one line in the prompt's font as it is set)
+static CGFloat iosPadPanel_TextW(NSString* t)
+{
+    iosPadPanel_pPrompt.text = t;
+    return [iosPadPanel_pPrompt sizeThatFits:CGSizeMake(1000.0, IOSPADPANEL_PROMPT_H)].width;
+}
+
 void iosPadPanel_SetPrompt(const char* pText)
 {
     @autoreleasepool {
@@ -288,11 +302,38 @@ void iosPadPanel_SetPrompt(const char* pText)
         }
         const CGRect b = host.bounds;
         const UIEdgeInsets in = host.safeAreaInsets;
-        const CGFloat left = MAX(in.left, 8.0), right = b.size.width - MAX(in.right, 8.0);
-        iosPadPanel_pPrompt.text = [NSString stringWithUTF8String:pText];
-        const CGFloat w = MIN(right - left, [iosPadPanel_pPrompt sizeThatFits:CGSizeMake(1000.0, IOSPADPANEL_PROMPT_H)].width + 28.0);
-        iosPadPanel_pPrompt.frame = CGRectMake(round((left + right - w) * 0.5),
-                                               b.size.height - MAX(in.bottom, 8.0) - IOSPADPANEL_PROMPT_GAP - IOSPADPANEL_PROMPT_H, w, IOSPADPANEL_PROMPT_H);
+        const CGFloat left = MAX(in.left, 8.0), right = b.size.width - MAX(in.right, 8.0), maxW = right - left - 28.0;
+        // on one line where it fits at IOSPADPANEL_PROMPT_ONE of its size or
+        // more; else on two, broken at the gap between two of its parts
+        // (three spaces) that makes the longer line the shortest
+        NSString* text = [NSString stringWithUTF8String:pText];
+        iosPadPanel_pPrompt.font = [UIFont boldSystemFontOfSize:IOSPADPANEL_PROMPT_PT];
+        iosPadPanel_pPrompt.numberOfLines = 1;
+        CGFloat tw = iosPadPanel_TextW(text);
+        int bTwo = 0;
+        if (tw * IOSPADPANEL_PROMPT_ONE > maxW) {
+            NSUInteger best = NSNotFound;
+            CGFloat bestW = tw;
+            for (NSRange r = [text rangeOfString:@"   "]; r.location != NSNotFound;
+                 r = [text rangeOfString:@"   " options:0 range:NSMakeRange(r.location + 3, text.length - r.location - 3)]) {
+                const CGFloat w1 = iosPadPanel_TextW([text substringToIndex:r.location]), w2 = iosPadPanel_TextW([text substringFromIndex:r.location + 3]);
+                if (MAX(w1, w2) < bestW) {
+                    bestW = MAX(w1, w2);
+                    best = r.location;
+                }
+            }
+            if (best != NSNotFound) {
+                text = [NSString stringWithFormat:@"%@\n%@", [text substringToIndex:best], [text substringFromIndex:best + 3]];
+                tw = bestW;
+                bTwo = 1;
+            }
+        }
+        const CGFloat k = tw > maxW ? MAX(IOSPADPANEL_PROMPT_MIN, maxW / tw) : 1.0, h = bTwo ? IOSPADPANEL_PROMPT_H2 : IOSPADPANEL_PROMPT_H;
+        iosPadPanel_pPrompt.numberOfLines = bTwo ? 2 : 1;
+        iosPadPanel_pPrompt.font = [UIFont boldSystemFontOfSize:IOSPADPANEL_PROMPT_PT * k];
+        iosPadPanel_pPrompt.text = text;
+        const CGFloat w = MIN(right - left, MIN(tw * k, maxW) + 28.0);
+        iosPadPanel_pPrompt.frame = CGRectMake(round((left + right - w) * 0.5), b.size.height - MAX(in.bottom, 8.0) - IOSPADPANEL_PROMPT_GAP - h, w, h);
         iosPadPanel_OnTop(iosPadPanel_pPrompt, host);
         iosPadPanel_pPrompt.hidden = NO;
     }
