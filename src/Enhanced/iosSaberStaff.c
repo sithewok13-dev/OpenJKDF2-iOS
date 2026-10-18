@@ -402,7 +402,7 @@ static void iosSaberStaff_ReyHalf(flex_t L, flex_t R)
 typedef struct {
     SithThing* pThing;
     uint32_t signature;
-    uint32_t usedMs, lastMs;
+    uint32_t lastMs;
     int bTime;
     float rest;    // (0..1) not doing anything but carrying it: held turned, the left hand on it
     float active;  // (0..1) lit and in hand (not drawn, put away, ...)
@@ -410,7 +410,8 @@ typedef struct {
     rdModel3* pModel;
     int lshoulder;
 } iosSaberStaffSlot;
-#define IOSSABERSTAFF_SLOTS 8
+// (each player's own, by their number, as the looks are kept (jkPlayerLook); the last, any other thing's while it is the one drawn)
+#define IOSSABERSTAFF_SLOTS (JKPLAYER_NUM_INFOS + 1)
 static iosSaberStaffSlot iosSaberStaff_aSlot[IOSSABERSTAFF_SLOTS];
 
 // The animations a saber is carried through: standing, walking, running, turning, crouching, jumping,
@@ -466,21 +467,19 @@ static float iosSaberStaff_Toward(float x, float target, float step)
 static iosSaberStaffSlot* iosSaberStaff_SlotOf(SithThing* t)
 {
     const uint32_t now = sithTime_g_msecGameTime;
-    iosSaberStaffSlot* s = NULL;
-    for (int i = 0; i < IOSSABERSTAFF_SLOTS && !s; i++)
-        if (iosSaberStaff_aSlot[i].pThing == t && iosSaberStaff_aSlot[i].signature == t->signature) s = &iosSaberStaff_aSlot[i];
-    if (!s) {
-        s = &iosSaberStaff_aSlot[0];
-        for (int i = 0; i < IOSSABERSTAFF_SLOTS; i++) {
-            iosSaberStaffSlot* a = &iosSaberStaff_aSlot[i];
-            if (!a->pThing || (s->pThing && (int32_t)(a->usedMs - s->usedMs) < 0)) s = a;
-        }
+    iosSaberStaffSlot* s = &iosSaberStaff_aSlot[IOSSABERSTAFF_SLOTS - 1];
+    if (t->type == SITH_THING_PLAYER && t->actorParams.pPlayer) {
+        const uintptr_t at = (uintptr_t)t->actorParams.pPlayer, first = (uintptr_t)&jkPlayer_playerInfos[0];
+        const uintptr_t i = (at - first) / sizeof(jkPlayer_playerInfos[0]);
+        if (at >= first && !((at - first) % sizeof(jkPlayer_playerInfos[0])) && i < JKPLAYER_NUM_INFOS) s = &iosSaberStaff_aSlot[i];
+    }
+    if (s->pThing != t || s->signature != t->signature) {
+        // (new to its slot: a player joined, a new level; as it is now, its shoulder looked up once)
         memset(s, 0, sizeof(*s));
         s->pThing = t;
         s->signature = t->signature;
         s->lshoulder = -1;
     }
-    s->usedMs = now;
     // (moved on once a moment, by the game's clock)
     const float rest = iosSaberStaff_IsBusy(t) ? 0.0f : 1.0f, active = iosSaberStaff_IsActive(t) ? 1.0f : 0.0f;
     const float stand = iosSaberStaff_IsStanding(t) ? 1.0f : 0.0f;
@@ -1062,7 +1061,9 @@ int iosSaberStaff_DrawThrown(SithThing* pThing, int* pRet)
     if (!pThing || pThing->type != SITH_THING_WEAPON || pThing->renderData.type != RD_THING_MODEL3 || !pThing->renderData.model3) return 0;
     const int saber = iosSaberThrow_ThrownHand(pThing);
     if (saber < 0) return 0;
-    int hilt = iosSaberFold_ThrownHilt(saber);
+    // (the hilt this saber flies with, as the throw kept it for this thing: the one saber's, from either hand)
+    int hilt = iosSaberThrow_ThrownHilt(pThing);
+    if (hilt < 0) hilt = iosSaberFold_ThrownHilt(saber);
     if (hilt < 0) hilt = iosSaberStaff_SaberHilt(sithPlayer_g_pLocalPlayerThing, saber);
     if (!iosSaberStaff_IsDouble(hilt)) return 0;
     const float f = hilt == IOSSABER_HILT_STAFF ? 1.0f : iosSaberFold_ThrownOpenFraction(saber);
