@@ -129,7 +129,9 @@ Each item: what it does, and the numbers to keep (from iosTouch.m; points).
    each saber held; a 0.3 s hold with a gold ring: new colours only; sliding
    off cancels), SABER THROW at the top right (Jedi Knight; shown on, a little dim,
    while `sithewok` holds it on); the action buttons hidden while it is open. With a FOLD lit in
-   hand, a tap on SABER flips it (a slide or a hold opens the wheel).
+   hand, a tap on SABER flips it (a slide or a hold opens the wheel); with a
+   FOLD in each hand, a tap flips the right one, a double tap both (one FOLD
+   with another hilt: every tap flips it).
 7. **QUICK SAVE / QUICK LOAD (standard):** a 0.3 s hold with a ring filling;
    fires once when full, finger still down. Sliding off cancels (even off and
    back on between frames). Two fingers fire once. Held together, whichever

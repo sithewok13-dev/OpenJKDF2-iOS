@@ -1022,14 +1022,15 @@ hand's colours and has its own **HILT** button.
 - **AUTO OPEN**, an on/off switch under FILM, shows only while a FOLD is in
   either hand (see below). On to start.
 - **RANDOM** (a small die), under the RIGHT card's switches, always in the
-  same spot: where AUTO OPEN would go next, even when AUTO OPEN isn't
+  same spot: just under AUTO OPEN's spot, even when AUTO OPEN isn't
   showing. So nothing moves, and a second tap can't land on AUTO OPEN when a
   random FOLD makes it appear.
   - **Tap it:** every saber you hold (one or two) gets a different hilt and
     a different colour (never the one it has, and never one that looks the
     same). A STAFF or FOLD with joined dots gets one new colour; with split
-    dots, two new ones. A saber that becomes a STAFF or FOLD starts with
-    joined dots, as with HILT.
+    dots, two new ones. A saber that becomes a STAFF or FOLD from a one-blade
+    hilt starts with joined dots, as with HILT (a STAFF with split dots that
+    becomes a FOLD stays split).
   - **Hold it** for 0.3 s (a gold ring fills round it, like QUICK SAVE's):
     new colours only, the hilts stay. Let go sooner and it's a tap. Slide
     off it and nothing happens.
@@ -1040,6 +1041,9 @@ hand's colours and has its own **HILT** button.
     game's, in this look), and the hilts are the four on HILT.
   - Like the switches, it gives a tick, is remembered at once and leaves the
     wheel open. On a controller it's Back (View, Share); on a keyboard, R.
+    (On the smallest iPhones, 320 points tall, the controller's or the
+    keyboard's button line along the bottom leaves no room for the RANDOM
+    chip while they have the wheel open: Back and R still work.)
 - **The wheel stays open** after you pick a colour, so you can change every
   blade in one go. Close it with the gap at the bottom, or by tapping an empty
   spot.
@@ -1071,7 +1075,9 @@ hand's colours and has its own **HILT** button.
     works the same way, once or twice quickly. The weapon wheel flips both.
     With one FOLD and another hilt, every tap flips the FOLD.
   - A thrown FOLD flies the way it left your hand (a folded one snaps open
-    just after the throw) and comes back the way you left it.
+    just after the throw). With AUTO OPEN off it comes back the way you left
+    it (thrown folded, it snaps shut as you catch it); with AUTO OPEN on it
+    comes back open and folds 5 seconds later if you don't swing.
 - **Mixed pairs:** with two sabers each arm holds its own saber its own way:
   a CROSS low at the side, a STAFF or FOLD as a staff, a NORMAL in the usual
   two-saber stance. Only CROSS crackles.

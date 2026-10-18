@@ -200,7 +200,8 @@ Tick what works, note what doesn't (a photo of the screen helps).
       hold (one or two) a different hilt and a different colour (never the
       one it has, nor one that looks the same); a STAFF or FOLD with joined
       dots one new colour, split dots two; a saber that becomes a STAFF or
-      FOLD starts joined, as with HILT. Held 0.3 s (a gold ring fills round
+      FOLD from a one-blade hilt starts joined, as with HILT (a split STAFF
+      that becomes a FOLD stays split). Held 0.3 s (a gold ring fills round
       it, as QUICK SAVE's): new colours only, the hilts stay; let go sooner,
       the tap; slid off, nothing. SAME HILT on: both get the same new hilt;
       SAME COLOUR on: every blade the same new colour. It never changes one
@@ -208,7 +209,9 @@ Tick what works, note what doesn't (a photo of the screen helps).
       colours come from the wheel as you see it. A tick, kept at once, the
       wheel stays open. Where there's no room under AUTO OPEN's spot (a short
       window), it sits right of it; in a window too narrow for that too
-      (320 wide), only the pad's and the keys' RANDOM is there.
+      (320 wide: a split screen or a small window) there's no room for it
+      anywhere clear of the ring and the cards, so it isn't shown: the pad's
+      Back (View, Share, -) and the R key still work there.
 - [ ] CLASSIC / REFORGED (at the top of the saber wheel's middle): a tap
       switches the colours' look, and the wheel stays open. CLASSIC (to
       start, unless you picked REFORGED before): the earlier look, 17
