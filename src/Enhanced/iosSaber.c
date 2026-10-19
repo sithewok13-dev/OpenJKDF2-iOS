@@ -962,6 +962,7 @@ void iosSaber_EndBlade(rdThing* pLine)
 // The right arm's poses (each joint relative to the one it hangs from), kept a while
 #define IOSSABER_ECHO_FRAMES 48
 #define IOSSABER_ECHO_GAP_MS 500 // (not posed for longer than this: start over)
+#define IOSSABER_HOLD_SEC 0.2f // (a fidget's held left arm: eased in and out this long)
 typedef struct {
     uint32_t ms;
     rdMatrix34 aJoint[IOSSABER_ARM_NODES];
@@ -977,6 +978,12 @@ typedef struct {
     int bArms;
     iosSaberEcho aEcho[IOSSABER_ECHO_FRAMES];
     int echoHead, echoCount;
+    // (a fidget: the left arm held as it was when it began (bKept), until IOSSABER_ECHO_MS after it,
+    // this much (holdW, eased; holdMs its time))
+    int bKept;
+    uint32_t heldUntilMs, holdMs;
+    float holdW;
+    rdMatrix34 aHeld[IOSSABER_ARM_NODES];
 } iosSaberArms;
 static iosSaberArms iosSaber_aArms[IOSSABER_ARM_SLOTS];
 
@@ -986,6 +993,8 @@ static void iosSaber_ForgetArms(void)
         iosSaber_aArms[i].pThing = NULL;
         iosSaber_aArms[i].pArmModel = NULL;
         iosSaber_aArms[i].echoCount = 0;
+        iosSaber_aArms[i].bKept = 0;
+        iosSaber_aArms[i].holdW = 0.0f;
     }
 }
 
@@ -1002,7 +1011,24 @@ static iosSaberArms* iosSaber_ArmsOf(SithThing* pThing, uint32_t now)
     pOldest->usedMs = now;
     pOldest->pArmModel = NULL;
     pOldest->echoCount = 0;
+    pOldest->bKept = 0;
+    pOldest->holdW = 0.0f;
     return pOldest;
+}
+
+// Whether the game plays one of its fidgets (standing a while: the saber lifted to the face, to look at it)
+static int iosSaber_IsFidgeting(SithThing* pThing)
+{
+    const SithPuppetClass* pc = pThing->pPuppetClass;
+    const rdPuppet* pup = pThing->renderData.puppet;
+    if (!pc || !pup) return 0;
+    for (int i = 0; i < 4; i++) {
+        const rdKeyframe* k = pup->aTracks[i].status ? pup->aTracks[i].keyframe : NULL;
+        if (!k) continue;
+        for (int m = 0; m < (int)(sizeof(pc->modes) / sizeof(pc->modes[0])); m++)
+            if (k == pc->modes[m].keyframe[SITH_ANIM_FIDGET].keyframe || k == pc->modes[m].keyframe[SITH_ANIM_FIDGET2].keyframe) return 1;
+    }
+    return 0;
 }
 
 static int iosSaber_FindNode(rdModel3* pModel, const char* side, const char* const* aSuffix)
@@ -1029,6 +1055,8 @@ static void iosSaber_FindArms(iosSaberArms* a, rdModel3* pModel)
     a->pArmModel = pModel;
     a->bArms = 1;
     a->echoCount = 0;
+    a->bKept = 0;
+    a->holdW = 0.0f;
     for (int k = 0; k < IOSSABER_ARM_NODES; k++) {
         a->aArmR[k] = iosSaber_FindNode(pModel, "r", aaPart[k]);
         a->aArmL[k] = iosSaber_FindNode(pModel, "l", aaPart[k]);
@@ -1066,8 +1094,41 @@ void iosSaber_PoseArms(rdThing* pRdThing)
         pPast = e;
         if (now - e->ms >= IOSSABER_ECHO_MS) break;
     }
+    // ...but while the game fidgets (and a moment after, as the left arm would follow it), as it was when
+    // the fidget began, eased in and out: its mirror would lift the left saber into the face too. A swing,
+    // block or hit (or the game counting hits) lets go at once, the mirror again as it always was (its blade
+    // strikes where it is drawn); after one, the fidget still playing, it eases back
+    const int bBusy = iosSaberStaff_IsBusy(pThing), bFidget = iosSaber_IsFidgeting(pThing);
+    if (bFidget && !bBusy) {
+        if (!a->bKept) memcpy(a->aHeld, pPast->aJoint, sizeof(a->aHeld));
+        a->bKept = 1;
+        a->heldUntilMs = now + IOSSABER_ECHO_MS;
+    }
+    const int bHold = a->bKept && !bBusy && (int32_t)(now - a->heldUntilMs) < 0 && (int32_t)(a->heldUntilMs - now) <= IOSSABER_ECHO_MS;
+    if (bBusy || now < a->holdMs || now - a->holdMs > IOSSABER_ECHO_GAP_MS) a->holdW = bHold ? 1.0f : 0.0f; // (or the clock gone back, or a gap)
+    else if (now != a->holdMs) {
+        const float step = (float)(now - a->holdMs) * 0.001f / IOSSABER_HOLD_SEC;
+        a->holdW = bHold ? fminf(1.0f, a->holdW + step) : fmaxf(0.0f, a->holdW - step);
+    }
+    a->holdMs = now;
+    if (!bFidget && a->holdW <= 0.0f) a->bKept = 0;
+    const float hw = a->bKept ? a->holdW * a->holdW * (3.0f - 2.0f * a->holdW) : 0.0f;
     for (int k = 0; k < IOSSABER_ARM_NODES; k++) {
+        rdMatrix34 eased;
         const rdMatrix34* r = &pPast->aJoint[k];
+        if (hw >= 1.0f) r = &a->aHeld[k];
+        else if (hw > 0.0f) {
+            // (each joint between the two, its axes made square again)
+            const rdMatrix34* h = &a->aHeld[k];
+            rdVector_Scale3(&eased.rvec, &r->rvec, 1.0f - hw); rdVector_ScaleAdd3Acc(&eased.rvec, &h->rvec, hw);
+            rdVector_Scale3(&eased.lvec, &r->lvec, 1.0f - hw); rdVector_ScaleAdd3Acc(&eased.lvec, &h->lvec, hw);
+            rdVector_Scale3(&eased.scale, &r->scale, 1.0f - hw); rdVector_ScaleAdd3Acc(&eased.scale, &h->scale, hw);
+            rdVector_Normalize3Acc(&eased.lvec);
+            rdVector_Cross3(&eased.uvec, &eased.rvec, &eased.lvec);
+            rdVector_Normalize3Acc(&eased.uvec);
+            rdVector_Cross3(&eased.rvec, &eased.lvec, &eased.uvec);
+            r = &eased;
+        }
         rdMatrix34* l = &pRdThing->paJointMatrices[a->aArmL[k]];
         l->rvec.x =  r->rvec.x; l->rvec.y = -r->rvec.y; l->rvec.z = -r->rvec.z;
         l->lvec.x = -r->lvec.x; l->lvec.y =  r->lvec.y; l->lvec.z =  r->lvec.z;
