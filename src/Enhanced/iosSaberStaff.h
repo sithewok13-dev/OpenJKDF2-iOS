@@ -104,6 +104,10 @@ void iosSaberStaff_FreeWorld(void);
 // puppet: a swing, a block, a hit taken, a Force power, the saber drawn or put
 // away; the game counting a swing's hits), as this module goes by
 int iosSaberStaff_IsBusy(struct SithThing* pThing);
+// Whether a player is to have none of the game's idle fidgets (sithPuppet_PlayFidgetMode): with a STAFF,
+// or a FOLD not folded, as their one saber (lifted to the face to look at it, its second blade would go
+// through the head or the body, whichever way it is turned; it has its own idle spin instead)
+int iosSaberStaff_NoFidget(struct SithThing* pThing);
 
 // (for checks) The local player's: how far it is held turned (third person,
 // 0..1), its left hand's grip (+) or let go (-), the spin's angle now

@@ -10,6 +10,9 @@
 #include "Gameplay/sithPlayerActions.h"
 #include "Main/jkGame.h"
 #include "Engine/rdPuppet.h"
+#ifdef JK_ENHANCED
+#include "Enhanced/iosSaberStaff.h" // Added
+#endif
 #include "World/sithSoundClass.h"
 #include "World/sithSurface.h"
 #include "stdPlatform.h"
@@ -823,6 +826,14 @@ void sithPuppet_PlayFidgetMode(SithThing *pThing)
 
     SITH_ASSERTREL(pThing); // Added: ported from OpenJones3D sithPuppet_PlayFidgetMode
     SITH_ASSERTREL(pThing->puppet); // Added: ported from OpenJones3D sithPuppet_PlayFidgetMode
+#ifdef JK_ENHANCED
+    // Added: none with a STAFF or an open FOLD as the one saber (iosSaberStaff); one playing
+    // (opened or picked since it began) stopped, as the game stops it for anything else
+    if (iosSaberStaff_NoFidget(pThing)) {
+        if (pThing->puppet->currentTrack >= 0) sithPuppet_resetidk(pThing);
+        return;
+    }
+#endif
     puppet = pThing->puppet;
     if ( puppet->currentTrack < 0 && puppet->currentAnimation == 1 && (flex_d_t)(unsigned int)puppet->animStartedMs - -30000.0 < (flex_d_t)sithTime_g_msecGameTime )
     {

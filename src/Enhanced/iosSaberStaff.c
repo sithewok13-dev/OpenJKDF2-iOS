@@ -496,6 +496,15 @@ static int iosSaberStaff_IsActive(SithThing* t)
         && !(t == sithPlayer_g_pLocalPlayerThing && iosSelfie_IsActive());
 }
 
+int iosSaberStaff_NoFidget(SithThing* t)
+{
+    // (one saber, a STAFF or a FOLD not folded, lit and in hand)
+    if (!t || t->type != SITH_THING_PLAYER || iosSaber_HasSecondBlade(t) || !(t->jkFlags & JKFLAG_SABERON)) return 0;
+    const int hilt = iosSaberStaff_HiltOf(t, 0);
+    if (!iosSaberStaff_IsDouble(hilt) || !t->playerInfo || !iosSaberStaff_InHand(t, t->playerInfo->rd_thing.model3)) return 0;
+    return hilt == IOSSABER_HILT_STAFF || iosSaberFold_OpenFraction(t, iosSaberStaff_SaberInHand(t, 0)) > 0.0f;
+}
+
 static int iosSaberStaff_IsStanding(SithThing* t)
 {
     if (!(t->attach_flags & (SITH_ATTACH_SURFACE | SITH_ATTACH_THINGFACE)) || (t->physicsParams.flags & SITH_PF_CROUCHING)) return 0;
