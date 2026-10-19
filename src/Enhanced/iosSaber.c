@@ -965,6 +965,7 @@ void iosSaber_EndBlade(rdThing* pLine)
 #define IOSSABER_HOLD_SEC 0.2f // (a fidget's held left arm: eased in and out this long)
 typedef struct {
     uint32_t ms;
+    int bFidget; // (the game fidgeting then: not a pose to hold)
     rdMatrix34 aJoint[IOSSABER_ARM_NODES];
 } iosSaberEcho;
 
@@ -1076,6 +1077,7 @@ void iosSaber_PoseArms(rdThing* pRdThing)
     if (!a->bArms) return;
 
     // This frame's right arm kept (once a frame: the latest pose for that time)
+    const int bBusy = iosSaberStaff_IsBusy(pThing), bFidget = iosSaber_IsFidgeting(pThing);
     iosSaberEcho* pNow = &a->aEcho[a->echoHead];
     if (a->echoCount && (now < pNow->ms || now - pNow->ms > IOSSABER_ECHO_GAP_MS)) a->echoCount = 0;
     if (!a->echoCount || now != pNow->ms) {
@@ -1085,6 +1087,7 @@ void iosSaber_PoseArms(rdThing* pRdThing)
         pNow->ms = now;
     }
     for (int k = 0; k < IOSSABER_ARM_NODES; k++) pNow->aJoint[k] = pRdThing->paJointMatrices[a->aArmR[k]];
+    pNow->bFidget = bFidget;
 
     // ...the one IOSSABER_ECHO_MS before (or the oldest kept), mirrored onto the left arm: each joint as
     // its right one is, seen in a mirror across the body (x the other way, before and after)
@@ -1097,12 +1100,15 @@ void iosSaber_PoseArms(rdThing* pRdThing)
     // ...but while the game fidgets (and a moment after, as the left arm would follow it), as it was when
     // the fidget began, eased in and out: its mirror would lift the left saber into the face too. A swing,
     // block or hit (or the game counting hits) lets go at once, the mirror again as it always was (its blade
-    // strikes where it is drawn); after one, the fidget still playing, it eases back
-    const int bBusy = iosSaberStaff_IsBusy(pThing), bFidget = iosSaber_IsFidgeting(pThing);
+    // strikes where it is drawn); after one, the fidget still playing, it eases back. Only a pose from before
+    // the fidget is held: with none kept (two sabers taken in hand, or another player's look turned to two,
+    // partway through it), the mirror as it always was
     if (bFidget && !bBusy) {
-        if (!a->bKept) memcpy(a->aHeld, pPast->aJoint, sizeof(a->aHeld));
-        a->bKept = 1;
-        a->heldUntilMs = now + IOSSABER_ECHO_MS;
+        if (!a->bKept && !pPast->bFidget) {
+            memcpy(a->aHeld, pPast->aJoint, sizeof(a->aHeld));
+            a->bKept = 1;
+        }
+        if (a->bKept) a->heldUntilMs = now + IOSSABER_ECHO_MS;
     }
     const int bHold = a->bKept && !bBusy && (int32_t)(now - a->heldUntilMs) < 0 && (int32_t)(a->heldUntilMs - now) <= IOSSABER_ECHO_MS;
     if (bBusy || now < a->holdMs || now - a->holdMs > IOSSABER_ECHO_GAP_MS) a->holdW = bHold ? 1.0f : 0.0f; // (or the clock gone back, or a gap)
