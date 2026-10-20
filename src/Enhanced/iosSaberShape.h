@@ -126,13 +126,13 @@ int iosSaberShape_DrawBlade(struct rdThing* pLine, const struct rdMatrix34* pToC
 // a held blade's side (pSideFace, the thrower's saber's) with pSideMat (in its
 // colour; either NULL: no side blades, only the glow); with FOLD (its
 // model set ragged, iosSaberShape_SetJag), its blade drawn ragged over the
-// model's in those, and with FILM its glow
+// model's in those, its tip tipShare as wide as at its hilt, and with FILM its glow
 struct rdFace;
 // (and whether a thrown FOLD's ragged blade will be drawn, so the model's own blade can be left out under it)
 int iosSaberShape_CanDrawThrownRagged(struct SithThing* pThing, const struct rdMaterial* pBlade, const struct rdFace* pSideFace,
                                       const struct rdMaterial* pSideMat);
 void iosSaberShape_DrawThrownGlow(struct SithThing* pThing, const struct rdMaterial* pBlade, const unsigned char rgb[3], int form,
-                                  const struct rdFace* pSideFace, struct rdMaterial* pSideMat);
+                                  const struct rdFace* pSideFace, struct rdMaterial* pSideMat, float tipShare);
 // A thrown saber model's blade (the faces with pBlade, its first geoset's): its
 // long axis in its mesh's own space, pA the end at its hilt, pB its tip, and
 // which of the other two axes it is wider across (0 x, 1 y, 2 z); 0 if none

@@ -776,8 +776,11 @@ void iosSaber_EndThrownBlade(SithThing* pThing, int blade)
             const rdFace* pSideFace = NULL;
             rdMaterial* pSideMat = NULL;
             if (bCross || bFold) iosSaber_ThrownSide(id, &pSideFace, &pSideMat);
+            // (FOLD's ragged blade with FILM off narrowing as the game's blade does, the thrower's)
+            const rdPolyline* w = sithPlayer_g_pLocalPlayerThing && sithPlayer_g_pLocalPlayerThing->playerInfo ? &sithPlayer_g_pLocalPlayerThing->playerInfo->polyline : NULL;
+            const float tipShare = iosSaberShape_Get() != IOSSABERSHAPE_BEAM && w && w->baseRadius > 0 && w->tipRadius < w->baseRadius ? (float)(w->tipRadius / w->baseRadius) : 1.0f;
             iosSaberShape_DrawThrownGlow(pThing, pBlade, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge,
-                                         bCross ? IOSSABERSHAPE_FORM_CROSS : bFold ? IOSSABERSHAPE_FORM_FOLD : IOSSABERSHAPE_FORM_CHOSEN, pSideFace, pSideMat);
+                                         bCross ? IOSSABERSHAPE_FORM_CROSS : bFold ? IOSSABERSHAPE_FORM_FOLD : IOSSABERSHAPE_FORM_CHOSEN, pSideFace, pSideMat, tipShare);
         }
     }
     if (!iosSaber_pThrownModel) return;
@@ -912,7 +915,7 @@ int iosSaber_HandHilt(SithThing* pThing, int hand)
     return iosSaber_SaberHilt(pThing, iosSaber_SaberInHand(pThing, hand));
 }
 
-// (the blade's width as it was, while it is drawn shimmering (two sabers) or even (FOLD))
+// (the blade's width as it was, while it is drawn shimmering: two sabers)
 static rdPolyline* iosSaber_pWidthLine = NULL;
 static flex_t iosSaber_savedBase, iosSaber_savedTip;
 
@@ -944,17 +947,6 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
     const iosSaberStyle* st = &iosSaber_aStyles[c.style];
     // (a blade the style doesn't have -- the game's own second one -- as its first)
     if (blade < 0 || blade >= st->numBlades) blade = 0;
-    // FOLD's blades even to their round tips, as Dark Rey's are: not the game's, narrowing toward
-    // the tip (FILM's are even already)
-    if (iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_FOLD && iosSaberShape_Get() != IOSSABERSHAPE_BEAM) {
-        rdPolyline* w = pLine->polyline;
-        if (!iosSaber_pWidthLine) {
-            iosSaber_pWidthLine = w;
-            iosSaber_savedBase = w->baseRadius;
-            iosSaber_savedTip = w->tipRadius;
-        }
-        w->tipRadius = w->baseRadius;
-    }
     // (two sabers with the right one thrown: the left one, in hand, in its own colours)
     const int saber = iosSaber_SaberInHand(pThing, blade);
     const int id = c.aId[saber][sub];

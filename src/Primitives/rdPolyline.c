@@ -267,6 +267,9 @@ int rdPolyline_Draw(rdThing *pLine, rdMatrix34 *pOrient)
     tip_top = (vertex_out.z + polyline->tipRadius) * tipScale;
 
     // Tip
+#ifdef JK_ENHANCED
+    if (!iosSaberShape_IsOpenEnd(pLine, 0)) // Added: not where a blade drawn in pieces meets the next (iosSaberShape_SetOpenEnds)
+#endif
     {
         polylineVerts[0].x = tip_left;
         polylineVerts[0].y = vertex_out.y - epislon;
@@ -285,6 +288,9 @@ int rdPolyline_Draw(rdThing *pLine, rdMatrix34 *pOrient)
     }
 
     // Base
+#ifdef JK_ENHANCED
+    if (!iosSaberShape_IsOpenEnd(pLine, 1)) // Added: as the tip
+#endif
     {
         polylineVerts[0].x = (out.scale.x - polyline->baseRadius) * baseScale;
         polylineVerts[0].y = out.scale.y - epislon;

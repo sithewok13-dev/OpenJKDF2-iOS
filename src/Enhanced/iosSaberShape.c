@@ -1483,7 +1483,7 @@ int iosSaberShape_CanDrawThrownRagged(SithThing* pThing, const rdMaterial* pBlad
 }
 
 void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, const unsigned char rgb[3], int form,
-                                  const rdFace* pSideFace, rdMaterial* pSideMat)
+                                  const rdFace* pSideFace, rdMaterial* pSideMat, float tipShare)
 {
     const int bCross = form == IOSSABERSHAPE_FORM_CROSS, bFold = form == IOSSABERSHAPE_FORM_FOLD;
     if ((!bCross && !bFold && iosSaberShape_shape != IOSSABERSHAPE_BEAM) || !pThing || !pBlade || !rgb || !rdCamera_g_pCurCamera) return;
@@ -1561,8 +1561,8 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
             // (brought toward the eye by its width, where it is on screen, in front of the model's hilt where they meet)
             const flex_t kt = tip.y > 2 * r ? (tip.y - r) / tip.y : (flex_t)1, kb = base.y > 2 * r ? (base.y - r) / base.y : (flex_t)1;
             const rdVector3 nt = { tip.x * kt, tip.y * kt, tip.z * kt }, nb = { base.x * kb, base.y * kb, base.z * kb };
-            iosSaberShape_Ragged(&glowThing, &face, (flex_t)v->format.width - (flex_t)0.01, (flex_t)v->format.height - (flex_t)0.01, &nt, &nb, r, r,
-                                 angCos, angSin, iosSaberShape_jagId);
+            iosSaberShape_Ragged(&glowThing, &face, (flex_t)v->format.width - (flex_t)0.01, (flex_t)v->format.height - (flex_t)0.01, &nt, &nb,
+                                 r * (flex_t)tipShare, r, angCos, angSin, iosSaberShape_jagId);
         }
         if (!g || iosSaberShape_shape != IOSSABERSHAPE_BEAM) return;
     }
