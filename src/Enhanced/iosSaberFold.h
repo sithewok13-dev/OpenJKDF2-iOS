@@ -4,8 +4,9 @@
 // held by one hilt, swung as the game's own one saber) or open (a straight
 // staff, a blade out of each end, held as STAFF is). Here: whether each one
 // is folded or open, and the snap between (0.3 s, the free half swinging out
-// sideways and down through half a turn round the hinge, with a mechanical
-// click made from the game's own sounds).
+// sideways and down through half a turn round the hinge, out to the side of
+// its own hand, the left hand's to his left as the right's goes to his right,
+// with a mechanical click made from the game's own sounds).
 //
 // The local player's (each saber its own: with two, one in each hand):
 //  - It ignites folded (lit, picked, a new level, a load, a death; put in a

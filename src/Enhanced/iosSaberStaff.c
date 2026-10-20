@@ -255,12 +255,15 @@ static void iosSaberStaff_FreeFrame(float f, flex_t L, flex_t R, const rdVector3
 }
 
 // The way FOLD's free half lies from the held one (the held blade's frame, square
-// to its blade): third person, the hand's x; first person, across the view
-// (square to the line of sight and the blade, so both are as far from the eye),
-// toward the middle of the view (the right hand's to its left)
+// to its blade), and so the way it swings out as it opens and back as it folds:
+// third person, out to the side of its own hand (the right hand's along the
+// hand's x, to his right; the left hand's mirrored, to his left, never across
+// him); first person, across the view (square to the line of sight and the
+// blade, so both are as far from the eye), toward the middle of the view (the
+// right hand's to its left)
 static void iosSaberStaff_Side(int bPov, int hand, const rdMatrix34* pHeld, rdVector3* pS)
 {
-    pS->x = 1; pS->y = 0; pS->z = 0;
+    pS->x = (hand && !bPov) ? -1 : 1; pS->y = 0; pS->z = 0;
     if (!bPov || !rdCamera_g_pCurCamera) return;
     rdMatrix34 toCam;
     rdMatrix_Multiply34(&toCam, &rdCamera_g_pCurCamera->orient, pHeld);
@@ -1058,8 +1061,10 @@ static int iosSaberStaff_ThrownAxis(const rdModel3* m, rdVector3* pA, rdVector3*
 }
 
 // One copy's placement (copy 0 as thrown; 1 the other half, open f): the model turned to lie flat,
-// spinning round the world's up as the game spins it, its hilt's end (the pommel) where the thing is
-static int iosSaberStaff_ThrownOrient(SithThing* pThing, int copy, float f, rdMatrix34* pIo)
+// spinning round the world's up as the game spins it, its hilt's end (the pommel) where the thing is.
+// bLeft: the left saber's, its other half mirrored (lying the other side, swinging out the other way:
+// as its hand's snap)
+static int iosSaberStaff_ThrownOrient(SithThing* pThing, int copy, float f, int bLeft, rdMatrix34* pIo)
 {
     const rdModel3* m = pThing->renderData.model3;
     rdVector3 A, B;
@@ -1092,8 +1097,8 @@ static int iosSaberStaff_ThrownOrient(SithThing* pThing, int copy, float f, rdMa
     rdVector3 at = pIo->scale;
     if (copy) {
         // the other half: turned round the hinge (the world's up, beside the pommels) as far as it is open
-        const flex_t g = len * IOSSABERSTAFF_THROWN_GAP;
-        const float t = f * (float)M_PI;
+        const flex_t g = len * IOSSABERSTAFF_THROWN_GAP * (bLeft ? (flex_t)-1 : (flex_t)1);
+        const float t = f * (float)M_PI * (bLeft ? -1.0f : 1.0f);
         rdVector3 off = { w2.x * g * (flex_t)0.5, w2.y * g * (flex_t)0.5, 0 }, offT;
         iosSaberStaff_Turn(&offT, &off, &w3, t);
         at.x += off.x + offT.x;
@@ -1138,7 +1143,7 @@ int iosSaberStaff_DrawThrown(SithThing* pThing, int* pRet)
     int ret = 0;
     for (int copy = 0; copy < 2; copy++) {
         rdMatrix34 o = saved;
-        if (!iosSaberStaff_ThrownOrient(pThing, copy, f, &o)) {
+        if (!iosSaberStaff_ThrownOrient(pThing, copy, f, saber == 1, &o)) {
             pThing->orient = saved;
             if (!copy) return 0;
             break;
