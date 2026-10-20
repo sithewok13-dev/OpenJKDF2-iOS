@@ -925,10 +925,18 @@ static int iosSaberShape_DrawJagged(rdThing* pLine, const rdVector3* pTip, const
 
 // A beam's side from its tip down (camera space: tip, base, its radii there, (cos, sin) across it): its
 // first endS (from the tip) rounded to its end in IOSSABERSHAPE_BEAM_END_SLICES, the rest in n, each
-// edge point at aJag's share of the width there; in pFace (its texture across from u0 to w, along to h)
+// edge point at aJag's share of the width there; in pFace (its texture across from u0 to w, along to h).
+// (taper: none, 0; or how much of it, from the tip, narrows gently (easing in and out) to tipK of its width
+// where its rounded end begins: iosSaberShape_TaperOf)
+static flex_t iosSaberShape_TaperOf(flex_t s, flex_t taper, flex_t tipK)
+{
+    if (taper <= 0 || s >= taper) return 1;
+    const flex_t x = s / taper;
+    return tipK + (1 - tipK) * x * x * (3 - 2 * x);
+}
 static void iosSaberShape_BeamSide(rdThing* pLine, rdFace* pFace, flex_t u0, flex_t w, flex_t h, const rdVector3* pTip, const rdVector3* pBase,
                                    flex_t rTip, flex_t rBase, float angCos, float angSin, flex_t endS, int n,
-                                   flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS])
+                                   flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS], flex_t taper, flex_t tipK)
 {
     const flex_t tx = rTip * angCos, tz = rTip * angSin, bx = rBase * angCos, bz = rBase * angSin;
     rdMeshinfo info;
@@ -951,7 +959,8 @@ static void iosSaberShape_BeamSide(rdThing* pLine, rdFace* pFace, flex_t u0, fle
         }
         for (int e = 0; e < 2; e++) {
             const rdVector3 p = { pTip->x + (pBase->x - pTip->x) * s[e], pTip->y + (pBase->y - pTip->y) * s[e], pTip->z + (pBase->z - pTip->z) * s[e] };
-            const flex_t ax = (tx + (bx - tx) * s[e]) * k[e], az = (tz + (bz - tz) * s[e]) * k[e];
+            const flex_t m = iosSaberShape_TaperOf(s[e], taper, tipK);
+            const flex_t ax = (tx + (bx - tx) * s[e]) * k[e] * m, az = (tz + (bz - tz) * s[e]) * k[e] * m;
             // (0 and 1 the slice's tip side, + and - across; 2 and 3 its base side, - and +)
             rdVector3* a = &iosSaberShape_aSideVerts[e ? 3 : 0];
             rdVector3* b = &iosSaberShape_aSideVerts[e ? 2 : 1];
@@ -993,7 +1002,7 @@ static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const r
     const int n = pLine == iosSaberShape_pJagLine ? IOSSABERSHAPE_FOLD_SLICES : iosSaberShape_SlicesFor(pTip, pBase, 0);
     flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS];
     iosSaberShape_Jag(pLine == iosSaberShape_pJagLine, iosSaberShape_jagId, aJag, IOSSABERSHAPE_BEAM_END_SLICES + n);
-    iosSaberShape_BeamSide(pLine, &face, 0, w, h, pTip, pBase, iosSaberShape_beamTip, l->baseRadius, angCos, angSin, endS, n, aJag);
+    iosSaberShape_BeamSide(pLine, &face, 0, w, h, pTip, pBase, iosSaberShape_beamTip, l->baseRadius, angCos, angSin, endS, n, aJag, 0, 1);
     iosSaberShape_DrawGlow(pLine, pTip, pBase, angCos, angSin);
     return 1;
 }
@@ -1382,8 +1391,9 @@ static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
 // ------------------------------------------------------------ CROSS with FILM
 
 // CROSS with FILM, Kylo Ren's as the films show it: FILM's beam (its white-hot
-// core, its glow, even to its rounded end, the game's length, fitted in first
-// person as any FILM blade) but unstable. Its edges rough and unsteady, new
+// core, its glow, the game's length, fitted in first person as any FILM blade;
+// narrowing a little over its last quarter to a small soft point, below) but
+// unstable. Its edges rough and unsteady, new
 // each frame of the game's clock: drawn in IOSSABERSHAPE_FCROSS_SLICES slices,
 // each edge point moved in or out by up to this much of the width there (a
 // little more than FOLD's), now and then one flaring out by up to this much
@@ -1400,7 +1410,40 @@ static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
 // (its core's texture across, this much of it left out at each edge: its soft rim, which drawn along the
 // rough edges shows as a dark line)
 #define IOSSABERSHAPE_FCROSS_RIM 0.12f
-#define IOSSABERSHAPE_FCROSS_GUARD_SLICES 8
+#define IOSSABERSHAPE_FCROSS_GUARD_SLICES 10
+// Its blade and glow narrowing a little toward the tip, as the films': gently,
+// over its last IOSSABERSHAPE_FCROSS_TAPER (from the tip), to
+// IOSSABERSHAPE_FCROSS_TIP of the width (in first person too, on top of the
+// fit that keeps a FILM blade even on screen), into a small soft rounded tip
+// IOSSABERSHAPE_FCROSS_TIP_END of its radius long (FILM's is
+// IOSSABERSHAPE_BEAM_END: a soft point rather than a round cap). The side
+// blades the same, to a little more pointed ends.
+#define IOSSABERSHAPE_FCROSS_TAPER 0.25f
+#define IOSSABERSHAPE_FCROSS_TIP 0.78f
+#define IOSSABERSHAPE_FCROSS_TIP_END 1.7f
+#define IOSSABERSHAPE_FCROSS_GUARD_TAPER 0.35f
+#define IOSSABERSHAPE_FCROSS_GUARD_TIP 0.7f
+#define IOSSABERSHAPE_FCROSS_GUARD_TIP_END 2.2f
+
+// (the glow of a blade that narrows (iosSaberShape_TaperOf): pEnd, where its rounded end begins (endS of the way from
+// the tip), to the hilt; its radius rTip and rBase before the narrowing; in two: the narrowing part, to its round end,
+// and the rest, to the hilt's; or, its rounded end reaching the narrowing (a short blade, coming on or going off, or a
+// thrown one cut back at the eye), in one, from that end to the hilt)
+static void iosSaberShape_GlowTapered(rdThing* pLine, const iosSaberShapeGlow* g, rdTexMode_t texMode, const rdVector3* pEnd, const rdVector3* pTip,
+                                      const rdVector3* pBase, flex_t rTip, flex_t rBase, flex_t baseReach, flex_t angCos, flex_t angSin, flex_t taper,
+                                      flex_t tipK, flex_t endS, int slices)
+{
+    if (taper <= endS) {
+        iosSaberShape_GlowQuads(pLine, g, texMode, pEnd, pBase, rTip * tipK, rBase, baseReach, angCos, angSin,
+                                IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE, slices);
+        return;
+    }
+    const rdVector3 t = { pTip->x + (pBase->x - pTip->x) * taper, pTip->y + (pBase->y - pTip->y) * taper, pTip->z + (pBase->z - pTip->z) * taper };
+    const flex_t rT = rTip + (rBase - rTip) * taper;
+    const int nT = (int)(slices * taper + (flex_t)0.5) + 1;
+    iosSaberShape_GlowQuads(pLine, g, texMode, pEnd, &t, rTip * tipK, rT, rT, angCos, angSin, IOSSABERSHAPE_END_TIP, nT < 2 ? 2 : nT);
+    iosSaberShape_GlowQuads(pLine, g, texMode, &t, pBase, rT, rBase, baseReach, angCos, angSin, IOSSABERSHAPE_END_BASE, slices);
+}
 
 // (each edge point's share of the width, the n + 1 of them from the tip down: crackling, the ends as they are)
 static void iosSaberShape_Crackle(flex_t aOut[2][IOSSABERSHAPE_JAG_POINTS], int n)
@@ -1529,10 +1572,11 @@ static void iosSaberShape_FilmCross(rdThing* pLine, rdFace* pFace, flex_t w, fle
     const flex_t rt = rTip * fw, rb = rBase * fw;
     flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS];
     iosSaberShape_Crackle(aJag, IOSSABERSHAPE_BEAM_END_SLICES + IOSSABERSHAPE_FCROSS_SLICES);
-    flex_t endS = rt * IOSSABERSHAPE_BEAM_END / len;
+    flex_t endS = rt * IOSSABERSHAPE_FCROSS_TIP * IOSSABERSHAPE_FCROSS_TIP_END / len;
     if (endS > (flex_t)0.5) endS = (flex_t)0.5;
     const flex_t u0 = w * (flex_t)IOSSABERSHAPE_FCROSS_RIM, u1 = w - u0;
-    iosSaberShape_BeamSide(pLine, pFace, u0, u1, h, pTip, pBase, rt, rb, angCos, angSin, endS, IOSSABERSHAPE_FCROSS_SLICES, aJag);
+    iosSaberShape_BeamSide(pLine, pFace, u0, u1, h, pTip, pBase, rt, rb, angCos, angSin, endS, IOSSABERSHAPE_FCROSS_SLICES, aJag,
+                           IOSSABERSHAPE_FCROSS_TAPER, IOSSABERSHAPE_FCROSS_TIP);
     // the side blades out of the hilt's vents, either side across the hand, the same
     rdVector3 axis, aRoot[2], aTip[2];
     flex_t aCos[2] = { 1, 1 }, aSin[2] = { 0, 0 };
@@ -1545,7 +1589,7 @@ static void iosSaberShape_FilmCross(rdThing* pLine, rdFace* pFace, flex_t w, fle
         up.y = along.z * axis.x - along.x * axis.z;
         up.z = along.x * axis.y - along.y * axis.x;
     }
-    flex_t gEnd = gr * IOSSABERSHAPE_BEAM_END / gl;
+    flex_t gEnd = gr * IOSSABERSHAPE_FCROSS_GUARD_TIP * IOSSABERSHAPE_FCROSS_GUARD_TIP_END / gl;
     if (gEnd > (flex_t)0.5) gEnd = (flex_t)0.5;
     for (int k = 0; bGuards && k < 2; k++) {
         const flex_t side = k ? (flex_t)-1 : (flex_t)1;
@@ -1556,7 +1600,8 @@ static void iosSaberShape_FilmCross(rdThing* pLine, rdFace* pFace, flex_t w, fle
         const uint32_t saved = iosSaberShape_rand;
         iosSaberShape_Seed(aGuardSeed[k], 0x6A7Du);
         iosSaberShape_Crackle(aJag, IOSSABERSHAPE_BEAM_END_SLICES + IOSSABERSHAPE_FCROSS_GUARD_SLICES);
-        iosSaberShape_BeamSide(pLine, pFace, u0, u1, h, &aTip[k], &aRoot[k], gr, gr, (float)aCos[k], (float)aSin[k], gEnd, IOSSABERSHAPE_FCROSS_GUARD_SLICES, aJag);
+        iosSaberShape_BeamSide(pLine, pFace, u0, u1, h, &aTip[k], &aRoot[k], gr, gr, (float)aCos[k], (float)aSin[k], gEnd, IOSSABERSHAPE_FCROSS_GUARD_SLICES, aJag,
+                               IOSSABERSHAPE_FCROSS_GUARD_TAPER, IOSSABERSHAPE_FCROSS_GUARD_TIP);
         iosSaberShape_rand = saved;
     }
     // their spits, from the clock: the blade's (round it the hand's way, or with no hilt known as it is seen), and
@@ -1564,11 +1609,11 @@ static void iosSaberShape_FilmCross(rdThing* pLine, rdFace* pFace, flex_t w, fle
     {
         const rdVector3 across = { angCos, 0, angSin };
         const rdVector3 upB = { along.y * across.z - along.z * across.y, along.z * across.x - along.x * across.z, along.x * across.y - along.y * across.x };
-        iosSaberShape_Spit(pLine, texMode, g ? g->rgb : NULL, id * 4u + 0x51A2C000u, IOSSABERSHAPE_FCROSS_SPIT_CHANCE, pTip, pBase, rt, rb,
-                           bGuards ? &axis : &across, bGuards ? &up : &upB);
+        iosSaberShape_Spit(pLine, texMode, g ? g->rgb : NULL, id * 4u + 0x51A2C000u, IOSSABERSHAPE_FCROSS_SPIT_CHANCE, pTip, pBase,
+                           rt * IOSSABERSHAPE_FCROSS_TIP, rb, bGuards ? &axis : &across, bGuards ? &up : &upB);
         for (int k = 0; bGuards && k < 2; k++)
             iosSaberShape_Spit(pLine, texMode, g ? g->rgb : NULL, id * 4u + 1u + (uint32_t)k + 0x51A2C000u, IOSSABERSHAPE_FCROSS_SPIT_CHANCE_SIDE, &aTip[k],
-                               &aRoot[k], gr, gr, &along, &up);
+                               &aRoot[k], gr * IOSSABERSHAPE_FCROSS_GUARD_TIP, gr, &along, &up);
     }
     // the glow round them (as FILM's, a little wider or narrower each frame; the side blades' rounded at their roots
     // back into the blade's over the vents, reaching back no further than its middle line, as CROSS's)
@@ -1576,13 +1621,13 @@ static void iosSaberShape_FilmCross(rdThing* pLine, rdFace* pFace, flex_t w, fle
     iosSaberShape_GlowSetBack(1);
     const rdVector3 end = { pTip->x - d.x * endS, pTip->y - d.y * endS, pTip->z - d.z * endS };
     const flex_t gt = rt * IOSSABERSHAPE_BEAM_GLOW_WIDTH * f, gb = rb * IOSSABERSHAPE_BEAM_GLOW_WIDTH * f;
-    iosSaberShape_GlowQuads(pLine, g, texMode, &end, pBase, gt, gb, gb, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE,
-                            iosSaberShape_SlicesFor(pTip, pBase, 1));
+    iosSaberShape_GlowTapered(pLine, g, texMode, &end, pTip, pBase, gt, gb, gb, angCos, angSin, IOSSABERSHAPE_FCROSS_TAPER, IOSSABERSHAPE_FCROSS_TIP,
+                              endS, iosSaberShape_SlicesFor(pTip, pBase, 1));
     const flex_t gw = gr * IOSSABERSHAPE_BEAM_GLOW_WIDTH * f, gBack = gw < R * IOSSABERSHAPE_VENT_ROOT ? gw : R * IOSSABERSHAPE_VENT_ROOT;
     for (int k = 0; bGuards && k < 2; k++) {
         const rdVector3 ge = { aTip[k].x + (aRoot[k].x - aTip[k].x) * gEnd, aTip[k].y + (aRoot[k].y - aTip[k].y) * gEnd, aTip[k].z + (aRoot[k].z - aTip[k].z) * gEnd };
-        iosSaberShape_GlowQuads(pLine, g, texMode, &ge, &aRoot[k], gw, gw, gBack, aCos[k], aSin[k], IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE,
-                                IOSSABERSHAPE_GLOW_SLICES);
+        iosSaberShape_GlowTapered(pLine, g, texMode, &ge, &aTip[k], &aRoot[k], gw, gw, gBack, aCos[k], aSin[k], IOSSABERSHAPE_FCROSS_GUARD_TAPER,
+                                  IOSSABERSHAPE_FCROSS_GUARD_TIP, gEnd, IOSSABERSHAPE_GLOW_SLICES);
     }
     iosSaberShape_GlowSetBack(0);
 }
