@@ -30,8 +30,8 @@
 // here):
 //
 //   CROSS  without FILM, a blade with a crossguard: its edges jagged, moved about each frame
-//          of the game's clock so it crackles (still while the game is), a
-//          few short sparks off its sides, narrowing to a point; and two short
+//          of the game's clock so it crackles (still while the game is),
+//          narrowing to a point; and two short
 //          side blades (IOSSABERSHAPE_CROSS_GUARD_LEN of its length) straight
 //          out from it at the hilt, either way across the hand, jagged and
 //          pointed too, out of two small metal vents on the hilt

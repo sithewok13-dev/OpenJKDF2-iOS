@@ -1011,14 +1011,11 @@ static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const r
 #define IOSSABERSHAPE_CROSS_JAG 0.22f
 #define IOSSABERSHAPE_CROSS_FLARE 0.55f
 #define IOSSABERSHAPE_CROSS_FLARE_CHANCE 0.15f
-// Up to this many sparks off its sides each frame (each there that often):
-// thin and pointed, this long (of the blade's half width), slanting out
-// toward the tip
+// No sparks off its sides any more (the thin spikes it had, this many chances
+// each frame, each this likely): their random numbers still taken, so the side
+// blades' crackle and the glow's flicker drawn after them stay as they were
 #define IOSSABERSHAPE_CROSS_SPARKS 3
 #define IOSSABERSHAPE_CROSS_SPARK_CHANCE 0.6f
-#define IOSSABERSHAPE_CROSS_SPARK_MIN 1.2f
-#define IOSSABERSHAPE_CROSS_SPARK_MAX 3.4f
-#define IOSSABERSHAPE_CROSS_SPARK_WIDTH 0.28f
 // The side blades: this long (of the blade's length) out from the hilt's
 // vents (iosSaberShape_Vents), as wide there (of the blade's), the whole of
 // their outer IOSSABERSHAPE_CROSS_GUARD_TAPER narrowing to their points; in
@@ -1321,7 +1318,7 @@ static void iosSaberShape_Vents(rdThing* pLine, rdTexMode_t texMode, const rdVec
 
 // The whole of CROSS (camera space: the hilt's matrix, if known; the blade's
 // tip and base; r, its half width at the hilt; R, the hilt's radius): the
-// blade and its sparks, the hilt's vents and the side blades out of them,
+// blade, the hilt's vents and the side blades out of them,
 // and the glow round all three (g; none, NULL). pFace and the UVs the
 // blade's side.
 static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_t uvH, const iosSaberShapeGlow* g, rdTexMode_t texMode,
@@ -1337,18 +1334,11 @@ static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
     if (bBlade) {
         iosSaberShape_Spike(pLine, pFace, uvW, uvH, pTip, pBase, r, IOSSABERSHAPE_CROSS_TAPER, IOSSABERSHAPE_CROSS_SLICES,
                             IOSSABERSHAPE_CROSS_JAG, IOSSABERSHAPE_CROSS_FLARE, &c, &sn);
-        // its sparks: from a point on a side, out and on toward the tip
+        // (no sparks: the numbers the old ones took, so what comes after is as it was: where, which side, which
+        // way and how long each; a shown one's edges too, two slices of two)
         for (int k = 0; k < IOSSABERSHAPE_CROSS_SPARKS; k++) {
-            const int bShown = iosSaberShape_Rand() < IOSSABERSHAPE_CROSS_SPARK_CHANCE;
-            const flex_t s = (flex_t)0.12 + iosSaberShape_Rand() * (flex_t)0.68; // (from the tip)
-            const flex_t side = iosSaberShape_Rand() < 0.5f ? (flex_t)-1 : (flex_t)1;
-            const flex_t ang = (flex_t)(0.35 + 0.6 * iosSaberShape_Rand()); // (out of the side, radians toward the tip)
-            const flex_t sl = r * (IOSSABERSHAPE_CROSS_SPARK_MIN + (IOSSABERSHAPE_CROSS_SPARK_MAX - IOSSABERSHAPE_CROSS_SPARK_MIN) * iosSaberShape_Rand());
-            if (!bShown) continue;
-            const flex_t o = r * (flex_t)0.8 * side, ca = cosf((float)ang) * side, sa = sinf((float)ang);
-            const rdVector3 q = { pTip->x - d.x * s + c * o, pTip->y - d.y * s, pTip->z - d.z * s + sn * o };
-            const rdVector3 t = { q.x + (c * ca + along.x * sa) * sl, q.y + along.y * sa * sl, q.z + (sn * ca + along.z * sa) * sl };
-            iosSaberShape_Spike(pLine, pFace, uvW, uvH, &t, &q, r * IOSSABERSHAPE_CROSS_SPARK_WIDTH, 1, 2, 0.2f, 0, NULL, NULL);
+            const int nTaken = iosSaberShape_Rand() < IOSSABERSHAPE_CROSS_SPARK_CHANCE ? 4 + 2 * 2 : 4;
+            for (int j = 0; j < nTaken; j++) (void)iosSaberShape_Rand();
         }
     }
     else iosSaberShape_Across(pTip, pBase, &c, &sn);
