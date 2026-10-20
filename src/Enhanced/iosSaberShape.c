@@ -657,6 +657,15 @@ void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned 
     iosSaberShape_pCore = rgb ? iosSaberShape_Glow2(rgb, IOSSABERSHAPE_GAIN_CORE, core) : NULL;
 }
 
+// (how much of that widening the blade being drawn takes: all of it, but a FOLD's as far as it is
+// open, iosSaberShape_SetTipFit)
+static float iosSaberShape_tipFit = 1.0f;
+
+void iosSaberShape_SetTipFit(float share)
+{
+    iosSaberShape_tipFit = share < 0.0f ? 0.0f : (share > 1.0f ? 1.0f : share);
+}
+
 void iosSaberShape_FitTip(rdThing* pLine, float tipDepth, float baseDepth)
 {
     if (!pLine || pLine != iosSaberShape_pLine || !pLine->polyline || iosSaberShape_bCross) return;
@@ -666,11 +675,13 @@ void iosSaberShape_FitTip(rdThing* pLine, float tipDepth, float baseDepth)
         k = IOSSABERSHAPE_TIP_ON_SCREEN * tipDepth / baseDepth;
     if (k < 1.0f) k = 1.0f;
     if (k > IOSSABERSHAPE_TIP_MAX) k = IOSSABERSHAPE_TIP_MAX;
+    k = 1.0f + (k - 1.0f) * iosSaberShape_tipFit;
     iosSaberShape_beamTip = l->baseRadius * k;
 }
 
 void iosSaberShape_EndBlade(void)
 {
+    iosSaberShape_tipFit = 1.0f;
     if (!iosSaberShape_pLine) return;
     if (iosSaberShape_pLine->polyline) {
         iosSaberShape_pLine->polyline->baseRadius = iosSaberShape_savedBase;

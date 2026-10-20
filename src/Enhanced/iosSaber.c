@@ -5,6 +5,7 @@
 #include "Enhanced/iosSaberThrow.h"
 #include "Enhanced/iosSaberShape.h"
 #include "Enhanced/iosSaberStaff.h"
+#include "Enhanced/iosSaberFold.h"
 #include "Primitives/rdModel3.h"
 
 #ifdef JK_ENHANCED
@@ -940,6 +941,8 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
         form = (iosSaber_HasSecondBlade(pThing) && iosSaber_HandHilt(pThing, !blade) == IOSSABER_HILT_CROSS) ? IOSSABERSHAPE_FORM_CROSS_PAIR : IOSSABERSHAPE_FORM_CROSS;
     iosSaberShape_BeginBlade(pThing, pLine, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge, aMat ? iosSaber_Row(iosSaber_look, id)->core : NULL,
                              form, blade);
+    // (FOLD folded: its blades as far apart all along them, FILM's tips no wider; more so as it opens)
+    if (iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_FOLD) iosSaberShape_SetTipFit(iosSaberFold_OpenFraction(pThing, saber));
     if (!aMat) return;
     rdPolyline* l = pLine->polyline;
     iosSaber_pSavedSide = l->face.material;

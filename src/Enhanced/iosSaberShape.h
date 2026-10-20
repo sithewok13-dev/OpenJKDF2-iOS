@@ -84,6 +84,9 @@ void iosSaberShape_EndBlade(void);
 // blade begun above made wider at the tip as far as it is further off, so it
 // looks even on screen (not a point again in first person)
 void iosSaberShape_FitTip(struct rdThing* pLine, float tipDepth, float baseDepth);
+// (after BeginBlade: how much of that the blade takes, 0..1; a folded FOLD's none: its two
+// blades side by side, made wider at their tips, would close the gap between them there)
+void iosSaberShape_SetTipFit(float share);
 
 // sithRender_Draw: at its start, and once the scene is drawn (after the
 // translucent surfaces): the glows kept from the passes that write depth,
