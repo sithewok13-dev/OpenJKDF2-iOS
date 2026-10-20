@@ -674,10 +674,12 @@ static void iosSaber_BeginThrownJk(SithThing* pThing, int id)
 void iosSaber_BeginThrown(SithThing* pThing)
 {
     iosSaber_BeginThrownBlade(pThing, 0);
+    rdModel3_pSkipMaterial = (rdMaterial*)iosSaber_ThrownHiddenBlade(pThing, 0); // (CROSS's with FILM left out under its own)
 }
 
 void iosSaber_EndThrown(SithThing* pThing)
 {
+    rdModel3_pSkipMaterial = NULL;
     iosSaber_EndThrownBlade(pThing, 0);
 }
 
@@ -750,7 +752,9 @@ static void iosSaber_ThrownSide(int id, const rdFace** ppFace, rdMaterial** ppMa
 
 const rdMaterial* iosSaber_ThrownHiddenBlade(SithThing* pThing, int blade)
 {
-    if (!pThing || !iosSaberShape_IsJagged(&pThing->renderData)) return NULL;
+    // (FOLD's, drawn ragged; CROSS's with FILM, drawn as a held one's: iosSaberShape_DrawThrownGlow)
+    const int bFilmCross = pThing && iosSaberShape_Get() == IOSSABERSHAPE_BEAM && iosSaberThrow_ThrownHilt(pThing) == IOSSABER_HILT_CROSS;
+    if (!pThing || (!iosSaberShape_IsJagged(&pThing->renderData) && !bFilmCross)) return NULL;
     const int id = iosSaberThrow_ThrownBladeColour(pThing, blade);
     if (id < IOSSABER_COLOUR_GAME || id >= IOSSABER_NUM_COLOURS) return NULL;
     const unsigned char* rgb;

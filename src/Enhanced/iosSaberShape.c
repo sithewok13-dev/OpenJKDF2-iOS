@@ -614,6 +614,7 @@ static flex_t iosSaberShape_beamTip; // (FILM: its tip's radius, fitted; the gam
 static iosSaberShapeGlow* iosSaberShape_pGlow = NULL;
 static iosSaberShapeGlow* iosSaberShape_pCore = NULL; // (FILM: its core)
 static int iosSaberShape_bCross = 0;
+static int iosSaberShape_bFilmCross = 0; // (CROSS with FILM: FILM's beam, unstable, iosSaberShape_DrawFilmCross)
 static uint32_t iosSaberShape_crossId = 0;
 // (CROSS's glows' width: narrower for each of two crossguards drawn together)
 #define IOSSABERSHAPE_CROSS_PAIR_GLOW 0.72f
@@ -624,21 +625,25 @@ void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned 
     iosSaberShape_EndBlade(); // (begun twice with no end between: put back first)
     if (!pLine || !pLine->polyline) return;
     if (form == IOSSABERSHAPE_FORM_CROSS || form == IOSSABERSHAPE_FORM_CROSS_PAIR) {
-        // CROSS, whatever the shape chosen: its widths kept as the template's (its
-        // own drawn from them, DrawBlade), but no round tip face: it comes to a point
-        rdPolyline* l = pLine->polyline;
-        iosSaberShape_pLine = pLine;
-        iosSaberShape_savedBase = l->baseRadius;
-        iosSaberShape_savedTip = l->tipRadius;
-        l->tipRadius = 0;
-        iosSaberShape_bCross = 1;
-        iosSaberShape_crossId = (pThing ? pThing->idx + 1 : 0) + (uint32_t)(blade > 0 ? blade : 0) * 7919u; // (each blade its own crackle)
         const int bPair = form == IOSSABERSHAPE_FORM_CROSS_PAIR;
+        iosSaberShape_crossId = (pThing ? pThing->idx + 1 : 0) + (uint32_t)(blade > 0 ? blade : 0) * 7919u; // (each blade its own crackle)
         iosSaberShape_crossGlow = bPair ? (flex_t)IOSSABERSHAPE_CROSS_PAIR_GLOW : (flex_t)1;
-        iosSaberShape_pGlow = rgb ? iosSaberShape_Glow(rgb, bPair ? IOSSABERSHAPE_GAIN_CROSS_PAIR : IOSSABERSHAPE_GAIN_CROSS) : NULL;
-        return;
+        if (iosSaberShape_shape != IOSSABERSHAPE_BEAM) {
+            // CROSS without FILM: its widths kept as the template's (its own drawn
+            // from them, DrawBlade), but no round tip face: it comes to a point
+            rdPolyline* l = pLine->polyline;
+            iosSaberShape_pLine = pLine;
+            iosSaberShape_savedBase = l->baseRadius;
+            iosSaberShape_savedTip = l->tipRadius;
+            l->tipRadius = 0;
+            iosSaberShape_bCross = 1;
+            iosSaberShape_pGlow = rgb ? iosSaberShape_Glow(rgb, bPair ? IOSSABERSHAPE_GAIN_CROSS_PAIR : IOSSABERSHAPE_GAIN_CROSS) : NULL;
+            return;
+        }
+        // CROSS with FILM: FILM's beam, as below, but unstable (iosSaberShape_DrawFilmCross)
+        iosSaberShape_bFilmCross = 1;
     }
-    if (iosSaberShape_shape != IOSSABERSHAPE_BEAM) return;
+    else if (iosSaberShape_shape != IOSSABERSHAPE_BEAM) return;
     rdPolyline* l = pLine->polyline;
     iosSaberShape_pLine = pLine;
     iosSaberShape_savedBase = l->baseRadius;
@@ -713,6 +718,7 @@ void iosSaberShape_EndBlade(void)
     iosSaberShape_tipFit = 1.0f;
     iosSaberShape_tipRatio = 0.0f;
     iosSaberShape_bOpenTip = iosSaberShape_bOpenBase = 0;
+    iosSaberShape_bFilmCross = 0;
     if (!iosSaberShape_pLine) return;
     if (iosSaberShape_pLine->polyline) {
         iosSaberShape_pLine->polyline->baseRadius = iosSaberShape_savedBase;
@@ -864,7 +870,9 @@ static flex_t iosSaberShape_Rand(void);
 
 // (each edge point's share of the width, the n + 1 of them from the tip (0) down: 1 if not jagged;
 // id: whose blade, this frame's its own way)
-#define IOSSABERSHAPE_JAG_POINTS ((IOSSABERSHAPE_FOLD_SLICES > IOSSABERSHAPE_SLICES ? IOSSABERSHAPE_FOLD_SLICES : IOSSABERSHAPE_SLICES) + IOSSABERSHAPE_BEAM_END_SLICES + 1)
+#define IOSSABERSHAPE_FCROSS_SLICES 28 // (CROSS with FILM's, below)
+#define IOSSABERSHAPE_JAG_MOST (IOSSABERSHAPE_FOLD_SLICES > IOSSABERSHAPE_SLICES ? IOSSABERSHAPE_FOLD_SLICES : IOSSABERSHAPE_SLICES)
+#define IOSSABERSHAPE_JAG_POINTS ((IOSSABERSHAPE_JAG_MOST > IOSSABERSHAPE_FCROSS_SLICES ? IOSSABERSHAPE_JAG_MOST : IOSSABERSHAPE_FCROSS_SLICES) + IOSSABERSHAPE_BEAM_END_SLICES + 1)
 static void iosSaberShape_Jag(int bJag, unsigned int id, flex_t aOut[2][IOSSABERSHAPE_JAG_POINTS], int n)
 {
     if (bJag) iosSaberShape_Seed((uint32_t)sithTime_g_msecGameTime, 0x40000u + id);
@@ -914,29 +922,19 @@ static int iosSaberShape_DrawJagged(rdThing* pLine, const rdVector3* pTip, const
     return 1;
 }
 
-static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const rdVector3* pBase, float angCos, float angSin)
+// A beam's side from its tip down (camera space: tip, base, its radii there, (cos, sin) across it): its
+// first endS (from the tip) rounded to its end in IOSSABERSHAPE_BEAM_END_SLICES, the rest in n, each
+// edge point at aJag's share of the width there; in pFace (its texture across from u0 to w, along to h)
+static void iosSaberShape_BeamSide(rdThing* pLine, rdFace* pFace, flex_t u0, flex_t w, flex_t h, const rdVector3* pTip, const rdVector3* pBase,
+                                   flex_t rTip, flex_t rBase, float angCos, float angSin, flex_t endS, int n,
+                                   flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS])
 {
-    rdPolyline* l = pLine->polyline;
-    if (!l->extraUVTipMaybe || !l->face.vertexUVIdx) return 0; // (untextured: as the game draws it)
-    // (its core's texture; none to be had: the blade's own)
-    rdFace face = l->face;
-    flex_t w = l->extraUVTipMaybe[0].x, h = l->extraUVTipMaybe[2].y;
-    if (iosSaberShape_pCore) {
-        face.material = &iosSaberShape_pCore->mat;
-        w = iosSaberShape_pCore->w - (flex_t)0.01;
-        h = iosSaberShape_pCore->h - (flex_t)0.01;
-    }
-    const flex_t endS = iosSaberShape_bOpenTip ? 0 : iosSaberShape_EndOf(pTip, pBase); // (open: iosSaberShape_SetOpenEnds)
-    const flex_t tx = iosSaberShape_beamTip * angCos, tz = iosSaberShape_beamTip * angSin, bx = l->baseRadius * angCos, bz = l->baseRadius * angSin;
+    const flex_t tx = rTip * angCos, tz = rTip * angSin, bx = rBase * angCos, bz = rBase * angSin;
     rdMeshinfo info;
     memset(&info, 0, sizeof(info));
     info.numVertices = 4;
     info.aVertices = iosSaberShape_aSideVerts;
     info.aTexVerticies = iosSaberShape_aSideUVs;
-    // (FOLD's ragged, in more slices)
-    const int n = pLine == iosSaberShape_pJagLine ? IOSSABERSHAPE_FOLD_SLICES : iosSaberShape_SlicesFor(pTip, pBase, 0);
-    flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS];
-    iosSaberShape_Jag(pLine == iosSaberShape_pJagLine, iosSaberShape_jagId, aJag, IOSSABERSHAPE_BEAM_END_SLICES + n);
     for (int i = 0; i < IOSSABERSHAPE_BEAM_END_SLICES + n; i++) {
         // (along it from the tip, 0, to the hilt, 1; and how much of its width there: the
         // rounded end's slices round a quarter ellipse, the rest the full width)
@@ -961,11 +959,40 @@ static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const r
             b->x = p.x - ax * jb; b->y = p.y; b->z = p.z - az * jb;
             iosSaberShape_aSideUVs[e ? 3 : 0].x = w;
             iosSaberShape_aSideUVs[e ? 3 : 0].y = h * s[e];
-            iosSaberShape_aSideUVs[e ? 2 : 1].x = 0;
+            iosSaberShape_aSideUVs[e ? 2 : 1].x = u0;
             iosSaberShape_aSideUVs[e ? 2 : 1].y = h * s[e];
         }
-        rdPolyline_DrawFace(pLine, &face, iosSaberShape_aSideVerts, &info);
+        rdPolyline_DrawFace(pLine, pFace, iosSaberShape_aSideVerts, &info);
     }
+}
+
+// (FILM's blade: its core's texture, or with none to be had the blade's own)
+static void iosSaberShape_CoreFace(rdThing* pLine, rdFace* pFace, flex_t* pW, flex_t* pH)
+{
+    rdPolyline* l = pLine->polyline;
+    *pFace = l->face;
+    *pW = l->extraUVTipMaybe[0].x;
+    *pH = l->extraUVTipMaybe[2].y;
+    if (iosSaberShape_pCore) {
+        pFace->material = &iosSaberShape_pCore->mat;
+        *pW = iosSaberShape_pCore->w - (flex_t)0.01;
+        *pH = iosSaberShape_pCore->h - (flex_t)0.01;
+    }
+}
+
+static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const rdVector3* pBase, float angCos, float angSin)
+{
+    rdPolyline* l = pLine->polyline;
+    if (!l->extraUVTipMaybe || !l->face.vertexUVIdx) return 0; // (untextured: as the game draws it)
+    rdFace face;
+    flex_t w, h;
+    iosSaberShape_CoreFace(pLine, &face, &w, &h);
+    const flex_t endS = iosSaberShape_bOpenTip ? 0 : iosSaberShape_EndOf(pTip, pBase); // (open: iosSaberShape_SetOpenEnds)
+    // (FOLD's ragged, in more slices)
+    const int n = pLine == iosSaberShape_pJagLine ? IOSSABERSHAPE_FOLD_SLICES : iosSaberShape_SlicesFor(pTip, pBase, 0);
+    flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS];
+    iosSaberShape_Jag(pLine == iosSaberShape_pJagLine, iosSaberShape_jagId, aJag, IOSSABERSHAPE_BEAM_END_SLICES + n);
+    iosSaberShape_BeamSide(pLine, &face, 0, w, h, pTip, pBase, iosSaberShape_beamTip, l->baseRadius, angCos, angSin, endS, n, aJag);
     iosSaberShape_DrawGlow(pLine, pTip, pBase, angCos, angSin);
     return 1;
 }
@@ -1361,6 +1388,161 @@ static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
     iosSaberShape_GlowSetBack(0);
 }
 
+// ------------------------------------------------------------ CROSS with FILM
+
+// CROSS with FILM, Kylo Ren's as the films show it: FILM's beam (its white-hot
+// core, its glow, even to its rounded end, the game's length, fitted in first
+// person as any FILM blade) but unstable. Its edges rough and unsteady, new
+// each frame of the game's clock: drawn in IOSSABERSHAPE_FCROSS_SLICES slices,
+// each edge point moved in or out by up to this much of the width there (a
+// little more than FOLD's), now and then one flaring out by up to this much
+// more; its whole width flickering by up to this much either way; small
+// white-hot embers flicking off it (this many chances, each this likely, this
+// long and wide, of its width, from this far out from its middle) and out of
+// each vent (this likely); its glow deeper, this much wider than FILM's. Its
+// side blades the same, short beams out of the vents, their glows rounded back
+// into the blade's at the guard as CROSS's are.
+#define IOSSABERSHAPE_FCROSS_JAG 0.18f
+#define IOSSABERSHAPE_FCROSS_FLARE 0.3f
+#define IOSSABERSHAPE_FCROSS_FLARE_CHANCE 0.06f
+#define IOSSABERSHAPE_FCROSS_FLICKER 0.08f
+#define IOSSABERSHAPE_FCROSS_SPARKS 8
+#define IOSSABERSHAPE_FCROSS_SPARK_CHANCE 0.45f
+#define IOSSABERSHAPE_FCROSS_SPARK_MIN 1.0f
+#define IOSSABERSHAPE_FCROSS_SPARK_MAX 3.0f
+#define IOSSABERSHAPE_FCROSS_SPARK_WIDTH 0.5f
+#define IOSSABERSHAPE_FCROSS_SPARK_OUT 1.5f
+#define IOSSABERSHAPE_FCROSS_SPARK_FAR 5.0f
+#define IOSSABERSHAPE_FCROSS_VENT_SPARK 0.4f
+#define IOSSABERSHAPE_FCROSS_GLOW 1.25f
+// (its core's texture across, this much of it left out at each edge: its soft rim, which drawn along the
+// rough edges shows as a dark line)
+#define IOSSABERSHAPE_FCROSS_RIM 0.12f
+#define IOSSABERSHAPE_FCROSS_GUARD_SLICES 8
+
+// (each edge point's share of the width, the n + 1 of them from the tip down: crackling, the ends as they are)
+static void iosSaberShape_Crackle(flex_t aOut[2][IOSSABERSHAPE_JAG_POINTS], int n)
+{
+    for (int j = 0; j <= n; j++)
+        for (int e = 0; e < 2; e++) {
+            flex_t k = 1;
+            if (j > 0 && j < n) {
+                k += (iosSaberShape_Rand() * 2 - 1) * (flex_t)IOSSABERSHAPE_FCROSS_JAG;
+                if (iosSaberShape_Rand() < IOSSABERSHAPE_FCROSS_FLARE_CHANCE) k += iosSaberShape_Rand() * (flex_t)IOSSABERSHAPE_FCROSS_FLARE;
+            }
+            aOut[e][j] = k;
+        }
+}
+
+// (a spark from q, out of a side (out: the way, (cos, sin) across on screen times which side) and on toward the
+// tip (along), sl long, w wide, white hot; none if it would be under IOSSABERSHAPE_FCROSS_SPARK_PX across on
+// screen, a speck)
+#define IOSSABERSHAPE_FCROSS_SPARK_PX 2.0f
+static void iosSaberShape_FilmSpark(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_t uvH, const rdVector3* q, const rdVector3* pOut,
+                                    const rdVector3* pAlong, flex_t sl, flex_t w)
+{
+    if (q->y <= (flex_t)0.0001 || !rdCamera_g_pCurCamera->pfProject) return;
+    rdVector3 a, b;
+    const rdVector3 q2 = { q->x + w, q->y, q->z };
+    rdCamera_g_pCurCamera->pfProject(&a, q);
+    rdCamera_g_pCurCamera->pfProject(&b, &q2);
+    if (stdMath_Fabs(b.x - a.x) < (flex_t)IOSSABERSHAPE_FCROSS_SPARK_PX) return;
+    const flex_t ang = (flex_t)(0.35 + 0.6 * iosSaberShape_Rand()); // (out of the side, radians toward the tip)
+    const flex_t ca = cosf((float)ang), sa = sinf((float)ang);
+    const rdVector3 t = { q->x + (pOut->x * ca + pAlong->x * sa) * sl, q->y + (pOut->y * ca + pAlong->y * sa) * sl,
+                          q->z + (pOut->z * ca + pAlong->z * sa) * sl };
+    iosSaberShape_Spike(pLine, pFace, uvW, uvH, &t, q, w, 1, 2, 0.2f, 0, NULL, NULL);
+}
+
+// The blade from pBase out to pTip (camera space: its radius there rTip, rBase; (cos, sin) across it), with its
+// side blades out of the hilt's vents (pToCam: the hilt's frame; R its radius; bVents: the vents' metal drawn
+// too, a thrown saber's), its sparks, and its glow g (glowK: of its width); in its core's face (w, h)
+static void iosSaberShape_FilmCross(rdThing* pLine, rdFace* pFace, flex_t w, flex_t h, const iosSaberShapeGlow* g, rdTexMode_t texMode,
+                                    const rdMatrix34* pToCam, const rdVector3* pTip, const rdVector3* pBase, flex_t rTip, flex_t rBase,
+                                    flex_t R, float angCos, float angSin, flex_t glowK, int bVents)
+{
+    const rdVector3 d = { pTip->x - pBase->x, pTip->y - pBase->y, pTip->z - pBase->z };
+    const flex_t len = stdMath_Sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
+    if (len <= (flex_t)0.000001) return;
+    const rdVector3 along = { d.x / len, d.y / len, d.z / len };
+    // the blade: FILM's beam, its width flickering, its edges crackling
+    const flex_t fw = 1 + (iosSaberShape_Rand() * 2 - 1) * (flex_t)IOSSABERSHAPE_FCROSS_FLICKER;
+    const flex_t rt = rTip * fw, rb = rBase * fw;
+    flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS];
+    iosSaberShape_Crackle(aJag, IOSSABERSHAPE_BEAM_END_SLICES + IOSSABERSHAPE_FCROSS_SLICES);
+    flex_t endS = rt * IOSSABERSHAPE_BEAM_END / len;
+    if (endS > (flex_t)0.5) endS = (flex_t)0.5;
+    const flex_t u0 = w * (flex_t)IOSSABERSHAPE_FCROSS_RIM, u1 = w - u0;
+    iosSaberShape_BeamSide(pLine, pFace, u0, u1, h, pTip, pBase, rt, rb, angCos, angSin, endS, IOSSABERSHAPE_FCROSS_SLICES, aJag);
+    // its embers: from a little way out from a side, out and on toward the tip
+    for (int k = 0; k < IOSSABERSHAPE_FCROSS_SPARKS; k++) {
+        const int bShown = iosSaberShape_Rand() < IOSSABERSHAPE_FCROSS_SPARK_CHANCE;
+        const flex_t s = (flex_t)0.1 + iosSaberShape_Rand() * (flex_t)0.75; // (from the tip)
+        const flex_t side = iosSaberShape_Rand() < 0.5f ? (flex_t)-1 : (flex_t)1;
+        const flex_t sl = rb * (IOSSABERSHAPE_FCROSS_SPARK_MIN + (IOSSABERSHAPE_FCROSS_SPARK_MAX - IOSSABERSHAPE_FCROSS_SPARK_MIN) * iosSaberShape_Rand());
+        const flex_t out = IOSSABERSHAPE_FCROSS_SPARK_OUT + (IOSSABERSHAPE_FCROSS_SPARK_FAR - IOSSABERSHAPE_FCROSS_SPARK_OUT) * iosSaberShape_Rand();
+        if (!bShown) continue;
+        const flex_t o = rb * out * side;
+        const rdVector3 q = { pTip->x - d.x * s + angCos * o, pTip->y - d.y * s, pTip->z - d.z * s + angSin * o };
+        const rdVector3 way = { angCos * side, 0, angSin * side };
+        iosSaberShape_FilmSpark(pLine, pFace, w, h, &q, &way, &along, sl, rb * IOSSABERSHAPE_FCROSS_SPARK_WIDTH);
+    }
+    // the side blades out of the hilt's vents, either side across the hand, the same
+    rdVector3 axis, aRoot[2], aTip[2];
+    flex_t aCos[2] = { 1, 1 }, aSin[2] = { 0, 0 };
+    const int bGuards = pToCam && iosSaberShape_GuardAxis(pToCam, &along, &axis);
+    const flex_t gl = IOSSABERSHAPE_CROSS_GUARD_LEN * len, gr = IOSSABERSHAPE_CROSS_GUARD_WIDTH * rb;
+    if (bGuards) iosSaberShape_Vents(pLine, texMode, pBase, &along, &axis, R, bVents && iosSaberShape_Metals(), aRoot);
+    flex_t gEnd = gr * IOSSABERSHAPE_BEAM_END / gl;
+    if (gEnd > (flex_t)0.5) gEnd = (flex_t)0.5;
+    for (int k = 0; bGuards && k < 2; k++) {
+        const flex_t side = k ? (flex_t)-1 : (flex_t)1;
+        aTip[k].x = aRoot[k].x + axis.x * gl * side;
+        aTip[k].y = aRoot[k].y + axis.y * gl * side;
+        aTip[k].z = aRoot[k].z + axis.z * gl * side;
+        iosSaberShape_Across(&aTip[k], &aRoot[k], &aCos[k], &aSin[k]);
+        iosSaberShape_Crackle(aJag, IOSSABERSHAPE_BEAM_END_SLICES + IOSSABERSHAPE_FCROSS_GUARD_SLICES);
+        iosSaberShape_BeamSide(pLine, pFace, u0, u1, h, &aTip[k], &aRoot[k], gr, gr, (float)aCos[k], (float)aSin[k], gEnd, IOSSABERSHAPE_FCROSS_GUARD_SLICES, aJag);
+        // (now and then a spark out of the vent, on toward the blade's tip)
+        if (iosSaberShape_Rand() < IOSSABERSHAPE_FCROSS_VENT_SPARK) {
+            const rdVector3 out = { axis.x * side, axis.y * side, axis.z * side };
+            const flex_t sl = gr * (IOSSABERSHAPE_FCROSS_SPARK_MIN + (IOSSABERSHAPE_FCROSS_SPARK_MAX - IOSSABERSHAPE_FCROSS_SPARK_MIN) * iosSaberShape_Rand());
+            iosSaberShape_FilmSpark(pLine, pFace, w, h, &aRoot[k], &out, &along, sl, gr * IOSSABERSHAPE_FCROSS_SPARK_WIDTH);
+        }
+    }
+    // the glow round them (as FILM's, a little wider or narrower each frame; the side blades' rounded at their roots
+    // back into the blade's over the vents, reaching back no further than its middle line, as CROSS's)
+    if (!g) return;
+    iosSaberShape_GlowSetBack(1);
+    const flex_t f = (1 + (iosSaberShape_Rand() * 2 - 1) * IOSSABERSHAPE_CROSS_GLOW_FLICKER) * glowK * IOSSABERSHAPE_FCROSS_GLOW;
+    const rdVector3 end = { pTip->x - d.x * endS, pTip->y - d.y * endS, pTip->z - d.z * endS };
+    const flex_t gt = rt * IOSSABERSHAPE_BEAM_GLOW_WIDTH * f, gb = rb * IOSSABERSHAPE_BEAM_GLOW_WIDTH * f;
+    iosSaberShape_GlowQuads(pLine, g, texMode, &end, pBase, gt, gb, gb, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE,
+                            iosSaberShape_SlicesFor(pTip, pBase, 1));
+    const flex_t gw = gr * IOSSABERSHAPE_BEAM_GLOW_WIDTH * f, gBack = gw < R * IOSSABERSHAPE_VENT_ROOT ? gw : R * IOSSABERSHAPE_VENT_ROOT;
+    for (int k = 0; bGuards && k < 2; k++) {
+        const rdVector3 ge = { aTip[k].x + (aRoot[k].x - aTip[k].x) * gEnd, aTip[k].y + (aRoot[k].y - aTip[k].y) * gEnd, aTip[k].z + (aRoot[k].z - aTip[k].z) * gEnd };
+        iosSaberShape_GlowQuads(pLine, g, texMode, &ge, &aRoot[k], gw, gw, gBack, aCos[k], aSin[k], IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE,
+                                IOSSABERSHAPE_GLOW_SLICES);
+    }
+    iosSaberShape_GlowSetBack(0);
+}
+
+// CROSS with FILM in hand
+static int iosSaberShape_DrawFilmCross(rdThing* pLine, const rdMatrix34* pToCam, const rdVector3* pTip, const rdVector3* pBase, float angCos, float angSin)
+{
+    rdPolyline* l = pLine->polyline;
+    if (!l->extraUVTipMaybe || !l->face.vertexUVIdx) return 0; // (untextured: as the game draws it)
+    rdFace face;
+    flex_t w, h;
+    iosSaberShape_CoreFace(pLine, &face, &w, &h);
+    // (this frame's crackle, this blade's own; its vents drawn with its hilt, iosSaberShape_DrawVents)
+    iosSaberShape_Seed((uint32_t)sithTime_g_msecGameTime, iosSaberShape_crossId);
+    iosSaberShape_FilmCross(pLine, &face, w, h, iosSaberShape_pGlow, l->face.textureMode, pToCam, pTip, pBase, iosSaberShape_beamTip, l->baseRadius,
+                            iosSaberShape_savedBase, angCos, angSin, iosSaberShape_crossGlow, 0);
+    return 1;
+}
+
 int iosSaberShape_MetalsReady(void)
 {
     return iosSaberShape_Metals();
@@ -1393,6 +1575,7 @@ int iosSaberShape_DrawBlade(rdThing* pLine, const rdMatrix34* pToCam, const rdVe
     // (FOLD's with SPIKE, ragged: as the game lays it, in slices)
     if (pLine && pLine == iosSaberShape_pJagLine && pLine != iosSaberShape_pLine && pLine->polyline) return iosSaberShape_DrawJagged(pLine, pTip, pBase, angCos, angSin);
     if (!pLine || pLine != iosSaberShape_pLine || !pLine->polyline) return 0;
+    if (iosSaberShape_bFilmCross) return iosSaberShape_DrawFilmCross(pLine, pToCam, pTip, pBase, angCos, angSin);
     if (!iosSaberShape_bCross) return iosSaberShape_DrawBeam(pLine, pTip, pBase, angCos, angSin);
     rdPolyline* l = pLine->polyline;
     if (!l->extraUVTipMaybe || !l->face.vertexUVIdx) return 0; // (untextured: as the game draws it)
@@ -1523,8 +1706,8 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
     rdVector3 tip, base;
     rdMatrix_TransformPoint34(&tip, &b, &toCam);
     rdMatrix_TransformPoint34(&base, &a, &toCam);
-    if (bFold && (tip.y > (flex_t)0.001) != (base.y > (flex_t)0.001)) {
-        // (FOLD's, its model's own blade left out: an end at or behind the eye cut back to just in front of it)
+    if ((bFold || (bCross && iosSaberShape_shape == IOSSABERSHAPE_BEAM)) && (tip.y > (flex_t)0.001) != (base.y > (flex_t)0.001)) {
+        // (FOLD's, and CROSS's with FILM, its model's own blade left out: an end at or behind the eye cut back to just in front of it)
         rdVector3* pNear = tip.y > (flex_t)0.001 ? &base : &tip;
         const rdVector3* pFar = pNear == &tip ? &base : &tip;
         const flex_t s = (pFar->y - (flex_t)0.001) / (pFar->y - pNear->y);
@@ -1546,6 +1729,22 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
     glowThing = *t;
     glowThing.curGeoMode = RD_GEOMETRY_FULL;
     glowThing.curLightMode = RD_LIGHTMODE_FULLYLIT;
+    if (bCross && iosSaberShape_shape == IOSSABERSHAPE_BEAM) {
+        // CROSS with FILM: as a held one's, in place of the model's blade (iosSaber_ThrownHiddenBlade), its
+        // side blades out from its hilt across the way it spins, its vents too; its own crackle
+        rdMatrix34 guard = toCam;
+        guard.rvec = across == 0 ? toCam.rvec : across == 1 ? toCam.lvec : toCam.uvec;
+        const iosSaberShapeGlow* core = iosSaberShape_Glow2(rgb, IOSSABERSHAPE_GAIN_CORE, NULL);
+        if (!core || !pSideFace) return;
+        rdFace face = *pSideFace;
+        face.material = (rdMaterial*)&core->mat;
+        const flex_t lb = iosSaberShape_Len(b.x - a.x, b.y - a.y, b.z - a.z), r = lb * IOSSABERSHAPE_THROWN_BEAM;
+        iosSaberShape_Seed((uint32_t)sithTime_g_msecGameTime, 0x8000u + pThing->idx);
+        iosSaberShape_FilmCross(&glowThing, &face, core->w - (flex_t)0.01, core->h - (flex_t)0.01, iosSaberShape_Glow(rgb, IOSSABERSHAPE_GAIN_THROWN),
+                                glowThing.curTexMode, &guard, &tip, &base, r, r, lb * IOSSABERSHAPE_THROWN_CROSS / IOSSABERSHAPE_CROSS_WIDTH,
+                                (float)angCos, (float)angSin, 1, 1);
+        return;
+    }
     if (bCross) {
         // CROSS: as a held one's, out from its hilt across the way it spins (the
         // model's axis it is wider along); its side drawn as the thrower's saber's,
