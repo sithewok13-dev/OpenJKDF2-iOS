@@ -91,6 +91,14 @@
 // at rest, starts a little further off than FADE: unchanged)
 #define IOSSABERSTAFF_FADE 0.038f
 #define IOSSABERSTAFF_NEAR 0.018f
+// First person, the player's own FOLD: seen from a hand's length away, its far end over twice as far
+// from the eye as its emitter, perspective narrows its blades toward their tips and closes a folded
+// pair's gap, where the films' blades look even and apart. So each blade, open or folded, is made
+// wider along its length as it is further from the eye than its emitter, to look as wide on screen to
+// its tip, and a folded pair's gap spread the same way, to look as wide to the tips, the tips still
+// level (as it opens, less: none open); up to this many times their width and gap at the emitter.
+// Third person, photos, other players and a thrown FOLD: as they are in the world.
+#define IOSSABERSTAFF_POV_FIT_MAX 2.6f
 // Thrown: the hilt's share of the game's thrown saber's length, back from its
 // blade's base (where the two meet, its pommel); FOLD's gap, of the length
 #define IOSSABERSTAFF_THROWN_HILT 0.22f
@@ -1265,8 +1273,10 @@ int iosSaberStaff_PovTip(int i, float* pX, float* pY, float* pDepth)
     return 1;
 }
 
-// One stretch of a blade (from a to b along it), drawn see-through or not
-static void iosSaberStaff_Stretch(rdThing* pLine, const rdMatrix34* pFrame, flex_t a, flex_t b, int bSeeThrough)
+// One stretch of a blade (from a to b along it), drawn see-through or not: a FOLD's even on screen as
+// wide at each end as the whole blade is drawn there, ka and kb times its width at the emitter (FILM's
+// from its start, its tip iosSaberShape_FitTip); otherwise (0) as the game's
+static void iosSaberStaff_Stretch(rdThing* pLine, const rdMatrix34* pFrame, flex_t a, flex_t b, int bSeeThrough, flex_t ka, flex_t kb)
 {
     rdPolyline* l = pLine->polyline;
     const flex_t len = l->length, rb = l->baseRadius, rt = l->tipRadius;
@@ -1274,7 +1284,11 @@ static void iosSaberStaff_Stretch(rdThing* pLine, const rdMatrix34* pFrame, flex
     rdMatrix34 m = *pFrame;
     rdVector_ScaleAdd3Acc(&m.scale, &m.lvec, a);
     l->length = b - a;
-    if (iosSaberShape_Get() != IOSSABERSHAPE_BEAM && len > 0) {
+    if (ka > 0 && kb > 0) {
+        l->baseRadius = rb * ka;
+        if (iosSaberShape_Get() != IOSSABERSHAPE_BEAM) l->tipRadius = rb * kb;
+    }
+    else if (iosSaberShape_Get() != IOSSABERSHAPE_BEAM && len > 0) {
         // (the game's tapering blade: as wide at each end as it is there; FILM's is even)
         l->baseRadius = rb + (rt - rb) * (a / len);
         l->tipRadius = rb + (rt - rb) * (b / len);
@@ -1294,7 +1308,17 @@ static void iosSaberStaff_Stretch(rdThing* pLine, const rdMatrix34* pFrame, flex
 // A blade of these in first person: as ever where it is further from the eye than IOSSABERSTAFF_FADE,
 // see-through nearer, cut off at IOSSABERSTAFF_NEAR (each changing with the depth along it, so a
 // blade swung at the eye fades and shortens smoothly, from its near end)
-static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMatrix34* pFrame, int blade, int tipSlot)
+// (how much wider a FOLD's blade is drawn at depth d than at its emitter's, d0, or, its emitter nearer
+// than IOSSABERSTAFF_FADE, than where it turns solid: IOSSABERSTAFF_POV_FIT_MAX)
+static flex_t iosSaberStaff_FitAt(flex_t d, flex_t d0)
+{
+    if (d0 < (flex_t)IOSSABERSTAFF_FADE) d0 = (flex_t)IOSSABERSTAFF_FADE;
+    if (d <= d0) return 1;
+    return d / d0 < (flex_t)IOSSABERSTAFF_POV_FIT_MAX ? d / d0 : (flex_t)IOSSABERSTAFF_POV_FIT_MAX;
+}
+
+// (a FOLD's even on screen, bFit: IOSSABERSTAFF_POV_FIT_MAX)
+static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMatrix34* pFrame, int blade, int tipSlot, int bFit)
 {
     iosSaber_BeginBlade(pActor, pLine, blade);
     rdPolyline* l = pLine->polyline;
@@ -1305,6 +1329,11 @@ static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMa
     rdMatrix34 toCam;
     rdMatrix_Multiply34(&toCam, &rdCamera_g_pCurCamera->orient, pFrame);
     const flex_t len = l->length, d0 = toCam.scale.y, step = toCam.lvec.y, d1 = d0 + step * len;
+    // (FOLD's wider toward its tip as far as it is further off: the game's blade at its tip, FILM's all along it)
+    const flex_t savedTip = l->tipRadius;
+    const int bBeamFit = bFit && iosSaberShape_Get() == IOSSABERSHAPE_BEAM;
+    if (bBeamFit) iosSaberShape_SetTipFit(1.0f); // (FILM's tip fitted: iosSaberShape_FitTip, all of it, folded too)
+    else if (bFit) l->tipRadius = l->baseRadius * iosSaberStaff_FitAt(d1, d0);
     if (tipSlot >= 0 && tipSlot < 4) {
         const flex_t tx = toCam.scale.x + toCam.lvec.x * len, tz = toCam.scale.z + toCam.lvec.z * len;
         iosSaberStaff_aPovTip[tipSlot][0] = d1 > (flex_t)0.0001 ? (float)(tx / d1) : 0.0f;
@@ -1315,6 +1344,7 @@ static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMa
     }
     if (d0 >= IOSSABERSTAFF_FADE && d1 >= IOSSABERSTAFF_FADE) {
         rdThing_Draw(pLine, (rdMatrix34*)pFrame);
+        l->tipRadius = savedTip;
         iosSaber_EndBlade(pLine);
         return;
     }
@@ -1330,7 +1360,10 @@ static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMa
     IOSSABERSTAFF_SPAN(IOSSABERSTAFF_NEAR, va, vb);
 #undef IOSSABERSTAFF_SPAN
     const flex_t minLen = (flex_t)0.0005;
-    if (sb - sa > minLen) iosSaberStaff_Stretch(pLine, pFrame, sa, sb, 0);
+    // (how much wider a FOLD's blade is drawn u along it than at its emitter, by its depth there, from
+    // where it turns solid if its emitter is nearer; so its solid stretch is as even as a whole blade)
+#define IOSSABERSTAFF_K(u) (bFit ? iosSaberStaff_FitAt(d0 + step * (u), d0) : (flex_t)0)
+    if (sb - sa > minLen) iosSaberStaff_Stretch(pLine, pFrame, sa, sb, 0, IOSSABERSTAFF_K(sa), IOSSABERSTAFF_K(sb));
     // (the see-through stretch: the rest of what is seen, on the eye's side)
     if (vb - va > minLen) {
         flex_t ta = va, tb = vb;
@@ -1338,17 +1371,74 @@ static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMa
             if (step < 0) ta = sb;
             else tb = sa;
         }
-        if (tb - ta > minLen) iosSaberStaff_Stretch(pLine, pFrame, ta, tb, 1);
+        if (tb - ta > minLen) iosSaberStaff_Stretch(pLine, pFrame, ta, tb, 1, IOSSABERSTAFF_K(ta), IOSSABERSTAFF_K(tb));
     }
+#undef IOSSABERSTAFF_K
+    l->tipRadius = savedTip;
     iosSaber_EndBlade(pLine);
+}
+
+// A FOLD's second blade (pSecond, from iosSaberStaff_SecondBlade; open f) turned out round its emitter so
+// on screen its tip is further out from the first's (pHeld, its blades len long), the way it already is
+// from it, as many times as that tip is further from the eye than the first's emitter, so the two look
+// as far apart there as at their emitters; less as it opens (none open); folded, the tips still side by
+// side, as level and as deep. Its length, to reach there, out.
+static void iosSaberStaff_PovSpread(float f, const rdMatrix34* pHeld, flex_t len, rdMatrix34* pSecond, flex_t* pLen)
+{
+    *pLen = len;
+    if (f >= 1.0f || !rdCamera_g_pCurCamera) return;
+    const rdVector3 u = pHeld->lvec;
+    rdVector3 b1, t1;
+    const rdVector3 T1 = { pHeld->scale.x + u.x * len, pHeld->scale.y + u.y * len, pHeld->scale.z + u.z * len }; // (as the blade is laid)
+    rdMatrix_TransformPoint34(&b1, &pHeld->scale, &rdCamera_g_pCurCamera->orient);
+    rdMatrix_TransformPoint34(&t1, &T1, &rdCamera_g_pCurCamera->orient);
+    const flex_t k = (iosSaberStaff_FitAt(t1.y, b1.y) - 1) * (flex_t)(1.0f - f);
+    if (k <= 0) return;
+    // (the second tip moved on screen only, as deep from the eye: k times further on from the first's
+    // the way it is from it there; so the tips stay as level, and as deep)
+    const rdVector3 T2 = { pSecond->scale.x + pSecond->lvec.x * len, pSecond->scale.y + pSecond->lvec.y * len, pSecond->scale.z + pSecond->lvec.z * len };
+    rdVector3 t2, d;
+    rdMatrix_TransformPoint34(&t2, &T2, &rdCamera_g_pCurCamera->orient);
+    if (t1.y <= (flex_t)0.0001 || t2.y <= (flex_t)0.0001) return;
+    const rdVector3 dc = { (t2.x / t2.y - t1.x / t1.y) * k * t2.y, 0, (t2.z / t2.y - t1.z / t1.y) * k * t2.y };
+    rdMatrix34 fromCam;
+    rdMatrix_InvertOrtho34(&fromCam, &rdCamera_g_pCurCamera->orient);
+    rdMatrix_TransformVector34(&d, &dc, &fromCam);
+    rdVector3 to = { pSecond->lvec.x * len + d.x, pSecond->lvec.y * len + d.y, pSecond->lvec.z * len + d.z };
+    const flex_t m = stdMath_Sqrt(iosSaberStaff_Dot(&pSecond->lvec, &pSecond->lvec)), tl = stdMath_Sqrt(iosSaberStaff_Dot(&to, &to));
+    rdVector3 from = pSecond->lvec;
+    if (m <= (flex_t)1e-7 || tl <= (flex_t)1e-7 || !iosSaberStaff_Unit(&from)) return;
+    to.x /= tl; to.y /= tl; to.z /= tl;
+    // (turned the least way from where it points to there)
+    rdVector3 n;
+    iosSaberStaff_Cross(&n, &from, &to);
+    const flex_t sn = stdMath_Sqrt(iosSaberStaff_Dot(&n, &n)), c = iosSaberStaff_Dot(&from, &to);
+    if (sn <= (flex_t)1e-7) return;
+    n.x /= sn; n.y /= sn; n.z /= sn;
+    const float a = atan2f((float)sn, (float)c);
+    rdVector3 r;
+    iosSaberStaff_Turn(&r, &pSecond->rvec, &n, a); pSecond->rvec = r;
+    iosSaberStaff_Turn(&r, &pSecond->lvec, &n, a); pSecond->lvec = r;
+    iosSaberStaff_Turn(&r, &pSecond->uvec, &n, a); pSecond->uvec = r;
+    *pLen = tl / m;
 }
 
 int iosSaberStaff_DrawPovBlades(SithThing* pActor, rdThing* pLine, const rdModel3* pPovModel, const rdMatrix34* pHand, int hand, int blade)
 {
     rdMatrix34 held, second;
     if (!pLine || !pLine->polyline || !iosSaberStaff_HeldFrame(pActor, hand, 1, pPovModel, pHand, &held)) return 0;
-    iosSaberStaff_PovBlade(pActor, pLine, &held, blade, hand * 2);
-    if (iosSaberStaff_SecondBlade(pActor, hand, 1, &held, &second)) iosSaberStaff_PovBlade(pActor, pLine, &second, blade | IOSSABER_BLADE_SECOND, hand * 2 + 1);
+    // (FOLD's even on screen, a folded one's pair as far apart to the tips; as it opens, less)
+    const int bFit = iosSaberStaff_HiltOf(pActor, hand) == IOSSABER_HILT_FOLD;
+    iosSaberStaff_PovBlade(pActor, pLine, &held, blade, hand * 2, bFit);
+    if (iosSaberStaff_SecondBlade(pActor, hand, 1, &held, &second)) {
+        rdPolyline* l = pLine->polyline;
+        const flex_t len = l->length;
+        flex_t len2 = len;
+        if (bFit) iosSaberStaff_PovSpread(iosSaberFold_OpenFraction(pActor, iosSaberStaff_SaberInHand(pActor, hand)), &held, len, &second, &len2);
+        l->length = len2;
+        iosSaberStaff_PovBlade(pActor, pLine, &second, blade | IOSSABER_BLADE_SECOND, hand * 2 + 1, bFit);
+        l->length = len;
+    }
     return 1;
 }
 
