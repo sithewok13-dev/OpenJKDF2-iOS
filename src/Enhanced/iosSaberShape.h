@@ -98,6 +98,10 @@ void iosSaberShape_SetTipFit(float share);
 // meet: its tip this many times as wide as its start, 0 none)
 float iosSaberShape_TipFitFor(float tipDepth, float baseDepth);
 void iosSaberShape_SetTipRatio(float k);
+// (and a piece with its tip, bTip, or its base, bBase, where it meets the next: FILM's drawn open
+// there, no rounded end or round face (rdPolyline_Draw), no glow's end)
+void iosSaberShape_SetOpenEnds(int bTip, int bBase);
+int iosSaberShape_IsOpenEnd(struct rdThing* pLine, int bBase);
 
 // sithRender_Draw: at its start, and once the scene is drawn (after the
 // translucent surfaces): the glows kept from the passes that write depth,

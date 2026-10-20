@@ -1365,16 +1365,25 @@ static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMa
     // stretches meet as wide, and the solid one is as even as a whole blade)
     const flex_t ref = d0 > (flex_t)IOSSABERSTAFF_FADE ? d0 : (flex_t)IOSSABERSTAFF_FADE;
 #define IOSSABERSTAFF_K(u) ((flex_t)iosSaberShape_TipFitFor((float)(d0 + step * (u)), (float)ref))
-    if (sb - sa > minLen) iosSaberStaff_Stretch(pLine, pFrame, sa, sb, 0, IOSSABERSTAFF_K(sa), IOSSABERSTAFF_K(sb));
     // (the see-through stretch: the rest of what is seen, on the eye's side)
-    if (vb - va > minLen) {
-        flex_t ta = va, tb = vb;
-        if (sb - sa > minLen) {
-            if (step < 0) ta = sb;
-            else tb = sa;
-        }
-        if (tb - ta > minLen) iosSaberStaff_Stretch(pLine, pFrame, ta, tb, 1, IOSSABERSTAFF_K(ta), IOSSABERSTAFF_K(tb));
+    const int bSolid = sb - sa > minLen;
+    flex_t ta = va, tb = vb;
+    if (bSolid) {
+        if (step < 0) ta = sb;
+        else tb = sa;
     }
+    const int bSee = vb - va > minLen && tb - ta > minLen;
+    // (where the two meet, FILM's drawn open: no rounded end, round face or glow's end between them)
+    const int bJoint = bSolid && bSee;
+    if (bSolid) {
+        iosSaberShape_SetOpenEnds(bJoint && step < 0, bJoint && step >= 0);
+        iosSaberStaff_Stretch(pLine, pFrame, sa, sb, 0, IOSSABERSTAFF_K(sa), IOSSABERSTAFF_K(sb));
+    }
+    if (bSee) {
+        iosSaberShape_SetOpenEnds(bJoint && step >= 0, bJoint && step < 0);
+        iosSaberStaff_Stretch(pLine, pFrame, ta, tb, 1, IOSSABERSTAFF_K(ta), IOSSABERSTAFF_K(tb));
+    }
+    iosSaberShape_SetOpenEnds(0, 0);
 #undef IOSSABERSTAFF_K
     iosSaber_EndBlade(pLine);
 }

@@ -677,6 +677,20 @@ void iosSaberShape_SetTipRatio(float k)
     iosSaberShape_tipRatio = k > 0.0f ? k : 0.0f;
 }
 
+static int iosSaberShape_bOpenTip = 0, iosSaberShape_bOpenBase = 0;
+
+void iosSaberShape_SetOpenEnds(int bTip, int bBase)
+{
+    iosSaberShape_bOpenTip = bTip != 0;
+    iosSaberShape_bOpenBase = bBase != 0;
+}
+
+int iosSaberShape_IsOpenEnd(rdThing* pLine, int bBase)
+{
+    return pLine && pLine == iosSaberShape_pLine && iosSaberShape_shape == IOSSABERSHAPE_BEAM && !iosSaberShape_bCross
+           && (bBase ? iosSaberShape_bOpenBase : iosSaberShape_bOpenTip);
+}
+
 float iosSaberShape_TipFitFor(float tipDepth, float baseDepth)
 {
     float k = 1.0f;
@@ -698,6 +712,7 @@ void iosSaberShape_EndBlade(void)
 {
     iosSaberShape_tipFit = 1.0f;
     iosSaberShape_tipRatio = 0.0f;
+    iosSaberShape_bOpenTip = iosSaberShape_bOpenBase = 0;
     if (!iosSaberShape_pLine) return;
     if (iosSaberShape_pLine->polyline) {
         iosSaberShape_pLine->polyline->baseRadius = iosSaberShape_savedBase;
@@ -723,17 +738,19 @@ void iosSaberShape_EndBlade(void)
 #define IOSSABERSHAPE_GLOW_SLICES 8
 // (FILM's blade and its glow: a slice for every IOSSABERSHAPE_SLICE_PX pixels the
 // blade is long on screen, from IOSSABERSHAPE_MIN_SLICES (far off, small) to
-// IOSSABERSHAPE_SLICES; the fewest when the kept glows run short of room)
+// IOSSABERSHAPE_SLICES; a glow kept for later (iosSaberShape_Quad) when they run
+// short of room, one for every four times as many, so only a small one the fewest)
 #define IOSSABERSHAPE_SLICE_PX 12.0f
 #define IOSSABERSHAPE_MIN_SLICES 4
-static int iosSaberShape_SlicesFor(const rdVector3* pTip, const rdVector3* pBase)
+static int iosSaberShape_SlicesFor(const rdVector3* pTip, const rdVector3* pBase, int bGlow)
 {
-    if (iosSaberShape_numQueued > IOSSABERSHAPE_MAX_QUEUED * 3 / 4) return IOSSABERSHAPE_MIN_SLICES;
     if (!rdCamera_g_pCurCamera || !rdCamera_g_pCurCamera->pfProject || pTip->y <= (flex_t)0.0001 || pBase->y <= (flex_t)0.0001) return IOSSABERSHAPE_SLICES;
     rdVector3 a, b;
     rdCamera_g_pCurCamera->pfProject(&a, pTip);
     rdCamera_g_pCurCamera->pfProject(&b, pBase);
-    const int n = (int)(iosSaberShape_Len(a.x - b.x, a.y - b.y, 0) / IOSSABERSHAPE_SLICE_PX) + 1;
+    const int z = rdGetZBufferMethod();
+    const int bShort = bGlow && (z == RD_ZBUFFER_READ_WRITE || z == RD_ZBUFFER_NOREAD_WRITE) && iosSaberShape_numQueued > IOSSABERSHAPE_MAX_QUEUED * 3 / 4;
+    const int n = (int)(iosSaberShape_Len(a.x - b.x, a.y - b.y, 0) / (IOSSABERSHAPE_SLICE_PX * (bShort ? 4 : 1))) + 1;
     return n < IOSSABERSHAPE_MIN_SLICES ? IOSSABERSHAPE_MIN_SLICES : (n > IOSSABERSHAPE_SLICES ? IOSSABERSHAPE_SLICES : n);
 }
 
@@ -801,13 +818,14 @@ static void iosSaberShape_DrawGlow(rdThing* pLine, const rdVector3* pTip, const 
 {
     if (!pLine || pLine != iosSaberShape_pLine || !iosSaberShape_pGlow || !pLine->polyline) return;
     // (its brightest end where the rounded end begins, under the beam, not out past it as a ball of light)
-    const flex_t e = iosSaberShape_EndOf(pTip, pBase);
+    const flex_t e = iosSaberShape_bOpenTip ? 0 : iosSaberShape_EndOf(pTip, pBase);
     const rdVector3 end = { pTip->x + (pBase->x - pTip->x) * e, pTip->y + (pBase->y - pTip->y) * e, pTip->z + (pBase->z - pTip->z) * e };
     iosSaberShape_GlowSetBack(1); // (under the beam's end too, in first person)
     iosSaberShape_GlowQuads(pLine, iosSaberShape_pGlow, pLine->polyline->face.textureMode, &end, pBase,
                             iosSaberShape_beamTip * IOSSABERSHAPE_BEAM_GLOW_WIDTH, pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH,
-                            pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE,
-                            iosSaberShape_SlicesFor(pTip, pBase));
+                            pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH, angCos, angSin,
+                            (iosSaberShape_bOpenTip ? 0 : IOSSABERSHAPE_END_TIP) | (iosSaberShape_bOpenBase ? 0 : IOSSABERSHAPE_END_BASE),
+                            iosSaberShape_SlicesFor(pTip, pBase, 1));
     iosSaberShape_GlowSetBack(0);
 }
 
@@ -908,7 +926,7 @@ static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const r
         w = iosSaberShape_pCore->w - (flex_t)0.01;
         h = iosSaberShape_pCore->h - (flex_t)0.01;
     }
-    const flex_t endS = iosSaberShape_EndOf(pTip, pBase);
+    const flex_t endS = iosSaberShape_bOpenTip ? 0 : iosSaberShape_EndOf(pTip, pBase); // (open: iosSaberShape_SetOpenEnds)
     const flex_t tx = iosSaberShape_beamTip * angCos, tz = iosSaberShape_beamTip * angSin, bx = l->baseRadius * angCos, bz = l->baseRadius * angSin;
     rdMeshinfo info;
     memset(&info, 0, sizeof(info));
@@ -916,7 +934,7 @@ static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const r
     info.aVertices = iosSaberShape_aSideVerts;
     info.aTexVerticies = iosSaberShape_aSideUVs;
     // (FOLD's ragged, in more slices)
-    const int n = pLine == iosSaberShape_pJagLine ? IOSSABERSHAPE_FOLD_SLICES : iosSaberShape_SlicesFor(pTip, pBase);
+    const int n = pLine == iosSaberShape_pJagLine ? IOSSABERSHAPE_FOLD_SLICES : iosSaberShape_SlicesFor(pTip, pBase, 0);
     flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS];
     iosSaberShape_Jag(pLine == iosSaberShape_pJagLine, iosSaberShape_jagId, aJag, IOSSABERSHAPE_BEAM_END_SLICES + n);
     for (int i = 0; i < IOSSABERSHAPE_BEAM_END_SLICES + n; i++) {
