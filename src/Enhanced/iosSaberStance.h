@@ -8,8 +8,9 @@
 //
 // The same for a STAFF or FOLD (open: as far as it is) when it is one of two
 // sabers (iosSaberStaff): its arm out by the hip, the staff along the body's
-// side, its front blade ahead, a little in and up, the back one behind, out
-// and down, so both show and the back blade clears the legs and the floor
+// side, near level: its front blade ahead, a little in and up, the back one
+// behind, out and a little down, both ends above the knees and the back one
+// off to the side of the legs (not seen across them from behind)
 // (the game's own two-saber pose holds it upright, the back blade in the
 // legs); first person, that arm moved up a little and out ahead, the staff
 // turned across the view in the hand (iosSaberStaff). The other hand keeps its

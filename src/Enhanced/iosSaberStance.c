@@ -54,9 +54,11 @@ typedef struct {
     float bladeOut, bladeDown;
     int bBlade;
 } iosSaberStanceArm;
-// STAFF (one of two sabers, iosSaberStaff; FOLD open alike): its hand out by the hip,
-// the staff across the body's side, its front blade ahead, in and up, the back
-// one behind, out and down, clear of the legs and the floor (bladeOut and bladeDown below 0: in, up)
+// STAFF (one of two sabers, iosSaberStaff; FOLD open alike): its hand out from the hip,
+// the staff along the body's side, near level (the front blade ahead, a little up and
+// in, the back one behind, a little down and out): both ends above the knees, the back
+// one off to the side of the legs, so it is not seen across them from behind, the two
+// front blades not crossed (bladeOut and bladeDown below 0: in, up)
 enum { IOSSABERSTANCE_ONE = 0, IOSSABERSTANCE_FREE, IOSSABERSTANCE_TWO, IOSSABERSTANCE_STAFF, IOSSABERSTANCE_NUM_ARMS };
 // standing (walking, running, jumping), then crouched: the blade more level,
 // its point clear of the floor
@@ -64,7 +66,7 @@ static const iosSaberStanceArm iosSaberStance_aArm[2][IOSSABERSTANCE_NUM_ARMS] =
     { [IOSSABERSTANCE_ONE]   = { 18.0f, 12.0f, 35.0f, 75.0f, 36.0f, 1 },
       [IOSSABERSTANCE_FREE]  = {  8.0f,  2.0f, 18.0f,  0.0f,  0.0f, 0 },
       [IOSSABERSTANCE_TWO]   = { 22.0f, 12.0f, 35.0f, 58.0f, 28.0f, 1 },
-      [IOSSABERSTANCE_STAFF] = { 26.0f, 12.0f, 60.0f, -18.0f, -22.0f, 1 } },
+      [IOSSABERSTANCE_STAFF] = { 40.0f, 12.0f, 60.0f, -12.0f, -4.0f, 1 } },
     { [IOSSABERSTANCE_ONE]   = { 16.0f, 26.0f, 30.0f, 46.0f, 10.0f, 1 },
       [IOSSABERSTANCE_FREE]  = { 10.0f, 12.0f, 22.0f,  0.0f,  0.0f, 0 },
       [IOSSABERSTANCE_TWO]   = { 24.0f, 26.0f, 30.0f, 54.0f, 10.0f, 1 },
