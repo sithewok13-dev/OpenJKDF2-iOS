@@ -26,10 +26,10 @@
 // Remembered by the platform by its name, as the look is (iOS: NSUserDefaults
 // iosTouchSaberShape; elsewhere the cvar enh_saberShape, enhSettings).
 //
-// A hilt can have a blade shape of its own, whatever the choice above
-// (iosSaber's CROSS hilt, a form here):
+// A hilt can have a blade shape of its own (iosSaber's CROSS hilt, a form
+// here):
 //
-//   CROSS  a blade with a crossguard: its edges jagged, moved about each frame
+//   CROSS  without FILM, a blade with a crossguard: its edges jagged, moved about each frame
 //          of the game's clock so it crackles (still while the game is), a
 //          few short sparks off its sides, narrowing to a point; and two short
 //          side blades (IOSSABERSHAPE_CROSS_GUARD_LEN of its length) straight
@@ -40,7 +40,8 @@
 //          the blade's own side texture and colour. The vents and side blades
 //          are only drawn: the game strikes with its blade alone. A thrown
 //          saber's blade (a model) gets the glow, the vents and the side
-//          blades.
+//          blades. With FILM, Kylo Ren's as the films show it: FILM's beam,
+//          unstable, its side blades the same (iosSaberShape_DrawFilmCross).
 
 #ifndef _ENHANCED_IOSSABERSHAPE_H
 #define _ENHANCED_IOSSABERSHAPE_H
@@ -67,7 +68,7 @@ struct rdThing;
 struct rdVector3;
 struct rdMaterial;
 // The blade's own form, its hilt's (iosSaber): the shape chosen above, or
-// CROSS's whatever that is; CROSS_PAIR, one of two crossguards drawn together
+// CROSS's (with FILM, its own FILM look); CROSS_PAIR, one of two crossguards drawn together
 // (two sabers): its glows a little softer and closer, so where the two cross
 // they don't wash together
 // (FOLD: a thrown one's, its blade drawn ragged, iosSaberShape_DrawThrownGlow)
