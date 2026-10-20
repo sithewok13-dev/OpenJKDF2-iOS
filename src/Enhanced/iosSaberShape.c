@@ -666,22 +666,36 @@ void iosSaberShape_SetTipFit(float share)
     iosSaberShape_tipFit = share < 0.0f ? 0.0f : (share > 1.0f ? 1.0f : share);
 }
 
-void iosSaberShape_FitTip(rdThing* pLine, float tipDepth, float baseDepth)
+// (a piece of a blade drawn in pieces, iosSaberStaff: its tip this many times as wide as its start, its
+// share of the whole blade's widening, whatever its own ends' depths; 0: as its own ends have it)
+static float iosSaberShape_tipRatio = 0.0f;
+
+void iosSaberShape_SetTipRatio(float k)
 {
-    if (!pLine || pLine != iosSaberShape_pLine || !pLine->polyline || iosSaberShape_bCross) return;
-    rdPolyline* l = pLine->polyline;
+    iosSaberShape_tipRatio = k > 0.0f ? k : 0.0f;
+}
+
+float iosSaberShape_TipFitFor(float tipDepth, float baseDepth)
+{
     float k = 1.0f;
     if (rdCamera_g_pCurCamera && rdCamera_g_pCurCamera->projectType != rdCameraProjectType_Ortho && baseDepth > 0.0001f && tipDepth > baseDepth)
         k = IOSSABERSHAPE_TIP_ON_SCREEN * tipDepth / baseDepth;
     if (k < 1.0f) k = 1.0f;
     if (k > IOSSABERSHAPE_TIP_MAX) k = IOSSABERSHAPE_TIP_MAX;
-    k = 1.0f + (k - 1.0f) * iosSaberShape_tipFit;
-    iosSaberShape_beamTip = l->baseRadius * k;
+    return 1.0f + (k - 1.0f) * iosSaberShape_tipFit;
+}
+
+void iosSaberShape_FitTip(rdThing* pLine, float tipDepth, float baseDepth)
+{
+    if (!pLine || pLine != iosSaberShape_pLine || !pLine->polyline || iosSaberShape_bCross) return;
+    rdPolyline* l = pLine->polyline;
+    iosSaberShape_beamTip = l->baseRadius * (iosSaberShape_tipRatio > 0.0f ? iosSaberShape_tipRatio : iosSaberShape_TipFitFor(tipDepth, baseDepth));
 }
 
 void iosSaberShape_EndBlade(void)
 {
     iosSaberShape_tipFit = 1.0f;
+    iosSaberShape_tipRatio = 0.0f;
     if (!iosSaberShape_pLine) return;
     if (iosSaberShape_pLine->polyline) {
         iosSaberShape_pLine->polyline->baseRadius = iosSaberShape_savedBase;

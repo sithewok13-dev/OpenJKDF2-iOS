@@ -1273,9 +1273,9 @@ int iosSaberStaff_PovTip(int i, float* pX, float* pY, float* pDepth)
     return 1;
 }
 
-// One stretch of a blade (from a to b along it), drawn see-through or not: a FOLD's even on screen as
-// wide at each end as the whole blade is drawn there, ka and kb times its width at the emitter (FILM's
-// from its start, its tip iosSaberShape_FitTip); otherwise (0) as the game's
+// One stretch of a blade (from a to b along it), drawn see-through or not: as wide at each end as the
+// whole blade is drawn there, ka and kb times its width at the emitter (FILM's, and a FOLD's even on
+// screen); otherwise (0) the game's tapering blade, as it tapers
 static void iosSaberStaff_Stretch(rdThing* pLine, const rdMatrix34* pFrame, flex_t a, flex_t b, int bSeeThrough, flex_t ka, flex_t kb)
 {
     rdPolyline* l = pLine->polyline;
@@ -1286,10 +1286,10 @@ static void iosSaberStaff_Stretch(rdThing* pLine, const rdMatrix34* pFrame, flex
     l->length = b - a;
     if (ka > 0 && kb > 0) {
         l->baseRadius = rb * ka;
-        if (iosSaberShape_Get() != IOSSABERSHAPE_BEAM) l->tipRadius = rb * kb;
+        if (iosSaberShape_Get() == IOSSABERSHAPE_BEAM) iosSaberShape_SetTipRatio((float)(kb / ka)); // (iosSaberShape_FitTip)
+        else l->tipRadius = rb * kb;
     }
-    else if (iosSaberShape_Get() != IOSSABERSHAPE_BEAM && len > 0) {
-        // (the game's tapering blade: as wide at each end as it is there; FILM's is even)
+    else if (len > 0) {
         l->baseRadius = rb + (rt - rb) * (a / len);
         l->tipRadius = rb + (rt - rb) * (b / len);
     }
@@ -1298,6 +1298,7 @@ static void iosSaberStaff_Stretch(rdThing* pLine, const rdMatrix34* pFrame, flex
         l->tipFace.type |= RD_FF_TEX_TRANSLUCENT;
     }
     rdThing_Draw(pLine, &m);
+    iosSaberShape_SetTipRatio(0.0f);
     l->length = len;
     l->baseRadius = rb;
     l->tipRadius = rt;
@@ -1360,9 +1361,13 @@ static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMa
     IOSSABERSTAFF_SPAN(IOSSABERSTAFF_NEAR, va, vb);
 #undef IOSSABERSTAFF_SPAN
     const flex_t minLen = (flex_t)0.0005;
-    // (how much wider a FOLD's blade is drawn u along it than at its emitter, by its depth there, from
-    // where it turns solid if its emitter is nearer; so its solid stretch is as even as a whole blade)
-#define IOSSABERSTAFF_K(u) (bFit ? iosSaberStaff_FitAt(d0 + step * (u), d0) : (flex_t)0)
+    // (how much wider the blade is drawn u along it than at its emitter, by its depth there: FILM's as its
+    // tip is, iosSaberShape_TipFitFor, a FOLD's even on screen, both from where it turns solid if its
+    // emitter is nearer; so its stretches meet as wide, and the solid one is as even as a whole blade)
+    const flex_t ref = d0 > (flex_t)IOSSABERSTAFF_FADE ? d0 : (flex_t)IOSSABERSTAFF_FADE;
+    const int bBeam = iosSaberShape_Get() == IOSSABERSHAPE_BEAM;
+#define IOSSABERSTAFF_K(u) (bBeam ? (flex_t)iosSaberShape_TipFitFor((float)(d0 + step * (u)), (float)ref) \
+                                  : bFit ? iosSaberStaff_FitAt(d0 + step * (u), d0) : (flex_t)0)
     if (sb - sa > minLen) iosSaberStaff_Stretch(pLine, pFrame, sa, sb, 0, IOSSABERSTAFF_K(sa), IOSSABERSTAFF_K(sb));
     // (the see-through stretch: the rest of what is seen, on the eye's side)
     if (vb - va > minLen) {
