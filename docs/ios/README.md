@@ -1089,8 +1089,9 @@ hand's colours and has its own **HILT** button.
   of the Sith, SABER THROW in Jedi Knight, each of the two with two sabers) gets the
   glow, the vents and the two short blades too. With FILM on, a CROSS is
   Kylo Ren's blade as the films show it: FILM's white-hot core and glow,
-  the same width to a rounded end, but unstable. Its edges crackle, its
-  width flickers, and small sparks fly off it and out of the vents; its two
+  the same width to a rounded end, but unstable. Its edges crackle and its
+  width flickers, and now and then, at no set beat, a small spark in its
+  own colour spits off it or a side blade and fades close by; its two
   short blades are the same, their glow running into the blade's at the
   hilt. A thrown one looks the same. With FILM off it's the jagged blade
   above, as before. Only the look changes: the
