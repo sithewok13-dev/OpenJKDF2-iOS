@@ -75,8 +75,8 @@ typedef struct {
 // linked), its own HILT button ("HILT STAFF >": that hand's next hilt). A tap
 // on a card picks its whole hand for the ring to paint; on a blade's dot (two
 // blades) just that blade. The LEFT card's x: back to one saber. Under the
-// LEFT card SAME COLOUR and SAME HILT; under the RIGHT card FILM (the blade's
-// shape: dim while every hilt in use is CROSS, iosSaberWheel_FilmDimmed) and,
+// LEFT card SAME COLOUR and SAME HILT; under the RIGHT card FILM (the blades'
+// shape, every hilt's: CROSS's too) and,
 // while a FOLD is in either hand, FOLD's AUTO; RANDOM under AUTO's spot (AUTO
 // shown or not: a new hilt and new colours for each saber held; held 0.3 s,
 // a ring filling round it, new colours only: iosSaberWheel_Random). In the

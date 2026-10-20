@@ -261,13 +261,6 @@ void iosSaberWheel_GetCard(int hand, iosSaberWheelCard* pOut)
 
 // ------------------------------------------------------------ FILM, AUTO
 
-int iosSaberWheel_FilmDimmed(void)
-{
-    for (int h = 0; h < IOSSABER_NUM_HANDS; h++)
-        if (iosSaberWheel_InUse(h) && !iosSaber_HiltKeepsShape(iosSaber_GetHandHilt(h))) return 0;
-    return 1;
-}
-
 int iosSaberWheel_ShowAuto(void)
 {
     for (int h = 0; h < IOSSABER_NUM_HANDS; h++)

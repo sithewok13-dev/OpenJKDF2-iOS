@@ -64,7 +64,6 @@
 #define INPUTWHEEL_CHIP_KIND_GAP 8.0f
 #define INPUTWHEEL_CHIP_TIGHT_GAP 6.0f
 #define INPUTWHEEL_CHIP_TOUCH 6.0f
-#define INPUTWHEEL_CHIP_DIM 0.4f // (the shape's switch while CROSS is the hilt: it doesn't change those blades)
 #define INPUTWHEEL_CHIP_HELD 0.7f // (SABER THROW while sithewok holds it on: on, a little dim)
 // The saber wheel's hand cards (hiltmock/hilt2.py's): a card, its corners;
 // how far right (left) of the popped ring; to the switch under it, and on
@@ -1546,9 +1545,8 @@ static void inputWheel_DrawChips(void)
         else if (i == INPUTWHEEL_CHIP_SHAPE) bOn = iosSaberShape_Get() == IOSSABERSHAPE_BEAM;
         else if (i == INPUTWHEEL_CHIP_AUTO) bOn = iosSaberWheel_GetAuto();
         else bOn = iosSaberThrowJk_Get() || iosSaberThrowJk_CheatHeld(); // (on while sithewok holds it on)
-        // (FILM dim while every hilt in use is CROSS: it doesn't change those blades;
-        // SABER THROW a little dim while sithewok holds it on)
-        l->alpha = (i == INPUTWHEEL_CHIP_SHAPE && iosSaberWheel_FilmDimmed()) ? INPUTWHEEL_CHIP_DIM : bOn ? 1.0f : 0.8f;
+        // (SABER THROW a little dim while sithewok holds it on)
+        l->alpha = bOn ? 1.0f : 0.8f;
         if (i == INPUTWHEEL_CHIP_THROW && iosSaberThrowJk_CheatHeld()) l->alpha = INPUTWHEEL_CHIP_HELD;
         const float x = inputWheel_s.chipX[i], y = inputWheel_s.chipY[i], w = inputWheel_s.chipW[i], h = inputWheel_s.chipH[i];
         touchUiDraw_RRect(l, x - w * 0.5f, y - h * 0.5f, w, h, h * 0.5f, touchUi_Black(0.55f), 1.5f, touchUi_White(0.4f));

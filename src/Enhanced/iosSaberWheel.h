@@ -13,8 +13,8 @@
 // dot picks just that blade (a linked pair splits only when its second blade
 // is given a colour other than the first's). SAME COLOUR (a colour tap paints
 // every blade of both hands) and SAME HILT (a HILT tap changes both hands) sit
-// under the LEFT card, and act only with two sabers; FILM under the RIGHT card, dimmed while every hilt in use is
-// CROSS; AUTO under FILM while a FOLD is in either hand; RANDOM under where
+// under the LEFT card, and act only with two sabers; FILM under the RIGHT card (every hilt's blades,
+// CROSS's too); AUTO under FILM while a FOLD is in either hand; RANDOM under where
 // AUTO goes (a new hilt and new colours for each saber held; held, new
 // colours only).
 //
@@ -119,7 +119,6 @@ int iosSaberWheel_Random(int bColoursOnly);
 void iosSaberWheel_SeedRandom(unsigned int seed);
 
 // ---- FILM and AUTO
-int iosSaberWheel_FilmDimmed(void); // every hilt in use is CROSS (its blades keep their own shape)
 int iosSaberWheel_ShowAuto(void);   // a FOLD in either hand in use: AUTO is shown
 int iosSaberWheel_GetAuto(void);    // (iosSaberFold's, one for both hands; remembered)
 void iosSaberWheel_SetAuto(int bOn);

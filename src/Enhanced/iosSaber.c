@@ -290,15 +290,14 @@ void iosSaber_SetStyle(int style)
 typedef struct {
     const char* name;
     int bAvailable;
-    int bKeepsShape; // (its blades' shape its own, whatever the shape's switch)
     int numBlades;
 } iosSaberHilt;
 
 static const iosSaberHilt iosSaber_aHilts[IOSSABER_NUM_HILTS] = {
-    [IOSSABER_HILT_NORMAL] = { "NORMAL", 1, 0, 1 },
-    [IOSSABER_HILT_CROSS]  = { "CROSS",  1, 1, 1 },
-    [IOSSABER_HILT_STAFF]  = { "STAFF",  1, 0, 2 },
-    [IOSSABER_HILT_FOLD]   = { "FOLD",   1, 0, 2 },
+    [IOSSABER_HILT_NORMAL] = { "NORMAL", 1, 1 },
+    [IOSSABER_HILT_CROSS]  = { "CROSS",  1, 1 },
+    [IOSSABER_HILT_STAFF]  = { "STAFF",  1, 2 },
+    [IOSSABER_HILT_FOLD]   = { "FOLD",   1, 2 },
 };
 
 int iosSaber_HiltAvailable(int hilt)
@@ -316,11 +315,6 @@ int iosSaber_HiltByName(const char* name)
     for (int h = 0; name && h < IOSSABER_NUM_HILTS; h++)
         if (!strcmp(name, iosSaber_aHilts[h].name)) return h;
     return -1;
-}
-
-int iosSaber_HiltKeepsShape(int hilt)
-{
-    return (hilt >= 0 && hilt < IOSSABER_NUM_HILTS) ? iosSaber_aHilts[hilt].bKeepsShape : 0;
 }
 
 int iosSaber_HiltNumBlades(int hilt)

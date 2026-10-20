@@ -250,10 +250,9 @@ const char* iosSaber_ColourName(int id) { return F_SaberColourName(id); }
 void iosSaber_ColourRGB(int id, unsigned char* r, unsigned char* g, unsigned char* b) { F_SaberColourRGB(id, r, g, b); if (!fg.saberLook && !fg.bRealNames) *g = 50; }
 int iosSaber_StyleAvailable(int st) { return F_SaberStyleAvailable(st); }
 int iosSaber_StyleNumBlades(int st) { return F_SaberStyleNumBlades(st); }
-// (the hilts as iosSaber.c has them: HILT goes round the available ones; CROSS's blades keep their own shape)
+// (the hilts as iosSaber.c has them: HILT goes round the available ones)
 int iosSaber_HiltAvailable(int h) { return F_SaberHiltAvailable(h); }
 const char* iosSaber_HiltName(int h) { return F_SaberHiltName(h); }
-int iosSaber_HiltKeepsShape(int h) { return h == 1; }
 int iosSaber_GetHilt(void) { return F_SaberGetHilt(); }
 void iosSaber_SetHilt(int h) { F_SaberSetHilt(h); }
 int iosSaber_NextHilt(int h) { for (int k = 1; k < 4; k++) if (F_SaberHiltAvailable((h + k) % 4)) return (h + k) % 4; return h; }
@@ -2216,24 +2215,22 @@ static void test_saber_hilt(void)
     SC(0, 0) = 5; SC(1, 1) = 3;
     tapColour(1);
     CHECK(SC(0, 0) == 1 && SC(1, 1) == 3 && fg.aHilt[0] == 1 && touchUi_IsWheelOpen());
-    g_case = "hilt: FILM dim with every hilt in use CROSS, and it still flips, the hilt kept";
+    g_case = "hilt: FILM with every hilt in use CROSS: it flips (CROSS takes FILM too), the hilt kept";
     {
         const int sh0 = fg.saberShape;
-        CHECK(iosSaberWheel_FilmDimmed());
         down(2, hx, hy); up(2, hx, hy);
         CHECK(fg.saberShape == !sh0 && fg.aHilt[0] == 1 && touchUi_IsWheelOpen());
         down(2, hx, hy); up(2, hx, hy);
     }
-    g_case = "hilt: two sabers with the right CROSS: the LEFT card its own hilt (NORMAL), FILM no longer dim, HILT where it was";
+    g_case = "hilt: two sabers with the right CROSS: the LEFT card its own hilt (NORMAL), HILT where it was";
     CHECK(tapChip(TOUCHUI_CHIP_ADD));
     {
         float ax, ay;
         CHECK(fg.saberStyle == TOUCHUI_SABER_DUAL && fg.aHilt[0] == 1 && fg.aHilt[1] == 0 && touchUi_GetSaberChip(HILT(1), NULL, NULL)
-              && touchUi_GetSaberChip(HILT(0), &ax, &ay) && fabsf(ax - xx) < 0.01f && fabsf(ay - xy) < 0.01f && drawnText("CROSS") && drawnText("NORMAL")
-              && !iosSaberWheel_FilmDimmed());
+              && touchUi_GetSaberChip(HILT(0), &ax, &ay) && fabsf(ax - xx) < 0.01f && fabsf(ay - xy) < 0.01f && drawnText("CROSS") && drawnText("NORMAL"));
     }
     g_case = "hilt: the LEFT card's HILT: only the left hand (CROSS), the right kept";
-    CHECK(tapChip(HILT(1)) && fg.aHilt[1] == 1 && fg.aHilt[0] == 1 && iosSaberWheel_FilmDimmed());
+    CHECK(tapChip(HILT(1)) && fg.aHilt[1] == 1 && fg.aHilt[0] == 1);
     g_case = "hilt: SAME HILT on: a HILT tap changes both hands (NORMAL: round, only two available)";
     g_platTicks = 0;
     CHECK(tapChip(TOUCHUI_CHIP_SAME_HILT) && iosSaberWheel_GetSameHilt() && g_platTicks == 1 && touchUi_IsWheelOpen());
@@ -2712,7 +2709,7 @@ static void test_saber_cards(void)
     while (fg.aHilt[0] != 3 && tapChip(HILT(0))) {}
     touchUi_Draw(T);
     CHECK(fg.saberStyle == 0 && touchUi_GetSaberChip(TOUCHUI_CHIP_AUTO, NULL, NULL));
-    g_case = "cards: FILM dim only while every hilt in use is CROSS";
+    g_case = "cards: FILM as bright with every hilt in use CROSS as with any other (CROSS takes FILM too)";
     {
         while (fg.aHilt[0] != 1 && tapChip(HILT(0))) {}
         const float aCross = drawnTextAlpha("FILM");
@@ -2722,7 +2719,7 @@ static void test_saber_cards(void)
         while (fg.aHilt[0] != 1 && tapChip(HILT(0))) {}
         const float aMixed = drawnTextAlpha("FILM");
         printf("  FILM's alpha: CROSS %.2f, STAFF %.2f, CROSS + NORMAL %.2f\n", aCross, aStaff, aMixed);
-        CHECK(aCross > 0.0f && aCross < 0.35f && aStaff > 0.55f && aMixed > 0.55f);
+        CHECK(aCross > 0.55f && fabsf(aCross - aStaff) < 0.01f && fabsf(aMixed - aStaff) < 0.01f);
     }
     g_case = "cards: the action buttons hidden while the saber wheel is open (the top row stays); back once it closes";
     {
@@ -3902,15 +3899,10 @@ static void test_saber_wheel_state(void)
         CHECK(iosSaberWheel_GetPickedBlade() == 1);
         iosSaberWheel_SetHilt(0, 1);
     }
-    g_case = "wheel state: FILM dimmed only while every hilt in use is CROSS";
-    iosSaberWheel_SetHilt(0, 1); iosSaberWheel_SetHilt(1, 0);
-    CHECK(!iosSaberWheel_FilmDimmed());
+    iosSaberWheel_SetHilt(0, 1); iosSaberWheel_SetHilt(1, 0); // (as the cases below have it)
     iosSaberWheel_SetHilt(1, 1);
-    CHECK(iosSaberWheel_FilmDimmed());
     iosSaberWheel_SetHilt(1, 2);
-    CHECK(!iosSaberWheel_FilmDimmed());
     iosSaberWheel_RemoveSecond();
-    CHECK(iosSaberWheel_FilmDimmed()); // (one saber: the right one's CROSS alone)
     g_case = "wheel state: the LEFT card's x: one saber, the right card picked, the left hand's kept";
     iosSaberWheel_AddSecond(); iosSaberWheel_PickHand(1);
     iosSaberWheel_RemoveSecond();

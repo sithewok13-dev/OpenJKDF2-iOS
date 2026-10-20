@@ -994,9 +994,8 @@ hand's colours and has its own **HILT** button.
 - **FILM** (it was called BEAM), an on/off switch under the RIGHT card, picks
   the blade's look. Tap it to switch. The wheel stays open, and the blade in
   your hand changes at once. The app remembers it (a BEAM you set before
-  stays on). The CROSS hilt keeps its own blade whatever FILM says, so the
-  switch is dimmed while every saber you hold is CROSS (it still works, for
-  other players' blades and for the other hilts).
+  stays on). It changes every hilt's blades, CROSS's too (see the CROSS
+  hilt below).
   - **Off** (the default): the game's own blade, which narrows to a point.
   - **On:** a blade as in the films, as long as the game's own (switching
     doesn't change the length) and slim to the films' proportions, the same
@@ -1014,8 +1013,8 @@ hand's colours and has its own **HILT** button.
     and Action Freeze. A thrown saber gets the glow too (Saber Throw in
     Mysteries of the Sith, and SABER THROW in Jedi Knight).
   - It's a setting for your own screen. It changes your blade, and in
-    multiplayer the blades of players whose game sends their saber choice
-    (except a CROSS, which keeps its own). Enemy Jedi (the bosses) and
+    multiplayer the blades of players whose game sends their saber choice.
+    Enemy Jedi (the bosses) and
     players on other builds keep the game's blade.
   - Only the look changes: the reach and damage of every attack stay as the
     game has them.
@@ -1088,7 +1087,13 @@ hand's colours and has its own **HILT** button.
   REFORGED, and shows in first and third person and in Action Freeze. With
   two sabers you can hold two of them, one in each hand. A thrown CROSS saber (Saber Throw in Mysteries
   of the Sith, SABER THROW in Jedi Knight, each of the two with two sabers) gets the
-  glow, the vents and the two short blades too. Only the look changes: the
+  glow, the vents and the two short blades too. With FILM on, a CROSS is
+  Kylo Ren's blade as the films show it: FILM's white-hot core and glow,
+  the same width to a rounded end, but unstable. Its edges crackle, its
+  width flickers, and small sparks fly off it and out of the vents; its two
+  short blades are the same, their glow running into the blade's at the
+  hilt. A thrown one looks the same. With FILM off it's the jagged blade
+  above, as before. Only the look changes: the
   main blade hits as usual, and the vents and the short side blades don't
   hit anything.
   - **Kylo Ren's low guard:** between swings Kyle (or Mara) carries a CROSS

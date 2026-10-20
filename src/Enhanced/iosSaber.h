@@ -103,9 +103,6 @@ enum { IOSSABER_HILT_NORMAL = 0, IOSSABER_HILT_CROSS, IOSSABER_HILT_STAFF, IOSSA
 int iosSaber_HiltAvailable(int hilt);       // 1: it can be picked (and is drawn as itself for other players)
 const char* iosSaber_HiltName(int hilt);    // "NORMAL", "CROSS", "STAFF", "FOLD": as HILT shows it and it is kept; NULL for none
 int iosSaber_HiltByName(const char* name);  // -1 if none (available or not)
-// Whether its blades keep a shape of their own whatever the shape's switch
-// says (CROSS): the switch is dimmed on the wheel while every hilt in use has
-int iosSaber_HiltKeepsShape(int hilt);
 int iosSaber_HiltNumBlades(int hilt);       // 1, or 2 (STAFF, FOLD)
 // The one HILT goes to next from this one: the next available, round again
 // (itself if no other is)

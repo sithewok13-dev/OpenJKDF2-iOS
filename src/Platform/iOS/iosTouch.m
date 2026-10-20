@@ -267,7 +267,7 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 // so no two meet; the middle's EQUIP and the look, and THROW, as far as ever)
 #define IOSTOUCH_SABER_PART_TOUCH 3.0
 #define IOSTOUCH_SABER_CHIP_TOUCH 6.0
-#define IOSTOUCH_SABER_CHIP_DIM 0.4 // (FILM while every hilt in use is CROSS: it doesn't change those blades)
+#define IOSTOUCH_SABER_CHIP_DIM 0.4 // (a card's HILT with only its own hilt to go to)
 #define IOSTOUCH_SABER_CHIP_HELD 0.7 // (SABER THROW while sithewok holds it on: on, a little dim)
 // RANDOM held this long (as QUICK SAVE: 0.3 s, a ring filling round it, gold
 // as the wheel's picks): new colours only, the hilts kept. Lifted sooner, the
@@ -3836,9 +3836,8 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
             l.alpha = 1.0;
             break;
         case IOSTOUCH_CHIP_SHAPE:
-            // (dim while every hilt in use is CROSS: its blades have their own shape; it still switches)
+            // (every hilt's blades, CROSS's too)
             [self setSwitch:i on:iosSaberShape_Get() == IOSSABERSHAPE_BEAM];
-            if (iosSaberWheel_FilmDimmed()) l.alpha = IOSTOUCH_SABER_CHIP_DIM;
             break;
         case IOSTOUCH_CHIP_THROW:
             // (on while sithewok holds Saber Throw on the Force wheel, a little dim; else THROW as set)
