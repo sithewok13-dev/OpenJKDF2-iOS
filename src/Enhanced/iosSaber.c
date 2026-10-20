@@ -721,6 +721,46 @@ static const unsigned char* iosSaber_ThrownSwatchOf(const rdMaterial* pMat)
     return NULL;
 }
 
+// A thrown saber's blade as it is drawn now (between BeginThrownBlade and EndThrownBlade: the one put on,
+// or the game's own), and its colour; NULL if none
+static const rdMaterial* iosSaber_ThrownDrawnBlade(SithThing* pThing, int id, const unsigned char** pRgb)
+{
+    *pRgb = NULL;
+    if (iosSaber_pThrownModel) {
+        // (the game's own colour, Jedi Knight's: the player's blade's, by its material)
+        *pRgb = id == IOSSABER_COLOUR_GAME ? iosSaber_SwatchOf(iosSaber_pThrownDrawn) : iosSaber_Row(iosSaber_look, id)->edge;
+        return iosSaber_pThrownDrawn;
+    }
+    if (Main_bMotsCompat && pThing->renderData.type == RD_THING_MODEL3 && pThing->renderData.model3
+        && pThing->renderData.model3->sizeMaterials >= 1 && pThing->renderData.model3->aMaterials) {
+        *pRgb = iosSaber_ThrownSwatchOf(pThing->renderData.model3->aMaterials[0]);
+        return pThing->renderData.model3->aMaterials[0];
+    }
+    return NULL;
+}
+
+// (the thrower's saber's side, in that colour: a thrown CROSS's side blades, a thrown FOLD's ragged blade)
+static void iosSaber_ThrownSide(int id, const rdFace** ppFace, rdMaterial** ppMat)
+{
+    SithThing* p = sithPlayer_g_pLocalPlayerThing;
+    *ppFace = (p && p->playerInfo && p->playerInfo->polyline.face.material) ? &p->playerInfo->polyline.face : NULL;
+    rdMaterial* aMat = id == IOSSABER_COLOUR_GAME ? NULL : iosSaber_Load(id);
+    *ppMat = aMat ? &aMat[IOSSABER_SIDE] : *ppFace ? (*ppFace)->material : NULL;
+}
+
+const rdMaterial* iosSaber_ThrownHiddenBlade(SithThing* pThing, int blade)
+{
+    if (!pThing || !iosSaberShape_IsJagged(&pThing->renderData)) return NULL;
+    const int id = iosSaberThrow_ThrownBladeColour(pThing, blade);
+    if (id < IOSSABER_COLOUR_GAME || id >= IOSSABER_NUM_COLOURS) return NULL;
+    const unsigned char* rgb;
+    const rdMaterial* pBlade = iosSaber_ThrownDrawnBlade(pThing, id, &rgb);
+    const rdFace* pSideFace;
+    rdMaterial* pSideMat;
+    iosSaber_ThrownSide(id, &pSideFace, &pSideMat);
+    return iosSaberShape_CanDrawThrownRagged(pThing, pBlade, pSideFace, pSideMat) ? pBlade : NULL;
+}
+
 void iosSaber_EndThrownBlade(SithThing* pThing, int blade)
 {
     // its glow (iosSaberShape), in the colour it is drawn in: the one put on, or the game's own;
@@ -731,26 +771,11 @@ void iosSaber_EndThrownBlade(SithThing* pThing, int blade)
     if (pThing && (bCross || bFold || iosSaberShape_Get() == IOSSABERSHAPE_BEAM)) {
         const int id = iosSaberThrow_ThrownBladeColour(pThing, blade);
         if (id >= IOSSABER_COLOUR_GAME && id < IOSSABER_NUM_COLOURS) {
-            const unsigned char* rgb = NULL;
-            const rdMaterial* pBlade = NULL;
-            if (iosSaber_pThrownModel) {
-                // (the game's own colour, Jedi Knight's: the player's blade's, by its material)
-                rgb = id == IOSSABER_COLOUR_GAME ? iosSaber_SwatchOf(iosSaber_pThrownDrawn) : iosSaber_Row(iosSaber_look, id)->edge;
-                pBlade = iosSaber_pThrownDrawn;
-            }
-            else if (Main_bMotsCompat && pThing->renderData.type == RD_THING_MODEL3 && pThing->renderData.model3
-                     && pThing->renderData.model3->sizeMaterials >= 1 && pThing->renderData.model3->aMaterials) {
-                pBlade = pThing->renderData.model3->aMaterials[0];
-                rgb = iosSaber_ThrownSwatchOf(pBlade);
-            }
+            const unsigned char* rgb;
+            const rdMaterial* pBlade = iosSaber_ThrownDrawnBlade(pThing, id, &rgb);
             const rdFace* pSideFace = NULL;
             rdMaterial* pSideMat = NULL;
-            if (bCross || bFold) {
-                SithThing* p = sithPlayer_g_pLocalPlayerThing;
-                if (p && p->playerInfo && p->playerInfo->polyline.face.material) pSideFace = &p->playerInfo->polyline.face;
-                rdMaterial* aMat = id == IOSSABER_COLOUR_GAME ? NULL : iosSaber_Load(id);
-                pSideMat = aMat ? &aMat[IOSSABER_SIDE] : pSideFace ? pSideFace->material : NULL;
-            }
+            if (bCross || bFold) iosSaber_ThrownSide(id, &pSideFace, &pSideMat);
             iosSaberShape_DrawThrownGlow(pThing, pBlade, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge,
                                          bCross ? IOSSABERSHAPE_FORM_CROSS : bFold ? IOSSABERSHAPE_FORM_FOLD : IOSSABERSHAPE_FORM_CHOSEN, pSideFace, pSideMat);
         }

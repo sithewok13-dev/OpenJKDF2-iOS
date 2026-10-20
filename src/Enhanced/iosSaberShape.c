@@ -1446,6 +1446,25 @@ int iosSaberShape_ThrownAxis(const rdModel3* m, const rdMaterial* pBlade, rdVect
 // Its glow as a held blade's, along the blade as it is drawn now (its mesh's
 // node, as the model was just posed); CROSS's, and its side blades; FOLD's
 // blade ragged over the model's
+// (whether a thrown FOLD's ragged blade can be drawn, DrawThrownGlow: its model's blade found, the side to draw it with)
+static const tVBuffer* iosSaberShape_SideTexture(const rdFace* pSideFace, const rdMaterial* pSideMat)
+{
+    const rdTexinfo* ti = pSideMat && pSideMat->num_texinfo ? pSideMat->texinfos[0] : NULL;
+    return pSideFace && pSideFace->vertexUVIdx && ti && ti->texture_ptr ? ti->texture_ptr->texture_struct[0] : NULL;
+}
+
+int iosSaberShape_CanDrawThrownRagged(SithThing* pThing, const rdMaterial* pBlade, const rdFace* pSideFace, const rdMaterial* pSideMat)
+{
+    if (!pThing || !pBlade || pThing->renderData.type != RD_THING_MODEL3 || !pThing->renderData.model3 || !iosSaberShape_SideTexture(pSideFace, pSideMat)) return 0;
+    const rdModel3* m = pThing->renderData.model3;
+    int mesh = -1;
+    rdVector3 a, b;
+    if (!iosSaberShape_ThrownBlade(m, pBlade, &mesh, &a, &b, NULL)) return 0;
+    for (uint32_t n = 0; n < m->numHNodes; n++)
+        if ((int)m->aHierarchyNodes[n].meshIdx == mesh) return 1;
+    return 0;
+}
+
 void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, const unsigned char rgb[3], int form,
                                   const rdFace* pSideFace, rdMaterial* pSideMat)
 {
@@ -1469,6 +1488,15 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
     rdVector3 tip, base;
     rdMatrix_TransformPoint34(&tip, &b, &toCam);
     rdMatrix_TransformPoint34(&base, &a, &toCam);
+    if (bFold && (tip.y > (flex_t)0.001) != (base.y > (flex_t)0.001)) {
+        // (FOLD's, its model's own blade left out: an end at or behind the eye cut back to just in front of it)
+        rdVector3* pNear = tip.y > (flex_t)0.001 ? &base : &tip;
+        const rdVector3* pFar = pNear == &tip ? &base : &tip;
+        const flex_t s = (pFar->y - (flex_t)0.001) / (pFar->y - pNear->y);
+        pNear->x = pFar->x + (pNear->x - pFar->x) * s;
+        pNear->y = (flex_t)0.001;
+        pNear->z = pFar->z + (pNear->z - pFar->z) * s;
+    }
     if (tip.y <= (flex_t)0.0001 || base.y <= (flex_t)0.0001) return;
     // across the blade on screen (as rdPolyline_Draw lays a blade)
     flex_t dx = tip.x / tip.y - base.x / base.y, dz = tip.z / tip.y - base.z / base.y;
@@ -1507,14 +1535,13 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
         return;
     }
     if (bFold) {
-        // FOLD: its blade ragged as a held one's, over the model's (CROSS's width; the thrower's side, in its colour)
-        const rdTexinfo* ti = pSideMat && pSideMat->num_texinfo ? pSideMat->texinfos[0] : NULL;
-        const tVBuffer* v = ti && ti->texture_ptr ? ti->texture_ptr->texture_struct[0] : NULL;
-        if (pSideFace && pSideFace->vertexUVIdx && v) {
+        // FOLD: its blade ragged as a held one's, in place of the model's (CROSS's width; the thrower's side, in its colour)
+        const tVBuffer* v = iosSaberShape_SideTexture(pSideFace, pSideMat);
+        if (v) {
             rdFace face = *pSideFace;
             face.material = pSideMat;
             const flex_t r = iosSaberShape_Len(b.x - a.x, b.y - a.y, b.z - a.z) * IOSSABERSHAPE_THROWN_CROSS;
-            // (brought toward the eye by its width, where it is on screen, so it is drawn over the model's own)
+            // (brought toward the eye by its width, where it is on screen, in front of the model's hilt where they meet)
             const flex_t kt = tip.y > 2 * r ? (tip.y - r) / tip.y : (flex_t)1, kb = base.y > 2 * r ? (base.y - r) / base.y : (flex_t)1;
             const rdVector3 nt = { tip.x * kt, tip.y * kt, tip.z * kt }, nb = { base.x * kb, base.y * kb, base.z * kb };
             iosSaberShape_Ragged(&glowThing, &face, (flex_t)v->format.width - (flex_t)0.01, (flex_t)v->format.height - (flex_t)0.01, &nt, &nb, r, r,

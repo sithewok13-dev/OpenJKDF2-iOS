@@ -128,6 +128,9 @@ int iosSaberShape_DrawBlade(struct rdThing* pLine, const struct rdMatrix34* pToC
 // model set ragged, iosSaberShape_SetJag), its blade drawn ragged over the
 // model's in those, and with FILM its glow
 struct rdFace;
+// (and whether a thrown FOLD's ragged blade will be drawn, so the model's own blade can be left out under it)
+int iosSaberShape_CanDrawThrownRagged(struct SithThing* pThing, const struct rdMaterial* pBlade, const struct rdFace* pSideFace,
+                                      const struct rdMaterial* pSideMat);
 void iosSaberShape_DrawThrownGlow(struct SithThing* pThing, const struct rdMaterial* pBlade, const unsigned char rgb[3], int form,
                                   const struct rdFace* pSideFace, struct rdMaterial* pSideMat);
 // A thrown saber model's blade (the faces with pBlade, its first geoset's): its

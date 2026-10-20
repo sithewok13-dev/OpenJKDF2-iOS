@@ -1636,7 +1636,9 @@ int iosSaberStaff_DrawThrown(SithThing* pThing, int* pRet)
         // (FOLD's blades a little ragged, as in hand, each its own way)
         if (hilt == IOSSABER_HILT_FOLD) iosSaberShape_SetJag(&pThing->renderData, 0x20000u + (unsigned int)pThing->idx * 2u + (unsigned int)copy);
         iosSaber_BeginThrownBlade(pThing, copy); // (each in its blade's colour)
+        rdModel3_pSkipMaterial = (rdMaterial*)iosSaber_ThrownHiddenBlade(pThing, copy); // (FOLD's own blade left out under its ragged one)
         const int r = rdThing_Draw(&pThing->renderData, &pThing->orient);
+        rdModel3_pSkipMaterial = NULL;
         if (!copy) ret = r;
         iosSaber_EndThrownBlade(pThing, copy);
         iosSaberShape_SetJag(NULL, 0);

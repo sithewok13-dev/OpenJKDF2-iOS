@@ -208,6 +208,9 @@ void iosSaber_BeginThrown(struct SithThing* pThing);
 void iosSaber_EndThrown(struct SithThing* pThing);
 void iosSaber_BeginThrownBlade(struct SithThing* pThing, int blade);
 void iosSaber_EndThrownBlade(struct SithThing* pThing, int blade);
+// (between them, a thrown FOLD's: its model's own blade's material, to be left out, its ragged blade drawn
+// over it at EndThrownBlade; NULL if that won't be drawn, the model's blade as ever)
+const struct rdMaterial* iosSaber_ThrownHiddenBlade(struct SithThing* pThing, int blade);
 
 #ifdef __cplusplus
 }
