@@ -1380,35 +1380,39 @@ static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMa
 }
 
 // A FOLD's second blade (pSecond, from iosSaberStaff_SecondBlade; open f) turned out round its emitter so
-// on screen its tip is further out from the first's (pHeld, its blades len long), the way it already is
-// from it, as many times as that tip is further from the eye than the first's emitter, so the two look
-// as far apart there as at their emitters; less as it opens (none open); folded, the tips still side by
-// side, as level and as deep. Its length, to reach there, out.
-static void iosSaberStaff_PovSpread(float f, const rdMatrix34* pHeld, flex_t len, rdMatrix34* pSecond, flex_t* pLen)
+// on screen its tip is further out from the first's (pHeld, its blades len long), the way the two tips are
+// apart folded (the emitters' gap), as many times as that tip is further from the eye than the first's
+// emitter, so the two look as far apart there as at their emitters; less as it opens, and none once the
+// blades part (none open); folded, the tips still side by side, as level and as deep. Its length kept.
+static void iosSaberStaff_PovSpread(float f, const rdMatrix34* pHeld, flex_t len, rdMatrix34* pSecond)
 {
-    *pLen = len;
     if (f >= 1.0f || !rdCamera_g_pCurCamera) return;
     const rdVector3 u = pHeld->lvec;
     rdVector3 b1, t1;
     const rdVector3 T1 = { pHeld->scale.x + u.x * len, pHeld->scale.y + u.y * len, pHeld->scale.z + u.z * len }; // (as the blade is laid)
     rdMatrix_TransformPoint34(&b1, &pHeld->scale, &rdCamera_g_pCurCamera->orient);
     rdMatrix_TransformPoint34(&t1, &T1, &rdCamera_g_pCurCamera->orient);
-    const flex_t k = (iosSaberStaff_FitAt(t1.y, b1.y) - 1) * (flex_t)(1.0f - f);
+    // (as far as the two blades still point the same way: none once they are square or more)
+    const flex_t mu = stdMath_Sqrt(iosSaberStaff_Dot(&u, &u)), m2 = stdMath_Sqrt(iosSaberStaff_Dot(&pSecond->lvec, &pSecond->lvec));
+    const flex_t same = mu > (flex_t)1e-7 && m2 > (flex_t)1e-7 ? iosSaberStaff_Dot(&u, &pSecond->lvec) / (mu * m2) : 0;
+    const flex_t k = (iosSaberStaff_FitAt(t1.y, b1.y) - 1) * (flex_t)(1.0f - f) * (same > 0 ? same : 0);
     if (k <= 0) return;
     // (the second tip moved on screen only, as deep from the eye: k times further on from the first's
-    // the way it is from it there; so the tips stay as level, and as deep)
+    // the way a folded pair's tips are apart, its emitters' gap; so the tips stay as level, and as deep)
+    const rdVector3 P2 = { T1.x + pSecond->scale.x - pHeld->scale.x, T1.y + pSecond->scale.y - pHeld->scale.y, T1.z + pSecond->scale.z - pHeld->scale.z };
     const rdVector3 T2 = { pSecond->scale.x + pSecond->lvec.x * len, pSecond->scale.y + pSecond->lvec.y * len, pSecond->scale.z + pSecond->lvec.z * len };
-    rdVector3 t2, d;
+    rdVector3 p2, t2, d;
+    rdMatrix_TransformPoint34(&p2, &P2, &rdCamera_g_pCurCamera->orient);
     rdMatrix_TransformPoint34(&t2, &T2, &rdCamera_g_pCurCamera->orient);
-    if (t1.y <= (flex_t)0.0001 || t2.y <= (flex_t)0.0001) return;
-    const rdVector3 dc = { (t2.x / t2.y - t1.x / t1.y) * k * t2.y, 0, (t2.z / t2.y - t1.z / t1.y) * k * t2.y };
+    if (t1.y <= (flex_t)0.0001 || t2.y <= (flex_t)0.0001 || p2.y <= (flex_t)0.0001) return;
+    const rdVector3 dc = { (p2.x / p2.y - t1.x / t1.y) * k * t2.y, 0, (p2.z / p2.y - t1.z / t1.y) * k * t2.y };
     rdMatrix34 fromCam;
     rdMatrix_InvertOrtho34(&fromCam, &rdCamera_g_pCurCamera->orient);
     rdMatrix_TransformVector34(&d, &dc, &fromCam);
     rdVector3 to = { pSecond->lvec.x * len + d.x, pSecond->lvec.y * len + d.y, pSecond->lvec.z * len + d.z };
-    const flex_t m = stdMath_Sqrt(iosSaberStaff_Dot(&pSecond->lvec, &pSecond->lvec)), tl = stdMath_Sqrt(iosSaberStaff_Dot(&to, &to));
+    const flex_t tl = stdMath_Sqrt(iosSaberStaff_Dot(&to, &to));
     rdVector3 from = pSecond->lvec;
-    if (m <= (flex_t)1e-7 || tl <= (flex_t)1e-7 || !iosSaberStaff_Unit(&from)) return;
+    if (tl <= (flex_t)1e-7 || !iosSaberStaff_Unit(&from)) return;
     to.x /= tl; to.y /= tl; to.z /= tl;
     // (turned the least way from where it points to there)
     rdVector3 n;
@@ -1421,7 +1425,6 @@ static void iosSaberStaff_PovSpread(float f, const rdMatrix34* pHeld, flex_t len
     iosSaberStaff_Turn(&r, &pSecond->rvec, &n, a); pSecond->rvec = r;
     iosSaberStaff_Turn(&r, &pSecond->lvec, &n, a); pSecond->lvec = r;
     iosSaberStaff_Turn(&r, &pSecond->uvec, &n, a); pSecond->uvec = r;
-    *pLen = tl / m;
 }
 
 int iosSaberStaff_DrawPovBlades(SithThing* pActor, rdThing* pLine, const rdModel3* pPovModel, const rdMatrix34* pHand, int hand, int blade)
@@ -1432,13 +1435,8 @@ int iosSaberStaff_DrawPovBlades(SithThing* pActor, rdThing* pLine, const rdModel
     const int bFit = iosSaberStaff_HiltOf(pActor, hand) == IOSSABER_HILT_FOLD && iosSaberShape_Get() == IOSSABERSHAPE_BEAM;
     iosSaberStaff_PovBlade(pActor, pLine, &held, blade, hand * 2, bFit);
     if (iosSaberStaff_SecondBlade(pActor, hand, 1, &held, &second)) {
-        rdPolyline* l = pLine->polyline;
-        const flex_t len = l->length;
-        flex_t len2 = len;
-        if (bFit) iosSaberStaff_PovSpread(iosSaberFold_OpenFraction(pActor, iosSaberStaff_SaberInHand(pActor, hand)), &held, len, &second, &len2);
-        l->length = len2;
+        if (bFit) iosSaberStaff_PovSpread(iosSaberFold_OpenFraction(pActor, iosSaberStaff_SaberInHand(pActor, hand)), &held, pLine->polyline->length, &second);
         iosSaberStaff_PovBlade(pActor, pLine, &second, blade | IOSSABER_BLADE_SECOND, hand * 2 + 1, bFit);
-        l->length = len;
     }
     return 1;
 }
