@@ -507,8 +507,10 @@ static void iosSaberShape_DrawQuad(rdThing* pLine, rdMaterial* pMat, rdTexMode_t
 // water, glass, the other blade or someone behind it). The first person
 // blade's are drawn at once: that pass never writes depth. (The trade: the
 // translucent surfaces write no depth either, so the glow of a blade behind
-// water or glass is drawn over it at its full strength.)
-#define IOSSABERSHAPE_MAX_QUEUED 512
+// water or glass is drawn over it at its full strength.) Room for 2048 quads:
+// FILM's blades take as many as they are long on screen (iosSaberShape_SlicesFor),
+// a dozen or two players with two blades each in view.
+#define IOSSABERSHAPE_MAX_QUEUED 2048
 typedef struct {
     rdVector3 aVerts[4];
     rdVector2 aUVs[4];
@@ -719,6 +721,21 @@ void iosSaberShape_EndBlade(void)
 // glows, and a thrown blade's, as even as they ever were, in as many as ever)
 #define IOSSABERSHAPE_SLICES 24
 #define IOSSABERSHAPE_GLOW_SLICES 8
+// (FILM's blade and its glow: a slice for every IOSSABERSHAPE_SLICE_PX pixels the
+// blade is long on screen, from IOSSABERSHAPE_MIN_SLICES (far off, small) to
+// IOSSABERSHAPE_SLICES; the fewest when the kept glows run short of room)
+#define IOSSABERSHAPE_SLICE_PX 12.0f
+#define IOSSABERSHAPE_MIN_SLICES 4
+static int iosSaberShape_SlicesFor(const rdVector3* pTip, const rdVector3* pBase)
+{
+    if (iosSaberShape_numQueued > IOSSABERSHAPE_MAX_QUEUED * 3 / 4) return IOSSABERSHAPE_MIN_SLICES;
+    if (!rdCamera_g_pCurCamera || !rdCamera_g_pCurCamera->pfProject || pTip->y <= (flex_t)0.0001 || pBase->y <= (flex_t)0.0001) return IOSSABERSHAPE_SLICES;
+    rdVector3 a, b;
+    rdCamera_g_pCurCamera->pfProject(&a, pTip);
+    rdCamera_g_pCurCamera->pfProject(&b, pBase);
+    const int n = (int)(iosSaberShape_Len(a.x - b.x, a.y - b.y, 0) / IOSSABERSHAPE_SLICE_PX) + 1;
+    return n < IOSSABERSHAPE_MIN_SLICES ? IOSSABERSHAPE_MIN_SLICES : (n > IOSSABERSHAPE_SLICES ? IOSSABERSHAPE_SLICES : n);
+}
 
 // The glow: square to the blade on screen, the base's half disc, the length
 // (in slices) and the tip's half disc (camera space: tip, base, the glow's
@@ -790,7 +807,7 @@ static void iosSaberShape_DrawGlow(rdThing* pLine, const rdVector3* pTip, const 
     iosSaberShape_GlowQuads(pLine, iosSaberShape_pGlow, pLine->polyline->face.textureMode, &end, pBase,
                             iosSaberShape_beamTip * IOSSABERSHAPE_BEAM_GLOW_WIDTH, pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH,
                             pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE,
-                            IOSSABERSHAPE_SLICES);
+                            iosSaberShape_SlicesFor(pTip, pBase));
     iosSaberShape_GlowSetBack(0);
 }
 
@@ -899,7 +916,7 @@ static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const r
     info.aVertices = iosSaberShape_aSideVerts;
     info.aTexVerticies = iosSaberShape_aSideUVs;
     // (FOLD's ragged, in more slices)
-    const int n = pLine == iosSaberShape_pJagLine ? IOSSABERSHAPE_FOLD_SLICES : IOSSABERSHAPE_SLICES;
+    const int n = pLine == iosSaberShape_pJagLine ? IOSSABERSHAPE_FOLD_SLICES : iosSaberShape_SlicesFor(pTip, pBase);
     flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS];
     iosSaberShape_Jag(pLine == iosSaberShape_pJagLine, iosSaberShape_jagId, aJag, IOSSABERSHAPE_BEAM_END_SLICES + n);
     for (int i = 0; i < IOSSABERSHAPE_BEAM_END_SLICES + n; i++) {
