@@ -70,7 +70,8 @@ struct rdMaterial;
 // CROSS's whatever that is; CROSS_PAIR, one of two crossguards drawn together
 // (two sabers): its glows a little softer and closer, so where the two cross
 // they don't wash together
-enum { IOSSABERSHAPE_FORM_CHOSEN = 0, IOSSABERSHAPE_FORM_CROSS, IOSSABERSHAPE_FORM_CROSS_PAIR };
+// (FOLD: a thrown one's, its blade drawn ragged, iosSaberShape_DrawThrownGlow)
+enum { IOSSABERSHAPE_FORM_CHOSEN = 0, IOSSABERSHAPE_FORM_CROSS, IOSSABERSHAPE_FORM_CROSS_PAIR, IOSSABERSHAPE_FORM_FOLD };
 // Round one blade's drawing (iosSaber_BeginBlade/EndBlade): with FILM, the
 // blade made even, to the films' proportions, white hot with its glow put on
 // (rgb: the blade's colour; core: its middle's, NULL or none: white; pThing:
@@ -79,6 +80,11 @@ enum { IOSSABERSHAPE_FORM_CHOSEN = 0, IOSSABERSHAPE_FORM_CROSS, IOSSABERSHAPE_FO
 // the widths back. blade: which of the thing's (0, 1: each crackles its own way).
 void iosSaberShape_BeginBlade(struct SithThing* pThing, struct rdThing* pLine, const unsigned char rgb[3], const unsigned char core[3], int form, int blade);
 void iosSaberShape_EndBlade(void);
+// (between them: the blade drawn a little ragged along its whole length, FOLD's, whatever the
+// shape; id: whose and which blade, each its own way; 0 not. A thrown FOLD's, its model: drawn
+// so over it, iosSaberShape_DrawThrownGlow; whether pLine is so now)
+void iosSaberShape_SetJag(struct rdThing* pLine, unsigned int id);
+int iosSaberShape_IsJagged(const struct rdThing* pLine);
 
 // rdPolyline_Draw, once its ends are placed (their depths from the eye): a
 // blade begun above made wider at the tip as far as it is further off, so it
@@ -113,7 +119,9 @@ int iosSaberShape_DrawBlade(struct rdThing* pLine, const struct rdMatrix34* pToC
 // as drawn): with FILM (form CHOSEN), a glow in that colour along its blade;
 // with CROSS, CROSS's glow along it and its side blades at its hilt, drawn as
 // a held blade's side (pSideFace, the thrower's saber's) with pSideMat (in its
-// colour; either NULL: no side blades, only the glow)
+// colour; either NULL: no side blades, only the glow); with FOLD (its
+// model set ragged, iosSaberShape_SetJag), its blade drawn ragged over the
+// model's in those, and with FILM its glow
 struct rdFace;
 void iosSaberShape_DrawThrownGlow(struct SithThing* pThing, const struct rdMaterial* pBlade, const unsigned char rgb[3], int form,
                                   const struct rdFace* pSideFace, struct rdMaterial* pSideMat);

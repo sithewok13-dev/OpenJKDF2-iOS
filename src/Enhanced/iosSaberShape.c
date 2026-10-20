@@ -785,6 +785,86 @@ static void iosSaberShape_DrawGlow(rdThing* pLine, const rdVector3* pTip, const 
 static rdVector3 iosSaberShape_aSideVerts[4];
 static rdVector2 iosSaberShape_aSideUVs[4];
 
+// ------------------------------------------------------------ FOLD's ragged edges
+
+// FOLD's blades (Dark Rey's, as the films show them): a little ragged and
+// wavering along their whole length, as CROSS's are but far less, the
+// chosen shape's own otherwise: drawn in this many slices from the tip down,
+// each edge point moved in or out by up to IOSSABERSHAPE_FOLD_JAG of the width
+// there (each edge on its own, each blade its own way), new each frame of the
+// game's clock; the very tip and the hilt's end as they are, so the round
+// tip and the base meet the side
+#define IOSSABERSHAPE_FOLD_SLICES 24
+#define IOSSABERSHAPE_FOLD_JAG 0.15f
+static rdThing* iosSaberShape_pJagLine = NULL;
+static unsigned int iosSaberShape_jagId = 0;
+
+void iosSaberShape_SetJag(rdThing* pLine, unsigned int id)
+{
+    iosSaberShape_pJagLine = id ? pLine : NULL;
+    iosSaberShape_jagId = id;
+}
+
+int iosSaberShape_IsJagged(const rdThing* pLine)
+{
+    return pLine && pLine == iosSaberShape_pJagLine;
+}
+
+static void iosSaberShape_Seed(uint32_t a, uint32_t b); // (below: CROSS's)
+static flex_t iosSaberShape_Rand(void);
+
+// (each edge point's share of the width, the n + 1 of them from the tip (0) down: 1 if not jagged;
+// id: whose blade, this frame's its own way)
+#define IOSSABERSHAPE_JAG_POINTS ((IOSSABERSHAPE_FOLD_SLICES > IOSSABERSHAPE_SLICES ? IOSSABERSHAPE_FOLD_SLICES : IOSSABERSHAPE_SLICES) + IOSSABERSHAPE_BEAM_END_SLICES + 1)
+static void iosSaberShape_Jag(int bJag, unsigned int id, flex_t aOut[2][IOSSABERSHAPE_JAG_POINTS], int n)
+{
+    if (bJag) iosSaberShape_Seed((uint32_t)sithTime_g_msecGameTime, 0x40000u + id);
+    for (int j = 0; j <= n; j++)
+        for (int e = 0; e < 2; e++)
+            aOut[e][j] = (bJag && j > 0 && j < n) ? 1 + (iosSaberShape_Rand() * 2 - 1) * (flex_t)IOSSABERSHAPE_FOLD_JAG : (flex_t)1;
+}
+
+// A blade's side drawn ragged (camera space: tip, base, its widths there; pFace and its texture's
+// size: the side's, across the width, along the length): as rdPolyline_Draw lays a blade, in slices
+static void iosSaberShape_Ragged(rdThing* pLine, rdFace* pFace, flex_t w, flex_t h, const rdVector3* pTip, const rdVector3* pBase, flex_t rTip,
+                                 flex_t rBase, float angCos, float angSin, unsigned int id)
+{
+    flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS];
+    iosSaberShape_Jag(1, id, aJag, IOSSABERSHAPE_FOLD_SLICES);
+    rdMeshinfo info;
+    memset(&info, 0, sizeof(info));
+    info.numVertices = 4;
+    info.aVertices = iosSaberShape_aSideVerts;
+    info.aTexVerticies = iosSaberShape_aSideUVs;
+    for (int i = 0; i < IOSSABERSHAPE_FOLD_SLICES; i++) {
+        for (int e = 0; e < 2; e++) {
+            const int j = i + e;
+            const flex_t s = (flex_t)j / IOSSABERSHAPE_FOLD_SLICES, r = rTip + (rBase - rTip) * s; // (from the tip)
+            const rdVector3 p = { pTip->x + (pBase->x - pTip->x) * s, pTip->y + (pBase->y - pTip->y) * s, pTip->z + (pBase->z - pTip->z) * s };
+            // (0 and 1 the slice's tip side, + and - across; 2 and 3 its base side, - and +)
+            rdVector3* a = &iosSaberShape_aSideVerts[e ? 3 : 0];
+            rdVector3* b = &iosSaberShape_aSideVerts[e ? 2 : 1];
+            a->x = p.x + r * aJag[0][j] * angCos; a->y = p.y; a->z = p.z + r * aJag[0][j] * angSin;
+            b->x = p.x - r * aJag[1][j] * angCos; b->y = p.y; b->z = p.z - r * aJag[1][j] * angSin;
+            iosSaberShape_aSideUVs[e ? 3 : 0].x = w;
+            iosSaberShape_aSideUVs[e ? 3 : 0].y = h * s;
+            iosSaberShape_aSideUVs[e ? 2 : 1].x = 0;
+            iosSaberShape_aSideUVs[e ? 2 : 1].y = h * s;
+        }
+        rdPolyline_DrawFace(pLine, pFace, iosSaberShape_aSideVerts, &info);
+    }
+}
+
+// FOLD's with the chosen shape SPIKE: the game's side, its widths at the tip and the hilt, its round tip face as ever
+static int iosSaberShape_DrawJagged(rdThing* pLine, const rdVector3* pTip, const rdVector3* pBase, float angCos, float angSin)
+{
+    rdPolyline* l = pLine->polyline;
+    if (!l->extraUVTipMaybe || !l->face.vertexUVIdx) return 0; // (untextured: as the game draws it)
+    iosSaberShape_Ragged(pLine, &l->face, l->extraUVTipMaybe[0].x, l->extraUVTipMaybe[2].y, pTip, pBase, l->tipRadius, l->baseRadius, angCos, angSin,
+                         iosSaberShape_jagId);
+    return 1;
+}
+
 static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const rdVector3* pBase, float angCos, float angSin)
 {
     rdPolyline* l = pLine->polyline;
@@ -804,7 +884,11 @@ static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const r
     info.numVertices = 4;
     info.aVertices = iosSaberShape_aSideVerts;
     info.aTexVerticies = iosSaberShape_aSideUVs;
-    for (int i = 0; i < IOSSABERSHAPE_BEAM_END_SLICES + IOSSABERSHAPE_SLICES; i++) {
+    // (FOLD's ragged, in more slices)
+    const int n = pLine == iosSaberShape_pJagLine ? IOSSABERSHAPE_FOLD_SLICES : IOSSABERSHAPE_SLICES;
+    flex_t aJag[2][IOSSABERSHAPE_JAG_POINTS];
+    iosSaberShape_Jag(pLine == iosSaberShape_pJagLine, iosSaberShape_jagId, aJag, IOSSABERSHAPE_BEAM_END_SLICES + n);
+    for (int i = 0; i < IOSSABERSHAPE_BEAM_END_SLICES + n; i++) {
         // (along it from the tip, 0, to the hilt, 1; and how much of its width there: the
         // rounded end's slices round a quarter ellipse, the rest the full width)
         flex_t s[2], k[2] = { 1, 1 };
@@ -815,7 +899,7 @@ static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const r
                 s[e] = endS * (flex_t)(1.0f - cosf(th));
                 k[e] = (flex_t)sinf(th);
             }
-            else s[e] = endS + (1 - endS) * (flex_t)(j - IOSSABERSHAPE_BEAM_END_SLICES) / IOSSABERSHAPE_SLICES;
+            else s[e] = endS + (1 - endS) * (flex_t)(j - IOSSABERSHAPE_BEAM_END_SLICES) / n;
         }
         for (int e = 0; e < 2; e++) {
             const rdVector3 p = { pTip->x + (pBase->x - pTip->x) * s[e], pTip->y + (pBase->y - pTip->y) * s[e], pTip->z + (pBase->z - pTip->z) * s[e] };
@@ -823,8 +907,9 @@ static int iosSaberShape_DrawBeam(rdThing* pLine, const rdVector3* pTip, const r
             // (0 and 1 the slice's tip side, + and - across; 2 and 3 its base side, - and +)
             rdVector3* a = &iosSaberShape_aSideVerts[e ? 3 : 0];
             rdVector3* b = &iosSaberShape_aSideVerts[e ? 2 : 1];
-            a->x = p.x + ax; a->y = p.y; a->z = p.z + az;
-            b->x = p.x - ax; b->y = p.y; b->z = p.z - az;
+            const flex_t ja = aJag[0][i + e], jb = aJag[1][i + e];
+            a->x = p.x + ax * ja; a->y = p.y; a->z = p.z + az * ja;
+            b->x = p.x - ax * jb; b->y = p.y; b->z = p.z - az * jb;
             iosSaberShape_aSideUVs[e ? 3 : 0].x = w;
             iosSaberShape_aSideUVs[e ? 3 : 0].y = h * s[e];
             iosSaberShape_aSideUVs[e ? 2 : 1].x = 0;
@@ -1256,6 +1341,8 @@ void iosSaberShape_DrawVents(rdThing* pLine, const rdMatrix34* pOrient)
 
 int iosSaberShape_DrawBlade(rdThing* pLine, const rdMatrix34* pToCam, const rdVector3* pTip, const rdVector3* pBase, float angCos, float angSin)
 {
+    // (FOLD's with SPIKE, ragged: as the game lays it, in slices)
+    if (pLine && pLine == iosSaberShape_pJagLine && pLine != iosSaberShape_pLine && pLine->polyline) return iosSaberShape_DrawJagged(pLine, pTip, pBase, angCos, angSin);
     if (!pLine || pLine != iosSaberShape_pLine || !pLine->polyline) return 0;
     if (!iosSaberShape_bCross) return iosSaberShape_DrawBeam(pLine, pTip, pBase, angCos, angSin);
     rdPolyline* l = pLine->polyline;
@@ -1343,12 +1430,13 @@ int iosSaberShape_ThrownAxis(const rdModel3* m, const rdMaterial* pBlade, rdVect
 }
 
 // Its glow as a held blade's, along the blade as it is drawn now (its mesh's
-// node, as the model was just posed); CROSS's, and its side blades
+// node, as the model was just posed); CROSS's, and its side blades; FOLD's
+// blade ragged over the model's
 void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, const unsigned char rgb[3], int form,
                                   const rdFace* pSideFace, rdMaterial* pSideMat)
 {
-    const int bCross = form == IOSSABERSHAPE_FORM_CROSS;
-    if ((!bCross && iosSaberShape_shape != IOSSABERSHAPE_BEAM) || !pThing || !pBlade || !rgb || !rdCamera_g_pCurCamera) return;
+    const int bCross = form == IOSSABERSHAPE_FORM_CROSS, bFold = form == IOSSABERSHAPE_FORM_FOLD;
+    if ((!bCross && !bFold && iosSaberShape_shape != IOSSABERSHAPE_BEAM) || !pThing || !pBlade || !rgb || !rdCamera_g_pCurCamera) return;
     rdThing* t = &pThing->renderData;
     if (t->type != RD_THING_MODEL3 || !t->model3 || !t->paJointMatrices) return;
     const rdModel3* m = t->model3;
@@ -1360,7 +1448,7 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
         if ((int)m->aHierarchyNodes[n].meshIdx == mesh) node = (int)n;
     if (node < 0) return;
     const iosSaberShapeGlow* g = iosSaberShape_Glow(rgb, bCross ? IOSSABERSHAPE_GAIN_CROSS_THROWN : IOSSABERSHAPE_GAIN_THROWN);
-    if (!g && !bCross) return;
+    if (!g && !bCross && !bFold) return;
     // (the mesh's space to the camera's)
     rdMatrix34 toCam;
     rdMatrix_Multiply34(&toCam, &rdCamera_g_pCurCamera->orient, &t->paJointMatrices[node]);
@@ -1403,6 +1491,22 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
         iosSaberShape_Cross(&glowThing, bSide ? &face : NULL, uvW, uvH, g, glowThing.curTexMode, &guard, &tip, &base, r,
                             r / IOSSABERSHAPE_CROSS_WIDTH, 0);
         return;
+    }
+    if (bFold) {
+        // FOLD: its blade ragged as a held one's, over the model's (CROSS's width; the thrower's side, in its colour)
+        const rdTexinfo* ti = pSideMat && pSideMat->num_texinfo ? pSideMat->texinfos[0] : NULL;
+        const tVBuffer* v = ti && ti->texture_ptr ? ti->texture_ptr->texture_struct[0] : NULL;
+        if (pSideFace && pSideFace->vertexUVIdx && v) {
+            rdFace face = *pSideFace;
+            face.material = pSideMat;
+            const flex_t r = iosSaberShape_Len(b.x - a.x, b.y - a.y, b.z - a.z) * IOSSABERSHAPE_THROWN_CROSS;
+            // (brought toward the eye by its width, where it is on screen, so it is drawn over the model's own)
+            const flex_t kt = tip.y > 2 * r ? (tip.y - r) / tip.y : (flex_t)1, kb = base.y > 2 * r ? (base.y - r) / base.y : (flex_t)1;
+            const rdVector3 nt = { tip.x * kt, tip.y * kt, tip.z * kt }, nb = { base.x * kb, base.y * kb, base.z * kb };
+            iosSaberShape_Ragged(&glowThing, &face, (flex_t)v->format.width - (flex_t)0.01, (flex_t)v->format.height - (flex_t)0.01, &nt, &nb, r, r,
+                                 angCos, angSin, iosSaberShape_jagId);
+        }
+        if (!g || iosSaberShape_shape != IOSSABERSHAPE_BEAM) return;
     }
     // (as wide as a held blade's of that length: the model's blade is drawn wider, with its blur)
     const flex_t r = iosSaberShape_Len(b.x - a.x, b.y - a.y, b.z - a.z) * IOSSABERSHAPE_THROWN_BEAM * IOSSABERSHAPE_BEAM_GLOW_WIDTH;

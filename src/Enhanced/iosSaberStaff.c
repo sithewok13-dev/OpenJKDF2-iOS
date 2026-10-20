@@ -1538,10 +1538,13 @@ int iosSaberStaff_DrawThrown(SithThing* pThing, int* pRet)
         }
         pThing->orient = o;
         pThing->renderData.rdFrameNum = 0; // (its joints built again, at this place)
+        // (FOLD's blades a little ragged, as in hand, each its own way)
+        if (hilt == IOSSABER_HILT_FOLD) iosSaberShape_SetJag(&pThing->renderData, 0x20000u + (unsigned int)pThing->idx * 2u + (unsigned int)copy);
         iosSaber_BeginThrownBlade(pThing, copy); // (each in its blade's colour)
         const int r = rdThing_Draw(&pThing->renderData, &pThing->orient);
         if (!copy) ret = r;
         iosSaber_EndThrownBlade(pThing, copy);
+        iosSaberShape_SetJag(NULL, 0);
     }
     pThing->orient = saved;
     *pRet = ret;

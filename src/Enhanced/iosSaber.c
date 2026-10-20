@@ -726,7 +726,9 @@ void iosSaber_EndThrownBlade(SithThing* pThing, int blade)
     // its glow (iosSaberShape), in the colour it is drawn in: the one put on, or the game's own;
     // thrown with a crossguard (the CROSS hilt, from either hand), its side blades too, as the held blade's side
     const int bCross = pThing && iosSaberThrow_ThrownHilt(pThing) == IOSSABER_HILT_CROSS;
-    if (pThing && (bCross || iosSaberShape_Get() == IOSSABERSHAPE_BEAM)) {
+    // (FOLD's ragged, as its blades in hand: iosSaberStaff_DrawThrown)
+    const int bFold = pThing && iosSaberShape_IsJagged(&pThing->renderData);
+    if (pThing && (bCross || bFold || iosSaberShape_Get() == IOSSABERSHAPE_BEAM)) {
         const int id = iosSaberThrow_ThrownBladeColour(pThing, blade);
         if (id >= IOSSABER_COLOUR_GAME && id < IOSSABER_NUM_COLOURS) {
             const unsigned char* rgb = NULL;
@@ -743,14 +745,14 @@ void iosSaber_EndThrownBlade(SithThing* pThing, int blade)
             }
             const rdFace* pSideFace = NULL;
             rdMaterial* pSideMat = NULL;
-            if (bCross) {
+            if (bCross || bFold) {
                 SithThing* p = sithPlayer_g_pLocalPlayerThing;
                 if (p && p->playerInfo && p->playerInfo->polyline.face.material) pSideFace = &p->playerInfo->polyline.face;
                 rdMaterial* aMat = id == IOSSABER_COLOUR_GAME ? NULL : iosSaber_Load(id);
                 pSideMat = aMat ? &aMat[IOSSABER_SIDE] : pSideFace ? pSideFace->material : NULL;
             }
             iosSaberShape_DrawThrownGlow(pThing, pBlade, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge,
-                                         bCross ? IOSSABERSHAPE_FORM_CROSS : IOSSABERSHAPE_FORM_CHOSEN, pSideFace, pSideMat);
+                                         bCross ? IOSSABERSHAPE_FORM_CROSS : bFold ? IOSSABERSHAPE_FORM_FOLD : IOSSABERSHAPE_FORM_CHOSEN, pSideFace, pSideMat);
         }
     }
     if (!iosSaber_pThrownModel) return;
@@ -935,6 +937,8 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
     // its shape (iosSaberShape), whatever the colour: its glow in the blade's own colour (the
     // look's edge colour; the game's own blade's, by its material); the crossguard's, the CROSS hilt
     const unsigned char* rgb = aMat ? iosSaber_Row(iosSaber_look, id)->edge : iosSaber_SwatchOf(pLine->polyline->face.material);
+    // (FOLD's blades a little ragged, each its own way; no other's)
+    iosSaberShape_SetJag(pLine, iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_FOLD ? ((unsigned int)pThing->idx + 1u) * 4u + (unsigned int)blade * 2u + (unsigned int)sub : 0u);
     // (the hand's hilt's; two crossguards drawn together, each a little softer)
     int form = IOSSABERSHAPE_FORM_CHOSEN;
     if (iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_CROSS)
@@ -953,6 +957,7 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
 
 void iosSaber_EndBlade(rdThing* pLine)
 {
+    iosSaberShape_SetJag(NULL, 0);
     iosSaberShape_EndBlade(); // (first: it put its widths on over the shimmer's)
     if (iosSaber_pWidthLine) {
         iosSaber_pWidthLine->baseRadius = iosSaber_savedBase;
