@@ -80,8 +80,9 @@ int iosSaberShape_ByName(const char* name)
 // hilt is (in first person, about twice as far from the eye), it would look
 // half as wide on screen and come to a point again. So it is made wider in
 // the world as it is further off, to look this much of the hilt's width on
-// screen, up to this many times the hilt's in the world.
-#define IOSSABERSHAPE_TIP_ON_SCREEN 0.62f
+// screen (all of it: even to its rounded end, as the films' blades look, not
+// narrowing toward the tip), up to this many times the hilt's in the world.
+#define IOSSABERSHAPE_TIP_ON_SCREEN 1.0f
 #define IOSSABERSHAPE_TIP_MAX 2.6f
 // The beam grows as the game's blade does when the saber comes on (the same
 // share of its full length), closing in a rounded end (in slices round a
@@ -687,21 +688,25 @@ void iosSaberShape_EndBlade(void)
 // texture's middle line bends off the blade's along the diagonal, to one side
 // only. Each is drawn in this many slices along the blade instead, each its
 // own width, so the middle stays on the middle (the beam's, from its rounded
-// end down; its end in IOSSABERSHAPE_BEAM_END_SLICES more).
-#define IOSSABERSHAPE_SLICES 8
+// end down; its end in IOSSABERSHAPE_BEAM_END_SLICES more): enough of them
+// that, even on screen to its tip, two and a half times as wide there in the
+// world in first person, no slice's edges zigzag (FILM's glow too; CROSS's
+// glows, and a thrown blade's, as even as they ever were, in as many as ever)
+#define IOSSABERSHAPE_SLICES 24
+#define IOSSABERSHAPE_GLOW_SLICES 8
 
 // The glow: square to the blade on screen, the base's half disc, the length
 // (in slices) and the tip's half disc (camera space: tip, base, the glow's
 // radius at each, (cos, sin) across the blade on screen). The glow texture's
 // middle row runs along the length (across it, the glow's profile) and its
 // top and bottom halves make the round ends, so they meet with no seam and
-// nothing is drawn twice.
+// nothing is drawn twice. (slices: how many along the length)
 // (ends: which round ends are drawn, IOSSABERSHAPE_END_*; the base's
 // reaches baseReach out past the base: rBase round, less squashed)
 #define IOSSABERSHAPE_END_TIP 1
 #define IOSSABERSHAPE_END_BASE 2
 static void iosSaberShape_GlowQuads(rdThing* pLine, const iosSaberShapeGlow* g, rdTexMode_t texMode, const rdVector3* pTip,
-                                    const rdVector3* pBase, flex_t rTip, flex_t rBase, flex_t baseReach, flex_t angCos, flex_t angSin, int ends)
+                                    const rdVector3* pBase, flex_t rTip, flex_t rBase, flex_t baseReach, flex_t angCos, flex_t angSin, int ends, int slices)
 {
     // (across, and along from base to tip, at each end's radius)
     const flex_t tx = rTip * angCos, tz = rTip * angSin, bx = rBase * angCos, bz = rBase * angSin;
@@ -711,8 +716,8 @@ static void iosSaberShape_GlowQuads(rdThing* pLine, const iosSaberShapeGlow* g, 
     rdVector3 baseOut = { pBase->x + baseReach * angSin, pBase->y, pBase->z - baseReach * angCos };
 
     // the length, from the tip down
-    for (int i = 0; i < IOSSABERSHAPE_SLICES; i++) {
-        const flex_t s0 = (flex_t)i / IOSSABERSHAPE_SLICES, s1 = (flex_t)(i + 1) / IOSSABERSHAPE_SLICES;
+    for (int i = 0; i < slices; i++) {
+        const flex_t s0 = (flex_t)i / slices, s1 = (flex_t)(i + 1) / slices;
         const rdVector3 p0 = { pTip->x + (pBase->x - pTip->x) * s0, pTip->y + (pBase->y - pTip->y) * s0, pTip->z + (pBase->z - pTip->z) * s0 };
         const rdVector3 p1 = { pTip->x + (pBase->x - pTip->x) * s1, pTip->y + (pBase->y - pTip->y) * s1, pTip->z + (pBase->z - pTip->z) * s1 };
         const flex_t x0 = tx + (bx - tx) * s0, z0 = tz + (bz - tz) * s0, x1 = tx + (bx - tx) * s1, z1 = tz + (bz - tz) * s1;
@@ -759,7 +764,8 @@ static void iosSaberShape_DrawGlow(rdThing* pLine, const rdVector3* pTip, const 
     iosSaberShape_GlowSetBack(1); // (under the beam's end too, in first person)
     iosSaberShape_GlowQuads(pLine, iosSaberShape_pGlow, pLine->polyline->face.textureMode, &end, pBase,
                             iosSaberShape_beamTip * IOSSABERSHAPE_BEAM_GLOW_WIDTH, pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH,
-                            pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
+                            pLine->polyline->baseRadius * IOSSABERSHAPE_BEAM_GLOW_WIDTH, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE,
+                            IOSSABERSHAPE_SLICES);
     iosSaberShape_GlowSetBack(0);
 }
 
@@ -1201,11 +1207,12 @@ static void iosSaberShape_Cross(rdThing* pLine, rdFace* pFace, flex_t uvW, flex_
     iosSaberShape_GlowSetBack(1);
     const flex_t f = (1 + (iosSaberShape_Rand() * 2 - 1) * IOSSABERSHAPE_CROSS_GLOW_FLICKER) * (bBlade ? iosSaberShape_crossGlow : (flex_t)1);
     const flex_t rg = r * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f;
-    iosSaberShape_GlowQuads(pLine, g, texMode, pTip, pBase, rg * IOSSABERSHAPE_CROSS_GLOW_POINT, rg, rg, c, sn, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
+    iosSaberShape_GlowQuads(pLine, g, texMode, pTip, pBase, rg * IOSSABERSHAPE_CROSS_GLOW_POINT, rg, rg, c, sn, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE,
+                            IOSSABERSHAPE_GLOW_SLICES);
     const flex_t gw = gr * IOSSABERSHAPE_CROSS_GLOW_WIDTH * f, gBack = gw < R * IOSSABERSHAPE_VENT_ROOT ? gw : R * IOSSABERSHAPE_VENT_ROOT;
     for (int k = 0; bGuards && k < 2; k++)
         iosSaberShape_GlowQuads(pLine, g, texMode, &aTip[k], &aRoot[k], gw * IOSSABERSHAPE_CROSS_GLOW_POINT, gw, gBack, aCos[k], aSin[k],
-                                IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
+                                IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE, IOSSABERSHAPE_GLOW_SLICES);
     iosSaberShape_GlowSetBack(0);
 }
 
@@ -1388,7 +1395,8 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
     }
     // (as wide as a held blade's of that length: the model's blade is drawn wider, with its blur)
     const flex_t r = iosSaberShape_Len(b.x - a.x, b.y - a.y, b.z - a.z) * IOSSABERSHAPE_THROWN_BEAM * IOSSABERSHAPE_BEAM_GLOW_WIDTH;
-    iosSaberShape_GlowQuads(&glowThing, g, glowThing.curTexMode, &tip, &base, r, r, r, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE);
+    iosSaberShape_GlowQuads(&glowThing, g, glowThing.curTexMode, &tip, &base, r, r, r, angCos, angSin, IOSSABERSHAPE_END_TIP | IOSSABERSHAPE_END_BASE,
+                            IOSSABERSHAPE_GLOW_SLICES);
 }
 
 #endif // JK_ENHANCED
