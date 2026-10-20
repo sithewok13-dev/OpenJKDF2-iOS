@@ -102,6 +102,21 @@
 #define IOSSABERSTAFF_LOD_NEAR_PX 64.0f
 #define IOSSABERSTAFF_LOD_FAR_PX 20.0f
 
+// Third person, kept out of the body: a blade of these that would pass inside one of the player's own
+// parts (head, neck, torso, hip, legs: each its mesh's box, grown by MARGIN units) as the game swings or
+// poses it (its swings are a one-bladed saber's), the staff is drawn turned round the grip just far
+// enough (in STEP degrees, at most MAX) that its other blade keeps out, its front one no further in
+// than the game has it, turning the way it turns already unless another way keeps it out KEEP
+// degrees sooner; eased toward a bigger turn over IN seconds (a time constant), back over OUT, and
+// never faster than RATE degrees a second
+#define IOSSABERSTAFF_CLEAR_MARGIN 0.006f
+#define IOSSABERSTAFF_CLEAR_STEP_DEG 3.0f
+#define IOSSABERSTAFF_CLEAR_MAX_DEG 75.0f
+#define IOSSABERSTAFF_CLEAR_KEEP_DEG 15.0f
+#define IOSSABERSTAFF_CLEAR_IN_SEC 0.05f
+#define IOSSABERSTAFF_CLEAR_OUT_SEC 0.15f
+#define IOSSABERSTAFF_CLEAR_RATE_DEG 450.0f
+
 // ------------------------------------------------------------ the hilts
 
 int iosSaberStaff_IsDouble(int hilt)
@@ -446,6 +461,11 @@ static void iosSaberStaff_ReyHalf(flex_t L, flex_t R)
 
 // ------------------------------------------------------------ what each one is doing (third person)
 
+// A turn: a unit quaternion (w, then x, y, z along the hand's own axes)
+typedef struct {
+    float w, x, y, z;
+} iosSaberStaffTurn;
+
 typedef struct {
     SithThing* pThing;
     uint32_t signature;
@@ -456,6 +476,9 @@ typedef struct {
     float stand;   // (0..1) standing still
     rdModel3* pModel;
     int lshoulder;
+    iosSaberStaffTurn aClear[2]; // each hand's turn clear of the body now (round the grip)
+    uint32_t aClearMs[2]; // (moved on then)
+    int aClearSet[2];
 } iosSaberStaffSlot;
 // (each player's own, by their number, as the looks are kept (jkPlayerLook); the last, any other thing's while it is the one drawn)
 #define IOSSABERSTAFF_SLOTS (JKPLAYER_NUM_INFOS + 1)
@@ -728,7 +751,7 @@ static int iosSaberStaff_PointInView(const rdMatrix34* pHand, const rdVector3* p
     return 1;
 }
 
-int iosSaberStaff_HeldFrame(SithThing* pThing, int hand, int bPov, const rdModel3* pHilt, const rdMatrix34* pHand, rdMatrix34* pOut)
+static int iosSaberStaff_HeldFrameOf(SithThing* pThing, int hand, int bPov, const rdModel3* pHilt, const rdMatrix34* pHand, rdMatrix34* pOut)
 {
     *pOut = *pHand;
     if (!pThing || hand < 0 || hand > 1) return 0;
@@ -764,6 +787,370 @@ int iosSaberStaff_HeldFrame(SithThing* pThing, int hand, int bPov, const rdModel
     rdMatrix_Multiply34(&b, &a, &t);
     rdMatrix_Multiply34(pOut, pHand, &b);
     return 1;
+}
+
+// ------------------------------------------------------------ clear of the body
+
+#define IOSSABERSTAFF_BODY_PARTS 10
+static const char* const iosSaberStaff_aBodyPart[IOSSABERSTAFF_BODY_PARTS] = {
+    "k_head", "k_neck", "k_torso", "k_hip", "k_lthigh", "k_lcalf", "k_lfoot", "k_rthigh", "k_rcalf", "k_rfoot"
+};
+
+// A body's parts (a model's, found once): each part's node, and its mesh's box in the node's frame
+typedef struct {
+    const rdModel3* pModel;
+    uint32_t geoset;
+    int n;
+    int aNode[IOSSABERSTAFF_BODY_PARTS];
+    rdVector3 aLo[IOSSABERSTAFF_BODY_PARTS], aHi[IOSSABERSTAFF_BODY_PARTS];
+} iosSaberStaffBody;
+static iosSaberStaffBody iosSaberStaff_aBody[4];
+static int iosSaberStaff_nextBody;
+
+static const iosSaberStaffBody* iosSaberStaff_BodyOf(const rdThing* r)
+{
+    const rdModel3* m = r->model3;
+    if (!m || !m->numGeos || !m->aHierarchyNodes) return NULL;
+    const uint32_t gs = r->geosetSelect < m->numGeos ? r->geosetSelect : 0;
+    for (int i = 0; i < 4; i++)
+        if (iosSaberStaff_aBody[i].pModel == m && iosSaberStaff_aBody[i].geoset == gs) return iosSaberStaff_aBody[i].n ? &iosSaberStaff_aBody[i] : NULL;
+    iosSaberStaffBody* b = &iosSaberStaff_aBody[iosSaberStaff_nextBody];
+    iosSaberStaff_nextBody = (iosSaberStaff_nextBody + 1) % 4;
+    memset(b, 0, sizeof(*b));
+    b->pModel = m;
+    b->geoset = gs;
+    const rdGeoset* g = &m->aGeos[gs];
+    for (int k = 0; k < IOSSABERSTAFF_BODY_PARTS; k++) {
+        for (int i = 0; i < (int)m->numHNodes; i++) {
+            if (__strcmpi(m->aHierarchyNodes[i].name, iosSaberStaff_aBodyPart[k])) continue;
+            const int mi = (int)m->aHierarchyNodes[i].meshIdx;
+            if (mi < 0 || mi >= (int)g->numMeshes || g->aMeshes[mi].numVertices <= 0 || !g->aMeshes[mi].aVertices) break;
+            const rdMesh* mesh = &g->aMeshes[mi];
+            rdVector3 lo = mesh->aVertices[0], hi = lo;
+            for (int v = 1; v < mesh->numVertices; v++) {
+                const rdVector3* q = &mesh->aVertices[v];
+                if (q->x < lo.x) lo.x = q->x;
+                if (q->y < lo.y) lo.y = q->y;
+                if (q->z < lo.z) lo.z = q->z;
+                if (q->x > hi.x) hi.x = q->x;
+                if (q->y > hi.y) hi.y = q->y;
+                if (q->z > hi.z) hi.z = q->z;
+            }
+            b->aNode[b->n] = i;
+            b->aLo[b->n] = lo;
+            b->aHi[b->n] = hi;
+            b->n++;
+            break;
+        }
+    }
+    return b->n ? b : NULL;
+}
+
+// The body as posed now: each part's frame turned back (the world's to the node's), and its box's middle
+typedef struct {
+    const iosSaberStaffBody* pBody;
+    rdMatrix34 aInv[IOSSABERSTAFF_BODY_PARTS];
+    rdVector3 aMid[IOSSABERSTAFF_BODY_PARTS];
+} iosSaberStaffBodyNow;
+
+// How much of a..b (the world's) is inside a part's box, grown by the margin
+static flex_t iosSaberStaff_InPart(const iosSaberStaffBodyNow* B, int k, const rdVector3* a, const rdVector3* b)
+{
+    rdVector3 p, q;
+    rdMatrix_TransformPoint34(&p, a, &B->aInv[k]);
+    rdMatrix_TransformPoint34(&q, b, &B->aInv[k]);
+    const rdVector3* lo = &B->pBody->aLo[k];
+    const rdVector3* hi = &B->pBody->aHi[k];
+    const flex_t aP[3] = { p.x, p.y, p.z }, aD[3] = { q.x - p.x, q.y - p.y, q.z - p.z };
+    const flex_t aLo[3] = { lo->x, lo->y, lo->z }, aHi[3] = { hi->x, hi->y, hi->z };
+    flex_t t0 = 0, t1 = 1;
+    for (int i = 0; i < 3; i++) {
+        const flex_t l = aLo[i] - (flex_t)IOSSABERSTAFF_CLEAR_MARGIN, h = aHi[i] + (flex_t)IOSSABERSTAFF_CLEAR_MARGIN;
+        if (aD[i] > (flex_t)-1e-9 && aD[i] < (flex_t)1e-9) {
+            if (aP[i] < l || aP[i] > h) return 0;
+            continue;
+        }
+        flex_t u0 = (l - aP[i]) / aD[i], u1 = (h - aP[i]) / aD[i];
+        if (u0 > u1) {
+            const flex_t x = u0;
+            u0 = u1;
+            u1 = x;
+        }
+        if (u0 > t0) t0 = u0;
+        if (u1 < t1) t1 = u1;
+        if (t0 >= t1) return 0;
+    }
+    return (t1 - t0) * stdMath_Sqrt(aD[0] * aD[0] + aD[1] * aD[1] + aD[2] * aD[2]);
+}
+
+// Each blade's (0 the front, 1 the other) length inside the body, the staff turned a (radians) round
+// the unit axis n through the grip; the part the other blade is deepest in (-1: none)
+static void iosSaberStaff_Inside(const iosSaberStaffBodyNow* B, const rdVector3 aSeg[2][2], const rdVector3* pGrip, const rdVector3* n, float a,
+                                 flex_t aIn[2], int* pDeepest)
+{
+    flex_t deepest = 0;
+    if (pDeepest) *pDeepest = -1;
+    for (int bl = 0; bl < 2; bl++) {
+        rdVector3 e[2];
+        for (int j = 0; j < 2; j++) {
+            rdVector3 off, turned;
+            rdVector_Sub3(&off, &aSeg[bl][j], pGrip);
+            if (n && a != 0.0f) iosSaberStaff_Turn(&turned, &off, n, a);
+            else turned = off;
+            rdVector_Add3(&e[j], pGrip, &turned);
+        }
+        aIn[bl] = 0;
+        for (int k = 0; k < B->pBody->n; k++) {
+            const flex_t in = iosSaberStaff_InPart(B, k, &e[0], &e[1]);
+            aIn[bl] += in;
+            if (bl == 1 && pDeepest && in > deepest) {
+                deepest = in;
+                *pDeepest = k;
+            }
+        }
+    }
+}
+
+// The turn (radians, round the unit axis *pAxis through the grip) that keeps the other blade out, the
+// least of those tried; 0 if it is out already, or nothing tried does better. pPrefer: the way it is
+// turned now, kept unless another way keeps the blade out KEEP degrees sooner (so it never flips
+// from one way to another for a degree or two)
+static float iosSaberStaff_ClearTurn(const iosSaberStaffBodyNow* B, const rdVector3 aSeg[2][2], const rdVector3* pGrip, const rdVector3* pPrefer, rdVector3* pAxis)
+{
+    const flex_t eps = (flex_t)0.0005;
+    flex_t in0[2];
+    int deep = -1;
+    iosSaberStaff_Inside(B, aSeg, pGrip, NULL, 0.0f, in0, &deep);
+    if (in0[1] <= eps || deep < 0) return 0.0f;
+    // the way out: from the middle of the part it is deepest in toward the blade, square to it
+    rdVector3 u, c, p, e2;
+    rdVector_Sub3(&u, &aSeg[1][1], &aSeg[1][0]);
+    const flex_t len = stdMath_Sqrt(iosSaberStaff_Dot(&u, &u));
+    if (!iosSaberStaff_Unit(&u)) return 0.0f;
+    rdVector_Sub3(&c, &B->aMid[deep], &aSeg[1][0]);
+    flex_t t = iosSaberStaff_Dot(&c, &u);
+    if (t < 0) t = 0;
+    if (t > len) t = len;
+    rdVector_Scale3(&p, &u, t);
+    rdVector_Sub3(&p, &p, &c); // (the blade's nearest point, from the middle)
+    rdVector_ScaleAdd3Acc(&p, &u, -iosSaberStaff_Dot(&p, &u));
+    if (!iosSaberStaff_Unit(&p)) {
+        const rdVector3 up = { 0, 0, 1 }, x = { 1, 0, 0 };
+        iosSaberStaff_Cross(&p, &u, fabsf((float)u.z) < 0.9f ? &up : &x);
+        if (!iosSaberStaff_Unit(&p)) return 0.0f;
+    }
+    iosSaberStaff_Cross(&e2, &u, &p);
+    // the axes tried: the way turned now, then the way out and seven others round the blade, nearest first
+    rdVector3 aAxis[9];
+    int nAxis = 0;
+    if (pPrefer) aAxis[nAxis++] = *pPrefer;
+    static const int aK[8] = { 0, 1, -1, 2, -2, 3, -3, 4 };
+    for (int i = 0; i < 8; i++) {
+        const float ph = (float)aK[i] * (float)M_PI / 4.0f;
+        rdVector3 d;
+        rdVector_Scale3(&d, &p, cosf(ph));
+        rdVector_ScaleAdd3Acc(&d, &e2, sinf(ph));
+        iosSaberStaff_Cross(&aAxis[nAxis], &u, &d);
+        if (iosSaberStaff_Unit(&aAxis[nAxis])) nAxis++;
+    }
+    // each way's least turn that keeps it out (another than the way turned now: only if KEEP degrees sooner);
+    // none: the one that leaves the least inside
+    const float step = IOSSABERSTAFF_CLEAR_STEP_DEG * (float)M_PI / 180.0f, keep = IOSSABERSTAFF_CLEAR_KEEP_DEG * (float)M_PI / 180.0f;
+    const int nStep = (int)(IOSSABERSTAFF_CLEAR_MAX_DEG / IOSSABERSTAFF_CLEAR_STEP_DEG + 0.5f);
+    flex_t bestCost = in0[1];
+    float best = 0.0f, pick = 0.0f, limit = step * (float)nStep;
+    int bestI = -1, pickI = -1;
+    for (int i = 0; i < nAxis; i++) {
+        for (int j = 1; j <= nStep; j++) {
+            const float a = step * (float)j;
+            if (pickI >= 0 && a > limit) break;
+            flex_t in[2];
+            iosSaberStaff_Inside(B, aSeg, pGrip, &aAxis[i], a, in, NULL);
+            const flex_t cost = in[1] + (in[0] > in0[0] ? in[0] - in0[0] : 0);
+            if (cost <= eps) {
+                pick = a;
+                pickI = i;
+                limit = a - (pPrefer && i == 0 ? keep : step); // (the others must do better than this)
+                break;
+            }
+            if (cost < bestCost - eps) {
+                bestCost = cost;
+                best = a;
+                bestI = i;
+            }
+        }
+    }
+    if (pickI >= 0) {
+        *pAxis = aAxis[pickI];
+        return pick;
+    }
+    if (bestI >= 0) *pAxis = aAxis[bestI];
+    return bestI >= 0 ? best : 0.0f;
+}
+
+// ---- the turn, as a unit quaternion along the hand's own axes
+
+static iosSaberStaffTurn iosSaberStaff_TurnNone(void)
+{
+    const iosSaberStaffTurn q = { 1.0f, 0.0f, 0.0f, 0.0f };
+    return q;
+}
+
+// The turn by a (radians) round the world's unit axis, along the hand's own axes
+static iosSaberStaffTurn iosSaberStaff_TurnFrom(const rdMatrix34* pHand, const rdVector3* pAxis, float a)
+{
+    const float s = sinf(a * 0.5f);
+    const iosSaberStaffTurn q = { cosf(a * 0.5f), (float)iosSaberStaff_Dot(pAxis, &pHand->rvec) * s, (float)iosSaberStaff_Dot(pAxis, &pHand->lvec) * s,
+                                  (float)iosSaberStaff_Dot(pAxis, &pHand->uvec) * s };
+    return q;
+}
+
+// Its angle (radians, 0 to a half turn) and its axis, the world's unit axis
+static float iosSaberStaff_TurnOf(const rdMatrix34* pHand, const iosSaberStaffTurn* q, rdVector3* pAxis)
+{
+    const float sg = q->w < 0.0f ? -1.0f : 1.0f;
+    const float x = q->x * sg, y = q->y * sg, z = q->z * sg;
+    const float sn = sqrtf(x * x + y * y + z * z);
+    const float a = 2.0f * atan2f(sn, q->w * sg);
+    if (sn < 1e-6f || a < 1e-4f) return 0.0f;
+    rdVector3 v = { 0, 0, 0 };
+    rdVector_ScaleAdd3Acc(&v, &pHand->rvec, x / sn);
+    rdVector_ScaleAdd3Acc(&v, &pHand->lvec, y / sn);
+    rdVector_ScaleAdd3Acc(&v, &pHand->uvec, z / sn);
+    *pAxis = v;
+    return a;
+}
+
+// How far apart two turns are (radians)
+static float iosSaberStaff_TurnApart(const iosSaberStaffTurn* a, const iosSaberStaffTurn* b)
+{
+    float d = fabsf(a->w * b->w + a->x * b->x + a->y * b->y + a->z * b->z);
+    if (d > 1.0f) d = 1.0f;
+    return 2.0f * acosf(d);
+}
+
+// f of the way from turn a to turn b, the shortest way round, evenly (a slerp)
+static iosSaberStaffTurn iosSaberStaff_TurnToward(const iosSaberStaffTurn* a, const iosSaberStaffTurn* b, float f)
+{
+    float d = a->w * b->w + a->x * b->x + a->y * b->y + a->z * b->z, sg = 1.0f;
+    if (d < 0.0f) {
+        d = -d;
+        sg = -1.0f;
+    }
+    float ka = 1.0f - f, kb = f;
+    if (d < 0.9995f) {
+        const float th = acosf(d), s = sinf(th);
+        ka = sinf((1.0f - f) * th) / s;
+        kb = sinf(f * th) / s;
+    }
+    kb *= sg;
+    iosSaberStaffTurn q = { a->w * ka + b->w * kb, a->x * ka + b->x * kb, a->y * ka + b->y * kb, a->z * ka + b->z * kb };
+    const float m = sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+    if (m < 1e-6f) return *b;
+    q.w /= m;
+    q.x /= m;
+    q.y /= m;
+    q.z /= m;
+    return q;
+}
+
+// (the local player's idle spin going, or easing out: its own turn round the hand, left as it is)
+static int iosSaberStaff_Spinning(SithThing* t)
+{
+    return t == sithPlayer_g_pLocalPlayerThing && t == iosSaberStaff_spin.pPlayer && (iosSaberStaff_spin.startMs || iosSaberStaff_spin.heldDeg != 0.0f);
+}
+
+// How much of the other blade is inside, and how much more of the front one than the game has, turned so
+static flex_t iosSaberStaff_InsideTurned(const iosSaberStaffBodyNow* B, const rdVector3 aSeg[2][2], const rdVector3* pGrip, const rdMatrix34* pHand,
+                                         const iosSaberStaffTurn* q, const flex_t in0[2])
+{
+    rdVector3 axis;
+    flex_t in[2];
+    const float a = iosSaberStaff_TurnOf(pHand, q, &axis);
+    iosSaberStaff_Inside(B, aSeg, pGrip, a > 0.0f ? &axis : NULL, a, in, NULL);
+    return in[1] + (in[0] > in0[0] ? in[0] - in0[0] : 0);
+}
+
+// pOut (third person: a hand's staff as it is drawn) turned round its grip clear of the body, eased
+static void iosSaberStaff_KeepClear(SithThing* pThing, int hand, rdMatrix34* pOut)
+{
+    if (!pThing || pThing->type != SITH_THING_PLAYER || !pThing->playerInfo || !pThing->renderData.paJointMatrices || hand < 0 || hand > 1) return;
+    if (pThing == sithPlayer_g_pLocalPlayerThing && iosSelfie_IsActive()) return; // (a selfie poses it itself)
+    iosSaberStaffSlot* s = iosSaberStaff_SlotOf(pThing);
+    const uint32_t now = sithTime_g_msecGameTime;
+    rdVector3 grip = pOut->scale;
+    rdVector_ScaleAdd3Acc(&grip, &pOut->lvec, IOSSABERSTAFF_GRIP_Y);
+    iosSaberStaffTurn* c = &s->aClear[hand];
+    if (!s->aClearSet[hand]) *c = iosSaberStaff_TurnNone();
+    if (!s->aClearSet[hand] || now != s->aClearMs[hand]) {
+        // where it should be turned now (kept along the hand's axes: as it swings, the turn goes with it)
+        iosSaberStaffTurn want = iosSaberStaff_TurnNone(), next;
+        const int hilt = iosSaberStaff_HiltOf(pThing, hand);
+        const iosSaberStaffBody* pBody = iosSaberStaff_BodyOf(&pThing->renderData);
+        const float open = hilt == IOSSABER_HILT_STAFF ? 1.0f
+                         : (hilt == IOSSABER_HILT_FOLD ? iosSaberFold_OpenFraction(pThing, iosSaberStaff_SaberInHand(pThing, hand)) : 0.0f);
+        const flex_t len = pThing->playerInfo->polyline.length;
+        rdMatrix34 second;
+        iosSaberStaffBodyNow B;
+        rdVector3 aSeg[2][2];
+        flex_t in0[2] = { 0, 0 };
+        const int bLook = pBody && open > 0.0f && (pThing->jkFlags & JKFLAG_SABERON) && len > (flex_t)0 && !iosSaberStaff_Spinning(pThing)
+                          && iosSaberStaff_SecondBlade(pThing, hand, 0, pOut, &second);
+        if (bLook) {
+            B.pBody = pBody;
+            for (int k = 0; k < pBody->n; k++) {
+                const rdMatrix34* j = &pThing->renderData.paJointMatrices[pBody->aNode[k]];
+                const rdVector3 mid = { (pBody->aLo[k].x + pBody->aHi[k].x) * (flex_t)0.5, (pBody->aLo[k].y + pBody->aHi[k].y) * (flex_t)0.5,
+                                        (pBody->aLo[k].z + pBody->aHi[k].z) * (flex_t)0.5 };
+                rdMatrix_InvertOrtho34(&B.aInv[k], j);
+                rdMatrix_TransformPoint34(&B.aMid[k], &mid, j);
+            }
+            aSeg[0][0] = aSeg[0][1] = pOut->scale;
+            rdVector_ScaleAdd3Acc(&aSeg[0][1], &pOut->lvec, len);
+            aSeg[1][0] = aSeg[1][1] = second.scale;
+            rdVector_ScaleAdd3Acc(&aSeg[1][1], &second.lvec, len);
+            iosSaberStaff_Inside(&B, aSeg, &grip, NULL, 0.0f, in0, NULL);
+            rdVector3 cur, axis = { 0, 0, 0 };
+            const int bPrefer = iosSaberStaff_TurnOf(pOut, c, &cur) > 0.0f;
+            const float a = iosSaberStaff_ClearTurn(&B, aSeg, &grip, bPrefer ? &cur : NULL, &axis);
+            if (a > 0.0f) want = iosSaberStaff_TurnFrom(pOut, &axis, a);
+        }
+        if (!s->aClearSet[hand] || now < s->aClearMs[hand] || now - s->aClearMs[hand] > IOSSABERSTAFF_GAP_MS) next = want;
+        else {
+            const iosSaberStaffTurn none = iosSaberStaff_TurnNone();
+            const float dt = (float)(now - s->aClearMs[hand]) * 0.001f;
+            const int bMore = iosSaberStaff_TurnApart(&want, &none) > iosSaberStaff_TurnApart(c, &none);
+            next = iosSaberStaff_TurnToward(c, &want, 1.0f - expf(-dt / (bMore ? IOSSABERSTAFF_CLEAR_IN_SEC : IOSSABERSTAFF_CLEAR_OUT_SEC)));
+            // (eased, but not left in the body where the turn it is easing toward keeps it out: as much further
+            // toward that as it takes)
+            for (int i = 0; bLook && i < 4 && iosSaberStaff_InsideTurned(&B, aSeg, &grip, pOut, &next, in0) > (flex_t)0.0005; i++)
+                next = iosSaberStaff_TurnToward(&next, &want, 1.0f / (float)(4 - i)); // (a quarter of the way, a third of what is left, ...)
+            // and never faster than RATE degrees a second
+            const float most = IOSSABERSTAFF_CLEAR_RATE_DEG * (float)M_PI / 180.0f * dt, moved = iosSaberStaff_TurnApart(c, &next);
+            if (moved > most) next = iosSaberStaff_TurnToward(c, &next, most / moved);
+        }
+        *c = next;
+        s->aClearSet[hand] = 1;
+        s->aClearMs[hand] = now;
+    }
+    // turned so, round the grip
+    rdVector3 w, off, turned;
+    const float ang = iosSaberStaff_TurnOf(pOut, c, &w);
+    if (ang <= 0.0f) return;
+    const rdVector3 r = pOut->rvec, l = pOut->lvec, u = pOut->uvec;
+    rdVector_Sub3(&off, &pOut->scale, &grip);
+    iosSaberStaff_Turn(&pOut->rvec, &r, &w, ang);
+    iosSaberStaff_Turn(&pOut->lvec, &l, &w, ang);
+    iosSaberStaff_Turn(&pOut->uvec, &u, &w, ang);
+    iosSaberStaff_Turn(&turned, &off, &w, ang);
+    rdVector_Add3(&pOut->scale, &grip, &turned);
+}
+
+int iosSaberStaff_HeldFrame(SithThing* pThing, int hand, int bPov, const rdModel3* pHilt, const rdMatrix34* pHand, rdMatrix34* pOut)
+{
+    const int r = iosSaberStaff_HeldFrameOf(pThing, hand, bPov, pHilt, pHand, pOut);
+    if (r && !bPov) iosSaberStaff_KeepClear(pThing, hand, pOut);
+    return r;
 }
 
 int iosSaberStaff_SecondBlade(SithThing* pThing, int hand, int bPov, const rdMatrix34* pHeld, rdMatrix34* pOut)
@@ -1122,6 +1509,7 @@ void iosSaberStaff_FreeWorld(void)
 {
     memset(iosSaberStaff_apMeasured, 0, sizeof(iosSaberStaff_apMeasured));
     memset(iosSaberStaff_apThrownAxis, 0, sizeof(iosSaberStaff_apThrownAxis));
+    memset(iosSaberStaff_aBody, 0, sizeof(iosSaberStaff_aBody));
     for (int i = 0; i < IOSSABERSTAFF_SLOTS; i++) {
         iosSaberStaff_aSlot[i].pThing = NULL;
         iosSaberStaff_aSlot[i].pModel = NULL;

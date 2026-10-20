@@ -17,6 +17,12 @@
 //    open is held in one hand; folded, as the game's own one saber.
 //  - Now and then, well away from a fight, standing still: one spin of the
 //    staff round the hand, with a whoosh (one of the game's own swing sounds).
+//  - Third person, whatever the pose (a swing above all: the game's swings
+//    are a one-bladed saber's, the back blade not thought of): where a blade
+//    would pass inside his own body (head, neck, torso, hip, legs), the
+//    staff is drawn turned round the grip just enough to keep it out, eased
+//    in and out, the front blade no further in than the game has it; other
+//    players' too.
 //  - First person: the game's own pose; any blade of these coming within a
 //    few centimetres of the eye fades there (drawn see-through, cut short),
 //    so the back blade never fills the view. FOLD folded: the two blades side
