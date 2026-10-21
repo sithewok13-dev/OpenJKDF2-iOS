@@ -54,6 +54,12 @@ int iosSaberThrow_HandsInHand(void);
 // Whether a saber is out (thrown, or coming back)
 int iosSaberThrow_AnyOut(void);
 
+// The returning saber (+fsaberreturns) the game made where a thrown one
+// struck: the nearest to pPos within IOSSABERTHROW_FIND_DIST, but the one at
+// skipIdx with skipSig (another saber's); NULL if none (none yet, or not
+// Mysteries of the Sith). FOLD follows its thrown saber on with it
+SithThing* iosSaberThrow_FindReturning(const rdVector3* pPos, int skipIdx, uint32_t skipSig);
+
 // Everything back in hand, nothing out (a new level, a load, the cheat's
 // saber taken away)
 void iosSaberThrow_Reset(void);

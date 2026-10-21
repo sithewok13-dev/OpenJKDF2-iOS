@@ -119,6 +119,7 @@ static int iosSaberSound_Alive(const iosSaberSoundCh* c)
 }
 
 static int iosSaberSound_bStarting = 0;
+static int iosSaberSound_bAsIs = 0; // (one played as it is: iosSaberSound_PlayAsIs)
 
 // One of its own on a thing (looping or not), as loud and as far heard as the
 // game's sound it goes with; 0 if none (no channels to spare, or out of earshot)
@@ -258,7 +259,7 @@ static void iosSaberSound_Plain(iosSaberSoundSaber* s)
 void iosSaberSound_Played(sithPlayingSound* pPlaying, sithSound* pSound, SithThing* pThing, int flags)
 {
     // (a player's saber: only players have a style of their own)
-    if (iosSaberSound_bStarting || !pPlaying || !pSound || !pThing || pThing->type != SITH_THING_PLAYER) return;
+    if (iosSaberSound_bStarting || iosSaberSound_bAsIs || !pPlaying || !pSound || !pThing || pThing->type != SITH_THING_PLAYER) return;
     const int kind = iosSaberSound_KindOf(pSound);
     if (kind == IOSSABERSOUND_NONE) return;
     const int bCross = iosSaberSound_IsCross(pThing);
@@ -435,6 +436,14 @@ void iosSaberSound_Reset(void)
 int iosSaberSound_IsStarting(void)
 {
     return iosSaberSound_bStarting;
+}
+
+sithPlayingSound* iosSaberSound_PlayAsIs(sithSound* pSound, SithThing* pThing, float volume, float minRadius, float maxRadius, int flags)
+{
+    iosSaberSound_bAsIs = 1;
+    sithPlayingSound* p = sithSoundMixer_PlaySoundThing(pSound, pThing, volume, minRadius, maxRadius, flags);
+    iosSaberSound_bAsIs = 0;
+    return p;
 }
 
 int iosSaberSound_IsOwn(const sithPlayingSound* pPlaying)

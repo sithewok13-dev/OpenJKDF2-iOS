@@ -147,7 +147,7 @@ void iosSaberWheel_GetIcon(iosSaberWheelIcon* pOut);
 int iosSaberWheel_TapFlips(void);
 int iosSaberWheel_TapFlip(int bAgain);
 int iosSaberWheel_KeyFlip(void);
-int iosSaberWheel_Flip(void); // (1 if it flipped: the click comes with the snap)
+int iosSaberWheel_Flip(void); // (1 if it flipped: its sounds come with the snap)
 
 // ---- how the platforms keep it (each its own store: iOS NSUserDefaults,
 // "iosTouchSaber" + name; the desktops' cvars, "enh_saber" + name; Android's

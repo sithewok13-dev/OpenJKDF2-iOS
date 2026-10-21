@@ -916,7 +916,7 @@ blade in its own colour, two crossed in an X when you hold two.
 Tap or hold SABER to open the **saber wheel** and then tap a colour, or slide
 off it towards a colour and lift. The gap at the bottom cancels, and the game
 holds still while the wheel is open. **With a FOLD in your hand, a tap on
-SABER flips it** (open or folded, with a click) instead. With a FOLD in each
+SABER flips it** (open or folded) instead. With a FOLD in each
 hand, a tap flips the right one and a quick second tap the left one too, so
 a double tap flips both. A slide, or a short hold until its ring fills,
 still opens the wheel.
@@ -1077,6 +1077,12 @@ hand's colours and has its own **HILT** button.
     just after the throw). With AUTO OPEN off it comes back the way you left
     it (thrown folded, it snaps shut as you catch it); with AUTO OPEN on it
     comes back open and folds 5 seconds later if you don't swing.
+  - **Its sounds:** when you open it yourself, a saber whoosh as the second
+    blade swings out, then a heavy clunk as it locks open. When AUTO OPEN
+    opens it on a swing, you hear your swing and the clunk. Folding, a
+    lighter click as it shuts, so you can tell the two apart. A FOLD thrown
+    folded clunks as it locks open in the air (one that comes back very
+    quickly makes its sound in your hand instead).
 - **Mixed pairs:** with two sabers each arm holds its own saber its own way:
   a CROSS low at the side, a STAFF or FOLD as a staff, a NORMAL in the usual
   two-saber stance. Only CROSS crackles.

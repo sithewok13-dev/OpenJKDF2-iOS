@@ -5398,7 +5398,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 }
                 else if (t.timestamp - s->tDownTouch < IOSTOUCH_WHEEL_HOLD && s->button == BTN_SABER) {
                     // SABER: with a FOLD lit in hand, a tap flips it (folded or
-                    // open, the click with its snap; a slide or a hold still
+                    // open, its sounds with its snap; a slide or a hold still
                     // opens the wheel): with one in each hand the right one, and
                     // a second tap soon after (down within
                     // IOSSABERWHEEL_TAP_AGAIN_SECS of this one's lift, nothing

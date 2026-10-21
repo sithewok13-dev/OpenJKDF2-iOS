@@ -43,6 +43,12 @@ int iosSaberSound_IsStarting(void);
 // 1 for a channel of its own (sithSoundMixer_SyncSounds: not saved or sent)
 int iosSaberSound_IsOwn(const struct sithPlayingSound* pPlaying);
 
+// A sound played on a thing as it is (sithSoundMixer_PlaySoundThing; its
+// channel, NULL if none): heard in the game as any other, but never taken
+// for a saber's own by its name (FOLD's swish, one of the game's saber
+// swings: no crossguard's crackle or lower pitch put on it)
+struct sithPlayingSound* iosSaberSound_PlayAsIs(struct sithSound* pSound, struct SithThing* pThing, float volume, float minRadius, float maxRadius, int flags);
+
 #ifdef __cplusplus
 }
 #endif

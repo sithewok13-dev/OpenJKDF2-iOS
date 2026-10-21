@@ -2137,7 +2137,7 @@ static void tu_TouchUp(tuSlot* s, float px, float py, double t, int bCancelled)
         }
         else if (t - s->tDown < TU_WHEEL_HOLD && s->button == BTN_SABER) {
             // SABER has no key: a tap opens its wheel, to tap a colour; with a
-            // FOLD lit in hand it flips it instead (the click comes with the snap):
+            // FOLD lit in hand it flips it instead (its sounds come with the snap):
             // with one in each hand the right one, and a second tap soon after
             // (nothing else on SABER between) the left one too (a double tap flips both)
             if (!iosSaberWheel_TapFlips()) tu_OpenWheelFrom(s, 1);

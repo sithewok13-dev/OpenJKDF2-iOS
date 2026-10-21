@@ -10,6 +10,7 @@
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberStaff.h"
 #include "Enhanced/iosSaberThrow.h"
+#include "Enhanced/iosSaberSound.h"
 #include "Devices/sithSound.h"
 #include "Devices/sithSoundMixer.h"
 #include "Gameplay/sithInventory.h"
@@ -23,9 +24,18 @@
 #include "Dss/sithMulti.h"
 #include "Main/jkPlayerLook.h"
 
-// The click (the game's own: the thermal detonator's arming click, in both games)
-#define IOSSABERFOLD_CLICK "ThermClick01.wav"
-#define IOSSABERFOLD_CLICK_VOLUME 0.8f
+// Its sounds (the game's own, in both games): opening, a saber's swish as the free half swings out (the
+// player's own flip only: AUTO opens it on a swing, whose own swish is playing, and a thrown one has its
+// throw's), then a heavy switch's thock as it locks, as the snap gets there; folding, a lighter lever's
+// click as it gets there (the two told apart by ear)
+#define IOSSABERFOLD_SWISH "ltsaberswing04.wav"
+#define IOSSABERFOLD_SWISH_VOLUME 0.6f // (well under the game's own swings, played at 1)
+#define IOSSABERFOLD_LOCK_OPEN "lgclick1.wav"
+#define IOSSABERFOLD_LOCK_OPEN_VOLUME 1.0f
+#define IOSSABERFOLD_LOCK_SHUT "lvrclik2.wav"
+#define IOSSABERFOLD_LOCK_SHUT_VOLUME 0.8f
+// (a lock of the same kind on the same player this soon after one: heard as that one, the two together)
+#define IOSSABERFOLD_LOCK_MERGE_MS 60
 // (a saber out on a throw longer than this is gone: lit again later, it is lit afresh)
 #define IOSSABERFOLD_OUT_MAX_MS 12000
 // (Mysteries of the Sith's Saber Throw power: on while its own throw is out)
@@ -42,6 +52,7 @@ typedef struct {
     int target;
     uint32_t startMs;
     int bMoving;
+    int bLock; // (its lock's sound to come, as it gets there: iosSaberFold_LockDue)
 } iosSaberFoldSnap;
 
 static float iosSaberFold_Ease(float p)
@@ -68,6 +79,7 @@ static int iosSaberFold_SnapTo(iosSaberFoldSnap* s, int target, uint32_t now)
     const float f = iosSaberFold_SnapNow(s, now);
     target = target ? 1 : 0;
     if (s->target == target && (!s->bMoving || f == (float)target)) return 0;
+    if (s->target != target) s->bLock = 0; // (none for the way it was going; the same way again, still to come)
     s->from = f;
     s->target = target;
     s->startMs = now;
@@ -80,16 +92,39 @@ static void iosSaberFold_SnapSet(iosSaberFoldSnap* s, int target)
     s->target = target ? 1 : 0;
     s->from = (float)s->target;
     s->bMoving = 0;
+    s->bLock = 0;
 }
 
-// The click, on a thing (its own channel, heard as the game's sounds round it are). The sound is
-// looked up each time (the game's sounds by name; loaded if this level hasn't it): never kept from
-// a level gone, whose sounds are freed
-static void iosSaberFold_Click(SithThing* pThing)
+// Whether the snap's lock sounds now: one to come, and the snap there now (as it is drawn); then none
+// more. None if it got there long ago (the game's clock gone on at once, as a load) or the clock went back
+static int iosSaberFold_LockDue(iosSaberFoldSnap* s, uint32_t now)
+{
+    if (!s->bLock || (now >= s->startMs && iosSaberFold_SnapNow(s, now) != (float)s->target)) return 0;
+    s->bLock = 0;
+    return now >= s->startMs && now - s->startMs < IOSSABERFOLD_SNAP_MS + IOSSABERFOLD_GAP_MS;
+}
+
+// One of its sounds on a thing (its own channel, heard as the game's sounds round it are, and never
+// taken for the saber's own: iosSaberSound_PlayAsIs). The sound is looked up each time (the game's
+// sounds by name; loaded if this level hasn't it): never kept from a level gone, whose sounds are freed
+static void iosSaberFold_Sound(SithThing* pThing, char* name, float volume)
 {
     if (!pThing || !sithWorld_g_pCurrentWorld) return;
-    sithSound* pSnd = sithSound_Load(IOSSABERFOLD_CLICK, 0);
-    if (pSnd) sithSoundMixer_PlaySoundThing(pSnd, pThing, IOSSABERFOLD_CLICK_VOLUME, 0.5f, 2.5f, SITHSOUNDFLAG_FOLLOWSTHING);
+    sithSound* pSnd = sithSound_Load(name, 0);
+    if (pSnd) iosSaberSound_PlayAsIs(pSnd, pThing, volume, 0.5f, 2.5f, SITHSOUNDFLAG_FOLLOWSTHING);
+}
+
+// A lock's sound on a thing (open: the thock; folded: the lever's click); with pLastMs (a player's, by
+// kind: [0] folded, [1] open), none if one of the same kind was there just before (both at once: one)
+static void iosSaberFold_Lock(SithThing* pThing, int bOpen, uint32_t* pLastMs, uint32_t now)
+{
+    bOpen = bOpen ? 1 : 0;
+    if (pLastMs) {
+        if (now >= pLastMs[bOpen] && now - pLastMs[bOpen] < IOSSABERFOLD_LOCK_MERGE_MS) return;
+        pLastMs[bOpen] = now;
+    }
+    if (bOpen) iosSaberFold_Sound(pThing, IOSSABERFOLD_LOCK_OPEN, IOSSABERFOLD_LOCK_OPEN_VOLUME);
+    else iosSaberFold_Sound(pThing, IOSSABERFOLD_LOCK_SHUT, IOSSABERFOLD_LOCK_SHUT_VOLUME);
 }
 
 // ------------------------------------------------------------ the local player's
@@ -101,10 +136,11 @@ typedef struct {
     int bByInventory;    // (Mysteries of the Sith's own throw, no hand of the throws': back once the saber is had again, the game's throw taking it while it flies)
     int hilt;            // the hilt it was thrown with
     int bOpenAtRelease;  // thrown open (else folded, snapping open as it flies)
-    int bClicked;        // (its snap's click played)
+    int bLocked;         // (its snap's lock played, or passed to the hand: iosSaberFold_Caught)
     uint32_t releaseMs;
-    int thingIdx;        // the saber flying (its click is played there)
+    int thingIdx;        // the saber flying (its lock is played there): the thrown one, then the one coming back
     uint32_t thingSig;
+    rdVector3 lastPos;   // (where it was last seen)
 } iosSaberFoldOut;
 
 static struct {
@@ -126,6 +162,10 @@ static struct {
     int bTime;
     iosSaberFoldSnap aSaber[2];
     iosSaberFoldOut aOut[2];
+    int bSwished;        // (the swish played at swishMs: none again that soon)
+    uint32_t swishMs;
+    int bFlipSwished;    // (the last flip's swish played: a double tap's second tap adds none)
+    uint32_t aLockMs[2]; // (the last lock's sound, by kind: iosSaberFold_Lock)
 } iosSaberFold_s = { NULL, 0, 1 };
 
 static SithThing* iosSaberFold_Player(void)
@@ -180,28 +220,39 @@ static int iosSaberFold_InHand(SithThing* p)
     return mask;
 }
 
-// Those sabers (by bit, as above; none out on a throw) toward target, each from where it is; 1 if a FOLD in
-// hand moves (iosSaberFold_Clicked)
+// Those sabers (by bit, as above; none out on a throw) toward target, each from where it is; the FOLDs in
+// hand that move (by bit: iosSaberFold_Clicked)
 static int iosSaberFold_Target(int mask, int target)
 {
     const uint32_t now = iosSaberFold_Now();
     SithThing* p = iosSaberFold_s.pPlayer;
-    int bMoved = 0;
+    int moved = 0;
     for (int k = 0; k < 2; k++) {
         if (!(mask & (1 << k)) || iosSaberFold_Flying(k)) continue;
         iosSaberFold_s.aTarget[k] = target ? 1 : 0;
-        if (iosSaberFold_SnapTo(&iosSaberFold_s.aSaber[k], iosSaberFold_s.aTarget[k], now) && iosSaberFold_Shown(p, k)) bMoved = 1;
+        if (iosSaberFold_SnapTo(&iosSaberFold_s.aSaber[k], iosSaberFold_s.aTarget[k], now) && iosSaberFold_Shown(p, k)) moved |= 1 << k;
     }
-    return bMoved;
+    return moved;
 }
 
-// (one click for whatever moved at once, a FOLD lit)
-static void iosSaberFold_Clicked(int bMoved)
+// The sounds of those FOLDs in hand that moved (by saber bit; a FOLD lit): each one's lock to come, as it
+// gets there (iosSaberFold_Tick); with bSwish (the player's own flip, one opening), the swish now, but one
+// a moment ago (IOSSABERFOLD_AGAIN_MS: the key pressed twice): one for the two. 1 if the swish played
+static int iosSaberFold_Clicked(int moved, int bSwish)
 {
-    if (bMoved && iosSaberFold_LitFold(iosSaberFold_s.pPlayer)) iosSaberFold_Click(iosSaberFold_s.pPlayer);
+    if (!moved || !iosSaberFold_LitFold(iosSaberFold_s.pPlayer)) return 0;
+    for (int k = 0; k < 2; k++)
+        if (moved & (1 << k)) iosSaberFold_s.aSaber[k].bLock = 1;
+    const uint32_t now = iosSaberFold_Now();
+    if (!bSwish || (iosSaberFold_s.bSwished && now >= iosSaberFold_s.swishMs && now - iosSaberFold_s.swishMs < IOSSABERFOLD_AGAIN_MS)) return 0;
+    iosSaberFold_s.bSwished = 1;
+    iosSaberFold_s.swishMs = now;
+    iosSaberFold_Sound(iosSaberFold_s.pPlayer, IOSSABERFOLD_SWISH, IOSSABERFOLD_SWISH_VOLUME);
+    return 1;
 }
 
-// Folded at once (AUTO on: lit afresh, a level, a load, a death); with AUTO off, each as the player left it
+// Folded at once (AUTO on: lit afresh, a level, a load, a death); with AUTO off, each as the player left it.
+// Its sounds as if none played yet (a load's clock may go back to before the last, then on past it)
 static void iosSaberFold_Fresh(void)
 {
     for (int k = 0; k < 2; k++) {
@@ -210,6 +261,9 @@ static void iosSaberFold_Fresh(void)
         iosSaberFold_s.aHeldFolded[k] = 0;
         iosSaberFold_s.aSwung[k] = 0;
     }
+    iosSaberFold_s.bSwished = 0;
+    iosSaberFold_s.bFlipSwished = 0;
+    memset(iosSaberFold_s.aLockMs, 0, sizeof(iosSaberFold_s.aLockMs));
 }
 
 void iosSaberFold_Reset(void)
@@ -264,8 +318,9 @@ int iosSaberFold_CanFlip(void)
     return p && !(p->flags & SITH_TF_DEAD) && iosSaberFold_LitFold(p);
 }
 
-// Those FOLDs in hand (by saber bit) flipped, each from how it is; one click for them all
-static int iosSaberFold_FlipSabers(int mask)
+// Those FOLDs in hand (by saber bit) flipped, each from how it is; with bSwish, the swish once for them all
+// (one opening)
+static int iosSaberFold_FlipSabers(int mask, int bSwish)
 {
     if (!mask || !iosSaberFold_CanFlip()) return 0;
     const uint32_t now = iosSaberFold_Now();
@@ -279,23 +334,25 @@ static int iosSaberFold_FlipSabers(int mask)
         iosSaberFold_s.aHeldMs[k] = now;
         iosSaberFold_s.aSwung[k] = 0;
     }
-    const int bMoved = iosSaberFold_Target(fold, 0);
-    iosSaberFold_Clicked(iosSaberFold_Target(open, 1) || bMoved);
+    const int folding = iosSaberFold_Target(fold, 0);
+    const int opening = iosSaberFold_Target(open, 1);
+    iosSaberFold_s.bFlipSwished = iosSaberFold_Clicked(folding | opening, bSwish && opening);
     return 1;
 }
 
 int iosSaberFold_Flip(void)
 {
     SithThing* p = iosSaberFold_Player();
-    return p && iosSaberFold_FlipSabers(iosSaberFold_InHand(p));
+    return p && iosSaberFold_FlipSabers(iosSaberFold_InHand(p), 1);
 }
 
 int iosSaberFold_TapFlip(int bAgain)
 {
     SithThing* p = iosSaberFold_Player();
     const int mask = p ? iosSaberFold_InHand(p) : 0;
-    if (mask != 3) return iosSaberFold_FlipSabers(mask); // (one FOLD in hand: every tap flips it)
-    if (!iosSaberFold_FlipSabers(bAgain ? 2 : 1)) return 0;
+    if (mask != 3) return iosSaberFold_FlipSabers(mask, 1); // (one FOLD in hand: every tap flips it)
+    // (a double tap's second tap, the left's: no swish if the first had one, one a double tap)
+    if (!iosSaberFold_FlipSabers(bAgain ? 2 : 1, !(bAgain && iosSaberFold_s.bFlipSwished))) return 0;
     return bAgain ? 1 : 2;
 }
 
@@ -326,7 +383,7 @@ void iosSaberFold_Swing(SithThing* pThing)
             iosSaberFold_s.aSwung[k] = 1;
         }
     }
-    iosSaberFold_Clicked(iosSaberFold_Target(open, 1));
+    iosSaberFold_Clicked(iosSaberFold_Target(open, 1), 0); // (no swish: the swing's own is playing)
 }
 
 // ------------------------------------------------------------ throws
@@ -355,6 +412,10 @@ void iosSaberFold_Released(int saber, SithThing* pSaber, int shown)
     o->releaseMs = now;
     o->thingIdx = pSaber ? pSaber->idx : -1;
     o->thingSig = pSaber ? pSaber->signature : 0;
+    if (pSaber) o->lastPos = pSaber->position;
+    // (a snap in the hand left there: no lock for it)
+    iosSaberFold_s.aSaber[saber].bLock = 0;
+    iosSaberFold_s.aSaber[shown].bLock = 0;
 }
 
 float iosSaberFold_ThrownOpenFraction(int saber)
@@ -392,20 +453,45 @@ static SithThing* iosSaberFold_FindThrown(SithThing* p)
     return NULL;
 }
 
+// The saber of a throw flying now, followed: the thrown one (Mysteries of the Sith's own throw: found once the
+// game has made it), and once it strikes something (Mysteries of the Sith's throws), the returning saber the game
+// sends back from there in its place (as iosSaberThrow follows two sabers), the other's not taken; NULL if lost
+static SithThing* iosSaberFold_Follow(SithThing* p, int saber)
+{
+    iosSaberFoldOut* o = &iosSaberFold_s.aOut[saber];
+    SithThing* t = iosSaberFold_OutThing(o);
+    if (!t && o->thingIdx < 0 && o->bByInventory) t = iosSaberFold_FindThrown(p);
+    if (!t && o->thingIdx >= 0) {
+        const iosSaberFoldOut* other = &iosSaberFold_s.aOut[1 - saber];
+        t = iosSaberThrow_FindReturning(&o->lastPos, other->bOut ? other->thingIdx : -1, other->thingSig);
+    }
+    if (t) {
+        o->thingIdx = t->idx;
+        o->thingSig = t->signature;
+        o->lastPos = t->position;
+    }
+    return t;
+}
+
 // A saber back in its hand (the moment it is, not once it is lit again: drawn in the hand from then on,
 // as caught): AUTO on, open (as it flew), folding 5 s on without a swing; off, as the player left it
-// (thrown folded: snapping shut, with the click; with another weapon in hand, and none going to the saber: shut, silent)
+// (thrown folded: snapping shut, the lever's click as it gets there; with another weapon in hand, and none going to
+// the saber: shut, silent)
 static void iosSaberFold_Caught(SithThing* p, int saber, uint32_t now)
 {
     iosSaberFoldOut* o = &iosSaberFold_s.aOut[saber];
     const float f = iosSaberFold_OutFraction(o, now);
     o->bBack = 1;
-    // (in the hand as it flew, part way through its snap open if caught that soon: the snaps on go from there)
+    // (in the hand as it flew, part way through its snap open if caught that soon: the snaps on go from there,
+    // and that snap's lock, still to come, as the hand's gets there, whichever way it then goes)
     iosSaberFoldSnap* s = &iosSaberFold_s.aSaber[saber];
     s->from = f;
     s->target = f >= 0.5f;
     s->startMs = now;
     s->bMoving = f != (float)s->target;
+    s->bLock = 0;
+    const int bFlightLock = o->hilt == IOSSABER_HILT_FOLD && !o->bOpenAtRelease && !o->bLocked && now > o->releaseMs + IOSSABERFOLD_THROWN_SNAP_MS;
+    o->bLocked = 1;
     if (o->hilt != IOSSABER_HILT_FOLD) {
         iosSaberFold_SnapSet(s, iosSaberFold_s.aTarget[saber]);
         return;
@@ -419,12 +505,18 @@ static void iosSaberFold_Caught(SithThing* p, int saber, uint32_t now)
             if (open & (1 << k)) iosSaberFold_s.aSwung[k] = 1;
         }
         iosSaberFold_s.lastSwingMs = now;
-        iosSaberFold_Clicked(iosSaberFold_Target(open, 1));
+        const int moved = iosSaberFold_Target(open, 1);
+        iosSaberFold_Clicked(moved, 0);
+        if (moved & (1 << saber)) s->bLock = 1; // (its own snap open in the hand: its lock, lit again or not yet)
     }
     else if (p->actorParams.pPlayer->curWeaponID == iosSaberFold_SaberBin() || iosGame_GetCurWeapon() == iosSaberFold_SaberBin()) {
-        if (iosSaberFold_SnapTo(s, iosSaberFold_s.aTarget[saber], now)) iosSaberFold_Click(p);
+        if (iosSaberFold_SnapTo(s, iosSaberFold_s.aTarget[saber], now)) s->bLock = 1;
     }
-    else iosSaberFold_SnapSet(s, iosSaberFold_s.aTarget[saber]);
+    else {
+        iosSaberFold_SnapSet(s, iosSaberFold_s.aTarget[saber]);
+        return;
+    }
+    if (bFlightLock) s->bLock = 1; // (lit again or not yet)
 }
 
 // ------------------------------------------------------------ once a frame
@@ -471,7 +563,7 @@ void iosSaberFold_Tick(void)
 
     // sabers out: away from the hand, then back in it (the catch: the throws' hands say so, or for
     // Mysteries of the Sith's own throw, the saber had again), then lit again (the throw over: not lit
-    // afresh); the thrown snap's click
+    // afresh); the thrown snap's lock
     const int mask = iosSaberThrow_HandsInHand();
     const int bHad = sithInventory_GetInventory(p, iosSaberFold_SaberBin()) > 0.0;
     const int bLit = (p->jkFlags & JKFLAG_SABERON) && p->actorParams.pPlayer->curWeaponID == iosSaberFold_SaberBin();
@@ -494,9 +586,15 @@ void iosSaberFold_Tick(void)
             bCaught = 1;
             continue;
         }
-        if (o->hilt == IOSSABER_HILT_FOLD && !o->bOpenAtRelease && !o->bClicked && now >= o->releaseMs + IOSSABERFOLD_THROWN_SNAP_MS) {
-            o->bClicked = 1;
-            iosSaberFold_Click(iosSaberFold_OutThing(o));
+        // (thrown folded: the saber flying followed until its snap open in flight gets there, then the thock alone,
+        // the throw's own sound playing; on the player if it was lost)
+        const uint32_t lockAt = IOSSABERFOLD_THROWN_SNAP_MS + IOSSABERFOLD_SNAP_MS;
+        if (o->hilt == IOSSABER_HILT_FOLD && !o->bOpenAtRelease && !o->bLocked) {
+            SithThing* t = iosSaberFold_Follow(p, k);
+            if (now - o->releaseMs >= lockAt) {
+                o->bLocked = 1;
+                if (now - o->releaseMs < lockAt + IOSSABERFOLD_GAP_MS) iosSaberFold_Lock(t ? t : p, 1, NULL, now);
+            }
         }
     }
 
@@ -504,6 +602,13 @@ void iosSaberFold_Tick(void)
     const int bOn = iosSaberFold_LitFold(p);
     if (bOn && !iosSaberFold_s.bWasOn && !bCaught && !iosSaberFold_s.aOut[0].bOut && !iosSaberFold_s.aOut[1].bOut) iosSaberFold_Fresh();
     iosSaberFold_s.bWasOn = bOn;
+
+    // each one's lock, as its snap gets there: a FOLD in hand, the saber in hand or going there (back from a
+    // throw, it may not be lit again yet)
+    const int bSaber = p->actorParams.pPlayer->curWeaponID == iosSaberFold_SaberBin() || iosGame_GetCurWeapon() == iosSaberFold_SaberBin();
+    for (int k = 0; k < 2; k++)
+        if (!iosSaberFold_Flying(k) && iosSaberFold_LockDue(&iosSaberFold_s.aSaber[k], now) && bSaber && iosSaberFold_Shown(p, k))
+            iosSaberFold_Lock(p, iosSaberFold_s.aSaber[k].target, iosSaberFold_s.aLockMs, now);
     if (!bOn) return;
 
     // each: folded by hand, AUTO opens it again once 5 s have gone by without a swing; AUTO, open, swung,
@@ -518,7 +623,7 @@ void iosSaberFold_Tick(void)
             fold |= 1 << k;
     }
     if (fold && !iosSaberStaff_IsBusy(p)) {
-        iosSaberFold_Clicked(iosSaberFold_Target(fold, 0));
+        iosSaberFold_Clicked(iosSaberFold_Target(fold, 0), 0);
         for (int k = 0; k < 2; k++)
             if (fold & (1 << k)) iosSaberFold_s.aSwung[k] = 0;
     }
@@ -533,6 +638,7 @@ typedef struct {
     uint32_t signature;
     int bits;
     iosSaberFoldSnap aSaber[2];
+    uint32_t aLockMs[2]; // (the last lock's sound, by kind: iosSaberFold_Lock)
 } iosSaberFoldSlot;
 static iosSaberFoldSlot iosSaberFold_aSlot[IOSSABERFOLD_SLOTS];
 
@@ -544,6 +650,12 @@ static iosSaberFoldSlot* iosSaberFold_SlotOf(SithThing* pThing)
     if (at < first || (at - first) % sizeof(jkPlayer_playerInfos[0])) return NULL;
     const uintptr_t i = (at - first) / sizeof(jkPlayer_playerInfos[0]);
     return i < IOSSABERFOLD_SLOTS ? &iosSaberFold_aSlot[i] : NULL;
+}
+
+// (a FOLD of theirs lit: its sounds heard)
+static int iosSaberFold_OtherLit(SithThing* pThing)
+{
+    return (pThing->jkFlags & JKFLAG_SABERON) && (iosSaberStaff_HiltOf(pThing, 0) == IOSSABER_HILT_FOLD || iosSaberStaff_HiltOf(pThing, 1) == IOSSABER_HILT_FOLD);
 }
 
 // (the slot, if it is this player's now)
@@ -560,20 +672,25 @@ void iosSaberFold_SetOpenBits(SithThing* pThing, int bits)
     if (!s) return;
     bits &= 3;
     if (s->pThing != pThing || s->signature != pThing->signature) {
-        // (first heard, or a FOLD new to the player: as it is, at once; no snap, no click)
+        // (first heard, or a FOLD new to the player: as it is, at once; no snap, no sound)
         s->pThing = pThing;
         s->signature = pThing->signature;
         s->bits = bits;
         for (int k = 0; k < 2; k++) iosSaberFold_SnapSet(&s->aSaber[k], (bits >> k) & 1);
+        memset(s->aLockMs, 0, sizeof(s->aLockMs));
         return;
     }
     if (bits == s->bits) return;
     const uint32_t now = iosSaberFold_Now();
-    int bMoved = 0;
-    for (int k = 0; k < 2; k++) bMoved |= iosSaberFold_SnapTo(&s->aSaber[k], (bits >> k) & 1, now);
+    int moved = 0;
+    for (int k = 0; k < 2; k++)
+        if (iosSaberFold_SnapTo(&s->aSaber[k], (bits >> k) & 1, now)) moved |= 1 << k;
     s->bits = bits;
-    if (bMoved && (pThing->jkFlags & JKFLAG_SABERON) && (iosSaberStaff_HiltOf(pThing, 0) == IOSSABER_HILT_FOLD || iosSaberStaff_HiltOf(pThing, 1) == IOSSABER_HILT_FOLD))
-        iosSaberFold_Click(pThing);
+    // (each one's lock to come, iosSaberFold_TickOthers; no swish: whether they flipped it, or their AUTO
+    // opened it on a swing whose own swish is playing, isn't known here)
+    if (!iosSaberFold_OtherLit(pThing)) return;
+    for (int k = 0; k < 2; k++)
+        if (moved & (1 << k)) s->aSaber[k].bLock = 1;
 }
 
 // (a player without a FOLD now, or not heard: forgotten, so one picked later starts as it is heard)
@@ -588,6 +705,7 @@ static void iosSaberFold_TickOthers(void)
 {
 #ifdef QOL_IMPROVEMENTS
     if (!sithNet_isMulti) return;
+    const uint32_t now = iosSaberFold_Now();
     for (uint32_t i = 0; i < jkPlayer_maxPlayers; i++) {
         SithThing* t = jkPlayer_playerInfos[i].pLocalPlayer;
         if (!(jkPlayer_playerInfos[i].flags & 1) || !t || t == sithPlayer_g_pLocalPlayerThing || t->type != SITH_THING_PLAYER) continue;
@@ -600,6 +718,10 @@ static void iosSaberFold_TickOthers(void)
         for (int k = 0; k < 2; k++)
             if (pLook->flags & JKPLAYERLOOK_FLAG_FOLD_OPEN(k)) bits |= 1 << k;
         iosSaberFold_SetOpenBits(t, bits);
+        // (each one's lock, as its snap gets there, a FOLD of theirs still lit)
+        iosSaberFoldSlot* s = iosSaberFold_Find(t);
+        for (int k = 0; s && k < 2; k++)
+            if (iosSaberFold_LockDue(&s->aSaber[k], now) && iosSaberFold_OtherLit(t)) iosSaberFold_Lock(t, s->aSaber[k].target, s->aLockMs, now);
     }
 #endif
 }

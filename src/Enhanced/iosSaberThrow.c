@@ -301,6 +301,23 @@ void iosSaberThrow_SaberGiven(void)
     if (best >= 0) iosSaberThrow_Back(p, best, 0);
 }
 
+SithThing* iosSaberThrow_FindReturning(const rdVector3* pPos, int skipIdx, uint32_t skipSig)
+{
+    SithWorld* w = sithWorld_g_pCurrentWorld;
+    SithThing* pReturnTpl = sithTemplate_GetTemplate("+fsaberreturns");
+    if (!w || !pPos || !pReturnTpl) return NULL;
+    int best = -1;
+    flex_t bestDist = IOSSABERTHROW_FIND_DIST;
+    for (int i = 0; i <= w->numThings; i++) {
+        SithThing* r = &w->aThings[i];
+        if (!r->type || r->pTemplate != pReturnTpl || (r->flags & (SITH_TF_DEAD | SITH_TF_DESTROYED))) continue;
+        if (i == skipIdx && r->signature == skipSig) continue;
+        const flex_t d = rdVector_Dist3(&r->position, pPos);
+        if (d < bestDist) { bestDist = d; best = i; }
+    }
+    return best >= 0 ? &w->aThings[best] : NULL;
+}
+
 void iosSaberThrow_Tick(void)
 {
     SithThing* p = iosSaberThrow_Player();
@@ -320,8 +337,6 @@ void iosSaberThrow_Tick(void)
     }
     if ((p->flags & SITH_TF_DEAD) || p->actorParams.health <= 0.0) iosSaberThrow_pendingHand = -1;
 
-    SithWorld* w = sithWorld_g_pCurrentWorld;
-    SithThing* pReturnTpl = sithTemplate_GetTemplate("+fsaberreturns");
     for (int k = 0; k < 2; k++) {
         iosSaberThrowHand* h = &iosSaberThrow_aHand[k];
         if (h->state == IOSSABERTHROW_IN_HAND) continue;
@@ -330,23 +345,15 @@ void iosSaberThrow_Tick(void)
             if (t) h->lastPos = t->position;
             else h->state = IOSSABERTHROW_STRUCK;
         }
-        if (h->state == IOSSABERTHROW_STRUCK && pReturnTpl) {
+        if (h->state == IOSSABERTHROW_STRUCK) {
             // its returning saber: the nearest one where it struck, not the other's
-            int best = -1;
-            flex_t bestDist = IOSSABERTHROW_FIND_DIST;
-            for (int i = 0; i <= w->numThings; i++) {
-                SithThing* r = &w->aThings[i];
-                if (!r->type || r->pTemplate != pReturnTpl || (r->flags & (SITH_TF_DEAD | SITH_TF_DESTROYED))) continue;
-                const iosSaberThrowHand* o = &iosSaberThrow_aHand[1 - k];
-                if (o->state == IOSSABERTHROW_RETURNING && o->thingIdx == i && o->signature == r->signature) continue;
-                const flex_t d = rdVector_Dist3(&r->position, &h->lastPos);
-                if (d < bestDist) { bestDist = d; best = i; }
-            }
-            if (best >= 0) {
+            const iosSaberThrowHand* o = &iosSaberThrow_aHand[1 - k];
+            SithThing* r = iosSaberThrow_FindReturning(&h->lastPos, o->state == IOSSABERTHROW_RETURNING ? o->thingIdx : -1, o->signature);
+            if (r) {
                 h->state = IOSSABERTHROW_RETURNING;
-                h->thingIdx = best;
-                h->signature = w->aThings[best].signature;
-                h->lastPos = w->aThings[best].position;
+                h->thingIdx = r->idx;
+                h->signature = r->signature;
+                h->lastPos = r->position;
             }
         }
         else if (h->state == IOSSABERTHROW_RETURNING && t) {

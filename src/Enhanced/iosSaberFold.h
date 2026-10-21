@@ -5,8 +5,12 @@
 // staff, a blade out of each end, held as STAFF is). Here: whether each one
 // is folded or open, and the snap between (0.3 s, the free half swinging out
 // sideways and down through half a turn round the hinge, out to the side of
-// its own hand, the left hand's to his left as the right's goes to his right,
-// with a mechanical click made from the game's own sounds).
+// its own hand, the left hand's to his left as the right's goes to his right),
+// and its sounds, the game's own: opening, a saber's swish as the free half
+// swings out (the player's own flip only: AUTO opens it on a swing, which has
+// its own) and a heavy thock as it locks, as the snap ends; folding, a
+// lighter lever's click as it ends (none for a snap turned back before it
+// ends, nor for one that ended while the game's clock jumped, as on a load).
 //
 // The local player's (each saber its own: with two, one in each hand):
 //  - It ignites folded (lit, picked, a new level, a load, a death; put in a
@@ -26,15 +30,19 @@
 //    (iosSaberFold_Flip).
 //  - Thrown (Mysteries of the Sith's throw, and Jedi Knight's, iosSaberThrow):
 //    thrown open, it flies open; thrown folded, it leaves the hand folded and
-//    snaps open 0.25 s after (clear of the thrower), with the click; two are
-//    each their own. Caught with AUTO on: open (it was open in flight; the
-//    other in hand opening with it, as on a swing, unless folded by hand),
-//    and AUTO folds it 5 s after if no swing comes; AUTO off: as the player
-//    left that saber (thrown folded: snapping shut on the catch, as it is
-//    back in the hand, before it is lit again; shut at once and silent with
-//    another weapon in hand). A throw is not a swing.
+//    snaps open 0.25 s after (clear of the thrower), the thock alone as it
+//    locks (on the saber the game sends back in its place if it struck
+//    something first, Mysteries of the Sith's); two are each their own.
+//    Caught with AUTO on: open (it was open in flight; the other in hand
+//    opening with it, as on a swing, unless folded by hand), and AUTO folds
+//    it 5 s after if no swing comes; AUTO off: as the player left that saber
+//    (thrown folded: snapping shut on the catch, as it is back in the hand,
+//    before it is lit again; shut at once and silent with another weapon in
+//    hand). A throw is not a swing.
 // Other players' (multiplayer): as their game sends it (iosSaberFold_SetOpenBits,
-// the look's trailing flags byte, jkPlayerLook); folded until then.
+// the look's trailing flags byte, jkPlayerLook); folded until then. Their
+// sounds as the local player's, but no swish (a flip, or their AUTO opening
+// it on a swing, can't be told apart from here).
 //
 // Only how it looks: it strikes as the game's own saber whatever it is (the
 // second blade never strikes), and the game is sent nothing of it but the look.
