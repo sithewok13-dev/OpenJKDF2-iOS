@@ -17,6 +17,7 @@
 
 #ifdef TARGET_IOS
 #include "Platform/iOS/iosApp.h" // Added: Jedi Knight or Mysteries of the Sith app
+#include "Platform/iOS/iosImport.h" // Added: the "Game files needed" screen
 #include <dirent.h>
 #include <strings.h>
 #endif
@@ -338,6 +339,114 @@ static int InstallHelper_iOSFindGameDir(const char* pDocs, const char* pSub, con
     if (!best[0]) return 0;
     stdFnames_MakePath(pOut, pOut_sz, pDocs, best);
     return 1;
+}
+#endif
+
+#if defined(TARGET_IOS)
+// Added: the "Game files needed" screen (iosImport.m). The required files are
+// the engine's own lists without resource/jk_.cd, which a GOG or Steam copy may
+// not have; it is written afterwards, as the Android installer does.
+static const char* const aIOSImportJKRequired[] = {
+    "episode/JK1.gob", "episode/JK1CTF.gob", "episode/JK1MP.gob",
+    "resource/Res1hi.gob", "resource/Res2.gob", NULL
+};
+static const char* const aIOSImportMotsRequired[] = {
+    "episode/JKM.goo", "episode/JKM_KFY.goo", "episode/JKM_MP.goo", "episode/JKM_SABER.goo",
+    "resource/Jkmres.goo", "resource/JKMsndLO.goo", NULL
+};
+static const char* const aIOSImportCopy[] = { "episode", "resource", "MUSIC", NULL };
+static const char* const aIOSImportKeep[] = { "player", NULL };
+static const char* const aIOSImportOptional[] = { "resource/video", "cutscenes", "MUSIC", "music", NULL };
+
+static const iosImportGame iosImportJK = {
+    aIOSImportJKRequired, aIOSImportCopy, aIOSImportKeep, aIOSImportOptional, "resource/Jkmres.goo"
+};
+static const iosImportGame iosImportMots = {
+    aIOSImportMotsRequired, aIOSImportCopy, aIOSImportKeep, aIOSImportOptional, "resource/Res2.gob"
+};
+
+static const iosImportText iosImportJKText = {
+    "Jedi Knight",
+    "Jedi Knight needs your game files",
+    "OpenJKDF2 plays your own copy of Star Wars Jedi Knight: Dark Forces II, from GOG or Steam. "
+    "Copy the game's folder from your computer to iCloud Drive (a .zip of it or a USB stick works too), "
+    "then tap Choose Game Files and pick it. The app copies only what it needs. You only do this once.",
+    "On your computer, open the folder the game is installed in:\n\n"
+    "GOG Galaxy: select the game, open the menu next to Play, then Manage installation > Show folder.\n\n"
+    "Steam: right-click the game, then Manage > Browse local files.\n\n"
+    "Copy that whole folder into iCloud Drive (or zip it first, or put it on a USB stick). "
+    "Then, on this iPhone, tap Choose Game Files and pick that folder or .zip.",
+    "These are Mysteries of the Sith files. They go in the OpenMoTS app. This app needs Jedi Knight: Dark Forces II.",
+    "Pick the folder Jedi Knight is installed in (the one with Episode and Resource inside), or a .zip of it.",
+};
+static const iosImportText iosImportMotsText = {
+    "Mysteries of the Sith",
+    "Mysteries of the Sith needs your game files",
+    "OpenMoTS plays your own copy of Star Wars Jedi Knight: Mysteries of the Sith, from GOG or Steam. "
+    "Copy the game's folder from your computer to iCloud Drive (a .zip of it or a USB stick works too), "
+    "then tap Choose Game Files and pick it. The app copies only what it needs. You only do this once.",
+    "On your computer, open the folder Mysteries of the Sith is installed in:\n\n"
+    "GOG Galaxy: select the game, open the menu next to Play, then Manage installation > Show folder.\n\n"
+    "Steam: right-click the game, then Manage > Browse local files.\n\n"
+    "Copy that whole folder into iCloud Drive (or zip it first, or put it on a USB stick). "
+    "Then, on this iPhone, tap Choose Game Files and pick that folder or .zip.",
+    "These are Jedi Knight: Dark Forces II files. They go in the OpenJKDF2 app. This app needs Mysteries of the Sith.",
+    "Pick the folder Mysteries of the Sith is installed in (the one with Episode and Resource inside), or a .zip of it.",
+};
+
+// Added: before the engine looks for its files, show the import screen if the
+// game's files aren't there, then switch to where they now are. Writes
+// resource/jk_.cd if the copy had none.
+static void InstallHelper_iOSEnsureGameFiles(void)
+{
+    int bMots = iosApp_IsMots();
+    const char* const* req = bMots ? aIOSImportMotsRequired : aIOSImportJKRequired;
+    int bMissing = 0;
+    for (int i = 0; req[i]; i++) {
+        if (!util_FileExists(req[i])) bMissing = 1;
+    }
+    if (!bMissing) return;
+
+    const char* home = getenv("HOME");
+    if (!home) return;
+    char docs[256], dest[256];
+    stdFnames_MakePath(docs, sizeof(docs), home, "Documents");
+    stdFnames_MakePath(dest, sizeof(dest), docs, bMots ? "mots" : "jk1");
+    stdFileUtil_MkDir(dest);
+    if (!iosImport_RunScreen(bMots ? &iosImportMots : &iosImportJK, bMots ? &iosImportMotsText : &iosImportJKText, docs, dest)) return;
+
+    InstallHelper_UseLocalData();
+
+    // jk_.cd goes in the resource folder, whatever case its name has
+    char cwd[256], res[512], cd[600];
+    if (!getcwd(cwd, sizeof(cwd))) return;
+    snprintf(res, sizeof(res), "%s/resource", cwd);
+    DIR* d = opendir(cwd);
+    if (d) {
+        struct dirent* e;
+        while ((e = readdir(d)) != NULL) {
+            if (!strcasecmp(e->d_name, "resource")) snprintf(res, sizeof(res), "%s/%s", cwd, e->d_name);
+        }
+        closedir(d);
+    }
+    d = opendir(res);
+    int bHasCd = 0;
+    if (d) {
+        struct dirent* e;
+        while ((e = readdir(d)) != NULL) {
+            if (!strcasecmp(e->d_name, "jk_.cd")) bHasCd = 1;
+        }
+        closedir(d);
+    }
+    if (!bHasCd) {
+        snprintf(cd, sizeof(cd), "%s/jk_.cd", res);
+        uint32_t magic = bMots ? JKRES_MOTS_MAGIC_1 : JKRES_DF2_MAGIC_1;
+        FILE* f = fopen(cd, "wb");
+        if (f) {
+            fwrite(&magic, 1, sizeof(magic), f);
+            fclose(f);
+        }
+    }
 }
 #endif
 
@@ -1368,6 +1477,9 @@ void InstallHelper_SetCwd()
     // no "current working directory install" to fall back to.
     InstallHelper_UseLocalData();
     found_override = 1;
+#if defined(TARGET_IOS)
+    InstallHelper_iOSEnsureGameFiles(); // Added: the "Game files needed" screen
+#endif
 #else
     const char *homedir;
     char fname[256];

@@ -29,6 +29,8 @@ function(ios_target_add_standard_deps target_name)
     # Weakly linked by SDL3 (absent on older/reduced platforms).
     target_link_libraries(${target_name} PRIVATE "-weak_framework CoreHaptics")
     target_link_libraries(${target_name} PRIVATE "-weak_framework UniformTypeIdentifiers")
+    # Added: the system zlib, for unpacking a .zip of the game files (iosImportCore.c)
+    target_link_libraries(${target_name} PRIVATE z)
 
     target_link_libraries(${target_name} PRIVATE iconv)
 
