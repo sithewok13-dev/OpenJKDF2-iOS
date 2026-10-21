@@ -13,7 +13,7 @@
   into a visible one.
 -->
 
-**OpenJKDF2 for iOS v0.8-beta2**: an unofficial iPhone and iPad build of [OpenJKDF2](https://github.com/shinyquagsire23/OpenJKDF2), the open-source Jedi Knight: Dark Forces II engine, with on-screen touch controls. **New in this release: join games hosted by the original 1997 Jedi Knight on a PC**, easier-to-read multiplayer menus, new lightsaber colours with a **CLASSIC / REFORGED** switch, and the cheat's level pick on a **LEVEL** button of its own. **None of this has been tried on a real iPhone, iPad, router or Windows PC yet** (see *Known limitations*). Coming from v0.7? You also get **multiplayer and co-op** for up to four players, **game controllers**, and **keyboard and mouse**, from v0.8-beta1, in both apps. From v0.6? Also **Force Jump by how long you hold** and **endless ammo** with `sithewok` (v0.7). From v0.5 or older? Also **lightsaber colours and two sabers**, **cheat mode** and **Action Freeze** (v0.6), the **selfie camera**, and **Mysteries of the Sith** in its own app, **OpenMoTS**. It's still **experimental**, so expect bugs.
+**OpenJKDF2 for iOS v0.9-beta1**: an unofficial iPhone and iPad build of [OpenJKDF2](https://github.com/shinyquagsire23/OpenJKDF2), the open-source Jedi Knight: Dark Forces II engine, with on-screen touch controls. **New in this release: build your own lightsaber.** A new saber wheel gives each hand its own hilt (the game's own, Kylo Ren's crossguard, a double-bladed staff or a folding double saber) and each blade its own colour. Also new: a **FILM** look like the films' blades, a **RANDOM** button, **Saber Throw for Kyle** in Jedi Knight, and installing and updating both apps from **SideStore or AltStore**. Most of it has been played on an iPhone in test builds, but not all of it, and not on an iPad (see *Known limitations*). Coming from v0.8-beta1? You also get **joining games hosted by the original 1997 Jedi Knight** and easier-to-read multiplayer menus (v0.8-beta2). From v0.7? Also **multiplayer and co-op** for up to four players, **game controllers**, and **keyboard and mouse** (v0.8-beta1), in both apps. From v0.6? Also **Force Jump by how long you hold** and **endless ammo** with `sithewok` (v0.7). From v0.5 or older? Also **lightsaber colours and two sabers**, **cheat mode** and **Action Freeze** (v0.6), the **selfie camera**, and **Mysteries of the Sith** in its own app, **OpenMoTS**. It's still **experimental**, so expect bugs.
 
 **You need your own copy of the game; no game files are included.** OpenJKDF2 needs Star Wars Jedi Knight: Dark Forces II, and OpenMoTS needs Star Wars Jedi Knight: Mysteries of the Sith (GOG and Steam sell both).
 
@@ -23,14 +23,29 @@
 
 **New here?** *Known limitations*, *Requirements* and *Install* are near the bottom of this page, just above the download.
 
-### What's in v0.8-beta2
+### What's in v0.9-beta1
 
-New since v0.8-beta1:
+New since v0.8-beta2:
+
+- **A saber wheel with a card for each hand:** each card has its own **HILT** button and a dot for each blade: tap a card (or a dot), then a colour. **+ 2ND SABER** adds a saber in your left hand. **SAME COLOUR** and **SAME HILT** set both sabers at once. A controller or keyboard can do it all too. See *The lightsaber: SABER* below.
+- **Four hilts, one per hand:** **NORMAL** (the game's own), **CROSS** (Kylo Ren's crossguard saber, with a crackling hum), **STAFF** (Darth Maul's double-bladed saber) and **FOLD** (Dark Rey's folding double saber). Mix them, for example CROSS in one hand and STAFF in the other. Only the look and the sound change: hits and damage are the game's own, and a second blade doesn't hit anything.
+- **FOLD folds and opens:** with **AUTO OPEN** on (the default), it opens on your first swing and folds again 5 seconds after your last. Or **tap SABER** to flip it yourself (with a FOLD in each hand, a tap flips the right one and a double tap both). It opens with a whoosh and a heavy clunk, and folds with a lighter click.
+- **A FILM look:** a switch for blades like the films': the same width all the way, a white-hot core and a soft glow, at the game's own length. With FILM on, a CROSS is Kylo Ren's unstable blade: its edges crackle and flicker, and now and then it spits a small spark. Off to start.
+- **A RANDOM button:** tap the die on the saber wheel for new hilts and colours, or hold it for new colours only.
+- **Saber Throw for Kyle** (Jedi Knight): switch on **SABER THROW** on the saber wheel and Mysteries of the Sith's Saber Throw joins the Force wheel. It never uses your stars and never changes your path. Single player only, and on by itself while `sithewok` is on. See *Saber Throw* below.
+- **Install and update from SideStore or AltStore:** add this project's source once, then install and update both apps right there. See *Install* below.
+- **The Emperor's voice clips no longer come with the app.** Cheat mode is silent unless you add sound clips of your own, in a folder called `Emperor` in the Files app. See *Your own Emperor* below.
+- **CLASSIC is the look to start with again** (it was REFORGED in v0.8-beta2). If you picked REFORGED yourself, you keep it. If you never touched that switch, your sabers are CLASSIC now: to have REFORGED again, tap **CLASSIC** at the top of the saber wheel's middle.
+- **Better in third person:** a STAFF or an open FOLD is carried along his side, clear of his legs, and its back blade is kept out of his body in most swings. With a STAFF or an open FOLD as your one saber, the game's idle fidget (lifting the saber to look at it) no longer runs a blade through his head.
+- **Multiplayer:** other players on this release see your hilts, every blade's colour and a FOLD open or folded, and hear a CROSS crackle. Players on v0.8-beta2 see plain sabers, each in its first blade's colour.
+- **Fixes:** long Force power names (SABER THROW, DEADLY SIGHT, CHAIN LIGHT) now fit inside the round FORCE button instead of running under its ring. A rare crash is fixed: about one launch in a thousand, the game could crash when part of some models went off the edge of the view (Mysteries of the Sith's thrown saber, for one).
+
+Added in v0.8-beta2 (if you're coming from v0.8-beta1):
 
 - **Join games hosted by the original 1997 Jedi Knight** (JK.EXE on a PC), for example a community game night. In *Join Game*, type the host's address (numbers or a name) and tap **Join**. If that address has several games, a list shows each one's name, level and players: pick one. The app asks your router to open the ports it needs (TCP 2300 and UDP 2350) while you play, or you can forward them by hand. It needs Wi-Fi, not mobile data. **Experimental:** it has only been tried against a stand-in on a test computer, never against a real PC game or a real router. Jedi Knight only (not OpenMoTS), and joining only. See *Joining a game of the original 1997 Jedi Knight* below.
 - **Easier-to-read multiplayer menus:** the text on the multiplayer screens sits on dark panels, brighter and with a dark outline, and a bar marks a list's chosen row. The host settings screens (and **Advanced**), which have the most small text, get it strongest: near-white text on darker panels. Everything is where it was.
 - **New lightsaber colours (REFORGED):** most colours now have a white-hot core in a haze of their colour, like the film blades. **BLUE** is the deep blue it was, and **LIGHT BLUE** is a new film-like sky blue, in place of the old pale one. **YELLOW** is the game's own yellow blade. **GREEN** is gone from Jedi Knight's wheel, because ORIGINAL there is the game's own green; OpenMoTS keeps GREEN. **ORIGINAL** is unchanged. See *The lightsaber: SABER* below.
-- **CLASSIC or REFORGED:** a switch in the middle of the saber wheel. **REFORGED** is the default; **CLASSIC** is every colour exactly as in v0.8-beta1, green included. A controller's **L3** or the keyboard's **4** flips it too, with the saber wheel open. It changes how your device draws every saber, other players' too. In Jedi Knight, a green you kept shows as ORIGINAL while REFORGED is on, and other players see it as ORIGINAL too.
+- **CLASSIC or REFORGED:** a switch in the middle of the saber wheel. **CLASSIC** is every colour exactly as in v0.8-beta1, green included (REFORGED was the default in v0.8-beta2; CLASSIC is now). A controller's **L3** or the keyboard's **4** flips it too, with the saber wheel open. It changes how your device draws every saber, other players' too. In Jedi Knight, a green you kept shows as ORIGINAL while REFORGED is on, and other players see it as ORIGINAL too.
 - **The cheat's level pick has moved to a LEVEL button** in MENU's hidden tray, right after CHEAT, shown only while `sithewok` is on. Hold it to count, lift to go to that level, slide off to cancel. **DUCK is a plain crouch again**, so crouching behind cover can't take you to another level by accident. See *Cheats* below.
 - **Multiplayer stops its background work when you're not playing it:** once a game ends, a join fails or a level doesn't load, and when you leave *Join Game*. Before, it kept running until you closed the app.
 - **Fixes:** a controller no longer does anything while a wheel you opened by touch or with the keyboard is open (no menu, quick save or quick load over it, and no button press going off after it closes). In multiplayer with this port's computer builds, you now see the computer players' saber colours, and their two sabers.
@@ -41,7 +56,7 @@ Added in v0.8-beta1 (if you're coming from v0.7), in both apps:
 - **Co-op campaign** in both games: play the story together, with shared objectives, each player keeping their own weapons and Force powers from level to level. The host's game saves the campaign at the start of every level, and **Resume Co-op** carries on later, even if someone dropped out.
 - **Deathmatch and the original multiplayer games:** Jedi Training, Jedi Capture the Flag, Sith Multiplayer Duel, Sith Lightsaber Training (saber-only, as in the original) and Kill the Fool with the Ysalamiri can all be hosted, and the Join list names each one.
 - **Passwords:** a game can have one, and a game with a password is encrypted. To play over the internet, the free **Tailscale** app is the easy way (see the setup guide).
-- **Your saber in multiplayer:** other players see your colours, and your two sabers if you picked DUAL (in multiplayer the second one is for looks only). The host can also **allow cheats** (off unless ticked).
+- **Your saber in multiplayer:** other players see your colours, and your two sabers if you chose two (in multiplayer the second one is for looks only). The host can also **allow cheats** (off unless ticked).
 - **Game controllers:** Xbox, PlayStation, Backbone and other controllers that work with iOS play the whole game, menus included, with the wheels on the bumpers and an options screen on Start. The touch buttons get out of the way while you use one. See *Game controllers* below.
 - **Keyboard and mouse:** WASD to move and the mouse to look, with keys for the wheels, the camera and quick save, as on a computer. On an iPhone, mouse look may not work (see *Known limitations*). See *Keyboard and mouse* below.
 - **VIEW:** a new button (switch it on in MENU's tray) that flips between first and third person with one tap.
@@ -49,21 +64,20 @@ Added in v0.8-beta1 (if you're coming from v0.7), in both apps:
 - **Force Jump starts on STEPS** on a new install. If you picked a style in v0.7, it's kept.
 - **Two sabers at rest** now hang casually, hands apart and a little low, keeping the middle of the view clear.
 - **Saber Throw with two sabers** (Mysteries of the Sith): each tap of FORCE throws one, and a thrown saber flies in its own colour.
-- **The Emperor** has three greetings for cheat mode now: his laugh, "the dark side" or "unlimited power".
 - **Fixes:** lightsaber blades no longer show a small nub near the tip, in first person especially.
 
 Added in v0.7 (if you're coming from v0.6):
 
 - **Force Jump by how long you hold:** a new **JUMP** button in MENU's hidden tray picks how FORCE's hold works. **SMOOTH** (the default then): a tap is the lowest Force Jump, and the longer you hold, the higher it goes, up to the highest for your stars, with a **gold ring** filling inside FORCE so you can see how high you'll go. **STEPS:** the same heights in clear steps, with a tick at each. **CLASSIC:** the original game, where a quick tap is the highest jump. See *Force Jump* below.
 - **Endless ammo with `sithewok`:** every kind of ammo is filled to its most and refills as you fire, the battery for the field light and IR goggles too.
-- **Typing `sithewok` switches the cheat on or off.** Typed on, the CHEAT button appears (with the Emperor's laugh); typed off, it goes away. There's no separate `sithewok off` any more.
+- **Typing `sithewok` switches the cheat on or off.** Typed on, the CHEAT button appears; typed off, it goes away. There's no separate `sithewok off` any more.
 - **SABER shows whenever Kyle has a lightsaber,** however he got it. A lightsaber only the cheat gave still goes when the cheat goes off; one the story gave him stays.
 
 Added in v0.6 (if you're coming from v0.5):
 
 - **Lightsaber colours:** a **SABER** button on the top row (once you have the lightsaber) opens a saber wheel of colours: the game's own (ORIGINAL) and many more (the colours changed in v0.8-beta2, see above). It changes only how your blade looks, in first and third person and in photos. See *The lightsaber: SABER* below.
-- **Two sabers:** choose **DUAL** on the saber wheel and Kyle (or Mara) fights with a saber in each hand, each in its own colour. The second blade strikes too. In first person both arms move, and between fights the two sabers settle into a few natural resting stances, with a faint shimmer on each blade.
-- **Cheat mode:** a **CHEAT** switch in MENU's hidden tray. Switched on, a red **Sith emblem** button appears on the top row and `sithewok` goes on, with a laugh from the Emperor. Hold the emblem for half a second to switch the cheat off or on again. See *Cheats* below.
+- **Two sabers:** choose two on the saber wheel (now with **+ 2ND SABER**) and Kyle (or Mara) fights with a saber in each hand, each in its own colour. The second blade strikes too. In first person both arms move, and between fights the two sabers settle into a few natural resting stances, with a faint shimmer on each blade.
+- **Cheat mode:** a **CHEAT** switch in MENU's hidden tray. Switched on, a red **Sith emblem** button appears on the top row and `sithewok` goes on. Hold the emblem for half a second to switch the cheat off or on again. See *Cheats* below.
 - **New cheat powers while `sithewok` is on:** hold **JUMP** to **fly**, hold **ACT** for **noclip** (through walls), and **pick any level** (since v0.8-beta2 with **LEVEL** in MENU's tray, no longer by holding DUCK). Falls never hurt, the Force catches you if you drop into a pit, and the cheat now stays on through new levels and loaded games, keeping your weapon and Force power.
 - **Action Freeze:** slide down off **CAMERA** and the game stops exactly where it is, blaster bolts and explosions in mid-air. Turn the camera round with one finger, move and zoom it with two, then take your photo. See *Action Freeze* below.
 - **The cinematic burst:** slide up off **CAMERA** for five photos as the camera sweeps round the action (a duel, a boss, a blast), then the game carries on.
@@ -211,11 +225,11 @@ With **FREEZE** switched off (in CAMERA's options, below), a slide in any direct
 | **QUICK LOAD** | top right | Hold for about a third of a second. |
 | **MENU** | top right corner | Tap: the game's menu (objectives, map, Jedi powers, save, load, setup). Hold: the hidden tray. |
 | **CAMERA** (the camera symbol) | top, in the middle | Hold still: a selfie. Tap: a photo. Slide sideways: a burst. Slide down: Action Freeze. Slide up: the cinematic burst. See *The camera* above. |
-| **SABER** (a lightsaber) | top, right of CAMERA (once you have the lightsaber) | The saber wheel: blade colours, one saber or two. See *The lightsaber: SABER* below. |
+| **SABER** (your sabers) | top, right of CAMERA (once you have the lightsaber) | The saber wheel: one saber or two, each hand's hilt, each blade's colour. With a FOLD in your hand, a **tap** flips it instead (one in each hand: a tap flips the right one, a double tap both). See *The lightsaber: SABER* below. |
 | **CHEAT** (the Sith emblem) | top, right of SABER (cheat mode only) | Hold for half a second: `sithewok` off or on. Red while it's on. See *Cheats* below. |
 | **VIEW** (1P or 3P) | top, right of CHEAT (once switched on in MENU's tray) | **Tap:** first person or third person, at once. |
 
-FIRE, ALT, DUCK, ACT, JUMP and FORCE act as soon as you touch them. LIGHT, IR, MENU, CAMERA and the tray buttons act when you **lift** your finger, so if you touch one by mistake, slide off before you lift (on CAMERA, a slide starts a burst or Action Freeze instead: see *The camera* above). BACTA and CHEAT need a hold, so a brush past does nothing. While `sithewok` is on, JUMP and ACT show a small red second line (FLY, NOCLIP) for their cheat holds: see *Cheats* below.
+FIRE, ALT, DUCK, ACT, JUMP and FORCE act as soon as you touch them. LIGHT, IR, MENU, CAMERA and the tray buttons act when you **lift** your finger, so if you touch one by mistake, slide off before you lift (on CAMERA, a slide starts a burst or Action Freeze instead: see *The camera* above). BACTA and CHEAT need a hold, so a brush past does nothing. SABER opens its wheel however you touch it, but with a FOLD in your hand a quick tap flips the FOLD (slide or hold to open the wheel). While `sithewok` is on, JUMP and ACT show a small red second line (FLY, NOCLIP) for their cheat holds: see *Cheats* below.
 
 #### MENU's hidden tray
 
@@ -281,6 +295,7 @@ In Jedi Knight, every Force power always has the same slot, whether you've learn
 - **Right side, red: dark side.** From the top: Throw, Grip, Lightning, Destruction, Deadly Sight.
 - On the wheel and the FORCE button, a few names are shortened: PERSUADE, PROTECT and DESTRUCT.
 - **The gap at the bottom** means *cancel*.
+- **Saber Throw** (new in this release, with **SABER THROW** on in the saber wheel, or while `sithewok` is on): gold, at the very top, between Speed and Seeing. The slices get a little narrower to make room, so on most screens the stars are a little smaller, and so are the names DESTRUCT and DEADLY SIGHT. See *Saber Throw* below.
 - **Stars (added in v0.2):** under each power you've learned, a row of four stars shows its level, one gold star per level (a level 2 power shows two gold stars and two empty ones).
 
 Once you've picked a power, use it with **FORCE**.
@@ -298,25 +313,61 @@ Added in v0.2. In Jedi Knight, every weapon always has the same slot, whether yo
 
 #### The lightsaber: SABER
 
-New in v0.6. Once you have the lightsaber (or while `sithewok` is on), a **SABER** button appears on the top row, showing your blade (or two crossed blades) in your colours. It opens the **saber wheel**, the same way as the other wheels: tap or hold it to open the wheel and tap a colour, or slide off it towards a colour and lift. The gap at the bottom cancels, and the game holds still while the wheel is open.
+New in v0.6, and rebuilt in this release. Once you have the lightsaber (or while `sithewok` is on), a **SABER** button appears on the top row. Its picture shows your sabers as they are: each in its hilt's shape and each blade in its colour, two crossed in an X when you hold two.
 
-- **The colours:** ORIGINAL (the game's own, unchanged: green in Jedi Knight, orange in Mysteries of the Sith), red, crimson, orange, amber, yellow, lime, green (Mysteries of the Sith, or CLASSIC), teal, cyan, light blue, blue, purple, magenta, pink, white, and black with a bright edge.
-- **CLASSIC or REFORGED** (new in v0.8-beta2), at the top of the wheel's middle (above the colour's name), picks how every colour looks. Tap it to switch: the wheel stays open and changes at once, and so does the blade in your hand. With a controller, press **L3** while the saber wheel is open; with a keyboard, **4**. The app remembers it.
-  - **REFORGED** (the default): most colours glow like the film blades, a white-hot core in a haze of colour. BLUE is the deep blue, LIGHT BLUE a film-like sky blue, and YELLOW the game's own yellow blade. In Jedi Knight there's no GREEN on the wheel, because ORIGINAL is the game's own green.
-  - **CLASSIC:** every colour exactly as in v0.8-beta1, with GREEN on the wheel in both games.
+**Tap or hold SABER** to open the **saber wheel**, then tap a colour, or slide off SABER towards a colour and lift. The gap at the bottom cancels, and the game holds still while the wheel is open. **With a FOLD in your hand, a tap on SABER flips it** (open or folded) instead. With a FOLD in each hand, a tap flips the right one and a quick second tap the left one too. A slide, or a short hold until its ring fills, still opens the wheel. While the saber wheel is open, FIRE and the buttons round it are hidden to make room; the buttons along the top stay.
+
+**A card for each hand:**
+
+- Beside the colour ring there's a card for each hand: **RIGHT**, and with two sabers **LEFT**. Each shows that hand's colours and has its own **HILT** button.
+- **Tap a card** to choose which hand the ring paints (its edge turns gold), then tap a colour. The line under the colour's name, in the middle of the wheel, says where it goes, for example *colour for the right saber*.
+- **Each blade has its own colour.** A card shows a dot for each blade: one for NORMAL and CROSS, two for STAFF and FOLD. A new STAFF or FOLD starts with both blades the same (two joined dots). **Tap the second dot**, then a different colour, and the dots split, each blade with its own colour. Tap the card itself to paint the whole saber again.
+- **HILT** on a card changes only that hand's saber. Each tap goes on to the next: **NORMAL** (the game's own saber), **CROSS** (Kylo Ren's crossguard saber), **STAFF** (Darth Maul's double-bladed saber) and **FOLD** (Dark Rey's folding double saber), then round again.
+- **One saber or two:** with one, there's only the RIGHT card, and a dashed **+ 2ND SABER** box where the LEFT card goes: tap it for a second saber in your left hand. With two, tap the small **x** at the top right of the LEFT card to go back to one.
+- **SAME COLOUR** and **SAME HILT**, two switches under the LEFT card (with two sabers): with SAME COLOUR on, a colour goes to every blade of both sabers; with SAME HILT on, HILT changes both sabers. Both start off.
+
+**The rest of the wheel:**
+
+- **The colours:** ORIGINAL (the game's own, unchanged: green in Jedi Knight, orange in Mysteries of the Sith), red, crimson, orange, amber, yellow, lime, green, teal, cyan, light blue, blue, purple, magenta, pink, white, and black with a bright edge.
+- **CLASSIC or REFORGED**, at the top of the wheel's middle (above the colour's name), picks how every colour looks. Tap it to switch: the wheel and the blade in your hand change at once.
+  - **CLASSIC** (the default): every colour's earlier look, with GREEN on the wheel in both games. If you picked REFORGED before, you keep it.
+  - **REFORGED:** most colours glow like the film blades, a white-hot core in a haze of colour. BLUE is the deep blue, LIGHT BLUE a film-like sky blue, and YELLOW the game's own yellow blade. In Jedi Knight there's no GREEN on the wheel, because ORIGINAL is the game's own green.
   - It changes how your device draws every saber, yours and other players'. In Jedi Knight, a green you kept shows as ORIGINAL while REFORGED is on, and other players see it as ORIGINAL too. Switch to CLASSIC and it's green again.
-- **The wheel stays open** after you pick a colour, so you can change both blades in one go. Close it with the gap at the bottom, or by tapping outside the wheel.
+- **FILM**, a switch under the RIGHT card, picks the blade's shape. **Off** (the default): the game's own blade, which narrows to a point. **On:** a blade as in the films, as long as the game's own, the same width all the way with a rounded end, a white-hot core and a soft glow in its colour. It works with every colour and hilt, in both looks, in first and third person, in Action Freeze, and on a thrown saber. Hits are the same either way.
+- **AUTO OPEN**, a switch under FILM, shows only while you hold a FOLD (see *FOLD* below).
+- **RANDOM** (a small die), under the RIGHT card's switches: **tap** it and every saber you hold gets a different hilt and a different colour. **Hold** it for about a third of a second (a gold ring fills) for new colours only, the hilts kept. With SAME HILT or SAME COLOUR on, both sabers get the same. It never changes how many sabers you hold, or any switch.
+- **SABER THROW** (Jedi Knight only), a switch at the top right of the wheel: see *Saber Throw* below.
 - **EQUIP**, in the middle of the wheel, closes it and puts the lightsaber in your hand. It's dim while you don't have the saber.
-- **SINGLE or DUAL**, beside the wheel: one saber, or one in each hand. With DUAL, **LEFT**, **BOTH** and **RIGHT** choose which blade a colour goes to. Each style keeps its own colours.
-- **Two sabers fight for real:** the second blade strikes, deals damage and throws sparks like the first. In first person both arms move, and between swings he holds the two sabers casually, hands apart and a little low, blades tipped out, the middle of the view clear; now and then he shifts to a forward-and-back guard or lets his hands wander, and the sabers cross only in a quick X now and then. They rise and fall with Kyle's breathing, each hand drifts on its own and now and then makes a small adjustment. The longer he stands still, the more restless he gets: he leans in with one saber leading, flicks a wrist, feints, half raises a block and lets it go, changes his guard, and very rarely rolls a saber loosely in his hand. Never more than one of these every 8 to 10 seconds, never the same as the last three, and any swing, block, weapon change, run, jump or Saber Throw takes over at once. A faint shimmer plays on each blade. Kyle has no new animations, so in his two-handed swings the blades come from nearly the same place.
-- **Only the look changes:** the saber's damage, your saves and the levels are untouched. In multiplayer, other players see your colours too, and the second saber is only for looks. The colours show in first and third person, in selfies and in Action Freeze. The app remembers your colours and style.
+- Every tap on a card, a dot, HILT, a switch or RANDOM gives a small tick and leaves the wheel open, so you can set everything in one go. Close it with the gap at the bottom, or tap an empty spot. The app remembers your sabers, colours and switches.
+
+**The hilts:**
+
+- **STAFF and FOLD** have a blade out of each end of the hilt, each in its own colour. The second blade is only for looks: it doesn't hit anything.
+- **FOLD** folds its two halves side by side, or opens into a staff. It lights up folded.
+  - **AUTO OPEN on** (the default): it opens on your first swing and folds again 5 seconds after your last. Two FOLDs open and fold together.
+  - **AUTO OPEN off:** it only changes when you flip it, and stays as you left it, across levels and loads.
+  - **To flip it yourself:** tap SABER, or pick the lightsaber again on the weapon wheel. Your flip always wins over AUTO OPEN. With a FOLD in each hand, a tap on SABER flips the right one and a double tap both (two open ones fold, one open and one folded swap); the weapon wheel flips both.
+  - **Its sounds:** opened by hand, a whoosh as the second blade swings out, then a heavy clunk as it locks. Opened by AUTO OPEN, your swing and the clunk. Folding, a lighter click, so you can tell the two apart.
+  - A thrown FOLD flies the way it left your hand (a folded one snaps open just after the throw).
+- **CROSS:** a jagged blade that crackles and comes to a point, two short blades out of small vents either side of the top of the hilt, and a strong glow in the blade's colour. Its hum is rougher and lower than a plain saber's, made from the game's own saber sounds. Between swings, Kyle (or Mara) carries it low at the side, the blade angled down and out. With FILM on, it's Kylo Ren's blade as the films show it: FILM's white-hot core and glow, narrowing to a small soft point, its edges crackling and its width flickering, and now and then it spits a small spark. The short side blades don't hit anything.
+- **Mixed pairs:** with two sabers each arm holds its own saber its own way: a CROSS low at the side, a STAFF or open FOLD along his side as a staff, a NORMAL in the usual two-saber stance.
+- **Two sabers fight for real:** the second blade strikes, deals damage and throws sparks like the first. In first person both arms move, and between swings he holds the two sabers casually, hands apart and a little low, the middle of the view clear, now and then shifting his guard; the longer he stands still, the more restless he gets. Kyle has no new animations, so in his two-handed swings the blades come from nearly the same place.
+- **Only the look changes:** the saber's damage, your saves and the levels are untouched. Your sabers show in first and third person and in Action Freeze.
 - A lightsaber that only `sithewok` gave you goes away again when the cheat goes off (see *Cheats*). One the game gave you stays.
-- **Saber Throw (Mysteries of the Sith):** a thrown saber flies in its own colour, any on the wheel. **With two sabers, each tap of FORCE throws one:** the right saber first, then the left (at least a quarter of a second later, on a slightly different path). Mara fights on with the one still in her hand, and each saber comes back to its own hand when she catches it. Each throw costs the power's usual Force, and with both thrown she's on her fists until one comes back, as in the original. With one saber, Saber Throw is exactly the original.
+
+**Saber Throw:**
+
+- **In Mysteries of the Sith** it's the game's own Force power. A thrown saber flies with its hilt, its colours and FILM. **With two sabers, each tap of FORCE throws one:** the right saber first, then the left (at least a quarter of a second later, on a slightly different path). Mara fights on with the one still in her hand, each saber comes back to its own hand, and with both thrown she's on her fists until one comes back, as in the original. With one saber, Saber Throw is exactly the original.
+- **SABER THROW** (new in this release, Jedi Knight only), a switch at the top right of the saber wheel, gives Kyle Mysteries of the Sith's Saber Throw. It's off to start, and the app remembers it.
+  - **On:** Saber Throw is on the Force wheel, at the top between Speed and Seeing. Pick it there and use it with **FORCE**. Kyle throws his saber, which spins out, hits whatever it meets and flies back to his hand. He's on his fists until it's back, and it's back within 5 seconds whatever happens. With two sabers, each tap of FORCE throws one, the right first.
+  - **Stars:** it follows Kyle's Jedi rank (one star for every two ranks) and never uses your stars: your powers, your light or dark side and the ending stay as they were.
+  - **Force:** 100, 80, 60 or 40 at one to four stars, and a full Force meter always throws. It needs the lightsaber: without one, it's dimmed.
+  - While `sithewok` is on, Saber Throw is on the wheel at four stars even with the switch off, and costs no Force. It's never in multiplayer or co-op.
 
 #### The FORCE button and the Force meter
 
 - **FORCE** uses your selected Force power for as long as you hold it: tap for a single use, hold for powers that charge up (Force Jump) or keep going (Lightning).
-- **The button shows the name of the power** it will use, under the word FORCE (for example SPEED). It's dimmed until you have a power.
+- **The button shows the name of the power** it will use, under the word FORCE (for example SPEED). Long names are drawn a little smaller, so they fit inside the ring. It's dimmed until you have a power.
 - **The blue ring around FORCE is your Force meter.** It follows the game's meter live: it shrinks as you use the Force, disappears when the meter is empty, and grows back as the meter refills. When the meter is full, the ring **glows and gently pulses**.
 - **The ring and the HUD's Force bar** (in the gauge at the bottom right, next to the ammo count) show the same meter, but on different scales. The ring is full at your current maximum, which rises with your Jedi rank. The HUD bar is only full at the top rank. So early on, the ring can be full and glowing while the HUD bar isn't. Before your first Jedi rank there's no ring.
 - Pick a power with FORCE WHEEL (tap for the next one, or open the wheel).
@@ -358,6 +409,7 @@ While you're typing, most touch buttons don't work. A swipe or long press on FOR
 - **Ammo never runs out:** every kind is filled to its most when it goes on, and refills as you fire, the battery for the field light and IR goggles too.
 - **Falls never hurt you**, however far you drop.
 - **The Force catches you** if you fall into a bottomless pit: a soft blue flash, and you're back on the ledge you fell from.
+- **Saber Throw** (Jedi Knight) is on the Force wheel at four stars, and costs no Force (see *Saber Throw* above).
 - **It stays on** through new levels and loaded games, and puts everything back at the start of each level. Your weapon in hand and your selected Force power come with you to the next level.
 - **JUMP and ACT get new holds** (each shows its name in small red letters under the button while the cheat is on), and **LEVEL** in MENU's tray picks a level:
   - **Hold JUMP** still for half a second (a ring fills): **fly**. You float, forward goes where you look, hold JUMP to rise and DUCK to sink. Hold JUMP again for half a second, or **double-tap JUMP**, to land. Walls still stop you.
@@ -367,13 +419,21 @@ While you're typing, most touch buttons don't work. A swipe or long press on FOR
 
 **Typing `sithewok` again switches it off** (so does the CHEAT button, below): no more invincibility, endless Force, safe falls, flying or noclip. You keep the weapons, items and Force powers it gave you, except a lightsaber you only had from the cheat. Type `sithewok` once more to switch it back on and fill everything back up. It also goes off when you close the app (swipe it away).
 
-**Cheat mode: the CHEAT button.** Hold **MENU** and tap **CHEAT** in the tray. A **CHEAT** button with the **red Sith emblem** appears on the top row, `sithewok` goes on, and the Emperor greets you: his laugh, "the dark side", or "unlimited power", picked at random (never the same one twice in a row). Then:
+**Cheat mode: the CHEAT button.** Hold **MENU** and tap **CHEAT** in the tray. A **CHEAT** button with the **red Sith emblem** appears on the top row and `sithewok` goes on. If you've added sound clips of your own (see *Your own Emperor* below), the Emperor greets you with one of them. Then:
 
 - **Hold CHEAT** for half a second (a ring fills) to switch `sithewok` off (the emblem goes grey) or on again (red). A tap does nothing, so you can't switch it by accident.
-- **Typing works too:** typing `sithewok` while it's off switches it on and brings the CHEAT button back (with the Emperor). Typing `sithewok` while it's on switches it off and the button goes away. Holding the button instead leaves it on screen, grey.
+- **Typing works too:** typing `sithewok` while it's off switches it on and brings the CHEAT button back. Typing `sithewok` while it's on switches it off and the button goes away. Holding the button instead leaves it on screen, grey.
 - **To leave cheat mode,** tap CHEAT in the tray again: `sithewok` goes off and the button goes away.
 - The app remembers cheat mode, but `sithewok` itself starts off each time you open the app: hold CHEAT to switch it on.
 - The Emperor plays at the game's sound effects volume, so turn that down if you'd rather not hear him.
+
+**Your own Emperor** (new in this release): the app doesn't come with any sound clips. To hear one when cheat mode goes on, add your own:
+
+1. In the Files app, go to *On My iPhone (or On My iPad) > OpenJKDF2* (*OpenMoTS* for Mysteries of the Sith).
+2. Make a folder there called **`Emperor`** (touch and hold an empty spot, then *New Folder*).
+3. Put your clips in it: mp3, m4a, aac, wav, caf or aif files, with any names, up to 16 MB each. The app picks one at random each time (never the same one twice in a row), from the first 16 by name.
+
+Clips you add while you play count from the next time cheat mode goes on. With the folder empty or missing, cheat mode is silent.
 
 Catches, in Jedi Knight (Mysteries of the Sith's are in its section below):
 
@@ -398,18 +458,34 @@ New in v0.8-beta1. Xbox, PlayStation, Backbone and other controllers that work w
 | RB (R1) | Tap: next weapon. Hold: the weapon wheel |
 | D-pad left | The saber wheel (once you have the saber) |
 | D-pad up / right / down | Use item / next item / previous item |
-| L3 (press the left stick) | Run (press again, or stop, to walk). With the saber wheel open: CLASSIC or REFORGED |
+| L3 (press the left stick) | Run (press again, or stop, to walk) |
 | R3 (press the right stick) | First or third person |
 | Start (Options, Menu) | Tap: the game menu. Hold: controller options |
 | Back (View, Share) | Tap: the map. Hold: quick save |
 | Back + D-pad down, held | Quick load |
 
 - **The wheels:** hold LB or RB and the wheel opens, and the game holds still. Point the right stick at a power or weapon and let go of the button to pick it. Point at the gap at the bottom, or press B, to cancel.
+- **The saber wheel** (D-pad left) has buttons of its own, in the table below. The line at the bottom of the screen shows what each one does right now. With a FOLD in your hand, picking the lightsaber again on the weapon wheel flips it (with one in each hand, both).
 - **Quick save and quick load** need a short hold, with a ring at the top of the screen, so a stray press never saves or loads.
 - **Controller options** (hold Start): look speed, the stick's response, invert look, turn acceleration, vibration, the FPS counter, and the keyboard for cheats. The app remembers them. If holding Start only opens the game menu, hold Back and press Start instead.
 - **Menus:** the D-pad or left stick moves, A picks, B goes back. On a text box (a name, an address), A brings up the keyboard.
 - **Your own buttons:** *Setup > Controls > Joystick*. If you changed them in an older version, yours are kept; if not, you get the layout above.
 - More detail in the guide: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#game-controllers
+
+| Button | On the saber wheel |
+| --- | --- |
+| Right stick | Point at a colour (D-pad right steps round) |
+| A (Cross) | Set the colour |
+| Y (Triangle) | The next card or blade |
+| LB (L1) | The next hilt |
+| X (Square) | Add the second saber, or go back to one |
+| RB (R1) / LT (L2) | SAME COLOUR / SAME HILT (two sabers) |
+| RT (R2) | AUTO OPEN (with a FOLD) |
+| D-pad up / down | FILM / SABER THROW (Jedi Knight) |
+| L3 | CLASSIC or REFORGED |
+| R3 | Take the saber in hand |
+| Back (View, Share) | RANDOM. Hold: new colours only |
+| B (Circle) | Close |
 
 #### Keyboard and mouse
 
@@ -431,7 +507,7 @@ New in v0.8-beta1. A keyboard and a mouse or trackpad (an iPad's Magic Keyboard,
 | E / Q | Tap: next / previous Force power. Hold: the Force wheel |
 | F | Use the Force power |
 | G | Tap: next weapon. Hold: the weapon wheel |
-| L | The saber wheel (once you have the saber). In it, 4 switches CLASSIC or REFORGED |
+| L | The saber wheel (once you have the saber): its keys are below |
 | H | First or third person |
 | P | Tap: a photo. Hold: a selfie |
 | O | Action Freeze on and off |
@@ -443,9 +519,25 @@ New in v0.8-beta1. A keyboard and a mouse or trackpad (an iPad's Magic Keyboard,
 
 - **The wheels:** hold E, Q or G and the wheel opens, and the game holds still. Move the mouse toward a power or weapon and let go of the key to pick it. Right click or Esc cancels.
 - **No Esc key?** Cmd-. works as Esc. While you hold Cmd, other keys don't reach the game, so iPad shortcuts like Cmd-Tab don't open the map.
+- **The saber wheel** has keys of its own, in the table below. The line at the bottom of the screen shows what each one does right now. With a FOLD in your hand, picking the lightsaber again on the weapon wheel flips it, and in Jedi Knight so does its key (0): with a FOLD in each hand, once flips the right one, twice quickly both. In Mysteries of the Sith, key 1 switches to the fists as always, so flip a FOLD there with SABER or the weapon wheel.
 - **Your own keys and buttons:** *Setup > Controls > Keyboard* and *Setup > Controls > Mouse* (the mouse sensitivity is there too).
 - **Updating from an older version:** unless you changed them before, the right mouse button is now alt fire, the middle one jump, and the scroll wheel switches weapons.
 - More detail in the guide: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#keyboard-and-mouse
+
+| Key | On the saber wheel |
+| --- | --- |
+| Mouse, scroll wheel | Point at a colour |
+| Click | Set the colour |
+| 1 | Add the second saber, or go back to one |
+| 2 | The next card or blade |
+| 3 | Take the saber in hand |
+| 4 | CLASSIC or REFORGED |
+| 5 / 6 | FILM / SABER THROW (Jedi Knight) |
+| 7 | The next hilt |
+| 8 / 9 | SAME COLOUR / SAME HILT (two sabers) |
+| 0 | AUTO OPEN (with a FOLD) |
+| R | RANDOM. Hold: new colours only |
+| Esc, right click, L | Close |
 
 #### Other things worth knowing
 
@@ -484,6 +576,8 @@ The first time, iOS asks to let the app find devices on your local network. **Sa
 
 **Co-op saves:** the host's game saves the campaign at the start of every level, with everyone's gear, in a **coop** folder next to the game files. Your single-player saves are never touched. To carry on, tap **Multiplayer**, then **Resume Co-op**, and pick the campaign. A player who drops out and rejoins gets their gear back. Starting a new campaign over a saved one asks first, and keeps the old save.
 
+**Your lightsaber:** other players see your sabers as you set them on the saber wheel: each saber's hilt, every blade's colour, and a FOLD open or folded. A CROSS is carried low and crackles on their screen too. Players still on v0.8-beta2 or older see plain sabers, each in its first blade's colour. CLASSIC or REFORGED and FILM are for your own screen: they change how you see every saber, yours and theirs. In multiplayer the second saber is only for looks, and there's no SABER THROW.
+
 **Over the internet:** install **Tailscale** (a free VPN app) on every device, and join with the host's Tailscale address (`100.x.x.x`), which the host's top line also shows. It needs no router setup. A game with a **password** is encrypted too: use a long one, such as four random words. A game without a password isn't encrypted.
 
 **Joining a game of the original 1997 Jedi Knight** (new in v0.8-beta2, OpenJKDF2 only, **experimental**): you can join a game hosted by the original Jedi Knight (JK.EXE) on a PC, for example one announced for a community game night.
@@ -511,7 +605,7 @@ The setup guide has more, including co-op saves and opening a port on your route
 - **Expansions & Mods** in OpenMoTS has no entry for Jedi Knight: open the OpenJKDF2 app instead.
 - The setup guide has the steps, with a picture of the folders: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#mysteries-of-the-sith
 
-**The same as in Jedi Knight:** the move stick and its run marker, drag to look, every button, MENU's hidden tray, the camera (selfies, photos, bursts, Action Freeze and the cinematic burst), SABER and its saber wheel (for Mara's saber), cheat mode and the CHEAT button, VIEW and CONTROLS, multiplayer and co-op (Mara is the host's character), game controllers, keyboard and mouse, tilt aiming, QUICK SAVE and QUICK LOAD, the LIGHT, IR and BACTA item buttons, the FORCE button with its Force meter ring, tap, swipe or long-press on the wheel buttons, the stars on the Force wheel, and the HUD that fits your screen.
+**The same as in Jedi Knight:** the move stick and its run marker, drag to look, every button, MENU's hidden tray, the camera (selfies, photos, bursts, Action Freeze and the cinematic burst), SABER and its saber wheel (the hilts, colours, FILM and RANDOM, for Mara's sabers), cheat mode and the CHEAT button, VIEW and CONTROLS, multiplayer and co-op (Mara is the host's character), game controllers, keyboard and mouse, tilt aiming, QUICK SAVE and QUICK LOAD, the LIGHT, IR and BACTA item buttons, the FORCE button with its Force meter ring, tap, swipe or long-press on the wheel buttons, the stars on the Force wheel, and the HUD that fits your screen.
 
 **Different in Mysteries of the Sith:**
 
@@ -521,6 +615,7 @@ The setup guide has more, including co-op saves and opening a port on your route
   - **Top right, blue: tier III.** From the top: Chain Lightning, Healing, Blinding, Persuasion.
   - **Right side, purple: tier IV.** From the top: Absorb, Destruction, Protection, Deadly Sight.
 - **The weapon wheel** has its 17 weapons, in the order NEXT WPN goes through them, clockwise from the bottom left: Fists, Lightsaber, Bryar, Blastech, Rifle, Scope Rifle, Thermal, Flash Bomb, Bowcaster, Repeater, Rail Det, Rail Seeker, Sequencer, Manual Seq, Conc Rifle, E-Web, Carbo Gun. The E-Web and the Carbo Gun are purple; the others are coloured by their ammo, as in Jedi Knight.
+- **Saber Throw** is the game's own Force power here, so the saber wheel has no SABER THROW switch. A thrown saber keeps its hilt, its colours and FILM. On a keyboard, key 1 switches to the fists as always: flip a FOLD with SABER or the weapon wheel.
 - **Cheats** go in the typing line as in Jedi Knight (see *Cheats* above). Mysteries of the Sith's own cheats work: `diediedie` (weapons), `gimmestuff` (items), `morelife` (health and shields), `trixie` (Force meter), `cartograph` (map), `iamagod` (every Force power), `trainme` (Force level-up), `boinga on` / `boinga off` (invincibility), `freebird` (fly) and `gameover` (finishes the level). The Jedi Knight names work here too, except `imayoda` and `sithlord`, which do nothing in Mysteries of the Sith.
 
 **`sithewok`** works in Mysteries of the Sith too, with everything it does in Jedi Knight: all weapons and ammo, all items, every Force power at 4 stars with the top Jedi rank, full health and shields, invincibility, the endless Force, safe falls, the Force catching you in pits, flying, noclip, and picking a level with LEVEL in MENU's tray (13 levels). Cheat mode and the CHEAT button work the same way. The catches in Mysteries of the Sith:
@@ -532,14 +627,18 @@ The setup guide has more, including co-op saves and opening a port on your route
 
 ### Known limitations
 
+- **What's new in this release has been tested on a computer**, with the real game engine and simulated touches: the saber wheel's cards, the four hilts, FOLD and its sounds, FILM, RANDOM, Saber Throw in Jedi Knight and the new third-person carry. Most of it has also been played on an iPhone in test builds, but not all of it, and not on an iPad. The newest changes (FOLD's sounds and FILM CROSS's sparks) have only been checked on a computer so far. If something looks, sounds or works wrong, please report it (a screenshot or a screen recording helps; see *Found a bug?*).
+- **A STAFF or an open FOLD can still pass through Kyle now and then** in third person: in some swings (the game's swings are made for a one-bladed saber), and sometimes when he walks backwards, turns or crouches holding two. It's only the look: the second blade doesn't hit anything.
+- **A saber's glow doesn't light up what's round it.** The glow of FILM and CROSS blades is drawn round the blade itself: walls, floors and people near you don't take its colour (a FILM CROSS doesn't light up a dark room red, for example).
+- **Installing from the source in SideStore or AltStore is new.** If it doesn't work for you, download the `.ipa` files below and install them as before.
 - **Joining the original 1997 Jedi Knight is experimental and untested for real.** It has only been tried on a test computer, against a stand-in that answers as the original game does and a stand-in router. It has never been tried against a real PC game, Windows' own DirectPlay or a real router, so it may not work yet. If it doesn't, please report what you see (see *Found a bug?*).
-- **What's new in v0.8-beta2 hasn't been tried on a real iPhone or iPad:** the easier-to-read menus, the new saber colours and the CLASSIC / REFORGED switch, and the LEVEL button have only been checked on a computer so far. If text is hard to read, a colour looks wrong or LEVEL misbehaves, please report it (a screenshot helps).
-- **What was new in v0.8-beta1 has only been tested on a computer** so far, with the real game: multiplayer and co-op (with two to four copies of the game), game controllers, keyboard and mouse, VIEW, CONTROLS and the saber changes. **None of it has been tried on a real iPhone or iPad yet.** If something doesn't work, please report it (see *Found a bug?*).
+- **What was new in v0.8-beta2** (the easier-to-read menus, the new saber colours and the CLASSIC / REFORGED switch, and the LEVEL button) had only been checked on a computer when it came out. If text is hard to read, a colour looks wrong or LEVEL misbehaves, please report it (a screenshot helps).
+- **What was new in v0.8-beta1 had only been tested on a computer** when it came out, with the real game: multiplayer and co-op (with two to four copies of the game), game controllers, keyboard and mouse, VIEW, CONTROLS and the saber changes. Multiplayer hasn't been tried between two iPhones yet. If something doesn't work, please report it (see *Found a bug?*).
 - **Mouse look on an iPhone may not work.** iPhones only take a mouse through AssistiveTouch, and Apple may not let the game take the pointer there. On an iPad it's more likely to work. With FPS on (MENU's tray), two small lines show what the app gets from the mouse and keyboard: a screenshot of them helps if you report it. The keyboard should work on both.
 - **Multiplayer only joins games of this port** (its iPhone and iPad apps, and its computer builds), and, new and experimental, games hosted by the original 1997 Jedi Knight. Games hosted by the official OpenJKDF2 on a computer can't be joined in this release.
 - **What was new in v0.7** (the Force Jump styles and their ring, the endless ammo, and typing `sithewok` to switch it) was tested on a computer, with the real game engine and simulated touches. **If a jump feels wrong, please report it**, and CLASSIC in MENU's tray brings back the original.
 - **What was new in v0.6 has been tested mostly on a computer**, with the real game engine and simulated touches: the saber colours and two sabers, cheat mode and its holds (fly, noclip, picking a level), Action Freeze and the cinematic burst, and the new selfies. Some of it has been tried on an iPhone, but not all of it, and not on an iPad. **If something looks or works wrong, please report it** (see *Found a bug?*).
-- **Two sabers use Kyle's one-saber moves:** there are no new animations, so in his two-handed swings the blades come from nearly the same place, and the resting stances are in first person only.
+- **Two sabers and the new hilts use Kyle's one-saber moves:** there are no new animations, so in his two-handed swings the blades come from nearly the same place, and the casual two-saber resting stances are in first person only.
 - **Action Freeze close to walls:** the camera keeps out of walls and closed doors, but very close to one the view behind it can come out black.
 - **The selfie camera** has been tried on an iPhone (lots of selfies and photos in Jedi Knight), and tested on a computer with the real game engine, with each selfie checked to put the whole level back exactly as it was. Selfies in Mysteries of the Sith have only been tested on a computer. With low-detail 1990s models, some poses can look a little odd up close. **If a selfie looks strange, or the game doesn't carry on as before after one, please report it** (see *Found a bug?*).
 - **OpenMoTS (Mysteries of the Sith) is new in v0.4, and has had much less testing than OpenJKDF2.** On an iPhone, it has only been checked to start and run with the files in its folder so far. It hasn't been played through on one, and it hasn't been tried on an iPad.
@@ -557,9 +656,15 @@ The setup guide has more, including co-op saves and opening a port on your route
 
 - iPhone or iPad on **iOS / iPadOS 18 or newer** (iPhone XS / XR or newer, including the iPhone SE 2nd generation and later), for both apps. OpenMoTS has only been tried on an iPhone so far.
 - Your own game files, at least `episode` and `resource`, ideally with `resource/video` (cutscenes) and `MUSIC` (soundtrack): Jedi Knight's for OpenJKDF2, and Mysteries of the Sith's for OpenMoTS. Mysteries of the Sith's files take about 450 MB in the copy it was tested with (under 200 MB without the cutscenes and music).
-- A sideloading tool that can install your own `.ipa` (for example AltStore, SideStore or Sideloadly). The same tool works for both apps. With a free Apple ID, apps have to be re-signed every 7 days, and you can have only 3 sideloaded apps at a time: AltStore or SideStore itself counts as one, and OpenJKDF2 and OpenMoTS count as one each.
+- A sideloading tool that can install your own `.ipa` (for example AltStore, SideStore or Sideloadly). The same tool works for both apps. SideStore and AltStore (AltStore Classic, not AltStore PAL) can also install them from this project's source (see *Install*). With a free Apple ID, apps have to be re-signed every 7 days, and you can have only 3 sideloaded apps at a time: AltStore or SideStore itself counts as one, and OpenJKDF2 and OpenMoTS count as one each.
 
 ### Install
+
+**Easiest, with SideStore or AltStore:** set one of them up first, with its own instructions. Then, on your iPhone, tap [Add to SideStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-sidestore) or [Add to AltStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-altstore) and confirm. If that doesn't open the app, open it yourself, go to *Sources*, tap **+** and paste this address: `https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/packaging/ios/altstore-source.json`
+
+The source, *OpenJKDF2 for iOS (unofficial)*, lists **OpenJKDF2** (Jedi Knight) and **OpenMoTS** (Mysteries of the Sith). Install the one for your game, or both, then carry on from step 3 below. It always has the newest numbered release, betas included, and you update the apps there too.
+
+**Or with any sideloading tool:**
 
 1. Download the `.ipa` for your game, below: **`OpenJKDF2-iOS-unsigned.ipa`** for Jedi Knight, or **`OpenJKDF2-MotS-iOS-unsigned.ipa`** for Mysteries of the Sith (*MotS* in its name). To play both, download both and do each step for each app.
 2. Sign and install it with your sideloading tool. The first time, iOS may ask you to turn on **Developer Mode** and to **trust** your Apple ID. On your home screen the app is called **OpenJKDF2** (Jedi Knight) or **OpenMoTS** (Mysteries of the Sith), each with its own icon.
@@ -569,13 +674,13 @@ The setup guide has more, including co-op saves and opening a port on your route
 
 The setup guide covers each step, including Developer Mode and "Untrusted Developer": https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#2-install-the-app
 
-**Updating from an older version:** sideload the new `.ipa` with the same tool and Apple ID. It replaces the app and keeps your game files and saves, and files in `jk1` (or `mots`) stay where they are. (With a different tool or Apple ID, iOS may install it as a separate app with an empty folder: the guide explains how to move your files over.) **Tried a test build** from the *iOS latest build* prerelease? Install this release over it the same way: it keeps its files and saves too.
+**Updating from an older version:** if you installed from the source, update the app in SideStore or AltStore. Otherwise, sideload the new `.ipa` with the same tool and Apple ID. It replaces the app and keeps your game files and saves, and files in `jk1` (or `mots`) stay where they are. (With a different tool or Apple ID, iOS may install it as a separate app with an empty folder: the guide explains how to move your files over.) **Tried a test build** from the *iOS latest build* prerelease? Install this release over it the same way: it keeps its files and saves too.
 
 **Your saves** are in the Files app: *OpenJKDF2 > jk1 > player*, or *OpenMoTS > mots > player*. (If you put the game files somewhere else in the app's folder, the `player` folder is next to them.) Copy it somewhere safe now and then, and always before you delete an app: deleting an app deletes its folder, game files and saves included.
 
 **Download:** under *Assets* below (not the *Source code* files): `OpenJKDF2-iOS-unsigned.ipa` is Jedi Knight (OpenJKDF2), and `OpenJKDF2-MotS-iOS-unsigned.ipa` is Mysteries of the Sith (OpenMoTS). The *iOS latest build* prerelease, also on the Releases page, is rebuilt automatically after every code change and may be broken: use this release.
 
-**Found a bug?** Please report it here, not to the upstream OpenJKDF2 project, and say you're on **v0.8-beta2** and which app, OpenJKDF2 or OpenMoTS (AltStore and Settings show 0.9.9 for both: that's the engine's version): https://github.com/sithewok13-dev/OpenJKDF2-iOS/issues
+**Found a bug?** Please report it here, not to the upstream OpenJKDF2 project, and say you're on **v0.9-beta1** and which app, OpenJKDF2 or OpenMoTS (AltStore and Settings show 0.9.9 for both: that's the engine's version): https://github.com/sithewok13-dev/OpenJKDF2-iOS/issues
 
 ---
 
