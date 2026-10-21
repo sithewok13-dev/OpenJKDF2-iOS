@@ -1,7 +1,5 @@
 // Added: entire file. See iosImport.h. Built with ARC (see the CMake file that
-// lists the iOS sources).
-
-#ifdef TARGET_IOS
+// lists the iOS sources), and only for iOS, so no platform #ifdef.
 
 #import <UIKit/UIKit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -287,7 +285,11 @@ static NSString* iosImport_Str(const char* s)
             problem = iosImport_Str(text->wrongGame);
         } else if (plan.status == IOSIMPORT_PARTIAL) {
             NSMutableArray* names = [NSMutableArray array];
-            for (int i = 0; i < plan.missingCount; i++) [names addObject:iosImport_Str(plan.missing[i])];
+            for (int i = 0; i < plan.missingCount; i++) {
+                NSString* m = iosImport_Str(plan.missing[i]);
+                if ([m hasSuffix:@"/"]) m = [NSString stringWithFormat:@"the %@ folder", [m substringToIndex:m.length - 1]];
+                [names addObject:m];
+            }
             problem = [NSString stringWithFormat:@"That's only part of the game. Missing: %@.\n\n%@",
                                                  [names componentsJoinedByString:@", "], iosImport_Str(text->whatToPick)];
         } else if (plan.status == IOSIMPORT_BAD_ZIP) {
@@ -424,5 +426,3 @@ int iosImport_RunScreen(const iosImportGame* game, const iosImportText* text, co
     }
     return 1;
 }
-
-#endif // TARGET_IOS

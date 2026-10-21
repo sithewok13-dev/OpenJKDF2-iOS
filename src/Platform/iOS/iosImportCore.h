@@ -21,7 +21,8 @@ extern "C" {
 
 // What one game needs. All lists end with NULL; paths use '/', any case.
 typedef struct iosImportGame {
-    const char* const* required;     // files the game can't start without
+    const char* const* required;     // files the game can't start without; "name/" is a
+                                     // folder that must have files in it
     const char* const* copy;         // top-level items to copy from the game's folder;
                                      // "*.ext" means files with that ending directly in it
     const char* const* keep;         // saves and profiles: brought along only if the

@@ -370,6 +370,18 @@ static int imp_hasPath(iosImportIndex* idx, const char* root, const char* rel)
     return 0;
 }
 
+// A required item: a file, or with a trailing '/' a folder with files in it
+static int imp_hasReq(iosImportIndex* idx, const char* root, const char* req)
+{
+    size_t n = strlen(req);
+    if (n && req[n - 1] == '/') {
+        char dir[512];
+        snprintf(dir, sizeof(dir), "%.*s", (int)(n - 1), req);
+        return imp_hasPath(idx, root, dir);
+    }
+    return imp_hasFile(idx, root, req);
+}
+
 // Does pDir have an item with this name (any case)?
 static int imp_dirHas(const char* pDir, const char* name)
 {
@@ -425,11 +437,12 @@ void iosImport_Plan(iosImportIndex* idx, const iosImportGame* game, const char* 
     for (int r = 0; r < nReq; r++) {
         snprintf(req, sizeof(req), "%s", game->required[r]);
         imp_lower(req);
+        if (req[0] == 0 || req[strlen(req) - 1] == '/') continue; // folders don't place the game
         for (int i = 0; i < idx->n; i++) {
             if (!imp_endsWithPath(idx->e[i].lower, req)) continue;
             imp_rootOf(&idx->e[i], req, cand, sizeof(cand));
             int count = 0;
-            for (int k = 0; k < nReq; k++) count += imp_hasFile(idx, cand, game->required[k]);
+            for (int k = 0; k < nReq; k++) count += imp_hasReq(idx, cand, game->required[k]);
             int depth = imp_depth(cand);
             if (count > bestCount || (count == bestCount && depth < bestDepth)) {
                 bestCount = count;
@@ -453,7 +466,7 @@ void iosImport_Plan(iosImportIndex* idx, const iosImportGame* game, const char* 
             plan->status = IOSIMPORT_PARTIAL;
             snprintf(plan->root, sizeof(plan->root), "%s", best);
             for (int k = 0; k < nReq && plan->missingCount < IOSIMPORT_MAX_MISSING; k++) {
-                if (!imp_hasFile(idx, best, game->required[k])) plan->missing[plan->missingCount++] = game->required[k];
+                if (!imp_hasReq(idx, best, game->required[k])) plan->missing[plan->missingCount++] = game->required[k];
             }
         } else if (idx->badZip[0]) {
             plan->status = IOSIMPORT_BAD_ZIP;
