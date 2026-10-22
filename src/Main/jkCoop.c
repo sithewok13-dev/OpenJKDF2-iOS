@@ -60,6 +60,7 @@ static int jkCoop_bForceToGive = 0;   // this level: its Force still to be given
 static int jkCoop_bKitTaken = 0;      // this level: its starting kit taken
 static uint32_t jkCoop_levelOpenMs = 0;
 static int jkCoop_bKitCameWith = 0;   // this level: began with a kit carried in (not the level's own start)
+static int jkCoop_bOpening = 0;       // the kit being given as the level opens (before its scripts start)
 
 // What this level's own scripts took from the local player (the gear only), and, the host's, what they
 // took as the level began (as its starting kit was taken), for the guests
@@ -257,7 +258,7 @@ static void jkCoop_GiveKit(SithThing* pMe, const jkCoopKitBin aKitIn[SITHBIN_NUM
         if (!(which & (bGear ? JKCOOP_GIVE_GEAR : jkCoop_BinIsForce(i) ? JKCOOP_GIVE_FORCE : JKCOOP_GIVE_REST)))
             continue;
         flex_t amount = aKit[i].amount;
-        int32_t state = aKit[i].state;
+        int32_t state = aKit[i].state & ~JKCOOP_KIT_PEDS_CARRIED;
         const jkCoopTaken* pTaken = &jkCoop_aTaken[i];
         if (bGear && (pTaken->flags & JKCOOP_TAKEN_CAP) && amount > pTaken->cap)
             amount = pTaken->cap;
@@ -265,6 +266,12 @@ static void jkCoop_GiveKit(SithThing* pMe, const jkCoopKitBin aKitIn[SITHBIN_NUM
             state &= ~SITHINVENTORY_ITEM_AVAILABLE;
         if (sithInventory_g_aTypes[i].min < 0.0) {
             if (bLevel)
+                sithInventory_SetInventory(pMe, i, amount);
+        }
+        else if (i == SITHBIN_PEDS_TOTAL && bLevel) {
+            // (the innocents counted: those carried in, with what this level has counted of its own)
+            amount = jkCoopForce_PedsGiven(pMe, amount, (aKit[i].state & JKCOOP_KIT_PEDS_CARRIED) != 0, jkCoop_bOpening);
+            if (amount != aItems[i].amount)
                 sithInventory_SetInventory(pMe, i, amount);
         }
         else if (amount > aItems[i].amount)
@@ -289,18 +296,8 @@ void jkCoop_LevelEnded(void)
         jkCoop_TakeKit(sithPlayer_g_pLocalPlayer);
         return;
     }
-    // A level played with cheats: the kit it began with kept, with only the Force power the story
-    // gives at the level's end (the episode entry's, given by jkMain_EndLevel; not when the host
-    // picked the next level, which gives none, as in single player)
-    if (!Main_bMotsCompat && jkEpisode_mLoad.paEntries && jkEpisode_mLoad.numSeq) {
-        const jkEpisodeEntry* pEnt = jkEpisode_GetCurrentEpisodeEntry(&jkEpisode_mLoad);
-        const int aPow[2] = { pEnt->lightpow, pEnt->darkpow };
-        for (int k = 0; k < 2; k++) {
-            const int bin = aPow[k];
-            if (bin >= SITHBIN_FP_START && bin <= SITHBIN_FP_END && (sithPlayer_g_pLocalPlayer->aItems[bin].state & SITHINVENTORY_ITEM_FOUND))
-                jkCoop_aKit[bin].state |= SITHINVENTORY_ITEM_FOUND;
-        }
-    }
+    // A level played with cheats: the kit it began with kept (its Force then as the story has it, the
+    // level's end's included, once the level has closed: jkCoopForce_LevelClosed)
     jkCoop_kitMs = stdPlatform_GetTimeMsec();
 }
 
@@ -353,9 +350,11 @@ void jkCoop_LevelOpened(void)
         return;
     jkCoopKitBin aNone[SITHBIN_NUMBINS];
     memset(aNone, 0, sizeof(aNone));
+    jkCoop_bOpening = 1;
     jkCoop_GiveKit(pMe, jkCoop_bGearToGive ? jkCoop_aKit : aNone, 1, JKCOOP_GIVE_GEAR);
     if (jkCoop_bForceToGive)
         jkCoop_GiveKit(pMe, jkCoop_aKit, 1, JKCOOP_GIVE_FORCE);
+    jkCoop_bOpening = 0;
     jkCoop_bGearToGive = 0;
     jkCoop_bForceToGive = 0;
     jkCoopForce_LevelOpened(pMe);
@@ -374,7 +373,7 @@ void jkCoop_KeepForce(const jkCoopKitBin aForce[SITHBIN_NUMBINS])
         if (!jkCoop_BinIsForce(i))
             continue;
         jkCoop_aKit[i].amount = aForce[i].amount;
-        jkCoop_aKit[i].state = aForce[i].state & (SITHINVENTORY_ITEM_AVAILABLE | SITHINVENTORY_ITEM_FOUND);
+        jkCoop_aKit[i].state = aForce[i].state & (SITHINVENTORY_ITEM_AVAILABLE | SITHINVENTORY_ITEM_FOUND | JKCOOP_KIT_PEDS_CARRIED);
     }
     jkCoop_kitMs = stdPlatform_GetTimeMsec();
 }

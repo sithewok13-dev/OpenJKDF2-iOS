@@ -60,8 +60,11 @@ int jkCoop_HostKeepsProtagonist(void);
 typedef struct jkCoopKitBin
 {
     flex_t amount;
-    int32_t state; // (SITHINVENTORY_ITEM_AVAILABLE, _FOUND)
+    int32_t state; // (SITHINVENTORY_ITEM_AVAILABLE, _FOUND; and JKCOOP_KIT_PEDS_CARRIED)
 } jkCoopKitBin;
+// A kit's innocents counted (SITHBIN_PEDS_TOTAL) are those carried into its level only, not the level's
+// own (a kit taken in a level: the level counts its own again as it is played). A kit's mark, not a bin's
+#define JKCOOP_KIT_PEDS_CARRIED 0x80
 
 // The kit this player carries (this level's start, or the last level's end), 0 if none
 int jkCoop_GetKit(jkCoopKitBin aOut[SITHBIN_NUMBINS]);

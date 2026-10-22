@@ -45,9 +45,11 @@ void jkCoopForce_Startup(void);
 // The local player's multiplayer character as a co-op level loads (in place of jkPlayer_MpcInitBins):
 // its looks only
 void jkCoopForce_MpcInitLooks(SithPlayer* pPlayer);
-// The rank to pick a multiplayer character by for a game (jkGuiBuildMulti_ShowLoad): co-op's characters
-// give no Force, so any rank (-1), else the host's Max Rank
+// The rank to pick a multiplayer character by for a game (jkGuiBuildMulti_ShowLoad): the host's Max Rank (a
+// new character's); and, for a co-op game, its characters give no Force, so any rank is listed and none
+// said (jkCoopForce_CoopCharacterPick, for the pick that follows)
 int jkCoopForce_CharacterRank(int maxRank, int multiModeFlags);
+int jkCoopForce_CoopCharacterPick(void);
 // Mysteries of the Sith's jkSyncForcePowers by the multiplayer classes' rules (not in co-op: the story's)
 int jkCoopForce_MultiRules(void);
 // A cog asks IsMulti() (sithCogFunction_IsMulti): the answer in co-op, if not the game's own (-1). The
@@ -66,6 +68,10 @@ void jkCoopForce_Tick(SithThing* pMe);
 void jkCoopForce_LevelSetsForce(sithCog* pCog, SithThing* pMe, int bin, flex_t amount, int bAvailable, int bChange);
 // The kit just taken in a level (jkCoop): a level played with cheats keeps the story's Force in it
 void jkCoopForce_CleanKit(jkCoopKitBin aKit[SITHBIN_NUMBINS]);
+// A kit's innocents counted, given in a level (jkCoop_GiveKit; bCarried: JKCOOP_KIT_PEDS_CARRIED, bOpening:
+// as the level opens): what the player then has, those carried in with what the level has counted of
+// its own
+flex_t jkCoopForce_PedsGiven(SithThing* pMe, flex_t amount, int bCarried, int bOpening);
 // This level's starting kit about to be taken (jkCoop_Tick)
 void jkCoopForce_StartKitDue(void);
 // A kit from the host given in the level (jkCoop_SetKit)
@@ -92,6 +98,10 @@ void jkCoopForce_KilledEnd(SithThing* pBefore);
 // A cog asks GetLocalPlayerThing() (sithCogFunctionPlayer_GetLocalPlayerThing): the player it means if not
 // the local one (above), else NULL
 SithThing* jkCoopForce_LocalPlayerFor(sithCog* pCog);
+// A cog about to change (ChangeInv) a thing's bin (sithCogFunctionThing_ChangeInventory): the innocents killed,
+// while a guest's kill is told to it (above), are that guest's whoever the cog names (WeeGee's cog names the
+// player it last saw); the thing to change
+SithThing* jkCoopForce_InnocentsTarget(sithCog* pCog, SithThing* pThing, int bin);
 // A cog about to set (SetInv: amount) or change (ChangeInv, bChange: amount, what it will then have) one of
 // the Force bins of a player who isn't the local one (jkCoop_CogSetsInv/CogChangesInv): the killer's above
 void jkCoopForce_CogSetsOtherForce(sithCog* pCog, SithThing* pThing, int bin, flex_t amount, int bChange);

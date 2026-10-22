@@ -82,11 +82,19 @@ static const char* jkCoopForce_LevelName(void)
 }
 
 // The Force bins the story keeps in the player's own: not the Force's energy, which fills as each level
-// begins
+// begins, nor the innocents counted (a level's own scripts count them, its actors' class cogs, and cheats
+// don't: always the player's)
 static int jkCoopForce_BinIsStory(int bin)
 {
-    return jkCoop_BinIsForce(bin) && bin != SITHBIN_FORCEMANA;
+    return jkCoop_BinIsForce(bin) && bin != SITHBIN_FORCEMANA && bin != SITHBIN_PEDS_KILLED && bin != SITHBIN_PEDS_TOTAL;
 }
+
+// The innocents counted before this level (carried in, as it opened or by a kit given since): what a kit
+// taken in the level has of them (JKCOOP_KIT_PEDS_CARRIED), as the level counts its own again when it is
+// played again (a save resumed)
+static flex_t jkCoopForce_pedsAtOpen = 0.0;
+
+static void jkCoopForce_ForgetScripts(void);
 
 static void jkCoopForce_SetBin(SithPlayer* pPlayer, int bin, flex_t amount, uint32_t state)
 {
@@ -126,6 +134,10 @@ static void jkCoopForce_CleanForce(const SithPlayer* pPlayer, jkCoopKitBin aOut[
         if (bCheated && jkCoopForce_BinIsStory(i))
             aOut[i] = jkCoopForce_aStory[i];
     }
+    if (jkCoopForce_bStory && !jkCoopForce_bEnded) {
+        aOut[SITHBIN_PEDS_TOTAL].amount = jkCoopForce_pedsAtOpen;
+        aOut[SITHBIN_PEDS_TOTAL].state |= JKCOOP_KIT_PEDS_CARRIED;
+    }
 }
 
 // ------------------------------------------------------------------ the character
@@ -145,9 +157,17 @@ void jkCoopForce_MpcInitLooks(SithPlayer* pPlayer)
     }
 }
 
+static int jkCoopForce_bCoopPick = 0;
+
 int jkCoopForce_CharacterRank(int maxRank, int multiModeFlags)
 {
-    return (multiModeFlags & MULTIMODEFLAG_COOP) ? -1 : maxRank;
+    jkCoopForce_bCoopPick = (multiModeFlags & MULTIMODEFLAG_COOP) != 0;
+    return maxRank;
+}
+
+int jkCoopForce_CoopCharacterPick(void)
+{
+    return jkCoopForce_bCoopPick;
 }
 
 int jkCoopForce_MultiRules(void)
@@ -184,7 +204,25 @@ void jkCoopForce_LevelOpened(SithThing* pMe)
         jkCoopForce_aStory[i].amount = pPlayer->aItems[i].amount;
         jkCoopForce_aStory[i].state = (int32_t)(pPlayer->aItems[i].state & JKCOOPFORCE_STATE);
     }
+    jkCoopForce_pedsAtOpen = pPlayer->aItems[SITHBIN_PEDS_TOTAL].amount;
     jkCoopForce_bStory = 1;
+    jkCoopForce_ForgetScripts(); // (this level's scripts, new)
+}
+
+flex_t jkCoopForce_PedsGiven(SithThing* pMe, flex_t amount, int bCarried, int bOpening)
+{
+    const flex_t now = pMe->actorParams.pPlayer->aItems[SITHBIN_PEDS_TOTAL].amount;
+    // (a kit's total, the last level's end's or an older save's: as ever, nothing less than now)
+    const flex_t most = now > amount ? now : amount;
+    if (bOpening)
+        return bCarried ? amount : most; // (none of the level's own counted yet)
+    if (!jkCoopForce_bStory)
+        return most;
+    flex_t own = now - jkCoopForce_pedsAtOpen;
+    if (own < 0.0) own = 0.0;
+    const flex_t total = bCarried ? amount + own : most;
+    jkCoopForce_pedsAtOpen = total - own;
+    return total;
 }
 
 static void jkCoopForce_SendGive(int idTo, int bin, int bBy, flex_t amount)
@@ -224,6 +262,9 @@ void jkCoopForce_LevelSetsForce(sithCog* pCog, SithThing* pMe, int bin, flex_t a
     }
     jkCoopKitBin* pStory = &jkCoopForce_aStory[bin];
     if (bAvailable < 0) {
+        // (a change, on what the story has: a cheat may have changed what the player has)
+        if (bChange)
+            amount = pStory->amount + (amount - pMe->actorParams.pPlayer->aItems[bin].amount);
         if (amount < pType->min) amount = pType->min;
         if (amount > pType->max) amount = pType->max;
         pStory->amount = amount;
@@ -238,7 +279,14 @@ void jkCoopForce_LevelSetsForce(sithCog* pCog, SithThing* pMe, int bin, flex_t a
 
 void jkCoopForce_CleanKit(jkCoopKitBin aKit[SITHBIN_NUMBINS])
 {
-    if (!jkCoop_IsActive() || !jkCoopForce_Cheated() || !jkCoopForce_LocalPlayer())
+    if (!jkCoop_IsActive() || !jkCoopForce_bStory || !jkCoopForce_LocalPlayer())
+        return;
+    if (!jkCoopForce_bEnded) {
+        // (in the level: its own innocents not in it, the level counts them again if played again)
+        aKit[SITHBIN_PEDS_TOTAL].amount = jkCoopForce_pedsAtOpen;
+        aKit[SITHBIN_PEDS_TOTAL].state |= JKCOOP_KIT_PEDS_CARRIED;
+    }
+    if (!jkCoopForce_Cheated())
         return;
     for (int i = 0; i < SITHBIN_NUMBINS; i++)
         if (jkCoopForce_BinIsStory(i))
@@ -597,6 +645,11 @@ static int jkCoopForce_ScriptCountsInnocents(sithCog* pCog)
     return 0;
 }
 
+static void jkCoopForce_ForgetScripts(void)
+{
+    jkCoopForce_numScripts = 0; // (a level's scripts are freed with it, and new ones may be where they were)
+}
+
 static int jkCoopForce_CountsInnocents(sithCog* pCog)
 {
     if (!pCog || !pCog->pScript || !(pCog->flags & SITH_COG_CLASS))
@@ -633,6 +686,13 @@ SithThing* jkCoopForce_LocalPlayerFor(sithCog* pCog)
     if (!jkCoopForce_pKiller || !jkCoopForce_CountsInnocents(pCog))
         return NULL;
     return jkCoopForce_pKiller;
+}
+
+SithThing* jkCoopForce_InnocentsTarget(sithCog* pCog, SithThing* pThing, int bin)
+{
+    // (WeeGee's cog counts its death for the player it last saw, not the local one)
+    SithThing* pKiller = bin == SITHBIN_PEDS_KILLED ? jkCoopForce_LocalPlayerFor(pCog) : NULL;
+    return (pKiller && pThing != pKiller) ? pKiller : pThing;
 }
 
 void jkCoopForce_CogSetsOtherForce(sithCog* pCog, SithThing* pThing, int bin, flex_t amount, int bChange)
@@ -709,6 +769,7 @@ void jkCoopForce_TellGuest(int idTo)
 
 void jkCoopForce_SessionEnded(void)
 {
+    jkCoopForce_ForgetScripts();
     jkCoopForce_bStory = 0;
     jkCoopForce_bInStart = 0;
     jkCoopForce_bEnded = 0;

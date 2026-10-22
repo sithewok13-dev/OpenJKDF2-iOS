@@ -25,6 +25,7 @@
 #include "jk.h"
 #ifdef QOL_IMPROVEMENTS
 #include "Main/jkCoop.h" // Added
+#include "Main/jkCoopForce.h" // Added
 #endif
 
 void sithCogFunctionThing_createThingAtPos_nr_Mots(sithCog *ctx, int idk, SithThing* pThingIn);
@@ -808,6 +809,9 @@ void sithCogFunctionThing_ChangeInventory(sithCog *pCog)
     if (Main_bMotsCompat && binIdx < SITHBIN_ENERGY) {
         binIdx = sithInventory_SelectWeaponFollowing(binIdx);
     }
+#ifdef QOL_IMPROVEMENTS
+    pLocalPlayer = jkCoopForce_InnocentsTarget(pCog, pLocalPlayer, binIdx); // Added: co-op, an innocent a guest killed is theirs
+#endif
 
     if ( pLocalPlayer 
          && pLocalPlayer->type == SITH_THING_PLAYER 
