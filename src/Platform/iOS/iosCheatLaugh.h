@@ -6,7 +6,10 @@
 // None come with the app: they're the player's own, any audio files (mp3, m4a,
 // aac, wav, caf, aif) in an "Emperor" folder in the app's own folder in the
 // Files app (On My iPhone > OpenJKDF2 > Emperor, or OpenMoTS > Emperor; the
-// folder's name in any case). With none there, cheat mode is silent. A build
+// folder's name in any case), or, with none there, in an Emperor folder inside
+// the game's folder (OpenJKDF2 > jk1 > Emperor, OpenMoTS > mots > Emperor),
+// where copying a set of game files that carries one puts it. With none in
+// either, cheat mode is silent. A build
 // of your own can still carry them: configured with
 // -DOPENJKDF2_IOS_BUNDLE_EMPEROR=ON, cmake_modules/target_ios_all.cmake copies
 // IOSCHEATLAUGH_NAMES (.mp3, from packaging/ios) into the app, used when the
@@ -26,6 +29,7 @@ extern "C" {
 #endif
 
 #define IOSCHEATLAUGH_FOLDER "Emperor"
+#define IOSCHEATLAUGH_GAME_FOLDERS { "jk1", "mots" }   // (the game folders an Emperor folder can be in too)
 #define IOSCHEATLAUGH_EXTS { "mp3", "m4a", "aac", "wav", "caf", "aif", "aiff" }
 #define IOSCHEATLAUGH_MAX 16                          // (at most this many of the folder's files are picked from)
 #define IOSCHEATLAUGH_MAX_BYTES (16 * 1024 * 1024)    // (a bigger file isn't read)

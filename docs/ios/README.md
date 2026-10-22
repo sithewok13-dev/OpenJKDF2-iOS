@@ -1517,6 +1517,10 @@ on, add your own:
    to 16 MB each. The app picks one at random each time (never the same one
    twice in a row), from the first 16 by name.
 
+An `Emperor` folder inside `jk1` (or `mots`) works too, so if your copy of the
+game files carries one, it comes along when you copy them in. The one next to
+`jk1` wins if both have clips.
+
 Clips you add while the game is running count from the next time cheat mode
 goes on. With the folder empty or missing, cheat mode is silent.
 
