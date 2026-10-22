@@ -23,6 +23,9 @@
 #include "Devices/sithConsole.h"
 #include "Main/Main.h"
 #include "jk.h"
+#ifdef QOL_IMPROVEMENTS
+#include "Main/jkCoop.h" // Added
+#endif
 
 void sithCogFunctionThing_createThingAtPos_nr_Mots(sithCog *ctx, int idk, SithThing* pThingIn);
 void sithCogFunctionThing_createThingAtPos_nr(sithCog *ctx, int idk);
@@ -788,7 +791,12 @@ void sithCogFunctionThing_SetInventory(sithCog *pCog)
          && pLocalPlayer->type == SITH_THING_PLAYER 
          && pLocalPlayer->actorParams.pPlayer 
          && binIdx < SITHBIN_NUMBINS )
+    {
+#ifdef QOL_IMPROVEMENTS
+        jkCoop_CogSetsInv(pCog, pLocalPlayer, binIdx, amt, -1); // Added: co-op, what a level takes stays taken
+#endif
         sithInventory_SetInventory(pLocalPlayer, binIdx, amt);
+    }
 }
 
 void sithCogFunctionThing_ChangeInventory(sithCog *pCog)
@@ -806,6 +814,9 @@ void sithCogFunctionThing_ChangeInventory(sithCog *pCog)
          && pLocalPlayer->actorParams.pPlayer 
          && binIdx < SITHBIN_NUMBINS )
     {
+#ifdef QOL_IMPROVEMENTS
+        jkCoop_CogSetsInv(pCog, pLocalPlayer, binIdx, sithInventory_GetInventory(pLocalPlayer, binIdx) + amt, -1); // Added: co-op
+#endif
         sithCogExec_PushFlex(pCog, sithInventory_ChangeInventory(pLocalPlayer, binIdx, amt));
     }
     else

@@ -1300,13 +1300,20 @@ Things to know:
 - Each player keeps their own weapons, ammo, items and Force powers from
   level to level. Keys and objectives stay with the level, as in single
   player.
+- Your weapons follow the story, as in single player. In Jedi Knight you
+  start with your fists and the Bryar pistol, and the lightsaber comes in
+  level 4.
+- When a level takes your weapons, it takes them from everyone: Sariss's
+  level in Jedi Knight takes the lightsaber until its end, and Mara's
+  prison in OpenMoTS takes everything but her fists.
 - If you die, you come back at the level's start with what you had when
-  the level began.
+  the level began, but not what the level has taken from you.
 - If your path differs from the host's (light or dark side), you follow
   the host's level.
 - With cheats allowed, the host can pick a level for everyone (sithewok,
   hold LEVEL in MENU's tray), and a level in which you used cheats adds
-  nothing to the gear you carry on.
+  nothing to the gear you carry on. In Jedi Knight, everyone has the
+  lightsaber from level 4 on, wherever you pick, and not in levels 1 to 3.
 
 ### Co-op saves
 
@@ -1316,6 +1323,8 @@ Things to know:
   per episode).
 - To carry on, tap **Multiplayer**, then **Resume Co-op**, and pick the
   campaign. A player who drops out and rejoins gets their gear back.
+- A Jedi Knight save from v0.9-beta1 or earlier, at level 1, 2 or 3, has
+  a lightsaber it shouldn't. Carrying the campaign on takes it away.
 - Starting a new **Co-op Campaign** on an episode that has a save asks
   first. The old save is kept, with the date and time added to its name
   (the five most recent for each episode). Put the date part back as

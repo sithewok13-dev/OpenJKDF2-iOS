@@ -667,7 +667,6 @@ LABEL_28:
             }
 #ifdef QOL_IMPROVEMENTS
             jkDev_Custom_LevelOpened(); // Added: (multiplayer) the host's address shown
-            jkCoop_LevelOpened(); // Added: co-op
 #endif
         }
         else {

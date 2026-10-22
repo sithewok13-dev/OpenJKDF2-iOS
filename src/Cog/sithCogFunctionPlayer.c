@@ -6,6 +6,9 @@
 #include "World/sithWeapon.h"
 #include "World/sithActor.h"
 #include "Gameplay/sithInventory.h"
+#ifdef QOL_IMPROVEMENTS
+#include "Main/jkCoop.h" // Added
+#endif
 #ifdef JK_ENHANCED
 #include "Enhanced/iosGame.h" // Added
 #endif
@@ -33,6 +36,9 @@ void sithCogFunctionPlayer_SetInvAvailable(sithCog *pCog)
 
     if (player && player->type == SITH_THING_PLAYER && player->actorParams.pPlayer && binIdx < SITHBIN_NUMBINS)
     {
+#ifdef QOL_IMPROVEMENTS
+        jkCoop_CogSetsInv(pCog, player, binIdx, 0.0, bAvailable != 0); // Added: co-op, what a level takes stays taken
+#endif
         if (bAvailable)
             sithInventory_SetInventoryAvailable(player, binIdx, 1);
         else
