@@ -92,6 +92,7 @@ void jkSaber_Draw(rdMatrix34 *posRotMat)
 {
     if ( playerThings[playerThingIdx].actorThing->jkFlags & JKFLAG_SABERON
       && playerThings[playerThingIdx].povModel.model3
+      && playerThings[playerThingIdx].povModel.model3->numHNodes > 5 // Added: the hand the blade is drawn at (5, below); a gun's has 4 (a blade lit mid-switch: the saber cog's 0.7 s timer)
       && playerThings[playerThingIdx].polylineThing.model3 )
     {
         if ( playerThings[playerThingIdx].povModel.rdFrameNum != rdroid_frameTrue )
