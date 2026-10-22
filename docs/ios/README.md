@@ -1295,8 +1295,8 @@ Things to know:
   Everyone else plays the multiplayer character they picked.
 - Objectives are shared. When the level ends, everyone goes to the next
   level together.
-- After a level, the score screen and the Force powers screen go on by
-  themselves (30 s and 90 s). Stars you don't spend are kept.
+- After a level, the two score screens and the Force powers screen go on
+  by themselves (30 s each, and 90 s). Stars you don't spend are kept.
 - Each player keeps their own weapons, ammo, items and Force powers from
   level to level. Keys and objectives stay with the level, as in single
   player.
