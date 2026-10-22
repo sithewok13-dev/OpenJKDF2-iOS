@@ -752,20 +752,54 @@ int jkCoop_HostMayPickLevel(void)
     return jkCoop_IsActive() && sithNet_isServer && jkDev_Custom_CheatsAllowed();
 }
 
+static char jkCoop_aPickedOn[32]; // (the level that pick ends)
+
+static void jkCoop_PickOnThisLevel(int entryIdx)
+{
+    jkCoop_pickedEntry = entryIdx;
+    jkCoop_aPickedOn[0] = 0;
+    if (sithWorld_g_pCurrentWorld)
+        stdString_SafeStrCopy(jkCoop_aPickedOn, sithWorld_g_pCurrentWorld->map_jkl_fname, sizeof(jkCoop_aPickedOn));
+}
+
 int jkCoop_HostPickLevel(int entryIdx)
 {
     if (!jkCoop_HostMayPickLevel() || entryIdx < 0 || entryIdx >= jkEpisode_mLoad.numSeq || !jkEpisode_mLoad.paEntries)
         return 0;
-    jkCoop_pickedEntry = entryIdx;
-    jkDSS_SendEndLevel(); // (everyone's level ends in a moment)
+    jkCoop_PickOnThisLevel(entryIdx);
+    jkDSS_SendEndLevel(); // (everyone's level ends in a moment, the guests told where to)
     return 1;
+}
+
+int jkCoop_PickedLevelLine(void)
+{
+    if (!jkCoop_HostMayPickLevel() || jkCoop_pickedEntry < 0 || jkCoop_pickedEntry >= jkEpisode_mLoad.numSeq || !jkEpisode_mLoad.paEntries)
+        return -1;
+    return jkEpisode_mLoad.paEntries[jkCoop_pickedEntry].lineNum;
+}
+
+void jkCoop_HostPickedLevel(int lineNum)
+{
+    // (the host hears its own message too: its pick stays)
+    if (!jkCoop_IsActive() || sithNet_isServer)
+        return;
+    jkCoop_pickedEntry = -1;
+    for (int i = 0; lineNum >= 0 && jkEpisode_mLoad.paEntries && i < jkEpisode_mLoad.numSeq; i++) {
+        if (jkEpisode_mLoad.paEntries[i].lineNum == lineNum && jkEpisode_mLoad.paEntries[i].type == 0) { // (0: a level)
+            jkCoop_PickOnThisLevel(i);
+            stdPlatform_Printf("OpenJKDF2: co-op, the host picked %s (line %d)\n", jkEpisode_mLoad.paEntries[i].fileName, lineNum);
+            break;
+        }
+    }
 }
 
 int jkCoop_TakePickedLevel(void)
 {
     const int idx = jkCoop_pickedEntry;
     jkCoop_pickedEntry = -1;
-    if (idx < 0 || !jkCoop_IsActive() || !sithNet_isServer || idx >= jkEpisode_mLoad.numSeq)
+    // (only at the end of the level it was picked on: not one left before it ended)
+    if (idx < 0 || !jkCoop_IsActive() || idx >= jkEpisode_mLoad.numSeq || !sithWorld_g_pCurrentWorld
+        || __strcmpi(sithWorld_g_pCurrentWorld->map_jkl_fname, jkCoop_aPickedOn))
         return -1;
     return idx;
 }

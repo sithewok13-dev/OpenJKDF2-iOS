@@ -135,9 +135,13 @@ int jkCoop_FollowHostLevel(void);
 
 // The co-op host may pick a level for everyone (cheats allowed, as sithewok's level pick)
 int jkCoop_HostMayPickLevel(void);
-// The co-op host picked the episode's entry: everyone goes there (the level ends for all; the host
-// then loads that entry, and the guests follow the host's level); 1 if so
+// The co-op host picked the episode's entry: everyone goes there (the level ends for all, and every
+// game, the host's and the guests', then loads that entry); 1 if so
 int jkCoop_HostPickLevel(int entryIdx);
+// The host's level end message (jkDSS_SendEndLevel) says which: the picked entry's line, -1 if none
+int jkCoop_PickedLevelLine(void);
+// A guest: the host's level end message said it picked the entry on that line (-1: none)
+void jkCoop_HostPickedLevel(int lineNum);
 // At the level's end (jkMain_EndLevel): the entry the host picked, -1 if none (taken once)
 int jkCoop_TakePickedLevel(void);
 
