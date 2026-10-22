@@ -12,7 +12,8 @@
 //   That kit, as the level began, is also what a player comes back with after
 //   dying in co-op. A level in which the player used cheats (when the host
 //   allows them) adds nothing to it: they carry on what they began it with,
-//   and the Force power the story gives at its end.
+//   and the Force the story gives (jkCoopForce.h: the Force as the story gives
+//   it, each player their own).
 // - The gear as one player has it: the weapons, ammo and items carried in are
 //   had before the level's scripts start, as in single player, so what they
 //   give or take is what everyone has; the game's multiplayer spawn kit (a
@@ -67,6 +68,15 @@ int jkCoop_GetKit(jkCoopKitBin aOut[SITHBIN_NUMBINS]);
 // A kit from elsewhere (the co-op save, the host): carried as if from the last level, given at once if
 // already in the level
 void jkCoop_SetKit(const jkCoopKitBin aKit[SITHBIN_NUMBINS]);
+
+// The Force bins among the carried ones (its energy, stars, side, rank and powers, and what tips a Jedi's
+// side: the innocents killed, the alignment), which jkCoopForce keeps as the story gives them
+int jkCoop_BinIsForce(int bin);
+// This level's starting kit (taken once the player is in) has been taken
+int jkCoop_StartKitTaken(void);
+// The kit's Force bins as aForce has them (jkCoopForce: the story's, or as the screens after a level
+// left them)
+void jkCoop_KeepForce(const jkCoopKitBin aForce[SITHBIN_NUMBINS]);
 
 // A kit as this level can have it: Jedi Knight's lightsaber not before the story's level 4 (none of an
 // older save's from levels 1 to 3), had from it on

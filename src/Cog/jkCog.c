@@ -7,6 +7,7 @@
 #include "General/stdStrTable.h"
 #include "Main/jkHud.h"
 #include "Main/jkDev.h"
+#include "Main/jkCoopForce.h" // Added
 #include "Main/jkStrings.h"
 #include "Main/jkMain.h"
 #include "World/jkPlayer.h"
@@ -373,7 +374,11 @@ void jkCog_SetInvulnerable(sithCog *pCog)
 // MOTS added
 void jkCog_SyncForcePowers(sithCog *ctx)
 {
+#ifdef QOL_IMPROVEMENTS
+    jkPlayer_SyncForcePowers(jkPlayer_GetJediRank(), jkCoopForce_MultiRules()); // Added: co-op, the story's rules
+#else
     jkPlayer_SyncForcePowers(jkPlayer_GetJediRank(),sithNet_isMulti);
+#endif
 }
 
 void jkCog_EndTarget(sithCog *ctx)

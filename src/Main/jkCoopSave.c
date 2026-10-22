@@ -12,6 +12,7 @@
 #include "jk.h"
 #include "stdPlatform.h"
 #include "Main/jkCoop.h"
+#include "Main/jkCoopForce.h"
 #include "Dss/jkNetExt.h"
 #include "Dss/sithMulti.h"
 #include "Win95/stdComm.h"
@@ -432,8 +433,13 @@ static void jkCoopSave_KitArrived(int idFrom, const uint8_t* pData, int len)
         if ((flags & JKCOOPSAVE_FRESH) && bKnown) {
             stdPlatform_Printf("OpenJKDF2: co-op, %s's gear given back\n", id);
             jkCoopSave_SendKit(id, p->aKit, 0, idFrom);
+            jkCoopForce_TellGuest(idFrom);
             return;
         }
+        // (one new to the campaign: caught up with the host's Force, jkCoopForce)
+        if ((flags & JKCOOPSAVE_FRESH) && jkCoopForce_CatchUp(aKit))
+            jkCoopSave_SendKit(id, aKit, 0, idFrom);
+        jkCoopForce_TellGuest(idFrom);
         memcpy(p->aKit, aKit, sizeof(aKit));
         jkCoopSave_MarkDirty();
     }

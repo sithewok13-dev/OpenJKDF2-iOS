@@ -21,6 +21,14 @@
 #include "General/stdString.h"
 #include "Devices/sithComm.h"
 #include "Main/jkCoop.h" // Added
+#include "Main/jkCoopForce.h" // Added
+
+// Added: the rank a game's multiplayer characters are picked by (co-op: any, they give only their looks)
+#ifdef QOL_IMPROVEMENTS
+#define JKGUIMULTIPLAYER_CHARACTER_RANK(maxRank, multiModeFlags) jkCoopForce_CharacterRank((maxRank), (multiModeFlags))
+#else
+#define JKGUIMULTIPLAYER_CHARACTER_RANK(maxRank, multiModeFlags) (maxRank)
+#endif
 #include "Gui/jkGUIMultiLobby.h" // Added
 #ifdef PLATFORM_DPLAY
 #include "Platform/Networking/stdCommTransport.h" // Added
@@ -339,7 +347,7 @@ LABEL_1:
                     {
                         sithNet_scorelimit = v34.scoreLimit;
                         sithNet_multiplayer_timelimit = v34.timeLimit;
-                        if ( jkGuiBuildMulti_ShowLoad(&jkGuiMultiplayer_mpcInfo, v34.episodeGobName, v34.mapJklFname, 0, v34.maxRank, v34.multiModeFlags & MULTIMODEFLAG_1000) == 1 ) // MOTS altered: last arg
+                        if ( jkGuiBuildMulti_ShowLoad(&jkGuiMultiplayer_mpcInfo, v34.episodeGobName, v34.mapJklFname, 0, JKGUIMULTIPLAYER_CHARACTER_RANK(v34.maxRank, v34.multiModeFlags), v34.multiModeFlags & MULTIMODEFLAG_1000) == 1 ) // MOTS altered: last arg
                         {
                             v21 = sithMulti_CreatePlayer(
                                       v34.serverName,
@@ -417,7 +425,8 @@ LABEL_29:
                  jkGuiMultiplayer_aEntries[jkGuiMultiplayer_aElements3[3].selectedTextEntry].episodeGobName,
                  jkGuiMultiplayer_aEntries[jkGuiMultiplayer_aElements3[3].selectedTextEntry].mapJklFname,
                  0,
-                 jkGuiMultiplayer_aEntries[jkGuiMultiplayer_aElements3[3].selectedTextEntry].maxRank,
+                 JKGUIMULTIPLAYER_CHARACTER_RANK(jkGuiMultiplayer_aEntries[jkGuiMultiplayer_aElements3[3].selectedTextEntry].maxRank,
+                                                 jkGuiMultiplayer_aEntries[jkGuiMultiplayer_aElements3[3].selectedTextEntry].multiModeFlags),
                  jkGuiMultiplayer_aEntries[jkGuiMultiplayer_aElements3[3].selectedTextEntry].multiModeFlags & MULTIMODEFLAG_1000) != 1 )
             goto LABEL_28;
 #ifdef QOL_IMPROVEMENTS
@@ -789,7 +798,7 @@ int jkGuiMultiplayer_Show2()
             v2 = jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu4);
             jkGui_SetModeGame();
             if ( v2 == 1
-              && jkGuiBuildMulti_ShowLoad(&jkGuiMultiplayer_mpcInfo, jkGuiMultiplayer_multiEntry.episodeGobName, jkGuiMultiplayer_multiEntry.mapJklFname, 0, jkGuiMultiplayer_multiEntry.maxRank, jkGuiMultiplayer_multiEntry.multiModeFlags & MULTIMODEFLAG_1000) == 1 )
+              && jkGuiBuildMulti_ShowLoad(&jkGuiMultiplayer_mpcInfo, jkGuiMultiplayer_multiEntry.episodeGobName, jkGuiMultiplayer_multiEntry.mapJklFname, 0, JKGUIMULTIPLAYER_CHARACTER_RANK(jkGuiMultiplayer_multiEntry.maxRank, jkGuiMultiplayer_multiEntry.multiModeFlags), jkGuiMultiplayer_multiEntry.multiModeFlags & MULTIMODEFLAG_1000) == 1 )
             {
                 sithMulti_InitTick(jkGuiMultiplayer_multiEntry.tickRateMs);
                 jkMain_loadFile2(jkGuiMultiplayer_multiEntry.episodeGobName, jkGuiMultiplayer_multiEntry.mapJklFname);
@@ -800,7 +809,7 @@ int jkGuiMultiplayer_Show2()
         if ( jkGuiNetHost_Show(&v8) != 1
           || (sithNet_scorelimit = v8.scoreLimit,
               sithNet_multiplayer_timelimit = v8.timeLimit,
-              jkGuiBuildMulti_ShowLoad(&jkGuiMultiplayer_mpcInfo, v8.episodeGobName, v8.mapJklFname, 0, v8.maxRank, v8.multiModeFlags & MULTIMODEFLAG_1000) != 1) )
+              jkGuiBuildMulti_ShowLoad(&jkGuiMultiplayer_mpcInfo, v8.episodeGobName, v8.mapJklFname, 0, JKGUIMULTIPLAYER_CHARACTER_RANK(v8.maxRank, v8.multiModeFlags), v8.multiModeFlags & MULTIMODEFLAG_1000) != 1) )
         {
 LABEL_10:
             stdComm_CloseConnection();

@@ -15,6 +15,7 @@
 #include "Main/jkPlayerLook.h" // Added
 #include "Main/jkCoop.h" // Added
 #include "Main/jkCoopSave.h" // Added
+#include "Main/jkCoopForce.h" // Added
 #include "Main/jkRes.h"
 #include "Main/jkStrings.h"
 #include "World/sithTemplate.h"
@@ -75,6 +76,7 @@ int jkDSS_Startup()
     jkNetExt_Startup();
     jkPlayerLook_Startup();
     jkCoopSave_Startup();
+    jkCoopForce_Startup();
 #endif
     sithMessage_RegisterFunction(DSS_JKENABLESABER, jkDSS_ProcessJKEnableSaber);
     sithMessage_RegisterFunction(DSS_SABERINFO3, jkDSS_ProcessSetSaberInfo2);
@@ -1098,6 +1100,9 @@ int jkDSS_ProcessJKPrintUniString(SithMessage *msg)
 
 void jkDSS_SendEndLevel()
 {
+#ifdef QOL_IMPROVEMENTS
+    jkCoopForce_HostEndingLevel(); // Added: co-op, the secrets' count sent first (each guest's star by it)
+#endif
     NETMSG_START;
 
     NETMSG_PUSHS32(jkEpisode_GetCurrentEpisodeEntry(&jkEpisode_mLoad)->level);

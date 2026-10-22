@@ -1571,6 +1571,10 @@ LABEL_7:
     // is for the ranked format only; otherwise none would ever count
     if ( Main_bMotsCompat && !bGameFormatIsJK )
         v9 = 8;
+    // Added: a game whose characters give no Force (co-op, jkCoopForce_CharacterRank: rank -1): any
+    // rank, and none said
+    if ( rank < 0 )
+        v9 = 8;
 #endif
     jkGuiBuildMulti_menuLoadCharacter_buttons[7].wstr = jkGuiTitle_quicksave_related_func1(&strtable, pJklFname);
     stdString_snprintf(tmp5, 32, "RANK_%d_L", rank);
@@ -1578,6 +1582,10 @@ LABEL_7:
     v10 = jkStrings_GetUniStringWithFallback("GUI_RANK");
     jk_snwprintf(&jkGuiBuildMulti_wTmp[32], 0x80u, v10, rank, v21);
     jkGuiBuildMulti_menuLoadCharacter_buttons[9].wstr = &jkGuiBuildMulti_wTmp[32];
+#ifdef QOL_IMPROVEMENTS
+    if ( rank < 0 )
+        jkGuiBuildMulti_menuLoadCharacter_buttons[9].wstr = NULL; // Added: (as above)
+#endif
     v11 = 0;
     while ( 1 )
     {
@@ -1665,7 +1673,7 @@ LABEL_18:
             break;
         v9 = rank;
 #ifdef QOL_IMPROVEMENTS
-        if ( Main_bMotsCompat && !bGameFormatIsJK )
+        if ( (Main_bMotsCompat && !bGameFormatIsJK) || rank < 0 )
             v9 = 8; // Added: as above, every time round
 #endif
     }

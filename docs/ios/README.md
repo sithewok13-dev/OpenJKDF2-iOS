@@ -1315,6 +1315,40 @@ Things to know:
   nothing to the gear you carry on. In Jedi Knight, everyone has the
   lightsaber from level 4 on, wherever you pick, and not in levels 1 to 3.
 
+### The Force in co-op
+
+Everyone's Force follows the story, as in single player. Each player has
+their own.
+
+- Your multiplayer character only gives your looks (and in OpenMoTS its
+  class's ammo). Its rank and stars aren't used in co-op, and every class
+  plays the story's Jedi Force. The **Max Rank** setting is for deathmatch
+  only, so co-op doesn't show it.
+- In Jedi Knight you have no Force in levels 1 to 3. Force Speed comes at
+  the end of level 3, your rank goes up from level 4, and new powers come
+  as the story gives them.
+- At the end of a level you get the story's stars, and spend them on the
+  Force powers screen. What you buy is kept for the next levels. The
+  screen only shows the powers the story has given you so far.
+- Secrets count for everyone: when anyone finds one, it counts for the
+  whole team. Find them all and everyone gets the extra star.
+- Each player picks their own powers and keeps their own light or dark
+  side. The host's side decides the levels and the ending. If you are on
+  the other side, you still get your side's power where the story splits
+  (for example Force Destruction on the dark side).
+- Someone who joins a campaign that has already started gets the host's
+  rank and as many stars as the host has earned. They spend them on the
+  Force powers screen at the end of that level.
+- In OpenMoTS, Kyle's levels start with his Force as in single player.
+  Mara starts over at rank 2 with 3 stars on her first level. Each level
+  gives 2 stars (one more for all its secrets), and your rank comes from
+  the stars you have spent.
+- With cheats allowed, a level in which you used cheats still gives the
+  story's rank, stars and powers, but you don't keep the cheats' Force.
+- Only the host's kills of innocent people count towards the dark side.
+  The game counts them on the host's phone only.
+- The Force energy bar is full at the start of every level.
+
 ### Co-op saves
 
 - The host's game saves the campaign at the start of every level: the
@@ -1325,6 +1359,9 @@ Things to know:
   campaign. A player who drops out and rejoins gets their gear back.
 - A Jedi Knight save from v0.9-beta1 or earlier, at level 1, 2 or 3, has
   a lightsaber it shouldn't. Carrying the campaign on takes it away.
+- A save from v0.9-beta1 or earlier keeps everyone's Force as it is (often
+  rank 4, with all the powers on offer), but it isn't topped up any more:
+  from then on it follows the story.
 - Starting a new **Co-op Campaign** on an episode that has a save asks
   first. The old save is kept, with the date and time added to its name
   (the five most recent for each episode). Put the date part back as
