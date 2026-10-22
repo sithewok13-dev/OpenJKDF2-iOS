@@ -814,9 +814,6 @@ void sithCogFunctionThing_ChangeInventory(sithCog *pCog)
          && pLocalPlayer->actorParams.pPlayer 
          && binIdx < SITHBIN_NUMBINS )
     {
-#ifdef QOL_IMPROVEMENTS
-        jkCoop_CogSetsInv(pCog, pLocalPlayer, binIdx, sithInventory_GetInventory(pLocalPlayer, binIdx) + amt, -1); // Added: co-op
-#endif
         sithCogExec_PushFlex(pCog, sithInventory_ChangeInventory(pLocalPlayer, binIdx, amt));
     }
     else

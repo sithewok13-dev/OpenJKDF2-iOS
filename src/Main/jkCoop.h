@@ -98,8 +98,10 @@ void jkCoop_SpawnEnd(SithThing* pPlayer);
 // A cog asks IsMulti() (sithCogFunction_IsMulti): the player's class cog does, between its one-player
 // start and its multiplayer spawn kit
 void jkCoop_CogAsksIsMulti(sithCog* pCog);
-// A cog about to set a player's bin (SetInv, ChangeInv: amount; SetInvAvailable: bAvailable, else -1):
-// one of the level's own scripts taking the local player's gear, kept in mind for the level
+// A cog about to set a player's bin (SetInv: amount; SetInvAvailable: bAvailable, else -1): one of the
+// level's own scripts taking the local player's gear, kept in mind for the level. (Not ChangeInv: no
+// level takes gear that way, and a dark Jedi's Force pull, ChangeInv of the weapon in hand, is a loss
+// for the moment, given back after dying as ever)
 void jkCoop_CogSetsInv(sithCog* pCog, SithThing* pThing, int bin, flex_t amount, int bAvailable);
 
 // What the level's scripts took: no more of the bin than cap (JKCOOP_TAKEN_CAP), not available

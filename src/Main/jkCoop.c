@@ -543,10 +543,12 @@ void jkCoop_CogSetsInv(sithCog* pCog, SithThing* pThing, int bin, flex_t amount,
     const SithInventoryType* pType = &sithInventory_g_aTypes[bin];
     const SithInventoryItem* pItem = &pMe->actorParams.pPlayer->aItems[bin];
     jkCoopTaken* pTaken = &jkCoop_aTaken[bin];
+    // (a bin set to none, or made unavailable, is taken whether the player has it now or not: a guest's
+    // gear can come after the level's start has run, from the host or a save)
     if (bAvailable < 0) {
         if (amount < pType->min) amount = pType->min;
         if (amount > pType->max) amount = pType->max;
-        if (amount < pItem->amount) {
+        if (amount < pItem->amount || amount <= 0.0) {
             pTaken->flags |= JKCOOP_TAKEN_CAP;
             pTaken->cap = amount;
         }
@@ -554,10 +556,10 @@ void jkCoop_CogSetsInv(sithCog* pCog, SithThing* pThing, int bin, flex_t amount,
             pTaken->flags &= ~JKCOOP_TAKEN_CAP; // (given back)
         }
     }
-    else if (!bAvailable && (pItem->state & SITHINVENTORY_ITEM_AVAILABLE)) {
+    else if (!bAvailable) {
         pTaken->flags |= JKCOOP_TAKEN_OFF;
     }
-    else if (bAvailable && !(pItem->state & SITHINVENTORY_ITEM_AVAILABLE)) {
+    else {
         pTaken->flags &= ~JKCOOP_TAKEN_OFF;
     }
 }

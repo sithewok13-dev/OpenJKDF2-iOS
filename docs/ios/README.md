@@ -1303,9 +1303,10 @@ Things to know:
 - Your weapons follow the story, as in single player. In Jedi Knight you
   start with your fists and the Bryar pistol, and the lightsaber comes in
   level 4.
-- When a level takes your weapons, it takes them from everyone: Sariss's
-  level in Jedi Knight takes the lightsaber until its end, and Mara's
-  prison in OpenMoTS takes everything but her fists.
+- When a level takes your weapons, it takes them from everyone: on the
+  light side path in Jedi Knight, Sariss's level takes the lightsaber
+  until its end, and Mara's prison in OpenMoTS takes everything but her
+  fists.
 - If you die, you come back at the level's start with what you had when
   the level began, but not what the level has taken from you.
 - If your path differs from the host's (light or dark side), you follow
