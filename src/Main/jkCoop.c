@@ -564,6 +564,13 @@ void jkCoop_CogSetsInv(sithCog* pCog, SithThing* pThing, int bin, flex_t amount,
     }
 }
 
+void jkCoop_CogChangesInv(sithCog* pCog, SithThing* pThing, int bin, flex_t amount)
+{
+    SithThing* pMe = jkCoop_LocalPlayer();
+    if (jkCoop_IsActive() && pMe && pThing == pMe && jkCoop_BinIsForce(bin) && jkCoop_IsLevelCog(pCog))
+        jkCoopForce_LevelSetsForce(pMe, bin, amount, -1); // (the story's Force)
+}
+
 int jkCoop_GetStartTaken(jkCoopTaken aOut[SITHBIN_NUMBINS])
 {
     if (!jkCoop_IsActive() || !sithNet_isServer || !jkCoop_bKitTaken || !jkCoop_bStartTaken)

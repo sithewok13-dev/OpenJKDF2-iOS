@@ -103,6 +103,9 @@ void jkCoop_CogAsksIsMulti(sithCog* pCog);
 // level takes gear that way, and a dark Jedi's Force pull, ChangeInv of the weapon in hand, is a loss
 // for the moment, given back after dying as ever)
 void jkCoop_CogSetsInv(sithCog* pCog, SithThing* pThing, int bin, flex_t amount, int bAvailable);
+// A cog about to change a player's bin by some (ChangeInv: amount, what it will then have): of the
+// story's Force only (jkCoopForce: a level's end giving stars), not the gear
+void jkCoop_CogChangesInv(sithCog* pCog, SithThing* pThing, int bin, flex_t amount);
 
 // What the level's scripts took: no more of the bin than cap (JKCOOP_TAKEN_CAP), not available
 // (JKCOOP_TAKEN_OFF)

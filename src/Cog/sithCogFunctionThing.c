@@ -814,6 +814,9 @@ void sithCogFunctionThing_ChangeInventory(sithCog *pCog)
          && pLocalPlayer->actorParams.pPlayer 
          && binIdx < SITHBIN_NUMBINS )
     {
+#ifdef QOL_IMPROVEMENTS
+        jkCoop_CogChangesInv(pCog, pLocalPlayer, binIdx, sithInventory_GetInventory(pLocalPlayer, binIdx) + amt); // Added: co-op, the story's Force
+#endif
         sithCogExec_PushFlex(pCog, sithInventory_ChangeInventory(pLocalPlayer, binIdx, amt));
     }
     else
