@@ -17,7 +17,9 @@
 // - What the host's level does to the Force as it begins, in a part the game runs on the host only (a
 //   timer: Mysteries of the Sith's first Kyle and first Mara levels), is done to everyone's.
 // - Secrets count for everyone: the host's count (the game counts everyone's finds there) is everyone's,
-//   so each player can earn the star for finding all of a level's secrets.
+//   so each player can earn the star for finding all of a level's secrets; and stars a level gives in a
+//   part the game runs on the host only (Jedi Knight's 16aEscapeShip: its all-secrets star, as its end is
+//   touched) are given to every player.
 // - A player new to the campaign (not in the host's save) catches up: the host's rank, the powers the
 //   story has offered the host, and as many stars as the host has earned, to spend on the Force powers
 //   screen at the end of that level.
@@ -58,9 +60,10 @@ int jkCoopForce_CogIsMulti(sithCog* pCog);
 void jkCoopForce_LevelOpened(SithThing* pMe);
 // Once a frame in a co-op level (jkCoop_Tick)
 void jkCoopForce_Tick(SithThing* pMe);
-// One of the level's own scripts about to set one of the local player's Force bins (jkCoop_CogSetsInv:
-// SetInv/ChangeInv: amount; SetInvAvailable: bAvailable, else -1)
-void jkCoopForce_LevelSetsForce(SithThing* pMe, int bin, flex_t amount, int bAvailable);
+// One of the level's own scripts (pCog) about to set one of the local player's Force bins
+// (jkCoop_CogSetsInv: SetInv: amount; SetInvAvailable: bAvailable, else -1; jkCoop_CogChangesInv: ChangeInv,
+// bChange: amount, what it will then have)
+void jkCoopForce_LevelSetsForce(sithCog* pCog, SithThing* pMe, int bin, flex_t amount, int bAvailable, int bChange);
 // The kit just taken in a level (jkCoop): a level played with cheats keeps the story's Force in it
 void jkCoopForce_CleanKit(jkCoopKitBin aKit[SITHBIN_NUMBINS]);
 // This level's starting kit about to be taken (jkCoop_Tick)

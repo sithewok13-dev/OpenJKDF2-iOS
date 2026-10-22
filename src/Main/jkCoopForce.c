@@ -63,6 +63,7 @@ enum
 {
     JKCOOPFORCE_MSG_START = 1,   // [level: 32][count: u8][count x (bin: u8, amount: f32, state: u8)]
     JKCOOPFORCE_MSG_SECRETS = 2, // [level: 32][found: f32][of: f32]
+    JKCOOPFORCE_MSG_GIVE = 3,    // [level: 32][bin: u8][by: u8, 1 an amount more, 0 the amount][amount: f32]
 };
 
 static SithThing* jkCoopForce_LocalPlayer(void)
@@ -184,12 +185,41 @@ void jkCoopForce_LevelOpened(SithThing* pMe)
     jkCoopForce_bStory = 1;
 }
 
-void jkCoopForce_LevelSetsForce(SithThing* pMe, int bin, flex_t amount, int bAvailable)
+static void jkCoopForce_SendGive(int idTo, int bin, int bBy, flex_t amount)
 {
-    (void)pMe;
+    uint8_t aMsg[2 + 32 + 2 + 4];
+    int n = 0;
+    aMsg[n++] = JKCOOPFORCE_VERSION;
+    aMsg[n++] = JKCOOPFORCE_MSG_GIVE;
+    memset(aMsg + n, 0, 32);
+    stdString_SafeStrCopy((char*)aMsg + n, jkCoopForce_LevelName(), 32);
+    n += 32;
+    aMsg[n++] = (uint8_t)bin;
+    aMsg[n++] = (uint8_t)(bBy != 0);
+    const float f = (float)amount;
+    memcpy(aMsg + n, &f, 4); n += 4;
+    jkNetExt_Send(JKNETEXT_COOPFORCE, aMsg, n, idTo);
+}
+
+void jkCoopForce_LevelSetsForce(sithCog* pCog, SithThing* pMe, int bin, flex_t amount, int bAvailable, int bChange)
+{
     if (!jkCoopForce_bStory || bin <= 0 || bin >= SITHBIN_NUMBINS)
         return;
     const SithInventoryType* pType = &sithInventory_g_aTypes[bin];
+    // Stars the host's level gives it in the level, by a part of it the game runs on the host only (not
+    // its start or its end, nor a script every game runs: 16aEscapeShip's all-secrets star), given to the
+    // guests too (the same, an amount more or the amount)
+    if (sithNet_isServer && !jkCoopForce_bInStart && !jkCoopForce_bEnded && bAvailable < 0 && pCog
+        && !(pCog->flags & SITH_COG_LOCAL) && (bin == SITHBIN_NEW_STARS || bin == SITHBIN_SPEND_STARS)) {
+        const flex_t now = pMe->actorParams.pPlayer->aItems[bin].amount;
+        flex_t given = amount;
+        if (given < pType->min) given = pType->min;
+        if (given > pType->max) given = pType->max;
+        if (given != now) {
+            stdPlatform_Printf("OpenJKDF2: co-op, the level's stars given to everyone (%d)\n", bin);
+            jkCoopForce_SendGive(-1, bin, bChange, bChange ? given - now : given);
+        }
+    }
     jkCoopKitBin* pStory = &jkCoopForce_aStory[bin];
     if (bAvailable < 0) {
         if (amount < pType->min) amount = pType->min;
@@ -323,6 +353,19 @@ static void jkCoopForce_Arrived(int idFrom, const uint8_t* pData, int len)
             jkCoopForce_bStartDone = 0;
         if (bHere && !jkCoopForce_bStartDone)
             jkCoopForce_DoStart(pMe, 1);
+    }
+    else if (pData[1] == JKCOOPFORCE_MSG_GIVE && len >= 2 + 32 + 6 && bHere && jkCoop_BinIsForce(pData[34])) {
+        // A Force bin the host's game gave this player (an amount more, or the amount)
+        const int bin = pData[34];
+        float f;
+        memcpy(&f, pData + 36, 4);
+        if (pData[35])
+            sithInventory_ChangeInventory(pMe, bin, f);
+        else
+            sithInventory_SetInventory(pMe, bin, f);
+        if (jkCoopForce_BinIsStory(bin))
+            jkCoopForce_aStory[bin].amount = pMe->actorParams.pPlayer->aItems[bin].amount;
+        stdPlatform_Printf("OpenJKDF2: co-op, given by the host's game (%d)\n", bin);
     }
     else if (pData[1] == JKCOOPFORCE_MSG_SECRETS && len >= 2 + 32 + 8 && bHere) {
         // The host's count, everyone's (the same level's: the same number of them)
