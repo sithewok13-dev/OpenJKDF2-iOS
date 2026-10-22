@@ -1517,12 +1517,13 @@ on, add your own:
    to 16 MB each. The app picks one at random each time (never the same one
    twice in a row), from the first 16 by name.
 
-An `Emperor` folder inside `jk1` (or `mots`) works too, so if your copy of the
-game files carries one, it comes along when you copy them in. The one next to
-`jk1` wins if both have clips.
+An `Emperor` folder in your game files' folder works too: next to `Episode`
+and `Resource`, in `jk1` (`mots` for OpenMoTS) or wherever your game files are.
+If both have clips, the one straight in the OpenJKDF2 (or OpenMoTS) folder is
+used.
 
 Clips you add while the game is running count from the next time cheat mode
-goes on. With the folder empty or missing, cheat mode is silent.
+goes on. With neither folder holding any, cheat mode is silent.
 
 ### sithewok's catches in Jedi Knight
 

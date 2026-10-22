@@ -15,17 +15,15 @@ static AVAudioPlayer* iosCheatLaugh_playing;
 static NSString* iosCheatLaugh_last;
 
 // The readable recordings in the Emperor folder (its name in any case) in the folder parent, up to
-// IOSCHEATLAUGH_MAX in all; 1 if parent has such a folder
-static int iosCheatLaugh_AddFrom(NSString* parent, NSMutableArray<NSString*>* aPath)
+// IOSCHEATLAUGH_MAX in all
+static void iosCheatLaugh_AddFrom(NSString* parent, NSMutableArray<NSString*>* aPath)
 {
     NSFileManager* fm = [NSFileManager defaultManager];
     static const char* aExtC[] = IOSCHEATLAUGH_EXTS;
     NSMutableSet<NSString*>* aExt = [NSMutableSet set];
     for (size_t i = 0; i < sizeof(aExtC) / sizeof(aExtC[0]); i++) [aExt addObject:@(aExtC[i])];
-    int bFound = 0;
     for (NSString* name in parent ? [fm contentsOfDirectoryAtPath:parent error:NULL] : nil) {
         if ([name caseInsensitiveCompare:@IOSCHEATLAUGH_FOLDER] != NSOrderedSame) continue;
-        bFound = 1;
         NSString* dir = [parent stringByAppendingPathComponent:name];
         // (by name, so which ones count past IOSCHEATLAUGH_MAX doesn't change from one look to the next)
         NSArray<NSString*>* aFile = [[fm contentsOfDirectoryAtPath:dir error:NULL] sortedArrayUsingSelector:@selector(compare:)];
@@ -38,13 +36,13 @@ static int iosCheatLaugh_AddFrom(NSString* parent, NSMutableArray<NSString*>* aP
             [aPath addObject:path];
         }
     }
-    return bFound;
 }
 
 // The ones to pick from, looked for again at each switch-on (so a file added
 // meanwhile counts): the Files app's Emperor folder, else one inside the game's
-// folder (jk1 or mots, any case: where a copy of the game files puts it), else
-// the app's own (a build's own)
+// folder (next to Episode and Resource: where a copy of the game files that
+// carries one puts it; the game runs in that folder, see InstallHelper), else
+// one inside jk1 or mots (any case), else the app's own (a build's own)
 static NSArray<NSString*>* iosCheatLaugh_Recordings(void)
 {
     NSMutableArray<NSString*>* aPath = [NSMutableArray array];
@@ -52,8 +50,14 @@ static NSArray<NSString*>* iosCheatLaugh_Recordings(void)
     NSString* docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
     iosCheatLaugh_AddFrom(docs, aPath);
     if (!aPath.count) {
+        NSString* game = [fm currentDirectoryPath];
+        if (game && docs && ![game.stringByStandardizingPath isEqualToString:docs.stringByStandardizingPath])
+            iosCheatLaugh_AddFrom(game, aPath);
+    }
+    if (!aPath.count) {
         static const char* aGame[] = IOSCHEATLAUGH_GAME_FOLDERS;
-        for (NSString* name in docs ? [fm contentsOfDirectoryAtPath:docs error:NULL] : nil) {
+        // (by name, as the clips: which ones count past IOSCHEATLAUGH_MAX stays the same)
+        for (NSString* name in docs ? [[fm contentsOfDirectoryAtPath:docs error:NULL] sortedArrayUsingSelector:@selector(compare:)] : nil) {
             for (size_t i = 0; i < sizeof(aGame) / sizeof(aGame[0]); i++)
                 if ([name caseInsensitiveCompare:@(aGame[i])] == NSOrderedSame)
                     iosCheatLaugh_AddFrom([docs stringByAppendingPathComponent:name], aPath);
