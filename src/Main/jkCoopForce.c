@@ -16,6 +16,8 @@
 #include "Main/jkEpisode.h"
 #include "Main/jkDev.h"
 #include "Main/jkCoopSave.h"
+#include "Cog/sithCogParse.h"
+#include "Cog/sithCogFunctionThing.h"
 #include "General/stdString.h"
 #include "Win95/stdComm.h"
 #include <string.h>
@@ -528,6 +530,121 @@ void jkCoopForce_HostEndingLevel(void)
     // (the secrets' last count before the guests' levels end, which give their star by it)
     if (jkCoop_IsActive() && sithNet_isServer && jkCoopForce_bStory && jkCoopForce_LocalPlayer())
         jkCoopForce_SendSecrets(-1);
+}
+
+// ------------------------------------------------------------------ a guest's own innocents
+
+// The guest whose kill of an actor is being told to its cogs (the host's), NULL if none
+static SithThing* jkCoopForce_pKiller = NULL;
+
+// Whether a cog's script counts innocents killed: its "killed" handler calls ChangeInv with the bin 72
+// (the stock innocents' class cogs: ChangeInv(player, 72, ...) if the local player killed them). Found
+// in the script's code once, from the handler's start to the next handler's
+#define JKCOOPFORCE_MAX_SCRIPTS 64
+static SithCogScript* jkCoopForce_apScript[JKCOOPFORCE_MAX_SCRIPTS];
+static uint8_t jkCoopForce_aCounts[JKCOOPFORCE_MAX_SCRIPTS];
+static int jkCoopForce_numScripts = 0;
+
+static int jkCoopForce_ScriptCountsInnocents(sithCog* pCog)
+{
+    const SithCogScript* pScript = pCog->pScript;
+    if (!pScript->pCode)
+        return 0;
+    uint32_t start = 0xFFFFFFFF, end = pScript->codeSize;
+    for (uint32_t i = 0; i < pScript->numHandlers; i++)
+        if (pScript->aHandlers[i].trigId == SITH_MESSAGE_KILLED)
+            start = pScript->aHandlers[i].trigPc;
+    if (start >= end)
+        return 0;
+    for (uint32_t i = 0; i < pScript->numHandlers; i++)
+        if (pScript->aHandlers[i].trigPc > start && pScript->aHandlers[i].trigPc < end)
+            end = pScript->aHandlers[i].trigPc;
+    const int32_t* pCode = pScript->pCode;
+    int b72 = 0;        // (72 pushed since the last call)
+    int lastSym = -1;   // (the symbol pushed just before, a call's function)
+    for (uint32_t pc = start; pc < end; ) {
+        const int32_t op = pCode[pc++];
+        const int bWasSym = lastSym >= 0;
+        int32_t arg = 0;
+        if (op == COG_OPCODE_PUSHINT || op == COG_OPCODE_PUSHFLOAT || op == COG_OPCODE_PUSHSYMBOL || op == COG_OPCODE_GOFALSE
+            || op == COG_OPCODE_GOTRUE || op == COG_OPCODE_GO || op == COG_OPCODE_CALL) {
+            if (pc >= end)
+                break;
+            arg = pCode[pc++];
+        }
+        else if (op == COG_OPCODE_PUSHVECTOR)
+            pc += 3;
+        lastSym = -1;
+        if (op == COG_OPCODE_PUSHINT && arg == SITHBIN_PEDS_KILLED)
+            b72 = 1;
+        else if (op == COG_OPCODE_PUSHFLOAT) {
+            float f;
+            memcpy(&f, &arg, 4);
+            if (f == (float)SITHBIN_PEDS_KILLED)
+                b72 = 1;
+        }
+        else if (op == COG_OPCODE_PUSHSYMBOL)
+            lastSym = arg;
+        else if (op == COG_OPCODE_CALLFUNC) {
+            if (b72 && bWasSym) {
+                SithCogSymbol* pSym = sithCogParse_GetSymbolByID(pCog->pSymbolTable, (unsigned int)pCode[pc - 2]);
+                if (pSym && pSym->val.type == SITHCOG_VALUE_POINTER && pSym->val.dataAsFunc == sithCogFunctionThing_ChangeInventory)
+                    return 1;
+            }
+            b72 = 0;
+        }
+    }
+    return 0;
+}
+
+static int jkCoopForce_CountsInnocents(sithCog* pCog)
+{
+    if (!pCog || !pCog->pScript || !(pCog->flags & SITH_COG_CLASS))
+        return 0;
+    for (int i = 0; i < jkCoopForce_numScripts; i++)
+        if (jkCoopForce_apScript[i] == pCog->pScript)
+            return jkCoopForce_aCounts[i];
+    const int bCounts = jkCoopForce_ScriptCountsInnocents(pCog);
+    if (jkCoopForce_numScripts < JKCOOPFORCE_MAX_SCRIPTS) {
+        jkCoopForce_apScript[jkCoopForce_numScripts] = pCog->pScript;
+        jkCoopForce_aCounts[jkCoopForce_numScripts++] = (uint8_t)bCounts;
+    }
+    return bCounts;
+}
+
+SithThing* jkCoopForce_KilledBegin(SithThing* pKiller)
+{
+    SithThing* pBefore = jkCoopForce_pKiller;
+    SithThing* pMe = jkCoopForce_LocalPlayer();
+    jkCoopForce_pKiller = NULL;
+    if (jkCoop_IsActive() && sithNet_isServer && jkCoopForce_bStory && pMe && pKiller && pKiller != pMe
+        && pKiller->type == SITH_THING_PLAYER && pKiller->actorParams.pPlayer)
+        jkCoopForce_pKiller = pKiller;
+    return pBefore;
+}
+
+void jkCoopForce_KilledEnd(SithThing* pBefore)
+{
+    jkCoopForce_pKiller = pBefore;
+}
+
+SithThing* jkCoopForce_LocalPlayerFor(sithCog* pCog)
+{
+    if (!jkCoopForce_pKiller || !jkCoopForce_CountsInnocents(pCog))
+        return NULL;
+    return jkCoopForce_pKiller;
+}
+
+void jkCoopForce_CogSetsOtherForce(sithCog* pCog, SithThing* pThing, int bin, flex_t amount, int bChange)
+{
+    if (!jkCoopForce_pKiller || pThing != jkCoopForce_pKiller || !jkCoopForce_CountsInnocents(pCog))
+        return;
+    const SithInventoryType* pType = &sithInventory_g_aTypes[bin];
+    if (amount < pType->min) amount = pType->min;
+    if (amount > pType->max) amount = pType->max;
+    const flex_t now = pThing->actorParams.pPlayer->aItems[bin].amount;
+    stdPlatform_Printf("OpenJKDF2: co-op, an innocent killed by a guest, theirs (%d)\n", bin);
+    jkCoopForce_SendGive((int)pThing->actorParams.pPlayer->playerNetId, bin, bChange, bChange ? amount - now : amount);
 }
 
 // ------------------------------------------------------------------ a guest's kit, at the host

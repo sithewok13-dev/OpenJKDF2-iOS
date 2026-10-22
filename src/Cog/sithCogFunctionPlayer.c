@@ -8,6 +8,7 @@
 #include "Gameplay/sithInventory.h"
 #ifdef QOL_IMPROVEMENTS
 #include "Main/jkCoop.h" // Added
+#include "Main/jkCoopForce.h" // Added
 #endif
 #ifdef JK_ENHANCED
 #include "Enhanced/iosGame.h" // Added
@@ -133,6 +134,15 @@ void sithCogFunctionPlayer_GetAbsoluteMaxPlayers(sithCog *pCog)
 
 void sithCogFunctionPlayer_GetLocalPlayerThing(sithCog *pCog)
 {
+#ifdef QOL_IMPROVEMENTS
+    // Added: co-op, an innocent a guest killed is told to its cog as that guest's kill (on the host)
+    SithThing* pFor = jkCoopForce_LocalPlayerFor(pCog);
+    if (pFor)
+    {
+        sithCogExec_PushInt(pCog, pFor->idx);
+        return;
+    }
+#endif
     if (sithPlayer_g_pLocalPlayerThing)
         sithCogExec_PushInt(pCog, sithPlayer_g_pLocalPlayerThing->idx);
     else

@@ -17,6 +17,7 @@
 #include "Dss/sithMulti.h"
 #include "Dss/sithDSSThing.h"
 #include "jk.h"
+#include "Main/jkCoopForce.h" // Added
 
 void sithActor_SetDifficulty(SithThing *pActor)
 {
@@ -219,6 +220,9 @@ void sithActor_KillActor(SithThing *pThing, SithThing *pSrcThing, int damageType
 
 
     pThing->actorParams.health = 0.0;
+#ifdef QOL_IMPROVEMENTS
+    SithThing* pCoopKillerBefore = jkCoopForce_KilledBegin(pSrcThing); // Added: co-op, a guest's kill of an innocent is theirs
+#endif
     if ( (pThing->flags & SITH_TF_CAPTURED) == 0 || (sithCog_ThingSendMessage(pThing, pSrcThing, SITH_MESSAGE_KILLED), (pThing->flags & SITH_TF_DESTROYED) == 0) )
     {
         sithSoundClass_StopSound(pThing, 0);
@@ -303,6 +307,9 @@ void sithActor_KillActor(SithThing *pThing, SithThing *pSrcThing, int damageType
             }
         }
     }
+#ifdef QOL_IMPROVEMENTS
+    jkCoopForce_KilledEnd(pCoopKillerBefore);
+#endif
 }
 
 int sithActor_SurfaceCollisionHandler(SithThing *pThing, SithSurface *pSurface, SithCollision *pHitStack)

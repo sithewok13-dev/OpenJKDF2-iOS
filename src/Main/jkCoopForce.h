@@ -25,8 +25,8 @@
 //   screen at the end of that level.
 // - A level played with cheats (when the host allows them) still gives what the story gives (its
 //   scripts' rank, stars and powers), not what the cheats gave.
-// - The innocents killed (a dark side's mark) are counted over the campaign, as in single player; but,
-//   as the game counts them on the host for the host, only the host's kills count.
+// - The innocents killed (a dark side's mark) are counted over the campaign, each player's own, as in single
+//   player. (The game counts them on the host, for the host: an innocent a guest kills is that guest's.)
 
 #ifndef _MAIN_JKCOOPFORCE_H
 #define _MAIN_JKCOOPFORCE_H
@@ -81,6 +81,20 @@ void jkCoopForce_LevelClosed(void);
 void jkCoopForce_BetweenLevels(void);
 // The host about to end the level for everyone (jkDSS_SendEndLevel): its secrets sent first
 void jkCoopForce_HostEndingLevel(void);
+
+// An actor killed (sithActor_KillActor, around its "killed" to its cogs; pKiller the thing that killed it):
+// on the host, a guest's kill of an innocent is theirs. The innocent's cog (one whose "killed" counts
+// innocents killed: ChangeInv of bin 72) is answered that guest as the local player, and what it then does
+// to that guest's Force bins (the count; in Mysteries of the Sith, the Force energy it takes) is sent to
+// that guest. Returns what to give KilledEnd (the killer before: kills within kills)
+SithThing* jkCoopForce_KilledBegin(SithThing* pKiller);
+void jkCoopForce_KilledEnd(SithThing* pBefore);
+// A cog asks GetLocalPlayerThing() (sithCogFunctionPlayer_GetLocalPlayerThing): the player it means if not
+// the local one (above), else NULL
+SithThing* jkCoopForce_LocalPlayerFor(sithCog* pCog);
+// A cog about to set (SetInv: amount) or change (ChangeInv, bChange: amount, what it will then have) one of
+// the Force bins of a player who isn't the local one (jkCoop_CogSetsInv/CogChangesInv): the killer's above
+void jkCoopForce_CogSetsOtherForce(sithCog* pCog, SithThing* pThing, int bin, flex_t amount, int bChange);
 
 // The host, a guest new to the campaign (in no save, nothing carried in): their kit caught up with the
 // host's Force (1 if so: aKit then to be sent back to them)

@@ -1346,8 +1346,8 @@ their own.
   the stars you have spent.
 - With cheats allowed, a level in which you used cheats still gives the
   story's rank, stars and powers, but you don't keep the cheats' Force.
-- Only the host's kills of innocent people count towards the dark side.
-  The game counts them on the host's phone only.
+- Killing innocent people counts towards the dark side for whoever did
+  it, as in single player, and carries on from level to level.
 - The Force energy bar is full at the start of every level.
 
 ### Co-op saves

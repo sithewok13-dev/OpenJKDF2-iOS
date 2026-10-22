@@ -5,6 +5,7 @@
 #include "sithCog.h"
 
 void sithCogFunctionThing_Startup(SithCogSymbolTable* pCog);
+void sithCogFunctionThing_ChangeInventory(sithCog *pCog); // Added: (ChangeInv, known to jkCoopForce)
 
 //MATH_FUNC void sithCogFunctionThing_InterpolatePYR(sithCog *pCog);
 
