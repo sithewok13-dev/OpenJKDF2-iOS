@@ -135,7 +135,7 @@ AltStore:
    **[Add to AltStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-altstore)**, and confirm. If that doesn't
    open the app, open it yourself, go to *Sources*, tap **+**, and paste
    this address:
-   `https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/packaging/ios/altstore-source.json`
+   `https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/packaging/ios/altstore-source.json`
 3. Open the new source, *OpenJKDF2 for iOS (unofficial)*. It lists
    **OpenJKDF2** (Jedi Knight) and **OpenMoTS** (Mysteries of the Sith).
    Install the one for the game you have, or both.

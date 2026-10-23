@@ -660,7 +660,7 @@ The setup guide has more, including co-op saves and opening a port on your route
 
 ### Install
 
-**Easiest, with SideStore or AltStore:** set one of them up first, with its own instructions. Then, on your iPhone, tap [Add to SideStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-sidestore) or [Add to AltStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-altstore) and confirm. If that doesn't open the app, open it yourself, go to *Sources*, tap **+** and paste this address: `https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/packaging/ios/altstore-source.json`
+**Easiest, with SideStore or AltStore:** set one of them up first, with its own instructions. Then, on your iPhone, tap [Add to SideStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-sidestore) or [Add to AltStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-altstore) and confirm. If that doesn't open the app, open it yourself, go to *Sources*, tap **+** and paste this address: `https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/packaging/ios/altstore-source.json`
 
 The source, *OpenJKDF2 for iOS (unofficial)*, lists **OpenJKDF2** (Jedi Knight) and **OpenMoTS** (Mysteries of the Sith). Install the one for your game, or both, then carry on from step 3 below. It always has the newest numbered release, betas included, and you update the apps there too.
 

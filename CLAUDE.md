@@ -4,7 +4,8 @@ An unofficial iPhone/iPad build of OpenJKDF2 (Jedi Knight: Dark Forces II), with
 touch controls. The owner plays it on an iPhone, isn't a programmer, and reads
 everything on a phone.
 
-- **Build branch:** `claude/openjkdf2-ios-build-2gcr9s` (the default branch).
+- **Build branch:** `main` (the default branch). Test builds are pushed to `test`.
+  Links to files in the repo use `HEAD`, not a branch name, so they keep working.
 - **iOS code:** `src/Platform/iOS/` (`iosTouch.m` overlay, `iosSafeArea.c` HUD
   margins). The enhanced gameplay shared by every platform (`JK_ENHANCED`:
   sabers, stances, photo modes, `iosGame.c` engine helpers) is in `src/Enhanced/`.

@@ -15,7 +15,7 @@
 
 - **[Latest release](https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/latest)**: `OpenJKDF2-iOS-unsigned.ipa` is Jedi Knight (the OpenJKDF2 app), `OpenJKDF2-MotS-iOS-unsigned.ipa` is Mysteries of the Sith (the OpenMoTS app). Betas are on the [releases page](https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases).
 - **Easiest: add the source** in SideStore or AltStore, then install and update both apps from there: **[Add to SideStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-sidestore)** · **[Add to AltStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-altstore)**
-- Or add it by hand (in the app's *Sources*, tap **+**) with this address: `https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/packaging/ios/altstore-source.json`
+- Or add it by hand (in the app's *Sources*, tap **+**) with this address: `https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/packaging/ios/altstore-source.json`
 
 ### What you need
 

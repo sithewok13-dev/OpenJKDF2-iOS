@@ -3,7 +3,7 @@
   "identifier": "io.github.sithewok13-dev.openjkdf2-ios",
   "subtitle": "Jedi Knight and Mysteries of the Sith on iPhone and iPad",
   "description": "An unofficial fan port of OpenJKDF2, the open-source Jedi Knight engine, to iPhone and iPad, with touch controls. Two apps: OpenJKDF2 for Star Wars Jedi Knight: Dark Forces II, and OpenMoTS for Mysteries of the Sith.\n\nYou need your own copy of each game (GOG or Steam). No game files are included.\n\nIt's a beta. Setup guide and bug reports: https://github.com/sithewok13-dev/OpenJKDF2-iOS\n\nNot affiliated with or endorsed by Lucasfilm, Disney or LucasArts, or by the OpenJKDF2 developers.",
-  "iconURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/packaging/icon-256.png",
+  "iconURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/packaging/icon-256.png",
   "website": "https://github.com/sithewok13-dev/OpenJKDF2-iOS",
   "tintColor": "#8e3aa8",
   "apps": [
@@ -13,22 +13,22 @@
       "developerName": "OpenJKDF2 contributors, iOS port by sithewok13-dev",
       "subtitle": "Jedi Knight: Dark Forces II, with touch controls",
       "localizedDescription": "An unofficial fan port of OpenJKDF2 to iPhone and iPad: play Star Wars Jedi Knight: Dark Forces II (1997) with on-screen touch controls, a game controller or a keyboard, and multiplayer.\n\nYou need your own copy of the game (GOG or Steam); no game files are included. Open the app once, then copy the game's Episode, Resource and MUSIC folders into Files > On My iPhone > OpenJKDF2 > jk1.\n\nIt's a beta: expect bugs, and back up your saves.\n\nSetup guide: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md\n\nNot affiliated with or endorsed by Lucasfilm, Disney or LucasArts, or by the OpenJKDF2 developers.",
-      "iconURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/packaging/icon-256.png",
+      "iconURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/packaging/icon-256.png",
       "tintColor": "#a43fb0",
       "category": "games",
       "screenshots": [
         {
-          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/docs/ios/screenshots/dual-sabers-touch.jpg",
+          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/dual-sabers-touch.jpg",
           "width": 1600,
           "height": 736
         },
         {
-          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/docs/ios/screenshots/selfie-surrender.jpg",
+          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/selfie-surrender.jpg",
           "width": 1600,
           "height": 736
         },
         {
-          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/docs/ios/screenshots/selfie-probes.jpg",
+          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/selfie-probes.jpg",
           "width": 1600,
           "height": 736
         }
@@ -77,17 +77,17 @@
       "developerName": "OpenJKDF2 contributors, iOS port by sithewok13-dev",
       "subtitle": "Mysteries of the Sith, with touch controls",
       "localizedDescription": "An unofficial fan port of OpenJKDF2 to iPhone and iPad, for the expansion Star Wars Jedi Knight: Mysteries of the Sith (1998). Same engine and touch controls as OpenJKDF2, in a separate app with its own files and saves. It has had less testing than OpenJKDF2.\n\nYou need your own copy of the game (GOG or Steam); no game files are included. Open the app once, then copy the game's Episode, Resource and MUSIC folders into Files > On My iPhone > OpenMoTS > mots.\n\nIt's a beta: expect bugs, and back up your saves.\n\nSetup guide: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#mysteries-of-the-sith\n\nNot affiliated with or endorsed by Lucasfilm, Disney or LucasArts, or by the OpenJKDF2 developers.",
-      "iconURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/packaging/mots_icon-256.png",
+      "iconURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/packaging/mots_icon-256.png",
       "tintColor": "#7d2d9a",
       "category": "games",
       "screenshots": [
         {
-          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/docs/ios/screenshots/mots-duel.jpg",
+          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/mots-duel.jpg",
           "width": 1600,
           "height": 736
         },
         {
-          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/claude/openjkdf2-ios-build-2gcr9s/docs/ios/screenshots/dual-sabers-touch.jpg",
+          "imageURL": "https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/dual-sabers-touch.jpg",
           "width": 1600,
           "height": 736
         }
