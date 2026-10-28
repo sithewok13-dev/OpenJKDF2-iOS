@@ -105,6 +105,7 @@ int jkDev_Custom_ToggleNoclip(); // Added
 int jkDev_Custom_CanPickLevel(); // Added
 int jkDev_Custom_NumLevels(); // Added
 int jkDev_Custom_GoToLevel(int level); // Added
+int jkDev_Custom_LevelInfo(int level, char *pTitle, int titleLen, char *pFile, int fileLen); // Added
 int jkDev_Custom_PrintInPlace(const char16_t *str); // Added
 void jkDev_Custom_SithEwokRestored(); // Added
 void jkDev_Custom_GameLoaded(); // Added

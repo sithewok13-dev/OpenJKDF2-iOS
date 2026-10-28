@@ -24,6 +24,7 @@ static void jkDev_Custom_HostAddressTick(void); // Added
 #include "Main/jkMain.h"
 #include "Main/jkStrings.h"
 #include "Main/jkQuakeConsole.h"
+#include "Gui/jkGUITitle.h" // Added
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSaberThrow.h" // Added
 #include "Enhanced/iosSaberThrowJk.h" // Added
@@ -1720,6 +1721,76 @@ int jkDev_Custom_GoToLevel(int level)
         // (as pinotnoir does it, jkMain_SetMap, at this entry)
         jkEpisode_mLoad.currentEpisodeEntryIdx = i;
         jkMain_cd_swap_reverify(pEnt);
+        return 1;
+    }
+    return 0;
+}
+
+// Added: sithewok's level list (the touch overlay's LEVEL, in cheat mode): level number `level`, as
+// jkDev_Custom_GoToLevel picks it (the first entry with that number), from the episode loaded now: its file
+// ("01narshadda.jkl") and its title as the loading screen shows it, in UTF-8, without the "1 - " some titles
+// start with ("" if it has none). 0: the episode has no such level.
+int jkDev_Custom_LevelInfo(int level, char *pTitle, int titleLen, char *pFile, int fileLen)
+{
+    if ( titleLen > 0 )
+        pTitle[0] = 0;
+    if ( fileLen > 0 )
+        pFile[0] = 0;
+    for ( int i = 0; jkEpisode_mLoad.paEntries && i < jkEpisode_mLoad.numSeq; i++ )
+    {
+        const jkEpisodeEntry* pEnt = &jkEpisode_mLoad.paEntries[i];
+        if ( pEnt->type != 0 || pEnt->level != level )
+            continue;
+        if ( fileLen > 0 )
+            stdString_SafeStrCopy(pFile, pEnt->fileName, fileLen);
+#ifdef QOL_IMPROVEMENTS
+        char16_t wTitle[64];
+        if ( titleLen > 0 && jkGuiTitle_LevelTitle(&jkCog_strings, pEnt->fileName, wTitle, 64) )
+        {
+            // (a leading number and " - " dropped: the list numbers the levels itself)
+            const char16_t* t = wTitle;
+            int nDigits = 0;
+            while ( t[nDigits] >= '0' && t[nDigits] <= '9' )
+                nDigits++;
+            if ( nDigits > 0 && nDigits <= 3 && t[nDigits] == ' ' && t[nDigits + 1] == '-' && t[nDigits + 2] == ' ' )
+                t += nDigits + 3;
+            int n = 0;
+            for ( ; *t; t++ )
+            {
+                const unsigned int c = *t;
+                char aUtf8[3];
+                int len;
+                if ( c < 0x80 )
+                {
+                    aUtf8[0] = (char)c;
+                    len = 1;
+                }
+                else if ( c < 0x800 )
+                {
+                    aUtf8[0] = (char)(0xC0 | (c >> 6));
+                    aUtf8[1] = (char)(0x80 | (c & 0x3F));
+                    len = 2;
+                }
+                else if ( c >= 0xD800 && c <= 0xDFFF )
+                {
+                    aUtf8[0] = '?'; // (half of a pair: never in a level's title)
+                    len = 1;
+                }
+                else
+                {
+                    aUtf8[0] = (char)(0xE0 | (c >> 12));
+                    aUtf8[1] = (char)(0x80 | ((c >> 6) & 0x3F));
+                    aUtf8[2] = (char)(0x80 | (c & 0x3F));
+                    len = 3;
+                }
+                if ( n + len >= titleLen )
+                    break;
+                memcpy(pTitle + n, aUtf8, len);
+                n += len;
+            }
+            pTitle[n] = 0;
+        }
+#endif
         return 1;
     }
     return 0;

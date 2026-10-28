@@ -384,6 +384,18 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 #define IOSTOUCH_GYRO_SENS_DEFAULTS_KEY @"iosTouchGyroSens"
 #define IOSTOUCH_GYRO_LAST_DEFAULTS_KEY @"iosTouchGyroLastMode" // the mode GYRO's tap switches back on
 #define IOSTOUCH_GYRO_DEFAULT_SENS 1 // 1.5x
+// The tray's LOOK: how fast a finger's drag turns the view, times the usual
+// (IOSTOUCH_LOOK_SCALE_X/Y). A tap is the next of iosTouch_aLookSteps up
+// (round to the first); held still IOSTOUCH_MENU_HOLD (a ring fills), back to
+// 1x. Remembered under this key.
+#define IOSTOUCH_LOOKSCALE_DEFAULTS_KEY @"iosTouchLookScale"
+// The tray's LEVEL in cheat mode (never in multiplayer): a tap opens the list
+// of the episode's levels (iosGame_LevelInfo), the game held still while it
+// is open; a level tapped loads, its X or a tap off it closes it. The list
+// is a card IOSTOUCH_LEVELS_W wide at most, its rows IOSTOUCH_LEVELS_ROW tall.
+#define IOSTOUCH_LEVELS_W 440.0
+#define IOSTOUCH_LEVELS_ROW 48.0
+#define IOSTOUCH_LEVELS_TITLE_H 40.0
 // A one-off key press is held for this many control reads, then released for one
 #define IOSTOUCH_PULSE_READS 2
 
@@ -412,12 +424,14 @@ enum {
     KIND_CHAT,     // (MENU tray) opens or closes the typing line for cheats, when the touch lifts on it
     KIND_FPS,      // (MENU tray) shows or hides the FPS readout, when the touch lifts on it
     KIND_GYRO,     // (MENU tray) gyro aiming on or off (back to its last mode), when the touch lifts on it; held: its options
+    KIND_RUN,      // (MENU tray) the game's Always Run option on or off, when the touch lifts on it
+    KIND_LOOKSPEED, // (MENU tray) the touch look speed's next step, when the touch lifts on it; held: back to 1x
     KIND_GYROMODE, // (gyro options) the mode gyro aiming goes on in: TOUCH or ALWAYS
     KIND_GYROSENS, // (gyro options) the next gyro aiming sensitivity, when the touch lifts on it
     KIND_CAMSWITCH, // (MENU tray) shows or hides the CAMERA button, when the touch lifts on it
     KIND_CHEAT,    // held still IOSTOUCH_CHEAT_HOLD: the sithewok cheat on or off (a tap does nothing)
     KIND_CHEATSWITCH, // (MENU tray) shows or hides the CHEAT button, when the touch lifts on it
-    KIND_LEVEL,    // (MENU tray, while sithewok is on) held still: counts the levels; lifted, goes to the one on show
+    KIND_LEVEL,    // (MENU tray, while sithewok is on, not in multiplayer) a tap: the level list; held still: counts the levels; lifted, goes to the one on show
     KIND_VIEW,     // tap (on lift): first person or third (iosGame_SetThirdPerson)
     KIND_VIEWSWITCH, // (MENU tray) shows or hides the VIEW button, when the touch lifts on it
     KIND_CONTROLS, // (MENU tray) the controls' sides: NORMAL or SWAPPED
@@ -471,7 +485,7 @@ enum {
     BTN_SABER,  // between CAMERA and QUICK SAVE, once the saber is had (or sithewok is on)
     BTN_CHEAT,  // ...right of SABER, in cheat mode (switched on in the tray)
     BTN_VIEW,   // ...right of CHEAT: first or third person (switched on in the tray)
-    BTN_TRAYGYRO, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS, // MENU's tray (left to right), hidden unless it is open (LEVEL only while sithewok is on)
+    BTN_TRAYGYRO, BTN_TRAYRUN, BTN_TRAYLOOK, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS, // MENU's tray (left to right), hidden unless it is open (LEVEL only while sithewok is on, not in multiplayer)
     // Rows under the tray, one at a time (iosTouch_optRow), hidden until opened:
     BTN_GYROOPT_MODE, BTN_GYROOPT_SENS,  // the gyro options (a hold on the tray's GYRO)
     BTN_CAMROW_PHOTO, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE, // the camera options (a hold on the tray's camera switch)
@@ -502,6 +516,8 @@ static iosTouchButton iosTouch_aButtons[] = {
     [BTN_CHEAT]     = { "",            KIND_CHEAT,    -1,                  22.0f, 0 },
     [BTN_VIEW]      = { "1P",          KIND_VIEW,     -1,                  22.0f, 0 },
     [BTN_TRAYGYRO]  = { "GYRO",        KIND_GYRO,     -1,                  20.0f, 0 },
+    [BTN_TRAYRUN]   = { "",            KIND_RUN,      -1,                  20.0f, 0 },
+    [BTN_TRAYLOOK]  = { "LOOK",        KIND_LOOKSPEED, -1,                 20.0f, 0 },
     [BTN_TRAYFPS]   = { "FPS",         KIND_FPS,      -1,                  20.0f, 0 },
     [BTN_TRAYCAM]   = { "",            KIND_CAMSWITCH, -1,                 20.0f, 0 },
     [BTN_TRAYCHEAT] = { "",            KIND_CHEATSWITCH, -1,               20.0f, 0 },
@@ -545,6 +561,13 @@ static int iosTouch_IsOptButton(int button)
 static int iosTouch_IsRowOpener(int button)
 {
     return button == BTN_TRAYGYRO || button == BTN_TRAYCAM;
+}
+
+// A tray button with a hold of its own (a ring fills; the lift is then no
+// tap): the row openers, and LOOK (back to 1x)
+static int iosTouch_IsTrayHold(int button)
+{
+    return iosTouch_IsRowOpener(button) || button == BTN_TRAYLOOK;
 }
 
 static int iosTouch_IsQuickHold(int button)
@@ -830,7 +853,9 @@ static CGFloat iosTouch_padRandomHold = 0.0; // (a pad's View or the keys' R hel
 // MENU's tray; Escape held down for a MENU tap (iosTouch_Update calls left);
 // the FPS readout
 static int iosTouch_bTrayOpen = 0;
-static int iosTouch_bTrayLevel = 0; // the tray's LEVEL in its row (sithewok on, as the tray last read it)
+static int iosTouch_bTrayLevel = 0; // the tray's LEVEL in its row (sithewok on, not multiplayer, as the tray last read it)
+static float iosTouch_lookScale = 1.0f; // the tray's LOOK (remembered)
+static const float iosTouch_aLookSteps[] = { 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 2.5f, 3.0f };
 static int iosTouch_menuPulse = 0;
 static int iosTouch_bShowFps = 0;
 static int iosTouch_bShowCamera = 0;
@@ -976,9 +1001,16 @@ static CGFloat iosTouch_DistToSegment(CGPoint p, CGFloat ax, CGFloat ay, CGFloat
     return sqrt(dx * dx + dy * dy);
 }
 
+// Whether the tray's LEVEL belongs in it now: cheat mode on, and not a
+// multiplayer game (co-op either)
+static int iosTouch_WantsTrayLevel(void)
+{
+    return iosGame_IsSithEwokOn() && !iosGame_IsMultiplayer();
+}
+
 // Whether a tray button is in its row now: all of them, LEVEL only while
-// sithewok is on (iosTouch_bTrayLevel); and a tray button's place in the
-// row, counted from its right end (the keyboard, 0)
+// sithewok is on, out of multiplayer (iosTouch_bTrayLevel); and a tray
+// button's place in the row, counted from its right end (the keyboard, 0)
 static int iosTouch_TrayShown(int button)
 {
     return button != BTN_TRAYLEVEL || iosTouch_bTrayLevel;
@@ -1377,7 +1409,7 @@ typedef struct {
     CGSize labelSize[IOSTOUCH_WHEEL_MAX][2]; // ...and how big it is
 } iosTouchWheelFit;
 
-@interface IOSTouchOverlay : UIView {
+@interface IOSTouchOverlay : UIView <UITableViewDataSource, UITableViewDelegate> {
     UIView* stickBase;
     UIView* stickKnob;
     UIView* runMarker;       // the stick's run marker (Always Run off)...
@@ -1432,6 +1464,15 @@ typedef struct {
     UIView* gyroOptBack;    // behind the gyro options
     CAShapeLayer* camOptRing; // the tray's camera switch, held to open the camera options
     CAShapeLayer* gyroOptRing; // the tray's GYRO, held to open the gyro options
+    CAShapeLayer* lookRing;    // the tray's LOOK, held to go back to 1x
+    CAShapeLayer* runTrayChevrons; // the tray's RUN: the run marker's "^^"
+    // The level list (the tray's LEVEL, in cheat mode): made the first time
+    // it opens -- the game dimmed behind a card, its title, X and the rows
+    UIView* levelBack;
+    UIView* levelCard;
+    UILabel* levelTitle;
+    UITableView* levelTable;
+    int numListLevels;
     UILabel* burstLabel;    // beside CAMERA: how many shots a burst has taken
     UILabel* freezeClose;   // Action Freeze's X (back to the game)
     CAShapeLayer* cameraRing; // CAMERA's, held for the selfie
@@ -1501,6 +1542,10 @@ typedef struct {
 - (void)endBurst;
 - (void)setShowFps:(int)bShow;
 - (void)setTrayOpen:(int)bOpen;
+- (void)openLevels;
+- (void)closeLevels;
+- (CAShapeLayer*)trayHoldRing:(int)button;
+- (BOOL)levelsOpen;
 @end
 
 // CHEAT's picture: the Sith emblem, as drawn from the owner's picture of it:
@@ -2011,6 +2056,36 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         levelRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_TRAYLEVEL].radius);
         [aButtonViews[BTN_TRAYLEVEL].layer addSublayer:levelRing];
         aButtonViews[BTN_TRAYLEVEL].font = IOSTouch_WheelFont(IOSTouch_FontSize("GYRO\nALWAYS", iosTouch_aButtons[BTN_TRAYLEVEL].radius));
+        // the tray's LOOK: its hold ring, and the speed remembered (one
+        // that isn't a step, or none, is 1x)
+        lookRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_TRAYLOOK].radius);
+        [aButtonViews[BTN_TRAYLOOK].layer addSublayer:lookRing];
+        if ([[NSUserDefaults standardUserDefaults] objectForKey:IOSTOUCH_LOOKSCALE_DEFAULTS_KEY]) {
+            const float k = [[NSUserDefaults standardUserDefaults] floatForKey:IOSTOUCH_LOOKSCALE_DEFAULTS_KEY];
+            for (int i = 0; i < IOSTOUCH_COUNT(iosTouch_aLookSteps); i++) {
+                if (fabsf(iosTouch_aLookSteps[i] - k) < 0.01f) iosTouch_lookScale = iosTouch_aLookSteps[i];
+            }
+        }
+        // the tray's RUN: the stick's run marker's "^^", as big as there
+        {
+            const CGFloat r = iosTouch_aButtons[BTN_TRAYRUN].radius;
+            runTrayChevrons = [CAShapeLayer layer];
+            runTrayChevrons.frame = CGRectMake(0, 0, r * 2, r * 2);
+            UIBezierPath* chev = [UIBezierPath bezierPath];
+            for (int i = 0; i < 2; i++) {
+                CGFloat tip = r - 5.5 + 5.5 * i; // (as the marker's: two chevrons, 12pt wide, 5.5pt apart, centred)
+                [chev moveToPoint:CGPointMake(r - 6.0, tip + 5.0)];
+                [chev addLineToPoint:CGPointMake(r, tip)];
+                [chev addLineToPoint:CGPointMake(r + 6.0, tip + 5.0)];
+            }
+            runTrayChevrons.path = chev.CGPath;
+            runTrayChevrons.lineWidth = 2.0;
+            runTrayChevrons.lineCap = kCALineCapRound;
+            runTrayChevrons.lineJoin = kCALineJoinRound;
+            runTrayChevrons.fillColor = [UIColor clearColor].CGColor;
+            runTrayChevrons.strokeColor = [UIColor colorWithWhite:1.0 alpha:0.85].CGColor;
+            [aButtonViews[BTN_TRAYRUN].layer addSublayer:runTrayChevrons];
+        }
         if ([[NSUserDefaults standardUserDefaults] objectForKey:IOSTOUCH_SELFIES_DEFAULTS_KEY]) {
             NSInteger n = [[NSUserDefaults standardUserDefaults] integerForKey:IOSTOUCH_SELFIES_DEFAULTS_KEY];
             iosTouch_selfieShots = (n == 1 || n == 5) ? (int)n : 3;
@@ -2915,6 +2990,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
                   || (i == BTN_TRAYCAM && iosTouch_bShowCamera)
                   || (i == BTN_TRAYCHEAT && iosTouch_bShowCheat)
                   || (i == BTN_TRAYVIEW && iosTouch_bShowView)
+                  || (i == BTN_TRAYRUN && iosGame_IsAlwaysRun())
                   || (iosTouch_IsCamOptButton(i) && (iosTouch_cameraKinds & iosTouch_aButtons[i].bin))
                   || (i == BTN_CAMROW_PHOTO && iosTouch_bKindsOpen)
                   || (i == BTN_CAMROW_FREEZE && iosTouch_bFreezeOn)
@@ -2940,6 +3016,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     [CATransaction setDisableActions:YES];
     forceRing.opacity = iosTouch_SaberWheelHides(BTN_FORCE) ? 0.0 : bForceRingFull ? 1.0 : (iosTouch_aButtonHeld[BTN_FORCE] ? 1.0 : IOSTOUCH_IDLE_ALPHA);
     for (int k = 0; k < 2; k++) aCheatSub[k].hidden = !iosTouch_bCheatOn;
+    runTrayChevrons.strokeColor = [UIColor colorWithWhite:1.0 alpha:(iosGame_IsAlwaysRun() ? 1.0 : 0.85)].CGColor;
     // CHEAT's emblem and edge in a quiet red while the cheat is on: only
     // their colour changes (the edge as wide as every other button's)
     cheatEmblem.fillColor = iosTouch_bCheatOn ? [UIColor colorWithRed:0.9 green:0.32 blue:0.28 alpha:0.95].CGColor
@@ -2973,7 +3050,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
 // room; a count going on it dropped if it goes
 - (void)refreshTrayLevel
 {
-    const int bLevel = iosGame_IsSithEwokOn() ? 1 : 0;
+    const int bLevel = iosTouch_WantsTrayLevel() ? 1 : 0;
     if (bLevel != iosTouch_bTrayLevel) {
         iosTouch_bTrayLevel = bLevel;
         if (!bLevel) {
@@ -3114,6 +3191,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
             if (!s->touch || s->role != ROLE_BUTTON) continue;
             if (s->button == BTN_TRAYCAM) [self setRing:camOptRing progress:0.0];
             if (s->button == BTN_TRAYGYRO) [self setRing:gyroOptRing progress:0.0];
+            if (s->button == BTN_TRAYLOOK) [self setRing:lookRing progress:0.0];
             if (s->button == BTN_TRAYLEVEL) {
                 [self endLevelPick:s]; // (closing the tray: no level)
                 [self setRing:levelRing progress:0.0];
@@ -4282,10 +4360,11 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     static NSString* aJumpName[IOSGAME_JUMP_NUM_STYLES] = { @"JUMP\nSMOOTH", @"JUMP\nSTEPS", @"JUMP\nCLASSIC" };
     aButtonViews[BTN_TRAYJUMP].text = aJumpName[iosTouch_jumpStyle];
     aButtonViews[BTN_TRAYCTRL].text = iosTouch_bSwapped ? @"CONTROLS\nSWAPPED" : @"CONTROLS\nNORMAL";
+    aButtonViews[BTN_TRAYLOOK].text = [NSString stringWithFormat:@"LOOK\n%gx", (double)iosTouch_lookScale];
     // GYRO and SENS say what they are set to on a second line: at the size
     // of a two-line label, condensed so "ALWAYS" fits a circle this small,
     // and smaller where a line is longer ("CONTROLS"), inside the 1.5 pt border
-    static const int aTwoLine[] = { BTN_TRAYGYRO, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_GYROOPT_MODE, BTN_GYROOPT_SENS, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE };
+    static const int aTwoLine[] = { BTN_TRAYGYRO, BTN_TRAYLOOK, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_GYROOPT_MODE, BTN_GYROOPT_SENS, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE };
     for (int k = 0; k < IOSTOUCH_COUNT(aTwoLine); k++) {
         const int i = aTwoLine[k];
         const CGFloat r = iosTouch_aButtons[i].radius;
@@ -4293,8 +4372,22 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     }
 }
 
+// The tray's LOOK set (one of iosTouch_aLookSteps), shown and remembered
+- (void)setLookScale:(float)scale
+{
+    iosTouch_lookScale = scale;
+    [[NSUserDefaults standardUserDefaults] setFloat:scale forKey:IOSTOUCH_LOOKSCALE_DEFAULTS_KEY];
+    [self refreshGyroLabels];
+}
+
+// The hold ring of a tray button with a hold of its own (iosTouch_IsTrayHold)
+- (CAShapeLayer*)trayHoldRing:(int)button
+{
+    return button == BTN_TRAYGYRO ? gyroOptRing : button == BTN_TRAYLOOK ? lookRing : camOptRing;
+}
+
 // A tray button picked: it does its thing, and the tray closes -- except
-// after GYRO, which stays for another tap
+// after GYRO, LOOK, JUMP and CONTROLS, which stay for another tap
 - (void)useTrayButton:(int)button
 {
     int kind = iosTouch_aButtons[button].kind;
@@ -4333,9 +4426,29 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
         [self layoutIfNeeded]; // (at once: the tray stays, laid out with the rest)
     }
     else if (kind == KIND_LEVEL) {
-        // (a tap, or MENU's thumb lifted on it: nothing goes, it only says
-        // how; the count is a hold of its own, -tick)
-        iosGame_ShowMessageInPlace(iosGame_NumPickableLevels() > 0 ? "Hold LEVEL to count levels" : "No level to pick here");
+        // (a tap, or MENU's thumb lifted on it: the level list; the count
+        // is a hold of its own, -tick)
+        [self setTrayOpen:0];
+        [self openLevels];
+        return;
+    }
+    else if (kind == KIND_RUN) {
+        // The game's own Always Run (saved as its options screen saves it);
+        // the stick's run marker follows it (-tick)
+        const int bOn = !iosGame_IsAlwaysRun();
+        iosGame_SetAlwaysRun(bOn);
+        iosGame_ShowMessageInPlace(bOn ? "Always Run on" : "Run: push the stick onto the marker");
+    }
+    else if (kind == KIND_LOOKSPEED) {
+        // the next step up from the speed now, round to the first
+        float next = iosTouch_aLookSteps[0];
+        for (int k = 0; k < IOSTOUCH_COUNT(iosTouch_aLookSteps); k++) {
+            if (iosTouch_aLookSteps[k] > iosTouch_lookScale + 0.01f) {
+                next = iosTouch_aLookSteps[k];
+                break;
+            }
+        }
+        [self setLookScale:next];
     }
     else if (kind == KIND_JUMPSTYLE) {
         iosTouch_jumpStyle = (iosTouch_jumpStyle + 1) % IOSGAME_JUMP_NUM_STYLES;
@@ -4343,7 +4456,7 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
         [[NSUserDefaults standardUserDefaults] setInteger:iosTouch_jumpStyle forKey:IOSTOUCH_JUMPSTYLE_DEFAULTS_KEY];
         [self refreshGyroLabels];
     }
-    if (kind == KIND_GYRO || kind == KIND_JUMPSTYLE || kind == KIND_CONTROLS || kind == KIND_LEVEL) [self refreshButtonLooks]; // (the tray stays, for another tap)
+    if (kind == KIND_GYRO || kind == KIND_JUMPSTYLE || kind == KIND_CONTROLS || kind == KIND_LOOKSPEED) [self refreshButtonLooks]; // (the tray stays, for another tap)
     else [self setTrayOpen:0];
 }
 
@@ -4901,6 +5014,7 @@ static void iosTouch_ReadWheelSlices(int kind)
         if (s->role == ROLE_BUTTON && s->button == BTN_QUICKLOAD) [self setRing:loadRing progress:0.0];
         if (s->role == ROLE_BUTTON && s->button == BTN_MENU) [self setRing:menuRing progress:0.0];
         if (s->role == ROLE_BUTTON && s->button == BTN_TRAYCAM) [self setRing:camOptRing progress:0.0];
+        if (s->role == ROLE_BUTTON && s->button == BTN_TRAYLOOK) [self setRing:lookRing progress:0.0];
         if (s->role == ROLE_STICK) {
             iosTouch_bStickActive = 0;
             iosTouch_stickX = iosTouch_stickY = 0.0f;
@@ -5042,6 +5156,17 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
 
 - (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event
 {
+    if ([self levelsOpen]) {
+        // The level list has the screen (its rows and X take their own
+        // touches): one off its card closes it, and does nothing else
+        for (UITouch* t in touches) {
+            if (![t.view isDescendantOfView:levelCard]) {
+                [self closeLevels];
+                break;
+            }
+        }
+        return;
+    }
     int bPadTouch = 0; // (the touch controls hidden for a game controller: back now)
     int bFinger = 0;   // (a finger among them, not only clicks)
     NSMutableSet* pPass = nil;
@@ -5204,8 +5329,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             // too), the wheel opens at once, to slide to a slice
             // CAMERA: slid IOSTOUCH_WHEEL_OPEN_SLIDE (anywhere), before its hold
             // was up, starts a burst that goes on until this finger lifts.
-            // The tray's camera switch or GYRO slid off isn't held any more.
-            if (s->role == ROLE_BUTTON && !s->bFired && (s->button == BTN_CAMERA || iosTouch_IsRowOpener(s->button))) {
+            // The tray's camera switch, GYRO or LOOK slid off isn't held any more.
+            if (s->role == ROLE_BUTTON && !s->bFired && (s->button == BTN_CAMERA || iosTouch_IsTrayHold(s->button))) {
                 int bOut = hypot(p.x - s->origin.x, p.y - s->origin.y) >= IOSTOUCH_WHEEL_OPEN_SLIDE;
                 for (UITouch* c in [event coalescedTouchesForTouch:t]) {
                     CGPoint q = [c locationInView:self];
@@ -5243,7 +5368,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 }
                 else if (bOut) {
                     s->bFired = 1;
-                    [self setRing:(s->button == BTN_TRAYGYRO ? gyroOptRing : camOptRing) progress:0.0];
+                    [self setRing:[self trayHoldRing:s->button] progress:0.0];
                 }
             }
 
@@ -5299,8 +5424,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             }
             else if (s->role == ROLE_LOOK ||
                      (s->role == ROLE_BUTTON && iosTouch_aButtons[s->button].bLookWhileHeld)) {
-                iosTouch_lookX += (float)(p.x - s->last.x) * IOSTOUCH_LOOK_SCALE_X;
-                iosTouch_lookY += (float)(p.y - s->last.y) * IOSTOUCH_LOOK_SCALE_Y;
+                iosTouch_lookX += (float)(p.x - s->last.x) * IOSTOUCH_LOOK_SCALE_X * iosTouch_lookScale;
+                iosTouch_lookY += (float)(p.y - s->last.y) * IOSTOUCH_LOOK_SCALE_Y * iosTouch_lookScale;
             }
             s->last = p;
         }
@@ -5473,9 +5598,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                         iosGame_SelectItem(b->bin);
                         iosTouch_QueuePress(b->scancode);
                     }
-                    else if (iosTouch_IsTrayButton(s->button) && !(iosTouch_IsRowOpener(s->button) && s->bFired)) {
-                        // (GYRO or the camera switch held until its row opened, or
-                        // slid off: not a tap)
+                    else if (iosTouch_IsTrayButton(s->button) && !(iosTouch_IsTrayHold(s->button) && s->bFired)) {
+                        // (GYRO or the camera switch held until its row opened,
+                        // LOOK held back to 1x, or slid off: not a tap)
                         [self useTrayButton:s->button];
                     }
                     else if (iosTouch_IsOptButton(s->button) && !aButtonViews[s->button].hidden) {
@@ -5505,6 +5630,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 if (s->button == BTN_MENU) [self setRing:menuRing progress:0.0];
                 if (s->button == BTN_TRAYCAM) [self setRing:camOptRing progress:0.0];
                 if (s->button == BTN_TRAYGYRO) [self setRing:gyroOptRing progress:0.0];
+                if (s->button == BTN_TRAYLOOK) [self setRing:lookRing progress:0.0];
                 if (s->button == BTN_CAMERA) [self setRing:cameraRing progress:0.0];
             }
             else if (s->role == ROLE_STICK) {
@@ -5593,9 +5719,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self keepSaberChoices]; // (the saber's choices, however they were made)
     // VIEW: the view picked by a keyboard's camera key, shown and remembered
     if (iosGame_IsThirdPerson() != iosTouch_bThirdPerson) [self setThirdPerson:iosGame_IsThirdPerson()];
-    // The tray's LEVEL there while sithewok is on (gone if it goes off
-    // while the tray is open, or back)
-    if (iosTouch_bTrayOpen && (iosGame_IsSithEwokOn() ? 1 : 0) != iosTouch_bTrayLevel) [self refreshTrayLevel];
+    // The tray's LEVEL there while sithewok is on, out of multiplayer (gone
+    // if it goes off while the tray is open, or back)
+    if (iosTouch_bTrayOpen && (iosTouch_WantsTrayLevel() ? 1 : 0) != iosTouch_bTrayLevel) [self refreshTrayLevel];
     // The tray's level pick: dropped (LEVEL's label back) once its finger is
     // no longer a button press -- the tray closed, a wheel, Action Freeze,
     // the burst or a selfie took every touch; and a level lifted for loads
@@ -5863,6 +5989,20 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 else loadProgress = MAX(loadProgress, progress);
             }
         }
+        else if (s->button == BTN_TRAYLOOK && !s->bFired && iosTouch_bTrayOpen) {
+            // The tray's LOOK held still: back to 1x, with a word and a
+            // tick (the lift then doesn't step it)
+            if (known - s->tDown >= IOSTOUCH_MENU_HOLD) {
+                s->bFired = 1;
+                [self setRing:lookRing progress:0.0];
+                [self setLookScale:1.0f];
+                iosGame_ShowMessageInPlace("Look sensitivity back to the default, 1x");
+                [cameraTap impactOccurred];
+            }
+            else {
+                [self setRing:lookRing progress:MIN((CGFloat)((now - s->tDown) / IOSTOUCH_MENU_HOLD), 1.0)];
+            }
+        }
         else if (iosTouch_IsRowOpener(s->button) && !s->bFired && iosTouch_bTrayOpen
                  && (s->button != BTN_TRAYGYRO || iosTouch_GyroAvailable())) {
             // The tray's camera switch or GYRO held still: its row opens (the
@@ -6052,6 +6192,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self endFreeze];
     [self endCinema];
     [self setTrayOpen:0];
+    [self closeLevels];
     [self endBurst];
     memset(iosTouch_aSlots, 0, sizeof(iosTouch_aSlots));
     memset(iosTouch_aButtonHeld, 0, sizeof(iosTouch_aButtonHeld));
@@ -6076,6 +6217,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self setRing:loadRing progress:0.0];
     [self setRing:menuRing progress:0.0];
     [self setRing:camOptRing progress:0.0];
+    [self setRing:lookRing progress:0.0];
     [self setRing:cameraRing progress:0.0];
     [self setRing:wheelRing progress:0.0];
     [self setRing:weaponRing progress:0.0];
@@ -6128,9 +6270,166 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         // (nothing left open that can't be seen)
         [self setOptRow:IOSTOUCH_ROW_NONE];
         [self setTrayOpen:0];
+        [self closeLevels];
     }
     [self applyPadMask];
     [self refreshButtonLooks];
+}
+
+// ------------------------------------------------------------ the level list
+
+// (what is made here and handed on: let go of once used, with ARC or without)
+#if __has_feature(objc_arc)
+#define IOSTOUCH_AUTORELEASE(x) (x)
+#else
+#define IOSTOUCH_AUTORELEASE(x) [(x) autorelease]
+#endif
+
+// The port's gold (the tray's lit edges, the saber cards, the Force stars)
+static UIColor* IOSTouch_Gold(CGFloat a)
+{
+    return [UIColor colorWithRed:1.0 green:0.85 blue:0.3 alpha:a];
+}
+
+// The list's views, made the first time it opens: the game dimmed behind a
+// card (as a game controller's options are, iosPadPanel), the title in gold,
+// the X, and a row for each level
+- (void)makeLevelList
+{
+    levelBack = [[UIView alloc] initWithFrame:self.bounds];
+    levelBack.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.45];
+    levelBack.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    levelBack.hidden = YES;
+    levelCard = [[UIView alloc] initWithFrame:CGRectZero];
+    levelCard.backgroundColor = [UIColor colorWithWhite:0.06 alpha:0.92];
+    levelCard.layer.cornerRadius = 16.0;
+    levelCard.layer.borderWidth = 1.5;
+    levelCard.layer.borderColor = IOSTouch_Gold(0.7).CGColor;
+    levelCard.clipsToBounds = YES;
+    levelCard.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin
+                                 | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
+    [levelBack addSubview:levelCard];
+    levelTitle = [[UILabel alloc] initWithFrame:CGRectZero];
+    levelTitle.text = @"LEVEL";
+    levelTitle.textColor = IOSTouch_Gold(1.0);
+    levelTitle.font = IOSTouch_WheelFont(17.0);
+    levelTitle.adjustsFontSizeToFitWidth = YES;
+    levelTitle.minimumScaleFactor = 0.6;
+    [levelCard addSubview:levelTitle];
+    // (the X: as Action Freeze's, a little smaller)
+    UIButton* close = [UIButton buttonWithType:UIButtonTypeCustom];
+    [close setTitle:@"\u2715" forState:UIControlStateNormal];
+    [close setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    close.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightBold];
+    close.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.45];
+    close.layer.cornerRadius = 15.0;
+    close.layer.borderWidth = 1.5;
+    close.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.6].CGColor;
+    close.tag = 1;
+    [close addTarget:self action:@selector(closeLevels) forControlEvents:UIControlEventTouchUpInside];
+    [levelCard addSubview:close];
+    levelTable = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    levelTable.backgroundColor = [UIColor clearColor];
+    levelTable.separatorColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+    levelTable.rowHeight = IOSTOUCH_LEVELS_ROW;
+    levelTable.indicatorStyle = UIScrollViewIndicatorStyleWhite;
+    levelTable.dataSource = self;
+    levelTable.delegate = self;
+    [levelCard addSubview:levelTable];
+    [self addSubview:levelBack];
+}
+
+// The tray's LEVEL tapped: the levels of the episode being played (the
+// player's own game data, read now), to pick one; the game holds still
+// meanwhile. Not in multiplayer, nor with cheat mode off.
+- (void)openLevels
+{
+    const int n = (iosGame_IsMultiplayer() || !iosGame_IsSithEwokOn()) ? 0 : iosGame_NumPickableLevels();
+    numListLevels = 0;
+    for (int level = 1; level <= n; level++) {
+        if (iosGame_LevelInfo(level, NULL, 0, NULL, 0)) numListLevels = level;
+    }
+    if (numListLevels <= 0) {
+        iosGame_ShowMessageInPlace("No level to pick here");
+        return;
+    }
+    [self resetAll]; // (every finger let go of: the list has the screen)
+    if (!levelBack) [self makeLevelList];
+    const CGRect b = self.bounds;
+    const UIEdgeInsets in = self.safeAreaInsets;
+    const CGFloat left = MAX(in.left, 8.0), right = b.size.width - MAX(in.right, 8.0);
+    const CGFloat top = MAX(in.top, 8.0), bottom = b.size.height - MAX(in.bottom, 8.0);
+    const CGFloat w = MIN((CGFloat)IOSTOUCH_LEVELS_W, right - left);
+    const CGFloat h = MIN(bottom - top, IOSTOUCH_LEVELS_TITLE_H + IOSTOUCH_LEVELS_ROW * numListLevels + 8.0);
+    levelBack.frame = b;
+    levelCard.frame = CGRectMake(round((left + right - w) * 0.5), round((top + bottom - h) * 0.5), w, h);
+    levelTitle.frame = CGRectMake(16.0, 8.0, w - 64.0, IOSTOUCH_LEVELS_TITLE_H - 12.0);
+    [levelCard viewWithTag:1].frame = CGRectMake(w - 40.0, 6.0, 30.0, 30.0);
+    levelTable.frame = CGRectMake(0.0, IOSTOUCH_LEVELS_TITLE_H, w, h - IOSTOUCH_LEVELS_TITLE_H);
+    [levelTable reloadData];
+    [levelTable setContentOffset:CGPointZero animated:NO];
+    levelBack.hidden = NO;
+    [self bringSubviewToFront:levelBack];
+    iosGame_SetHoldReason(IOSGAME_HOLD_LEVELS, 1);
+}
+
+- (void)closeLevels
+{
+    if (!levelBack || levelBack.hidden) return;
+    levelBack.hidden = YES;
+    iosGame_SetHoldReason(IOSGAME_HOLD_LEVELS, 0);
+}
+
+- (BOOL)levelsOpen
+{
+    return levelBack && !levelBack.hidden;
+}
+
+- (NSInteger)tableView:(UITableView*)tableView numberOfRowsInSection:(NSInteger)section
+{
+    return numListLevels;
+}
+
+// A level's row: its number (gold) and title, its file under them
+- (UITableViewCell*)tableView:(UITableView*)tableView cellForRowAtIndexPath:(NSIndexPath*)indexPath
+{
+    UITableViewCell* cell = [tableView dequeueReusableCellWithIdentifier:@"level"];
+    if (!cell) {
+        cell = IOSTOUCH_AUTORELEASE([[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"level"]);
+        cell.backgroundColor = [UIColor clearColor];
+        cell.textLabel.textColor = [UIColor whiteColor];
+        cell.textLabel.adjustsFontSizeToFitWidth = YES;
+        cell.textLabel.minimumScaleFactor = 0.7;
+        cell.detailTextLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.55];
+        cell.detailTextLabel.font = [UIFont systemFontOfSize:11.0];
+        UIView* sel = IOSTOUCH_AUTORELEASE([[UIView alloc] init]);
+        sel.backgroundColor = IOSTouch_Gold(0.25);
+        cell.selectedBackgroundView = sel;
+    }
+    const int level = (int)indexPath.row + 1;
+    char title[128], file[64];
+    if (!iosGame_LevelInfo(level, title, sizeof(title), file, sizeof(file))) title[0] = file[0] = 0;
+    NSString* pFile = [NSString stringWithUTF8String:file];
+    NSString* pTitle = title[0] ? [NSString stringWithUTF8String:title] : nil;
+    if (!pTitle) pTitle = pFile.stringByDeletingPathExtension; // (no title in the game's strings: its file's name)
+    NSMutableAttributedString* text = IOSTOUCH_AUTORELEASE([[NSMutableAttributedString alloc] initWithString:[NSString stringWithFormat:@"%d", level]
+                                                                              attributes:@{ NSForegroundColorAttributeName: IOSTouch_Gold(1.0),
+                                                                                            NSFontAttributeName: IOSTouch_WheelFont(16.0) }]);
+    [text appendAttributedString:IOSTOUCH_AUTORELEASE([[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"   %@", pTitle ? pTitle : @""]
+                                                                  attributes:@{ NSForegroundColorAttributeName: [UIColor whiteColor],
+                                                                                NSFontAttributeName: IOSTouch_WheelFont(16.0) }])];
+    cell.textLabel.attributedText = text;
+    cell.detailTextLabel.text = pFile;
+    return cell;
+}
+
+// A level tapped: the list closes and it loads (at the next tick, as the
+// tray's level pick)
+- (void)tableView:(UITableView*)tableView didSelectRowAtIndexPath:(NSIndexPath*)indexPath
+{
+    [tableView deselectRowAtIndexPath:indexPath animated:NO];
+    [self closeLevels];
+    iosTouch_levelToLoad = (int)indexPath.row + 1;
 }
 
 @end

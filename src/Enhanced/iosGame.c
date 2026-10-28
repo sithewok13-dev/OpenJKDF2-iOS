@@ -573,6 +573,16 @@ int iosGame_GoToLevel(int level)
     return jkDev_Custom_GoToLevel(level);
 }
 
+int iosGame_LevelInfo(int level, char* pTitle, int titleLen, char* pFile, int fileLen)
+{
+    return jkDev_Custom_LevelInfo(level, pTitle, titleLen, pFile, fileLen);
+}
+
+int iosGame_IsMultiplayer(void)
+{
+    return sithNet_isMulti ? 1 : 0;
+}
+
 int iosGame_IsAlwaysRun(void)
 {
     // The option's checkbox sets bit 2 (jkGuiControlOptions_Show), saved with
@@ -580,6 +590,18 @@ int iosGame_IsAlwaysRun(void)
     // sithControl_PlayerMovement and its Mysteries of the Sith version run
     // when it is set or INPUT_FUNC_FAST (Shift) is held.
     return (sithWeapon_controlOptions & 2) ? 1 : 0;
+}
+
+void iosGame_SetAlwaysRun(int bOn)
+{
+    // As the Controls > Options screen does on OK (jkGuiControlOptions_Show):
+    // the bit set or cleared, and the player's settings saved with it
+    if (bOn)
+        sithWeapon_controlOptions |= 2;
+    else
+        sithWeapon_controlOptions &= ~2;
+    if (jkPlayer_playerShortName[0])
+        jkPlayer_WriteConf(jkPlayer_playerShortName);
 }
 
 // What one count on a mouse axis adds to an input function's axis, summed

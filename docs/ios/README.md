@@ -303,8 +303,8 @@ screen, the camera cutout and the HUD.
 ```
  NEXT   FORCE   LIGHT  IR  BACTA  CAMERA  SABER  CHEAT  VIEW  (FPS)  QUICK  QUICK  MENU
  WPN    WHEEL   (only items you have)                         SAVE   LOAD
-                  [GYRO] [FPS] [CAMERA] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
-                  (MENU's tray, when held; LEVEL only while sithewok is on)
+                  [GYRO] [RUN] [LOOK] [FPS] [CAMERA] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
+                  (MENU's tray, when held; LEVEL only while sithewok is on, never in multiplayer)
                              [MODE] [SENS]             (GYRO held in the tray)
                              [PHOTO] [SELFIES] [FREEZE] (CAMERA held in the tray)
 
@@ -376,13 +376,13 @@ slide or hold to open the wheel). While
 `sithewok` is on, JUMP and ACT show a small red second line (FLY, NOCLIP)
 for their cheat holds: see [Cheats](#cheats). DUCK only ever crouches.
 
-### MENU's tray: tilt aiming, FPS, camera, cheat mode, view and keyboard
+### MENU's tray: tilt aiming, running, look speed, FPS, camera, cheat mode, view and keyboard
 
 **Tap MENU** for the game's menu. **Hold MENU** until its ring fills (about
-half a second), and a small tray opens just under it with eight buttons, from
-left to right **GYRO**, **FPS**, **CAMERA**, **CHEAT**, **VIEW**, **JUMP**,
-**CONTROLS** and the **keyboard**. While `sithewok` is on there's a ninth,
-**LEVEL**, between CHEAT and VIEW.
+half a second), and a small tray opens just under it with ten buttons, from
+left to right **GYRO**, **RUN**, **LOOK**, **FPS**, **CAMERA**, **CHEAT**,
+**VIEW**, **JUMP**, **CONTROLS** and the **keyboard**. While `sithewok` is on
+(and not in multiplayer) there's an eleventh, **LEVEL**, between CHEAT and VIEW.
 Either keep your thumb down, slide it onto a tray button and lift, or lift
 first and then tap one. Anywhere on the tray's dark backing counts as the
 nearest button.
@@ -392,6 +392,16 @@ nearest button.
   on. **Touch and hold** GYRO until its ring fills for a row under the tray
   with **MODE** (**TOUCH** or **ALWAYS**) and **SENS** (**1.0x**, **1.5x**,
   the default, **2.0x** or **3.0x**). See [Tilt aiming](#tilt-aiming).
+- **RUN** (the move stick's run marker, `^^`): a tap switches the game's own
+  **Always Run** option on or off (the same checkbox as in the game's
+  control options, saved with your settings). It's lit yellow while Always
+  Run is on; then the stick always runs and has no run marker. Off, push the
+  stick onto the marker to run.
+- **LOOK:** how fast dragging your finger turns the view, shown on the button
+  (**LOOK 1x**). Each tap goes up a step: **0.5x**, **0.75x**, **1x** (the
+  default), **1.25x**, **1.5x**, **2x**, **2.5x**, **3x**, then round to
+  0.5x; the tray stays open. **Touch and hold** it until its ring fills to go
+  back to 1x. The app remembers it. (Tilt aiming has its own SENS, under GYRO.)
 - **FPS:** shows or hides a frame-rate counter, to the left of QUICK SAVE. The FPS
   button is yellow while the counter is on.
 - **CAMERA** (the camera symbol): a tap shows or hides the CAMERA button
@@ -401,14 +411,16 @@ nearest button.
 - **CHEAT:** cheat mode on or off. On, the CHEAT button appears and
   `sithewok` goes on. Off, `sithewok` goes off and the button goes away.
   Yellow while cheat mode is on. See [Cheats](#cheats).
-- **LEVEL** (only while `sithewok` is on): **hold** it to pick a level. After
+- **LEVEL** (only while `sithewok` is on, and never in multiplayer or co-op):
+  a **tap** opens a list of the game's levels, numbered in order, each with
+  its name and its file under it (read from your own game files; Jedi Knight
+  and Mysteries of the Sith each list their own). The game holds still while
+  it's open. Tap a level to go there, or tap the X or anywhere off the list
+  to close it. Or **hold** LEVEL to count to a level. After
   half a second it shows **LEVEL 1**, then counts up one every 0.4 seconds
   (with a tick each, and *Level 7 of 21* on the message line, which sits just
   under the tray while it's open), going round to 1 again after the last
-  level. Lift your finger to go to that level (the tray closes). Slide off, or close the tray, to cancel. A quick tap does
-  nothing but say *Hold LEVEL to count levels*, and the tray stays open. In
-  multiplayer only the host can pick (with cheats allowed); for everyone
-  else LEVEL is dimmed and says *No level to pick here*.
+  level. Lift your finger to go to that level (the tray closes). Slide off, or close the tray, to cancel.
 - **VIEW:** shows or hides the **VIEW** button on the top row, after CHEAT
   (yellow while it's shown). **Tap VIEW** to switch between first person
   (**1P**) and third person (**3P**) at once. The app remembers both, and

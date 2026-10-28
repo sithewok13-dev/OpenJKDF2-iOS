@@ -109,6 +109,7 @@ void iosGame_SelectItem(int bin);
 #define IOSGAME_HOLD_SELFIE 4 // a selfie is being taken (iosSelfie)
 #define IOSGAME_HOLD_FREEZE 8 // the action frozen for photos (iosFreeze)
 #define IOSGAME_HOLD_PADMENU 16 // a game controller's options are open (iosPad)
+#define IOSGAME_HOLD_LEVELS 32 // the touch overlay's level list is open (cheat mode)
 void iosGame_SetHoldReason(int reason, int bHold);
 
 // The wheels' reason (IOSGAME_HOLD_WHEEL).
@@ -144,6 +145,9 @@ unsigned int iosGame_GetFrameCount(void);
 // Both games run while it is on, or while the run key (Shift) is held. It
 // can change in the options menu, so the touch overlay reads it every frame.
 int iosGame_IsAlwaysRun(void);
+// ...switched on or off as that checkbox does (and saved with the player's
+// settings, as its screen's OK does): the touch overlay's tray RUN
+void iosGame_SetAlwaysRun(int bOn);
 
 // The sithewok cheat's flight (jkDev_Custom_ToggleFlight): whether it can be
 // switched now (sithewok on, single player, not noclip, alive), and switching
@@ -193,6 +197,13 @@ float iosGame_SfxVolume(void);
 // switching it off: a double tap does that)
 int iosGame_IsFlying(void);
 int iosGame_GoToLevel(int level);
+// The level list (the touch overlay's LEVEL, in cheat mode): level n of the
+// episode loaded now (1 to iosGame_NumPickableLevels(), as GoToLevel numbers
+// them), its title as the loading screen shows it (UTF-8, "" if it has none)
+// and its file. 0: no such level.
+int iosGame_LevelInfo(int level, char* pTitle, int titleLen, char* pFile, int fileLen);
+// Whether a multiplayer game (co-op too) is going on
+int iosGame_IsMultiplayer(void);
 
 // How far one count of mouse movement turns the view (*pTurn: degrees right
 // per count right) and tilts it (*pPitch: degrees down per count down), as
