@@ -6412,12 +6412,13 @@ static UIColor* IOSTouch_Gold(CGFloat a)
     NSString* pFile = [NSString stringWithUTF8String:file];
     NSString* pTitle = title[0] ? [NSString stringWithUTF8String:title] : nil;
     if (!pTitle) pTitle = pFile.stringByDeletingPathExtension; // (no title in the game's strings: its file's name)
+    // (the attributes made first: a dictionary's commas can't go in a macro's argument)
+    NSDictionary* numAttrs = @{ NSForegroundColorAttributeName: IOSTouch_Gold(1.0), NSFontAttributeName: IOSTouch_WheelFont(16.0) };
+    NSDictionary* nameAttrs = @{ NSForegroundColorAttributeName: [UIColor whiteColor], NSFontAttributeName: IOSTouch_WheelFont(16.0) };
     NSMutableAttributedString* text = IOSTOUCH_AUTORELEASE([[NSMutableAttributedString alloc] initWithString:[NSString stringWithFormat:@"%d", level]
-                                                                              attributes:@{ NSForegroundColorAttributeName: IOSTouch_Gold(1.0),
-                                                                                            NSFontAttributeName: IOSTouch_WheelFont(16.0) }]);
-    [text appendAttributedString:IOSTOUCH_AUTORELEASE([[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"   %@", pTitle ? pTitle : @""]
-                                                                  attributes:@{ NSForegroundColorAttributeName: [UIColor whiteColor],
-                                                                                NSFontAttributeName: IOSTouch_WheelFont(16.0) }])];
+                                                                                                  attributes:numAttrs]);
+    NSString* name = [NSString stringWithFormat:@"   %@", pTitle ? pTitle : @""];
+    [text appendAttributedString:IOSTOUCH_AUTORELEASE([[NSAttributedString alloc] initWithString:name attributes:nameAttrs])];
     cell.textLabel.attributedText = text;
     cell.detailTextLabel.text = pFile;
     return cell;
