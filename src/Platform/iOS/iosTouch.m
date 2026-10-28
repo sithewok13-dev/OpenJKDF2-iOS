@@ -389,9 +389,9 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 // (round to the first); held still IOSTOUCH_MENU_HOLD (a ring fills), back to
 // 1x. Remembered under this key.
 #define IOSTOUCH_LOOKSCALE_DEFAULTS_KEY @"iosTouchLookScale"
-// The tray's LEVEL in cheat mode (never in multiplayer): a tap opens the list
-// of the episode's levels (iosGame_LevelInfo), the game held still while it
-// is open; a level tapped loads, its X or a tap off it closes it. The list
+// The tray's LEVEL in cheat mode (in multiplayer only for a co-op host who
+// may pick the level): a tap opens the list of the episode's levels
+// (iosGame_LevelInfo), the game held still while it is open (single player); a level tapped loads, its X or a tap off it closes it. The list
 // is a card IOSTOUCH_LEVELS_W wide at most, its rows IOSTOUCH_LEVELS_ROW tall.
 #define IOSTOUCH_LEVELS_W 440.0
 #define IOSTOUCH_LEVELS_ROW 48.0
@@ -431,7 +431,7 @@ enum {
     KIND_CAMSWITCH, // (MENU tray) shows or hides the CAMERA button, when the touch lifts on it
     KIND_CHEAT,    // held still IOSTOUCH_CHEAT_HOLD: the sithewok cheat on or off (a tap does nothing)
     KIND_CHEATSWITCH, // (MENU tray) shows or hides the CHEAT button, when the touch lifts on it
-    KIND_LEVEL,    // (MENU tray, while sithewok is on, not in multiplayer) a tap: the level list; held still: counts the levels; lifted, goes to the one on show
+    KIND_LEVEL,    // (MENU tray, while sithewok is on; in multiplayer only for the co-op host) a tap: the level list; held still: counts the levels; lifted, goes to the one on show
     KIND_VIEW,     // tap (on lift): first person or third (iosGame_SetThirdPerson)
     KIND_VIEWSWITCH, // (MENU tray) shows or hides the VIEW button, when the touch lifts on it
     KIND_CONTROLS, // (MENU tray) the controls' sides: NORMAL or SWAPPED
@@ -485,7 +485,7 @@ enum {
     BTN_SABER,  // between CAMERA and QUICK SAVE, once the saber is had (or sithewok is on)
     BTN_CHEAT,  // ...right of SABER, in cheat mode (switched on in the tray)
     BTN_VIEW,   // ...right of CHEAT: first or third person (switched on in the tray)
-    BTN_TRAYGYRO, BTN_TRAYRUN, BTN_TRAYLOOK, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS, // MENU's tray (left to right), hidden unless it is open (LEVEL only while sithewok is on, not in multiplayer)
+    BTN_TRAYGYRO, BTN_TRAYRUN, BTN_TRAYLOOK, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS, // MENU's tray (left to right), hidden unless it is open (LEVEL only while sithewok is on; in multiplayer only for the co-op host)
     // Rows under the tray, one at a time (iosTouch_optRow), hidden until opened:
     BTN_GYROOPT_MODE, BTN_GYROOPT_SENS,  // the gyro options (a hold on the tray's GYRO)
     BTN_CAMROW_PHOTO, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE, // the camera options (a hold on the tray's camera switch)
@@ -1001,15 +1001,16 @@ static CGFloat iosTouch_DistToSegment(CGPoint p, CGFloat ax, CGFloat ay, CGFloat
     return sqrt(dx * dx + dy * dy);
 }
 
-// Whether the tray's LEVEL belongs in it now: cheat mode on, and not a
-// multiplayer game (co-op either)
+// Whether the tray's LEVEL belongs in it now: cheat mode on, and in a
+// multiplayer game only for a co-op host who may pick the level (as before
+// the list; iosGame_NumPickableLevels says)
 static int iosTouch_WantsTrayLevel(void)
 {
-    return iosGame_IsSithEwokOn() && !iosGame_IsMultiplayer();
+    return iosGame_IsSithEwokOn() && (!iosGame_IsMultiplayer() || iosGame_NumPickableLevels() > 0);
 }
 
 // Whether a tray button is in its row now: all of them, LEVEL only while
-// sithewok is on, out of multiplayer (iosTouch_bTrayLevel); and a tray
+// sithewok is on, in multiplayer only for the co-op host (iosTouch_bTrayLevel); and a tray
 // button's place in the row, counted from its right end (the keyboard, 0)
 static int iosTouch_TrayShown(int button)
 {
@@ -5719,7 +5720,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self keepSaberChoices]; // (the saber's choices, however they were made)
     // VIEW: the view picked by a keyboard's camera key, shown and remembered
     if (iosGame_IsThirdPerson() != iosTouch_bThirdPerson) [self setThirdPerson:iosGame_IsThirdPerson()];
-    // The tray's LEVEL there while sithewok is on, out of multiplayer (gone
+    // The tray's LEVEL there while sithewok is on, in multiplayer only for the co-op host (gone
     // if it goes off while the tray is open, or back)
     if (iosTouch_bTrayOpen && (iosTouch_WantsTrayLevel() ? 1 : 0) != iosTouch_bTrayLevel) [self refreshTrayLevel];
     // The tray's level pick: dropped (LEVEL's label back) once its finger is
@@ -6341,10 +6342,12 @@ static UIColor* IOSTouch_Gold(CGFloat a)
 
 // The tray's LEVEL tapped: the levels of the episode being played (the
 // player's own game data, read now), to pick one; the game holds still
-// meanwhile. Not in multiplayer, nor with cheat mode off.
+// meanwhile (single player). In multiplayer only for a co-op host who may
+// pick the level (iosGame_NumPickableLevels is 0 for anyone else); not with
+// cheat mode off.
 - (void)openLevels
 {
-    const int n = (iosGame_IsMultiplayer() || !iosGame_IsSithEwokOn()) ? 0 : iosGame_NumPickableLevels();
+    const int n = iosGame_IsSithEwokOn() ? iosGame_NumPickableLevels() : 0;
     numListLevels = 0;
     for (int level = 1; level <= n; level++) {
         if (iosGame_LevelInfo(level, NULL, 0, NULL, 0)) numListLevels = level;

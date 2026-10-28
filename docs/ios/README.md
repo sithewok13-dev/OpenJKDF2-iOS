@@ -304,7 +304,7 @@ screen, the camera cutout and the HUD.
  NEXT   FORCE   LIGHT  IR  BACTA  CAMERA  SABER  CHEAT  VIEW  (FPS)  QUICK  QUICK  MENU
  WPN    WHEEL   (only items you have)                         SAVE   LOAD
                   [GYRO] [RUN] [LOOK] [FPS] [CAMERA] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
-                  (MENU's tray, when held; LEVEL only while sithewok is on, never in multiplayer)
+                  (MENU's tray, when held; LEVEL only while sithewok is on; in co-op, the host's)
                              [MODE] [SENS]             (GYRO held in the tray)
                              [PHOTO] [SELFIES] [FREEZE] (CAMERA held in the tray)
 
@@ -382,7 +382,7 @@ for their cheat holds: see [Cheats](#cheats). DUCK only ever crouches.
 half a second), and a small tray opens just under it with ten buttons, from
 left to right **GYRO**, **RUN**, **LOOK**, **FPS**, **CAMERA**, **CHEAT**,
 **VIEW**, **JUMP**, **CONTROLS** and the **keyboard**. While `sithewok` is on
-(and not in multiplayer) there's an eleventh, **LEVEL**, between CHEAT and VIEW.
+(in co-op, only for the host) there's an eleventh, **LEVEL**, between CHEAT and VIEW.
 Either keep your thumb down, slide it onto a tray button and lift, or lift
 first and then tap one. Anywhere on the tray's dark backing counts as the
 nearest button.
@@ -411,11 +411,12 @@ nearest button.
 - **CHEAT:** cheat mode on or off. On, the CHEAT button appears and
   `sithewok` goes on. Off, `sithewok` goes off and the button goes away.
   Yellow while cheat mode is on. See [Cheats](#cheats).
-- **LEVEL** (only while `sithewok` is on, and never in multiplayer or co-op):
+- **LEVEL** (only while `sithewok` is on; in co-op, only for the host, who
+  picks the level for everyone):
   a **tap** opens a list of the game's levels, numbered in order, each with
   its name and its file under it (read from your own game files; Jedi Knight
   and Mysteries of the Sith each list their own). The game holds still while
-  it's open. Tap a level to go there, or tap the X or anywhere off the list
+  it's open (not in co-op). Tap a level to go there, or tap the X or anywhere off the list
   to close it. Or **hold** LEVEL to count to a level. After
   half a second it shows **LEVEL 1**, then counts up one every 0.4 seconds
   (with a tick each, and *Level 7 of 21* on the message line, which sits just
