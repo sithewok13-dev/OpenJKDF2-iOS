@@ -573,9 +573,19 @@ int iosGame_GoToLevel(int level)
     return jkDev_Custom_GoToLevel(level);
 }
 
-int iosGame_LevelInfo(int level, char* pTitle, int titleLen, char* pFile, int fileLen)
+int iosGame_NumLevelRows(void)
 {
-    return jkDev_Custom_LevelInfo(level, pTitle, titleLen, pFile, fileLen);
+    return jkDev_Custom_NumLevelRows();
+}
+
+int iosGame_LevelRowInfo(int row, int* pLevel, char* pTitle, int titleLen, char* pFile, int fileLen)
+{
+    return jkDev_Custom_LevelRowInfo(row, pLevel, pTitle, titleLen, pFile, fileLen);
+}
+
+int iosGame_GoToLevelRow(int row)
+{
+    return jkDev_Custom_GoToLevelRow(row);
 }
 
 int iosGame_IsMultiplayer(void)

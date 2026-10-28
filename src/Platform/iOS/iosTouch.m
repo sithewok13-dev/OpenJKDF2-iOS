@@ -391,7 +391,7 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 #define IOSTOUCH_LOOKSCALE_DEFAULTS_KEY @"iosTouchLookScale"
 // The tray's LEVEL in cheat mode (in multiplayer only for a co-op host who
 // may pick the level): a tap opens the list of the episode's levels
-// (iosGame_LevelInfo), the game held still while it is open (single player); a level tapped loads, its X or a tap off it closes it. The list
+// (iosGame_LevelRowInfo; Jedi Knight's light and dark paths a row each, Mysteries of the Sith's secret level a last one when the files have it), the game held still while it is open (single player); a level tapped loads, its X or a tap off it closes it. The list
 // is a card IOSTOUCH_LEVELS_W wide at most, its rows IOSTOUCH_LEVELS_ROW tall.
 #define IOSTOUCH_LEVELS_W 440.0
 #define IOSTOUCH_LEVELS_ROW 48.0
@@ -781,6 +781,7 @@ typedef struct {
 
 static iosTouchSlot iosTouch_aSlots[IOSTOUCH_MAX_TOUCHES];
 static int iosTouch_levelToLoad; // the tray's LEVEL pick, lifted: loaded at the next tick (as quick load)
+static int iosTouch_levelRowToLoad; // the level list's row tapped, plus 1: loaded at the next tick
 static double iosTouch_tJumpTapUp = -1.0; // when the last quick tap on JUMP lifted (by the touch's clock), for the double tap that lands
 static double iosTouch_tSaberTapUp = -1.0; // ...on SABER, flipping the right hand's of two FOLDs (by the touch's clock): the left's next (-1: anything else since)
 static int iosTouch_aButtonHeld[IOSTOUCH_NUM_BUTTONS];
@@ -1473,7 +1474,7 @@ typedef struct {
     UIView* levelCard;
     UILabel* levelTitle;
     UITableView* levelTable;
-    int numListLevels;
+    int numListRows;
     UILabel* burstLabel;    // beside CAMERA: how many shots a burst has taken
     UILabel* freezeClose;   // Action Freeze's X (back to the game)
     CAShapeLayer* cameraRing; // CAMERA's, held for the selfie
@@ -5741,6 +5742,13 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             && !iosTouch_bWheelOpen && !jkHud_bChatOpen)
             iosGame_GoToLevel(level);
     }
+    if (iosTouch_levelRowToLoad > 0) {
+        const int row = iosTouch_levelRowToLoad - 1;
+        iosTouch_levelRowToLoad = 0;
+        if (iosTouch_selfieStage == IOSTOUCH_SELFIE_NONE && !iosTouch_bCinema && !iosTouch_bFreezing
+            && !iosTouch_bWheelOpen && !jkHud_bChatOpen)
+            iosGame_GoToLevelRow(row);
+    }
     // During a selfie nothing else goes on here
     if (iosTouch_selfieStage != IOSTOUCH_SELFIE_NONE) {
         [self tickSelfie:now];
@@ -6215,6 +6223,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self setRing:cheatRing progress:0.0];
     aButtonViews[BTN_TRAYLEVEL].text = @"LEVEL"; // (a level pick on show, dropped)
     iosTouch_levelToLoad = 0;
+    iosTouch_levelRowToLoad = 0;
     [self setRing:loadRing progress:0.0];
     [self setRing:menuRing progress:0.0];
     [self setRing:camOptRing progress:0.0];
@@ -6347,12 +6356,8 @@ static UIColor* IOSTouch_Gold(CGFloat a)
 // cheat mode off.
 - (void)openLevels
 {
-    const int n = iosGame_IsSithEwokOn() ? iosGame_NumPickableLevels() : 0;
-    numListLevels = 0;
-    for (int level = 1; level <= n; level++) {
-        if (iosGame_LevelInfo(level, NULL, 0, NULL, 0)) numListLevels = level;
-    }
-    if (numListLevels <= 0) {
+    numListRows = iosGame_IsSithEwokOn() ? iosGame_NumLevelRows() : 0;
+    if (numListRows <= 0) {
         iosGame_ShowMessageInPlace("No level to pick here");
         return;
     }
@@ -6363,7 +6368,7 @@ static UIColor* IOSTouch_Gold(CGFloat a)
     const CGFloat left = MAX(in.left, 8.0), right = b.size.width - MAX(in.right, 8.0);
     const CGFloat top = MAX(in.top, 8.0), bottom = b.size.height - MAX(in.bottom, 8.0);
     const CGFloat w = MIN((CGFloat)IOSTOUCH_LEVELS_W, right - left);
-    const CGFloat h = MIN(bottom - top, IOSTOUCH_LEVELS_TITLE_H + IOSTOUCH_LEVELS_ROW * numListLevels + 8.0);
+    const CGFloat h = MIN(bottom - top, IOSTOUCH_LEVELS_TITLE_H + IOSTOUCH_LEVELS_ROW * numListRows + 8.0);
     levelBack.frame = b;
     levelCard.frame = CGRectMake(round((left + right - w) * 0.5), round((top + bottom - h) * 0.5), w, h);
     levelTitle.frame = CGRectMake(16.0, 8.0, w - 64.0, IOSTOUCH_LEVELS_TITLE_H - 12.0);
@@ -6390,10 +6395,11 @@ static UIColor* IOSTouch_Gold(CGFloat a)
 
 - (NSInteger)tableView:(UITableView*)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return numListLevels;
+    return numListRows;
 }
 
-// A level's row: its number (gold) and title, its file under them
+// A level's row: its number (gold; "Bonus" for the secret level) and title,
+// its file under them
 - (UITableViewCell*)tableView:(UITableView*)tableView cellForRowAtIndexPath:(NSIndexPath*)indexPath
 {
     UITableViewCell* cell = [tableView dequeueReusableCellWithIdentifier:@"level"];
@@ -6409,16 +6415,16 @@ static UIColor* IOSTouch_Gold(CGFloat a)
         sel.backgroundColor = IOSTouch_Gold(0.25);
         cell.selectedBackgroundView = sel;
     }
-    const int level = (int)indexPath.row + 1;
+    int level = 0;
     char title[128], file[64];
-    if (!iosGame_LevelInfo(level, title, sizeof(title), file, sizeof(file))) title[0] = file[0] = 0;
+    if (!iosGame_LevelRowInfo((int)indexPath.row, &level, title, sizeof(title), file, sizeof(file))) title[0] = file[0] = 0;
     NSString* pFile = [NSString stringWithUTF8String:file];
     NSString* pTitle = title[0] ? [NSString stringWithUTF8String:title] : nil;
     if (!pTitle) pTitle = pFile.stringByDeletingPathExtension; // (no title in the game's strings: its file's name)
     // (made first: no comma can go in a macro's argument)
     NSDictionary* numAttrs = @{ NSForegroundColorAttributeName: IOSTouch_Gold(1.0), NSFontAttributeName: IOSTouch_WheelFont(16.0) };
     NSDictionary* nameAttrs = @{ NSForegroundColorAttributeName: [UIColor whiteColor], NSFontAttributeName: IOSTouch_WheelFont(16.0) };
-    NSString* num = [NSString stringWithFormat:@"%d", level];
+    NSString* num = level > 0 ? [NSString stringWithFormat:@"%d", level] : (file[0] ? @"Bonus" : @"");
     NSMutableAttributedString* text = IOSTOUCH_AUTORELEASE([[NSMutableAttributedString alloc] initWithString:num attributes:numAttrs]);
     NSString* name = [NSString stringWithFormat:@"   %@", pTitle ? pTitle : @""];
     [text appendAttributedString:IOSTOUCH_AUTORELEASE([[NSAttributedString alloc] initWithString:name attributes:nameAttrs])];
@@ -6433,7 +6439,7 @@ static UIColor* IOSTouch_Gold(CGFloat a)
 {
     [tableView deselectRowAtIndexPath:indexPath animated:NO];
     [self closeLevels];
-    iosTouch_levelToLoad = (int)indexPath.row + 1;
+    iosTouch_levelRowToLoad = (int)indexPath.row + 1;
 }
 
 @end

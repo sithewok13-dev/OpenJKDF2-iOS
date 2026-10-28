@@ -197,11 +197,16 @@ float iosGame_SfxVolume(void);
 // switching it off: a double tap does that)
 int iosGame_IsFlying(void);
 int iosGame_GoToLevel(int level);
-// The level list (the touch overlay's LEVEL, in cheat mode): level n of the
-// episode loaded now (1 to iosGame_NumPickableLevels(), as GoToLevel numbers
-// them), its title as the loading screen shows it (UTF-8, "" if it has none)
-// and its file. 0: no such level.
-int iosGame_LevelInfo(int level, char* pTitle, int titleLen, char* pFile, int fileLen);
+// The level list (the touch overlay's LEVEL, in cheat mode,
+// jkDev_Custom_NumLevelRows): how many rows it has now (0: no level can be
+// picked now); row n's (from 0) level number (*pLevel; 0 for Mysteries of the
+// Sith's secret level, a last row when the player's files have it), its title
+// as the loading screen shows it (UTF-8, "" if it has none) and its file (0:
+// no such row); and loading row n (1: loading). A level number with two
+// levels (Jedi Knight's light and dark paths) has a row for each.
+int iosGame_NumLevelRows(void);
+int iosGame_LevelRowInfo(int row, int* pLevel, char* pTitle, int titleLen, char* pFile, int fileLen);
+int iosGame_GoToLevelRow(int row);
 // Whether a multiplayer game (co-op too) is going on
 int iosGame_IsMultiplayer(void);
 

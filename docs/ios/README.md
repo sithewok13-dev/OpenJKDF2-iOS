@@ -415,9 +415,13 @@ nearest button.
   picks the level for everyone):
   a **tap** opens a list of the game's levels, numbered in order, each with
   its name and its file under it (read from your own game files; Jedi Knight
-  and Mysteries of the Sith each list their own). The game holds still while
-  it's open (not in co-op). Tap a level to go there, or tap the X or anywhere off the list
-  to close it. Or **hold** LEVEL to count to a level. After
+  and Mysteries of the Sith each list their own). Jedi Knight's levels 15
+  and 16 have a light side and a dark side version, and both are listed,
+  under the same number: the one you tap goes on along its own path. In
+  Mysteries of the Sith, the last row is **Bonus**, the secret level, once
+  it's set up ([The secret level](#the-secret-level-bespin)). The game holds
+  still while it's open (not in co-op). Tap a level to go there, or tap the X
+  or anywhere off the list to close it. Or **hold** LEVEL to count to a level. After
   half a second it shows **LEVEL 1**, then counts up one every 0.4 seconds
   (with a tick each, and *Level 7 of 21* on the message line, which sits just
   under the tray while it's open), going round to 1 again after the last
@@ -1503,8 +1507,9 @@ goes on. With the folder empty or missing, cheat mode is silent.
   isn't fully set until a later Force screen.
 - **Picking a level** with LEVEL jumps straight there, skipping the story in
   between, and goes to the level itself rather than the cutscene before it.
-  Where a level number has a light and a dark side version, you get the first
-  one. Keep a normal save of your real progress.
+  Where a level number has a light and a dark side version, the list shows
+  both; counting with LEVEL held gets the first (light side). Keep a normal
+  save of your real progress.
 - Pits that a level's own script uses to end you (rather than an ordinary
   fall) can still kill you.
 
@@ -1671,11 +1676,39 @@ Things to know:
   here too, except `imayoda` and `sithlord`, which do nothing in Mysteries of
   the Sith.
 
+### The secret level (Bespin)
+
+Mysteries of the Sith has a hidden bonus level, *Bespin Showdown*, where you
+play Luke on Cloud City. Its files are in a zip on the game's disc,
+`UNSUPPORTED.ZIP`, in `Resource/Video`. On a computer you have to set it up
+by hand. OpenMoTS does it for you:
+
+1. **Check you have the zip.** It's in the `Resource/Video` (or `VIDEO`)
+   folder of your Mysteries of the Sith folder or disc. Some downloads (Steam,
+   for one) don't have it.
+2. **Copy it to your phone with the rest**: it goes in
+   *OpenMoTS > mots > Resource > VIDEO*, where it is on your computer. If you
+   copied the whole `Resource` folder, it's there already. (`mots/Resource`
+   works too.)
+3. **Open OpenMoTS.** It finds the zip and makes the folder
+   `Episode/MotS Secret Level` from it, as on a computer. This happens once:
+   after that, the zip can go.
+4. **Start it** from *Single Player > New Game*: pick **MotS Secret Level**
+   in the list of episodes. With `sithewok` on, it's also the last row of
+   LEVEL's list (**Bonus**).
+
+Without the zip, nothing changes: no new episode, and no Bonus row. If you
+already set it up on a computer, copying that `MotS Secret Level` folder into
+`mots/Episode` works too. The Jedi Knight app never does any of this.
+
+### Cheats in Mysteries of the Sith
+
 `sithewok` works in Mysteries of the Sith too, with everything it does in
 Jedi Knight (see [Cheats](#cheats)): all weapons and ammo, all items, every
 Force power at 4 stars with the top Jedi rank, full health and shields,
 invincibility, the endless Force, safe falls, the Force catching you in pits,
-flying, noclip, and picking a level with LEVEL in MENU's tray (13 levels).
+flying, noclip, and picking a level with LEVEL in MENU's tray (and the
+secret level, once it's set up: see below).
 Cheat mode and the CHEAT button work the same way. The catches in Mysteries
 of the Sith:
 

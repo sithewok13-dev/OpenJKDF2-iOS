@@ -17,6 +17,7 @@
 
 #ifdef TARGET_IOS
 #include "Platform/iOS/iosApp.h" // Added: Jedi Knight or Mysteries of the Sith app
+#include "Platform/iOS/iosSecretLevel.h" // Added: Mysteries of the Sith's secret level
 #include <dirent.h>
 #include <strings.h>
 #endif
@@ -1420,6 +1421,12 @@ void InstallHelper_SetCwd()
 
     stdFileUtil_MkDir("mods");
     stdFileUtil_MkDir("expansions");
+#endif
+
+#ifdef TARGET_IOS
+    // Added: OpenMoTS: the secret level (Bespin) set up as on PC, from the player's own
+    // Resource/Video/UNSUPPORTED.ZIP, if it isn't yet (iosSecretLevel)
+    iosSecretLevel_Setup();
 #endif
 }
 

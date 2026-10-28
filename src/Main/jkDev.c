@@ -22,6 +22,7 @@ static void jkDev_Custom_HostAddressTick(void); // Added
 #include "Main/sithCommand.h"
 #include "Main/Main.h"
 #include "Main/jkMain.h"
+#include "General/util.h" // Added
 #include "Main/jkStrings.h"
 #include "Main/jkQuakeConsole.h"
 #include "Gui/jkGUITitle.h" // Added
@@ -1705,6 +1706,19 @@ int jkDev_Custom_NumLevels()
     return n;
 }
 
+// Added: entry i of the episode loaded now, loaded at once (the level pick): 1 if it is loading
+static int jkDev_Custom_GoToEntry(int i)
+{
+    jkEpisodeEntry* pEnt = &jkEpisode_mLoad.paEntries[i];
+    // Added: (the co-op host: everyone goes there, jkCoop)
+    if ( sithNet_isMulti )
+        return jkCoop_HostPickLevel(i);
+    // (as pinotnoir does it, jkMain_SetMap, at this entry)
+    jkEpisode_mLoad.currentEpisodeEntryIdx = i;
+    jkMain_cd_swap_reverify(pEnt);
+    return 1;
+}
+
 // 1: that level is loading; 0: there's no such level, or it can't now
 int jkDev_Custom_GoToLevel(int level)
 {
@@ -1712,88 +1726,206 @@ int jkDev_Custom_GoToLevel(int level)
         return 0;
     for ( int i = 0; i < jkEpisode_mLoad.numSeq; i++ )
     {
-        jkEpisodeEntry* pEnt = &jkEpisode_mLoad.paEntries[i];
-        if ( pEnt->type != 0 || pEnt->level != level )
-            continue;
-        // Added: (the co-op host: everyone goes there, jkCoop)
-        if ( sithNet_isMulti )
-            return jkCoop_HostPickLevel(i);
-        // (as pinotnoir does it, jkMain_SetMap, at this entry)
-        jkEpisode_mLoad.currentEpisodeEntryIdx = i;
-        jkMain_cd_swap_reverify(pEnt);
-        return 1;
+        const jkEpisodeEntry* pEnt = &jkEpisode_mLoad.paEntries[i];
+        if ( pEnt->type == 0 && pEnt->level == level )
+            return jkDev_Custom_GoToEntry(i);
     }
     return 0;
 }
 
-// Added: sithewok's level list (the touch overlay's LEVEL, in cheat mode): level number `level`, as
-// jkDev_Custom_GoToLevel picks it (the first entry with that number), from the episode loaded now: its file
-// ("01narshadda.jkl") and its title as the loading screen shows it, in UTF-8, without the "1 - " some titles
-// start with ("" if it has none). 0: the episode has no such level.
-int jkDev_Custom_LevelInfo(int level, char *pTitle, int titleLen, char *pFile, int fileLen)
+// Added: sithewok's level list (the touch overlay's LEVEL, in cheat mode). A row for each level of the
+// episode loaded now, by number, and where a number has more than one (Jedi Knight's light and dark paths,
+// 15 and 16) a row for each, in the episode's order; either loads as its path goes on from there. Then, in
+// Mysteries of the Sith, one row more for its secret level (Bespin) when the player's files have it, as the
+// PC game is set up for it: its own episode in episode/MotS Secret Level (the iOS app makes it, from the
+// game's UNSUPPORTED.ZIP: iosSecretLevel). Single player only, and not while playing it.
+#define JKDEV_BONUS_EPISODE "MotS Secret Level"
+#define JKDEV_BONUS_LEVEL "S6L1.jkl"
+#define JKDEV_BONUS_TITLE "Bespin Showdown" // (if the game's strings have no title for it)
+
+static int jkDev_Custom_HasBonusRow()
 {
+    if ( !Main_bMotsCompat || sithNet_isMulti || !__strcmpi(jkRes_episodeGobName, JKDEV_BONUS_EPISODE) )
+        return 0;
+    return util_FileExistsLowLevel("episode\\" JKDEV_BONUS_EPISODE "\\episode.jk")
+           && util_FileExistsLowLevel("episode\\" JKDEV_BONUS_EPISODE "\\jkl\\" JKDEV_BONUS_LEVEL);
+}
+
+// The episode entry of row `row` (from 0), -1 if it isn't one of the episode's levels; *pNumRows (if
+// given): how many rows the episode's levels make
+static int jkDev_Custom_RowEntry(int row, int* pNumRows)
+{
+    const int maxLevel = jkDev_Custom_NumLevels();
+    int found = -1, r = 0;
+    for ( int level = 1; level <= maxLevel; level++ )
+    {
+        for ( int i = 0; i < jkEpisode_mLoad.numSeq; i++ )
+        {
+            const jkEpisodeEntry* pEnt = &jkEpisode_mLoad.paEntries[i];
+            if ( pEnt->type != 0 || pEnt->level != level ) // (0: a level, not a cutscene or the path's choice)
+                continue;
+            if ( r == row )
+                found = i;
+            r++;
+        }
+    }
+    if ( pNumRows )
+        *pNumRows = r;
+    return found;
+}
+
+// A level's title as the loading screen shows it (jkGuiTitle_LevelTitle: the game's cogStrings.uni,
+// keyed by the level file's name, e.g. "01NARSHADDA" "1 - Double-Cross on Nar Shaddaa"), in UTF-8,
+// without the level's number in front ("1 - ", and to be safe "Level 1: " and the like): the list numbers
+// the levels itself. "" if it has none.
+static void jkDev_Custom_LevelTitleUtf8(const char* pJkl, char* pTitle, int titleLen)
+{
+    if ( titleLen <= 0 )
+        return;
+    pTitle[0] = 0;
+#ifdef QOL_IMPROVEMENTS
+    char16_t wTitle[64];
+    if ( !jkGuiTitle_LevelTitle(&jkCog_strings, pJkl, wTitle, 64) )
+        return;
+    const char16_t* t = wTitle;
+    while ( *t == ' ' )
+        t++;
+    const char16_t* pNum = t;
+    // ("Level " or "Chapter " first, any case)
+    static const char* aWords[2] = { "level ", "chapter " };
+    for ( int w = 0; w < 2; w++ )
+    {
+        int k = 0;
+        while ( aWords[w][k] && pNum[k] && (pNum[k] | 0x20) == (char16_t)aWords[w][k] )
+            k++;
+        if ( !aWords[w][k] )
+        {
+            pNum += k;
+            break;
+        }
+    }
+    int nDigits = 0;
+    while ( pNum[nDigits] >= '0' && pNum[nDigits] <= '9' )
+        nDigits++;
+    if ( nDigits > 0 && nDigits <= 3 )
+    {
+        const char16_t* s = pNum + nDigits;
+        if ( (*s | 0x20) >= 'a' && (*s | 0x20) <= 'b' && (s[1] == ' ' || s[1] == ':' || s[1] == '.') )
+            s++; // ("15a")
+        // then " - " (or an en or em dash), ": " or ". "
+        if ( s[0] == ' ' && (s[1] == '-' || s[1] == 0x2013 || s[1] == 0x2014) && s[2] == ' ' )
+            s += 3;
+        else if ( (s[0] == ':' || s[0] == '.') && s[1] == ' ' )
+            s += 2;
+        else
+            s = NULL;
+        if ( s )
+        {
+            while ( *s == ' ' )
+                s++;
+            if ( *s )
+                t = s;
+        }
+    }
+    int n = 0;
+    for ( ; *t; t++ )
+    {
+        const unsigned int c = *t;
+        char aUtf8[3];
+        int len;
+        if ( c < 0x80 )
+        {
+            aUtf8[0] = (char)c;
+            len = 1;
+        }
+        else if ( c < 0x800 )
+        {
+            aUtf8[0] = (char)(0xC0 | (c >> 6));
+            aUtf8[1] = (char)(0x80 | (c & 0x3F));
+            len = 2;
+        }
+        else if ( c >= 0xD800 && c <= 0xDFFF )
+        {
+            aUtf8[0] = '?'; // (half of a pair: never in a level's title)
+            len = 1;
+        }
+        else
+        {
+            aUtf8[0] = (char)(0xE0 | (c >> 12));
+            aUtf8[1] = (char)(0x80 | ((c >> 6) & 0x3F));
+            aUtf8[2] = (char)(0x80 | (c & 0x3F));
+            len = 3;
+        }
+        if ( n + len >= titleLen )
+            break;
+        memcpy(pTitle + n, aUtf8, len);
+        n += len;
+    }
+    while ( n > 0 && pTitle[n - 1] == ' ' )
+        n--;
+    pTitle[n] = 0;
+#endif
+}
+
+// How many rows the list has now (0: no level can be picked now)
+int jkDev_Custom_NumLevelRows()
+{
+    int n = 0;
+    if ( !jkDev_Custom_CanPickLevel() )
+        return 0;
+    jkDev_Custom_RowEntry(-1, &n);
+    return n + (jkDev_Custom_HasBonusRow() ? 1 : 0);
+}
+
+// Row `row` (from 0): *pLevel its level's number (0: the secret level), its title (UTF-8, "" if it has
+// none) and its file ("01narshadda.jkl"). 0: no such row.
+int jkDev_Custom_LevelRowInfo(int row, int *pLevel, char *pTitle, int titleLen, char *pFile, int fileLen)
+{
+    int numRows = 0;
+    if ( pLevel )
+        *pLevel = 0;
     if ( titleLen > 0 )
         pTitle[0] = 0;
     if ( fileLen > 0 )
         pFile[0] = 0;
-    for ( int i = 0; jkEpisode_mLoad.paEntries && i < jkEpisode_mLoad.numSeq; i++ )
+    if ( !jkEpisode_mLoad.paEntries || row < 0 )
+        return 0;
+    const int i = jkDev_Custom_RowEntry(row, &numRows);
+    if ( i >= 0 )
     {
         const jkEpisodeEntry* pEnt = &jkEpisode_mLoad.paEntries[i];
-        if ( pEnt->type != 0 || pEnt->level != level )
-            continue;
+        if ( pLevel )
+            *pLevel = pEnt->level;
         if ( fileLen > 0 )
             stdString_SafeStrCopy(pFile, pEnt->fileName, fileLen);
-#ifdef QOL_IMPROVEMENTS
-        char16_t wTitle[64];
-        if ( titleLen > 0 && jkGuiTitle_LevelTitle(&jkCog_strings, pEnt->fileName, wTitle, 64) )
-        {
-            // (a leading number and " - " dropped: the list numbers the levels itself)
-            const char16_t* t = wTitle;
-            int nDigits = 0;
-            while ( t[nDigits] >= '0' && t[nDigits] <= '9' )
-                nDigits++;
-            if ( nDigits > 0 && nDigits <= 3 && t[nDigits] == ' ' && t[nDigits + 1] == '-' && t[nDigits + 2] == ' ' )
-                t += nDigits + 3;
-            int n = 0;
-            for ( ; *t; t++ )
-            {
-                const unsigned int c = *t;
-                char aUtf8[3];
-                int len;
-                if ( c < 0x80 )
-                {
-                    aUtf8[0] = (char)c;
-                    len = 1;
-                }
-                else if ( c < 0x800 )
-                {
-                    aUtf8[0] = (char)(0xC0 | (c >> 6));
-                    aUtf8[1] = (char)(0x80 | (c & 0x3F));
-                    len = 2;
-                }
-                else if ( c >= 0xD800 && c <= 0xDFFF )
-                {
-                    aUtf8[0] = '?'; // (half of a pair: never in a level's title)
-                    len = 1;
-                }
-                else
-                {
-                    aUtf8[0] = (char)(0xE0 | (c >> 12));
-                    aUtf8[1] = (char)(0x80 | ((c >> 6) & 0x3F));
-                    aUtf8[2] = (char)(0x80 | (c & 0x3F));
-                    len = 3;
-                }
-                if ( n + len >= titleLen )
-                    break;
-                memcpy(pTitle + n, aUtf8, len);
-                n += len;
-            }
-            pTitle[n] = 0;
-        }
-#endif
+        jkDev_Custom_LevelTitleUtf8(pEnt->fileName, pTitle, titleLen);
         return 1;
     }
-    return 0;
+    if ( row != numRows || !jkDev_Custom_HasBonusRow() )
+        return 0;
+    if ( fileLen > 0 )
+        stdString_SafeStrCopy(pFile, JKDEV_BONUS_LEVEL, fileLen);
+    jkDev_Custom_LevelTitleUtf8(JKDEV_BONUS_LEVEL, pTitle, titleLen);
+    if ( titleLen > 0 && !pTitle[0] )
+        stdString_SafeStrCopy(pTitle, JKDEV_BONUS_TITLE, titleLen);
+    return 1;
+}
+
+// Row `row` picked: 1 if its level is loading
+int jkDev_Custom_GoToLevelRow(int row)
+{
+    int numRows = 0;
+    if ( !jkDev_Custom_CanPickLevel() || row < 0 )
+        return 0;
+    const int i = jkDev_Custom_RowEntry(row, &numRows);
+    if ( i >= 0 )
+        return jkDev_Custom_GoToEntry(i);
+    if ( row != numRows || !jkDev_Custom_HasBonusRow() )
+        return 0;
+    // (the secret level's own episode, as New Game would start it; the player keeps what they carry)
+    char aEpisode[32] = JKDEV_BONUS_EPISODE;
+    char aLevel[32] = JKDEV_BONUS_LEVEL;
+    return jkMain_LoadLevelSingleplayer(aEpisode, aLevel);
 }
 
 // Added: sithewok: the Force catches the player falling into a pit and puts them back on solid ground
