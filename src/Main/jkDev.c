@@ -32,6 +32,7 @@ static void jkDev_Custom_HostAddressTick(void); // Added
 #include "Enhanced/iosSaberFold.h" // Added
 #include "Enhanced/iosSaberStaff.h" // Added
 #include "Enhanced/iosGame.h" // Added
+#include "Enhanced/iosAutoplay.h" // Added
 #endif
 #include "stdPlatform.h"
 #include "wprintf.h"
@@ -1911,6 +1912,25 @@ int jkDev_Custom_LevelRowInfo(int row, int *pLevel, char *pTitle, int titleLen, 
     return 1;
 }
 
+// Added: AUTOPLAY's list of levels: the episode's rows (no secret level), cheat mode on or not, single
+// player only
+int jkDev_Custom_NumEpisodeLevelRows()
+{
+    int n = 0;
+    if ( sithNet_isMulti || !jkEpisode_mLoad.paEntries || jkEpisode_mLoad.numSeq <= 0 )
+        return 0;
+    jkDev_Custom_RowEntry(-1, &n);
+    return n;
+}
+
+// Added: the episode entry of one of those rows (-1: none)
+int jkDev_Custom_LevelRowEntry(int row)
+{
+    if ( !jkEpisode_mLoad.paEntries || row < 0 )
+        return -1;
+    return jkDev_Custom_RowEntry(row, NULL);
+}
+
 // Row `row` picked: 1 if its level is loading
 int jkDev_Custom_GoToLevelRow(int row)
 {
@@ -2028,6 +2048,9 @@ void jkDev_Custom_SithEwokRestored()
 // (the loaded game has its own in hand)
 void jkDev_Custom_GameLoaded()
 {
+#ifdef JK_ENHANCED
+    iosAutoplay_GameLoaded(); // (AUTOPLAY's show: over, if the player loaded a game)
+#endif
     jkDev_Custom_SaberThrowForget();
 #ifdef JK_ENHANCED
     iosSaberThrowJk_GameLoaded(); // (Jedi Knight's: the loaded game's thrown sabers taken away at once)
@@ -2213,6 +2236,9 @@ static void jkDev_Custom_HostAddressTick(void)
 
 void jkDev_Custom_LevelOpened()
 {
+#ifdef JK_ENHANCED
+    iosAutoplay_LevelOpened(); // (AUTOPLAY's show: its level opened)
+#endif
     jkDev_bCheatedThisLevel = 0; // (a new level: no cheat used in it yet)
 #ifdef PLATFORM_ENET
     jkDev_hostAddrAt = (sithNet_isMulti && sithNet_isServer) ? sithTime_g_secGameTime + 2.0 : -1.0;

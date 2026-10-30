@@ -31,6 +31,8 @@
 #include "Platform/iOS/iosPad.h"
 #include "Platform/iOS/iosPadPanel.h"
 #include "Platform/iOS/iosKbMouse.h"
+#include "Platform/iOS/iosAutoplayPanel.h"
+#include "Enhanced/iosAutoplay.h"
 
 extern SDL_Window* displayWindow;
 extern int stdControl_bControlsActive;
@@ -412,6 +414,7 @@ enum {
     ROLE_FREEZE,      // Action Freeze: moving the camera (one finger turns it, two move and zoom it)
     ROLE_FREEZESHOT,  // Action Freeze: on CAMERA (a tap takes a photo)
     ROLE_FREEZECLOSE, // Action Freeze: on its X (a tap goes back to the game)
+    ROLE_AUTOPLAY,    // AUTOPLAY's show: anywhere (its gestures: a double tap, a long press)
 };
 
 enum {
@@ -441,6 +444,7 @@ enum {
     KIND_SELFIES,  // (camera options) how many photos a selfie takes: 1, 3 or 5
     KIND_FREEZEOPT, // (camera options) Action Freeze on CAMERA's slide down, on or off
     KIND_CAMKIND,  // (photo kinds, under the camera options) ticks or unticks one kind of photo (bin: its IOSCAPTURE_* bit)
+    KIND_AUTOPLAY, // (MENU tray) opens AUTOPLAY's panel (iosAutoplayPanel), when the touch lifts on it; single player only
 };
 
 // Keys are the game's default keyboard bindings (sithControl_RegisterKeyboardBindings).
@@ -485,7 +489,7 @@ enum {
     BTN_SABER,  // between CAMERA and QUICK SAVE, once the saber is had (or sithewok is on)
     BTN_CHEAT,  // ...right of SABER, in cheat mode (switched on in the tray)
     BTN_VIEW,   // ...right of CHEAT: first or third person (switched on in the tray)
-    BTN_TRAYGYRO, BTN_TRAYRUN, BTN_TRAYLOOK, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS, // MENU's tray (left to right), hidden unless it is open (LEVEL only while sithewok is on; in multiplayer only for the co-op host)
+    BTN_TRAYGYRO, BTN_TRAYRUN, BTN_TRAYLOOK, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYAUTO, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS, // MENU's tray (left to right), hidden unless it is open (LEVEL only while sithewok is on; in multiplayer only for the co-op host)
     // Rows under the tray, one at a time (iosTouch_optRow), hidden until opened:
     BTN_GYROOPT_MODE, BTN_GYROOPT_SENS,  // the gyro options (a hold on the tray's GYRO)
     BTN_CAMROW_PHOTO, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE, // the camera options (a hold on the tray's camera switch)
@@ -520,6 +524,7 @@ static iosTouchButton iosTouch_aButtons[] = {
     [BTN_TRAYLOOK]  = { "LOOK",        KIND_LOOKSPEED, -1,                 20.0f, 0 },
     [BTN_TRAYFPS]   = { "FPS",         KIND_FPS,      -1,                  20.0f, 0 },
     [BTN_TRAYCAM]   = { "",            KIND_CAMSWITCH, -1,                 20.0f, 0 },
+    [BTN_TRAYAUTO]  = { "AUTO\nPLAY",   KIND_AUTOPLAY, -1,                  20.0f, 0 },
     [BTN_TRAYCHEAT] = { "",            KIND_CHEATSWITCH, -1,               20.0f, 0 },
     [BTN_TRAYLEVEL] = { "LEVEL",       KIND_LEVEL,    -1,                  20.0f, 0 },
     [BTN_TRAYVIEW]  = { "VIEW",        KIND_VIEWSWITCH, -1,                20.0f, 0 },
@@ -776,10 +781,35 @@ typedef struct {
     int bFlyDone;         // JUMP, ACT: this press has switched sithewok's flight or noclip, or can't (it moved). The tray's LEVEL: no level pick on this press (it moved, or no level can be picked)
     int levelPick;        // the tray's LEVEL: the level number on show (sithewok's level pick), or 0
     int randomHold;       // ROLE_WHEEL: went down on the saber wheel's RANDOM, 1 while it may still tap or hold; 2 done (held, or slid off)
+    int bApEdge;          // ROLE_AUTOPLAY: went down at the screen's edge (no long press from it: iOS's own gestures start there)
     int bSaberAgain;      // SABER: down soon after the lift of a tap that flipped the right hand's of two FOLDs, with nothing on SABER between (a tap: the left's)
 } iosTouchSlot;
 
 static iosTouchSlot iosTouch_aSlots[IOSTOUCH_MAX_TOUCHES];
+// AUTOPLAY's show (iosAutoplay_IsOn; the game side is src/Enhanced/iosAutoplay.c):
+// the overlay shows nothing -- or, with CONTROLS ON, the controls as a
+// player's thumbs would work them (iosAutoplay_GetDisplay: the stick under a
+// left thumb, the buttons lit as used; display only) -- and every touch is
+// one of the show's gestures, reaching nothing else: two quick taps close
+// together, a new fight (a light tap of the phone); one held still
+// IOSTOUCH_AP_HOLD, not down at the screen's edge nor taken by iOS, the end
+// (the game loaded back, a success tap). A single tap does nothing.
+#define IOSTOUCH_AP_TAP 0.30       // a tap: lifted within this (s)...
+#define IOSTOUCH_AP_STILL 14.0     // ...moving no further than this (pt), as a long press must stay
+#define IOSTOUCH_AP_DOUBLE 0.40    // the second tap down within this of the first's lift (s)...
+#define IOSTOUCH_AP_DOUBLE_NEAR 70.0 // ...and this near it (pt)
+#define IOSTOUCH_AP_HOLD 0.5       // a long press (s)
+#define IOSTOUCH_AP_EDGE 22.0      // a touch down this near an edge (pt) is no long press
+static int iosTouch_bAutoplay = 0;    // the show is on (as -tick last saw it)
+static int iosTouch_bApShown = 0;     // ...with the controls shown (CONTROLS ON)
+static unsigned int iosTouch_apLit = 0; // ...lit: a bit for each button (1 << BTN_*)
+static double iosTouch_tApTap = -1.0; // the last tap's lift (the touch's clock), for the double tap
+static CGPoint iosTouch_apTapAt;
+static CGPoint iosTouch_apStick;      // where the shown stick sits (a left thumb's place, a little different each show)
+#define IOSTOUCH_AP_MAX_VIEWS 128
+static UIView* iosTouch_aApView[IOSTOUCH_AP_MAX_VIEWS]; // the overlay's views as they were (not retained: only compared)...
+static CGFloat iosTouch_aApAlpha[IOSTOUCH_AP_MAX_VIEWS]; // ...and their opacity, put back after the show
+static int iosTouch_numApViews = 0;
 static int iosTouch_levelToLoad; // the tray's LEVEL pick, lifted: loaded at the next tick (as quick load)
 static int iosTouch_levelRowToLoad; // the level list's row tapped, plus 1: loaded at the next tick
 static double iosTouch_tJumpTapUp = -1.0; // when the last quick tap on JUMP lifted (by the touch's clock), for the double tap that lands
@@ -1548,6 +1578,9 @@ typedef struct {
 - (void)closeLevels;
 - (CAShapeLayer*)trayHoldRing:(int)button;
 - (BOOL)levelsOpen;
+- (void)setAutoplay:(int)bOn;
+- (void)tickAutoplay:(CFTimeInterval)now;
+- (void)autoplayLifted:(iosTouchSlot*)s at:(CGPoint)p cancelled:(int)bCancelled time:(NSTimeInterval)t;
 @end
 
 // CHEAT's picture: the Sith emblem, as drawn from the owner's picture of it:
@@ -2978,6 +3011,8 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
             iosTouchSlot* s = &iosTouch_aSlots[t];
             bHeld = s->touch && s->role == ROLE_BUTTON && s->button == BTN_MENU && s->bFired && s->trayButton == i;
         }
+        // (AUTOPLAY's CONTROLS ON: the buttons the autopilot uses, lit)
+        if (iosTouch_bAutoplay && i < 32 && (iosTouch_apLit & (1u << i))) bHeld = 1;
         // FORCE WHEEL / NEXT WPN stays lit above the dimmed screen while its wheel is open
         int bWheel = i == iosTouch_wheelButton && iosTouch_bWheelOpen;
         aButtonViews[i].backgroundColor = bWheel ? [UIColor colorWithRed:0.47 green:0.78 blue:1.0 alpha:0.55]
@@ -3008,6 +3043,8 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         // (a selfie shows no buttons; Action Freeze only CAMERA)
         if (iosTouch_selfieStage != IOSTOUCH_SELFIE_NONE || iosTouch_bCinema || (iosTouch_bFreezing && i != BTN_CAMERA)) alpha = 0.0;
         if (iosTouch_SaberWheelHides(i)) alpha = 0.0; // (the saber wheel open: its parts have the room, the top row stays)
+        if (i == BTN_TRAYAUTO && iosGame_IsMultiplayer()) alpha *= 0.45; // (single player only)
+        if (iosTouch_bAutoplay && (!iosTouch_bApShown || bTray)) alpha = 0.0; // (AUTOPLAY's show: nothing, or the controls as played)
         aButtonViews[i].alpha = alpha;
         if (i != BTN_FIRE) {
             aButtonViews[i].layer.borderColor = bOn ? [UIColor colorWithRed:1.0 green:0.85 blue:0.3 alpha:0.95].CGColor
@@ -3017,6 +3054,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     forceRing.opacity = iosTouch_SaberWheelHides(BTN_FORCE) ? 0.0 : bForceRingFull ? 1.0 : (iosTouch_aButtonHeld[BTN_FORCE] ? 1.0 : IOSTOUCH_IDLE_ALPHA);
+    if (iosTouch_bAutoplay && !iosTouch_bApShown) forceRing.opacity = 0.0; // (AUTOPLAY's show, nothing shown)
     for (int k = 0; k < 2; k++) aCheatSub[k].hidden = !iosTouch_bCheatOn;
     runTrayChevrons.strokeColor = [UIColor colorWithWhite:1.0 alpha:(iosGame_IsAlwaysRun() ? 1.0 : 0.85)].CGColor;
     // CHEAT's emblem and edge in a quiet red while the cheat is on: only
@@ -4427,6 +4465,12 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
         [self setNeedsLayout];
         [self layoutIfNeeded]; // (at once: the tray stays, laid out with the rest)
     }
+    else if (kind == KIND_AUTOPLAY) {
+        // AUTOPLAY's panel (single player; it says so otherwise)
+        [self setTrayOpen:0];
+        iosAutoplayPanel_Open((__bridge void*)self);
+        return;
+    }
     else if (kind == KIND_LEVEL) {
         // (a tap, or MENU's thumb lifted on it: the level list; the count
         // is a hold of its own, -tick)
@@ -5199,6 +5243,13 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         s->trayButton = -1;
         s->wheelSlot = -1;
 
+        if (iosTouch_bAutoplay) {
+            // AUTOPLAY's show: a gesture of its own, and nothing else
+            const CGSize sz = self.bounds.size;
+            s->role = ROLE_AUTOPLAY;
+            s->bApEdge = p.x < IOSTOUCH_AP_EDGE || p.y < IOSTOUCH_AP_EDGE || p.x > sz.width - IOSTOUCH_AP_EDGE || p.y > sz.height - IOSTOUCH_AP_EDGE;
+            continue;
+        }
         if (iosTouch_bPadMasked) {
             // The touch controls were hidden for a game controller (or the
             // keyboard and mouse): they come back, and this touch does
@@ -5310,6 +5361,12 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
 
             if (s->role == ROLE_FREEZE) {
                 [self moveFreeze:s to:p];
+                s->last = p;
+                continue;
+            }
+            if (s->role == ROLE_AUTOPLAY) {
+                // (slid: neither a tap nor a long press)
+                if (hypot(p.x - s->origin.x, p.y - s->origin.y) >= IOSTOUCH_AP_STILL) s->bFired = 1;
                 s->last = p;
                 continue;
             }
@@ -5448,6 +5505,11 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             if (s->touch != t) continue;
             CGPoint p = [t locationInView:self];
             if (t == iosTouch_pBurstTouch) [self endBurst];
+            if (s->role == ROLE_AUTOPLAY) {
+                [self autoplayLifted:s at:p cancelled:bCancelled time:t.timestamp];
+                memset(s, 0, sizeof(*s));
+                continue;
+            }
             if (s->role == ROLE_FREEZE || s->role == ROLE_FREEZESHOT || s->role == ROLE_FREEZECLOSE) {
                 // Action Freeze: lifted on its X, back to the game; a tap on
                 // CAMERA, a photo
@@ -5699,6 +5761,13 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     CFTimeInterval now = CACurrentMediaTime();
     CFTimeInterval known = lastTickTime;
     lastTickTime = now;
+    // AUTOPLAY's show: on or off; while it plays, nothing else goes on here
+    if ((iosAutoplay_IsOn() ? 1 : 0) != iosTouch_bAutoplay) [self setAutoplay:iosAutoplay_IsOn()];
+    if (iosTouch_bAutoplay) {
+        [self tickAutoplay:now];
+        return;
+    }
+    iosAutoplayPanel_Tick();
     // The touch controls hidden for a game controller come back for a
     // selfie, Action Freeze or the cinematic burst (worked by touch)
     if ((iosTouch_bPadHud && iosTouch_selfieStage == IOSTOUCH_SELFIE_NONE && !iosTouch_bFreezing && !iosTouch_bCinema) != iosTouch_bPadMasked)
@@ -6202,8 +6271,10 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self endCinema];
     [self setTrayOpen:0];
     [self closeLevels];
+    iosAutoplayPanel_Close(); // (AUTOPLAY's panel too)
     [self endBurst];
     memset(iosTouch_aSlots, 0, sizeof(iosTouch_aSlots));
+    iosTouch_tApTap = -1.0;
     memset(iosTouch_aButtonHeld, 0, sizeof(iosTouch_aButtonHeld));
     memset(iosTouch_aPulseQueue, 0, sizeof(iosTouch_aPulseQueue));
     memset(iosTouch_aPulseReads, 0, sizeof(iosTouch_aPulseReads));
@@ -6236,6 +6307,133 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     stdControl_bControllerEscapeKey = 0;
     [self refreshButtonLooks];
     [self applyPadMask];
+}
+
+// ------------------------------------------------------------ AUTOPLAY's show
+
+// The show on: every finger let go of, everything put away (kept to put
+// back as it was), the stick's place for CONTROLS ON picked; off: all back
+- (void)setAutoplay:(int)bOn
+{
+    bOn = bOn != 0;
+    if (bOn == iosTouch_bAutoplay) return;
+    if (bOn) {
+        [self resetAll];
+        iosTouch_bAutoplay = 1;
+        iosTouch_bApShown = 0;
+        iosTouch_apLit = 0;
+        iosTouch_numApViews = 0;
+        for (UIView* v in self.subviews) {
+            if (iosTouch_numApViews >= IOSTOUCH_AP_MAX_VIEWS) break;
+            iosTouch_aApView[iosTouch_numApViews] = v;
+            iosTouch_aApAlpha[iosTouch_numApViews++] = v.alpha;
+            v.alpha = 0.0;
+        }
+        const CGSize sz = self.bounds.size;
+        const UIEdgeInsets in = self.safeAreaInsets;
+        // (where a left thumb rests: a little different each show)
+        const CGFloat fx = 0.15 + 0.06 * (CGFloat)arc4random_uniform(1000) / 1000.0;
+        const CGFloat fy = 0.62 + 0.10 * (CGFloat)arc4random_uniform(1000) / 1000.0;
+        iosTouch_apStick = CGPointMake(MAX(in.left + IOSTOUCH_STICK_RADIUS + 16.0, sz.width * fx),
+                                       MIN(sz.height - in.bottom - IOSTOUCH_STICK_RADIUS - 8.0, sz.height * fy));
+        if (iosTouch_bSwapped) iosTouch_apStick.x = sz.width - iosTouch_apStick.x;
+    }
+    else {
+        iosTouch_bAutoplay = 0;
+        iosTouch_bApShown = 0;
+        iosTouch_apLit = 0;
+        for (int k = 0; k < iosTouch_numApViews; k++) {
+            UIView* v = iosTouch_aApView[k];
+            if (v.superview == self) v.alpha = iosTouch_aApAlpha[k];
+        }
+        iosTouch_numApViews = 0;
+        [self resetAll];
+        // (a mouse or trackpad moved meanwhile doesn't turn the view afterwards)
+        Window_lastXRel = 0;
+        Window_lastYRel = 0;
+    }
+    [self refreshButtonLooks];
+}
+
+// Once a frame while the show plays: a long press; CONTROLS ON's display
+- (void)tickAutoplay:(CFTimeInterval)now
+{
+    for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
+        iosTouchSlot* s = &iosTouch_aSlots[i];
+        if (!s->touch || s->role != ROLE_AUTOPLAY || s->bFired || s->bApEdge || now - s->tDown < IOSTOUCH_AP_HOLD) continue;
+        s->bFired = 1;
+        iosTouch_tApTap = -1.0;
+        static UINotificationFeedbackGenerator* pDone = nil;
+        if (!pDone) pDone = [[UINotificationFeedbackGenerator alloc] init];
+        [pDone notificationOccurred:UINotificationFeedbackTypeSuccess];
+        iosAutoplay_Stop();
+        return; // (the game is loading back: -setAutoplay: next tick)
+    }
+    iosAutoplayDisplay d;
+    iosAutoplay_GetDisplay(&d);
+    const int bShow = d.bOn != 0;
+    if (bShow != iosTouch_bApShown) {
+        iosTouch_bApShown = bShow;
+        for (int k = 0; k < iosTouch_numApViews; k++) {
+            UIView* v = iosTouch_aApView[k];
+            if (v.superview == self) v.alpha = bShow ? iosTouch_aApAlpha[k] : 0.0;
+        }
+        if (!bShow) [self hideStick];
+        [self refreshButtonLooks];
+    }
+    if (!bShow) return;
+    // the stick, under a left thumb; its knob a little behind the autopilot's
+    // stick, as a thumb is
+    const CGFloat R = IOSTOUCH_STICK_RADIUS;
+    const CGFloat kx = fmax(-1.0, fmin(1.0, d.moveX)), ky = fmax(-1.0, fmin(1.0, -d.moveY));
+    const CGPoint o = iosTouch_apStick;
+    const CGPoint was = stickKnob.center;
+    CGPoint want = CGPointMake(o.x + kx * R, o.y + ky * R);
+    if (!stickBase.hidden) want = CGPointMake(was.x + (want.x - was.x) * 0.35, was.y + (want.y - was.y) * 0.35);
+    stickBase.center = o;
+    stickKnob.center = want;
+    stickBase.hidden = NO;
+    stickKnob.hidden = NO;
+    stickBase.alpha = 1.0;
+    stickKnob.alpha = 1.0;
+    [self setRunLit:0];
+    // the buttons it uses, lit as a thumb on them would
+    unsigned int lit = 0;
+    if (d.buttons & IOSAUTOPLAY_BTN_FIRE) lit |= 1u << BTN_FIRE;
+    if (d.buttons & IOSAUTOPLAY_BTN_ALT) lit |= 1u << BTN_ALT;
+    if (d.buttons & IOSAUTOPLAY_BTN_DUCK) lit |= 1u << BTN_DUCK;
+    if (d.buttons & IOSAUTOPLAY_BTN_JUMP) lit |= 1u << BTN_JUMP;
+    if (d.buttons & IOSAUTOPLAY_BTN_FORCE) lit |= 1u << BTN_FORCE;
+    if (d.buttons & IOSAUTOPLAY_BTN_NEXTWPN) lit |= 1u << BTN_NEXTWPN;
+    if (d.buttons & IOSAUTOPLAY_BTN_WHEEL) lit |= 1u << BTN_WHEEL;
+    if (lit != iosTouch_apLit) {
+        iosTouch_apLit = lit;
+        [self refreshButtonLooks];
+    }
+}
+
+// A finger lifted during the show: a tap -- the second of two quick ones
+// close together, a new fight (ignored while a level loads); a slide, a
+// long press, or a touch iOS took, nothing
+- (void)autoplayLifted:(iosTouchSlot*)s at:(CGPoint)p cancelled:(int)bCancelled time:(NSTimeInterval)t
+{
+    if (bCancelled || s->bFired) return;
+    if (t - s->tDownTouch > IOSTOUCH_AP_TAP || hypot(p.x - s->origin.x, p.y - s->origin.y) >= IOSTOUCH_AP_STILL) {
+        iosTouch_tApTap = -1.0;
+        return;
+    }
+    if (iosTouch_tApTap >= 0.0 && s->tDownTouch - iosTouch_tApTap <= IOSTOUCH_AP_DOUBLE
+        && hypot(p.x - iosTouch_apTapAt.x, p.y - iosTouch_apTapAt.y) <= IOSTOUCH_AP_DOUBLE_NEAR) {
+        iosTouch_tApTap = -1.0;
+        if (iosAutoplay_Next()) {
+            static UIImpactFeedbackGenerator* pNext = nil;
+            if (!pNext) pNext = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+            [pNext impactOccurred];
+        }
+        return;
+    }
+    iosTouch_tApTap = t;
+    iosTouch_apTapAt = p;
 }
 
 // ------------------------------------------------------------ game controllers
@@ -6571,7 +6769,7 @@ void iosTouch_UpdateGyro(void)
         // Not while the overlay is hidden -- nor if this frame's events just
         // left gameplay, which hides it next frame
         int bHadGyro = iosTouch_GyroAvailable();
-        iosTouch_GyroUpdate(!iosTouch_pOverlay.hidden && iosTouch_WantOverlay() && !iosTouch_bPadMasked, iosTouch_pOverlay);
+        iosTouch_GyroUpdate(!iosTouch_pOverlay.hidden && iosTouch_WantOverlay() && !iosTouch_bPadMasked && !iosTouch_bAutoplay, iosTouch_pOverlay);
         if (iosTouch_GyroAvailable() != bHadGyro) {
             // iOS refused the motion data: the tray's GYRO says NO GYRO
             [iosTouch_pOverlay refreshGyroLabels];
@@ -6630,6 +6828,7 @@ static int iosTouch_OutsideWheelOpen(int kind, int bTapMode, int bKbm)
     static const int aButton[IOSTOUCH_WHEEL_NUM_KINDS] = { BTN_WHEEL, BTN_NEXTWPN, BTN_SABER };
     IOSTouchOverlay* o = iosTouch_pOverlay;
     if (!o || o.hidden || kind < 0 || kind >= IOSTOUCH_WHEEL_NUM_KINDS) return 0;
+    if (iosTouch_bAutoplay || iosAutoplayPanel_IsOpen()) return 0; // (AUTOPLAY's show or panel)
     if (iosTouch_bWheelOpen || iosTouch_bFreezing || iosTouch_bCinema || iosTouch_selfieStage != IOSTOUCH_SELFIE_NONE) return 0;
     if (kind == IOSTOUCH_WHEEL_SABER && !iosGame_IsSaberButtonShown()) return 0;
     [o endBurst];
@@ -6799,13 +6998,15 @@ int iosTouch_IsWheelOpen(void)
 int iosTouch_WantsPointer(void)
 {
     if (!iosTouch_pOverlay || iosTouch_pOverlay.hidden) return 0;
+    // (AUTOPLAY's show and panel: a click is a tap, never the game's button)
+    if (iosTouch_bAutoplay || iosAutoplayPanel_IsOpen()) return 1;
     return iosTouch_IsPhotoModeUp() || iosTouch_bTrayOpen || iosTouch_optRow != IOSTOUCH_ROW_NONE;
 }
 
 int iosTouch_KbmCamera(int action)
 {
     IOSTouchOverlay* o = iosTouch_pOverlay;
-    if (!o || o.hidden || jkHud_bChatOpen) return 0;
+    if (!o || o.hidden || jkHud_bChatOpen || iosTouch_bAutoplay) return 0;
     switch (action) {
     case IOSTOUCH_CAM_PHOTO:
         // (in Action Freeze, its photo, as its CAMERA)

@@ -114,9 +114,12 @@ const char* iosGame_GetPowerName(int bin)
     }
 }
 
-int iosGame_QuickLoad(void)
+// A save of the player's (fname, as the game names it in the player's
+// folder) loaded, as the Load menu would; bLoud: QUICK LOAD's messages
+static int iosGame_LoadSaveFile(const char* fname, int bLoud)
 {
     char path[128];
+    char aFname[64];
     sithGamesave_Header header;
     int bHeaderOk = 0;
 
@@ -125,7 +128,8 @@ int iosGame_QuickLoad(void)
     if (sithNet_isMulti || !sithWorld_g_pCurrentWorld || !sithPlayer_g_pLocalPlayerThing)
         return 0;
 
-    sithGamesave_GetProfilePath(path, sizeof(path), IOSGAME_QUICKSAVE_FNAME);
+    stdString_SafeStrCopy(aFname, fname, sizeof(aFname));
+    sithGamesave_GetProfilePath(path, sizeof(path), aFname);
     stdFile_t f = pLowLevelHS->fileOpen(path, "rb");
     if (f)
     {
@@ -136,7 +140,8 @@ int iosGame_QuickLoad(void)
     }
     if (!bHeaderOk)
     {
-        jkDev_PrintUniString(u"No quicksave yet");
+        if (bLoud)
+            jkDev_PrintUniString(u"No quicksave yet");
         return 0;
     }
     header.episodeName[sizeof(header.episodeName) - 1] = 0;
@@ -155,16 +160,28 @@ int iosGame_QuickLoad(void)
         // The menu passes the part of the save name after '~' as the title
         char16_t* pTitle = __wcschr(header.saveName, U'~');
         pTitle = pTitle ? pTitle + 1 : header.saveName;
-        jkMain_sub_4034D0(header.episodeName, IOSGAME_QUICKSAVE_FNAME, header.jklName, pTitle);
+        jkMain_sub_4034D0(header.episodeName, aFname, header.jklName, pTitle);
     }
-    else if (!jkPlayer_LoadSave(IOSGAME_QUICKSAVE_FNAME))
+    else if (!jkPlayer_LoadSave(aFname))
     {
-        jkDev_PrintUniString(u"Quick load failed");
+        if (bLoud)
+            jkDev_PrintUniString(u"Quick load failed");
         return 0;
     }
 
-    jkDev_PrintUniString(u"Quick-loaded");
+    if (bLoud)
+        jkDev_PrintUniString(u"Quick-loaded");
     return 1;
+}
+
+int iosGame_QuickLoad(void)
+{
+    return iosGame_LoadSaveFile(IOSGAME_QUICKSAVE_FNAME, 1);
+}
+
+int iosGame_LoadSave(const char* fname, int bLoud)
+{
+    return iosGame_LoadSaveFile(fname, bLoud);
 }
 
 int iosGame_IsMots(void)

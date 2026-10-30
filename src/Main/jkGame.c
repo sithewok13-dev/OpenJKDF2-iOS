@@ -27,6 +27,7 @@
 #include "jk.h"
 #ifdef JK_ENHANCED
 #include "Enhanced/iosPhotoCam.h" // Added
+#include "Enhanced/iosAutoplay.h" // Added
 #endif
 
 #if defined(TARGET_TWL)
@@ -361,7 +362,8 @@ int jkGame_Update()
 #ifdef JK_ENHANCED
     // Added: nothing of the HUD (meters, crosshair, messages, items) over the
     // photo camera's view (the selfie, Action Freeze: iosPhotoCam)
-    if (!iosPhotoCam_IsActive())
+    // and none during AUTOPLAY's show with HUD OFF (iosAutoplay)
+    if (!iosPhotoCam_IsActive() && !iosAutoplay_HidesHud())
 #endif
     {
     // MOTS added: scope/security cam overlays

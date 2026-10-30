@@ -54,6 +54,7 @@
 #include "Dss/jkDSS.h"
 #ifdef JK_ENHANCED
 #include "Enhanced/iosGame.h"
+#include "Enhanced/iosAutoplay.h" // Added
 #endif
 #include "stdPlatform.h"
 
@@ -1393,6 +1394,17 @@ int jkMain_MenuReturn()
 
 int jkMain_EndLevel(int bIsAPath)
 {
+#ifdef JK_ENHANCED
+    // Added: AUTOPLAY's show: a level finished (its exit, a boss down) goes on to the show's next one,
+    // never the episode's next (a cutscene, the path's choice)
+    {
+        const int autoplayEntry = iosAutoplay_LevelEnded();
+        if (autoplayEntry >= 0) {
+            jkEpisode_mLoad.currentEpisodeEntryIdx = autoplayEntry;
+            return jkMain_cd_swap_reverify(&jkEpisode_mLoad.paEntries[autoplayEntry]);
+        }
+    }
+#endif
 #ifdef QOL_IMPROVEMENTS
     // Added: co-op, a level the host picked (sithewok's level pick): that one, as it loads in single player
     const int pickedEntry = jkCoop_TakePickedLevel();

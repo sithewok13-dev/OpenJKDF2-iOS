@@ -19,6 +19,9 @@
 #include "General/stdFnames.h"
 #include "General/stdMath.h"
 #include "Platform/std3D.h"
+#ifdef JK_ENHANCED
+#include "Enhanced/iosAutoplay.h" // Added
+#endif
 
 static char16_t jkGuiTitle_tmpBuffer[512];
 static char16_t jkGuiTitle_versionBuffer[64];
@@ -381,7 +384,11 @@ void jkGuiTitle_LoadingFinalize()
 {
 #ifdef QOL_IMPROVEMENTS
     int shouldSkip = jkPlayer_bFastMissionText || sithNet_isMulti || !sithWorld_g_pCurrentWorld
-                  || jkGuiTitle_bSkipLoadingWait; // Added
+                  || jkGuiTitle_bSkipLoadingWait // Added
+#ifdef JK_ENHANCED
+                  || iosAutoplay_SkipsLoadingWait() // Added: AUTOPLAY's show goes straight in
+#endif
+                  ;
     if ( jkGuiTitle_whichLoading != 1)
     {
         int selected = -1;

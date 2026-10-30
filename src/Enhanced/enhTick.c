@@ -7,6 +7,7 @@
 #include "Enhanced/iosSelfieShots.h"
 #include "Enhanced/iosCinema.h"
 #include "Enhanced/iosFreeze.h"
+#include "Enhanced/iosAutoplay.h"
 #include "Platform/platServices.h"
 #include "Enhanced/enhSettings.h"
 #include "SDL2_helper.h"
@@ -32,6 +33,7 @@ void enh_Tick(void)
     else if (iosFreeze_IsActive()) {
         iosFreeze_Frame();
     }
+    iosAutoplay_Tick(now); // (AUTOPLAY's show: its autopilot's keys and turning for this frame)
     platServices_Tick();
 #if !defined(TARGET_IOS) && !defined(TOUCHUI_ENABLED)
     enhSettings_Sync(); // (the choices kept as cvars; on iOS and Android, by the touch overlay)

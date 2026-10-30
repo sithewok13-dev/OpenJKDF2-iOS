@@ -82,7 +82,10 @@
 //     a tray just under it, left to right: SENS and GYRO, gyro aiming's
 //     sensitivity (1.0x, 1.5x -- the default --, 2.0x, 3.0x) and mode
 //     (OFF -- the default --, TOUCH, ALWAYS), each tap going on to the next;
-//     FPS, which shows a frame rate readout left of QUICK SAVE; and the
+//     FPS, which shows a frame rate readout left of QUICK SAVE; AUTOPLAY,
+//     the self-playing show's panel (single player: iosAutoplayPanel.h;
+//     while the show plays every touch is its double tap or long press,
+//     and the controls show only with its CONTROLS ON); and the
 //     keyboard, to type cheats. All three settings are remembered between
 //     launches. A touch anywhere on the tray's backing is on the nearest of
 //     its buttons.

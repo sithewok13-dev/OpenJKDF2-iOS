@@ -22,6 +22,9 @@ const char* iosGame_GetForcePowerName(void);
 // Prints a message either way. Returns 1 if a load was started. A weapon
 // picked on the touch overlay's wheel and still waiting is dropped.
 int iosGame_QuickLoad(void);
+// ...and any save of the player's by its file name (AUTOPLAY's Before
+// AUTOPLAY save); bLoud: QUICK LOAD's messages. 1: loading (or loaded).
+int iosGame_LoadSave(const char* fname, int bLoud);
 
 // Whether Mysteries of the Sith is running (it has its own force powers).
 int iosGame_IsMots(void);
@@ -110,6 +113,7 @@ void iosGame_SelectItem(int bin);
 #define IOSGAME_HOLD_FREEZE 8 // the action frozen for photos (iosFreeze)
 #define IOSGAME_HOLD_PADMENU 16 // a game controller's options are open (iosPad)
 #define IOSGAME_HOLD_LEVELS 32 // the touch overlay's level list is open (cheat mode)
+#define IOSGAME_HOLD_AUTOPLAY 64 // the touch overlay's AUTOPLAY panel is open
 void iosGame_SetHoldReason(int reason, int bHold);
 
 // The wheels' reason (IOSGAME_HOLD_WHEEL).

@@ -108,6 +108,8 @@ int jkDev_Custom_GoToLevel(int level); // Added
 int jkDev_Custom_NumLevelRows(); // Added
 int jkDev_Custom_LevelRowInfo(int row, int *pLevel, char *pTitle, int titleLen, char *pFile, int fileLen); // Added
 int jkDev_Custom_GoToLevelRow(int row); // Added
+int jkDev_Custom_NumEpisodeLevelRows(); // Added
+int jkDev_Custom_LevelRowEntry(int row); // Added
 int jkDev_Custom_PrintInPlace(const char16_t *str); // Added
 void jkDev_Custom_SithEwokRestored(); // Added
 void jkDev_Custom_GameLoaded(); // Added

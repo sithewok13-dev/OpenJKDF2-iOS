@@ -16,6 +16,9 @@
 #include "Platform/iOS/iosPad.h" // Added: game controllers (iOS)
 #include "Platform/iOS/iosKbMouse.h" // Added: keyboard and mouse (iOS)
 
+#ifdef JK_ENHANCED
+#include "Enhanced/iosAutoplay.h" // Added: AUTOPLAY's autopilot
+#endif
 #include "jk.h"
 
 const uint8_t stdControl_aSdlToDik[256] =
@@ -891,6 +894,11 @@ void stdControl_ReadControls()
 #endif
 #ifdef IOSPAD_ENABLED
             s |= iosPad_IsScancodeDown(i); // Added: a key a game controller presses (quick save)
+#endif
+#ifdef JK_ENHANCED
+            // Added: AUTOPLAY's show: the keys are its autopilot's alone
+            if (iosAutoplay_OwnsKeys())
+                s = iosAutoplay_IsScancodeDown(i);
 #endif
             if (s && stdControl_aDebounce[i]) {
                 continue;
