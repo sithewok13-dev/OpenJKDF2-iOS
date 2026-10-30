@@ -35,6 +35,10 @@
 #include "Engine/sithRender.h"
 
 #include <time.h>
+#ifdef QOL_IMPROVEMENTS
+#include "Main/jkCoop.h" // Added
+#include "Main/jkCoopForce.h" // Added
+#endif
 
 void sithCogFunction_ReturnBool(int a1, sithCog *a2);
 
@@ -1454,6 +1458,15 @@ void sithCogFunction_ClearMultiModeFlags(sithCog *pCog)
 
 void sithCogFunction_IsMulti(sithCog *pCog)
 {
+#ifdef QOL_IMPROVEMENTS
+    jkCoop_CogAsksIsMulti(pCog); // Added: co-op, a player's class cog asks it before its spawn kit
+    const int bCoopMulti = jkCoopForce_CogIsMulti(pCog); // Added: co-op, the story's Force energy
+    if ( bCoopMulti >= 0 )
+    {
+        sithCogExec_PushInt(pCog, bCoopMulti);
+        return;
+    }
+#endif
     if ( sithNet_isMulti )
         sithCogExec_PushInt(pCog, 1);
     else

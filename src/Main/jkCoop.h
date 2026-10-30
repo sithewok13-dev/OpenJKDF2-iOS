@@ -12,7 +12,19 @@
 //   That kit, as the level began, is also what a player comes back with after
 //   dying in co-op. A level in which the player used cheats (when the host
 //   allows them) adds nothing to it: they carry on what they began it with,
-//   and the Force power the story gives at its end.
+//   and the Force the story gives (jkCoopForce.h: the Force as the story gives
+//   it, each player their own).
+// - The gear as one player has it: the weapons, ammo and items carried in are
+//   had before the level's scripts start, as in single player, so what they
+//   give or take is what everyone has; the game's multiplayer spawn kit (a
+//   deathmatch start: Jedi Knight's lightsaber from the first level on) gives,
+//   takes and turns on nothing in co-op. What a level's scripts take stays
+//   taken: dying, or gear arriving from the host, doesn't give it back. The
+//   host's level taking gear as it begins (a timer the game runs on the host
+//   only: Mysteries of the Sith's prison and first Mara level) takes it from
+//   everyone. Jedi Knight's lightsaber comes with its level 4, as in the
+//   story: not carried into levels 1 to 3 (an older save's, the host's level
+//   pick), had from level 4 on.
 // - Characters: the host plays the story's own player (the level's: Kyle,
 //   Mara), the guests the multiplayer characters they picked.
 // - Player starts: a story level made for one player gets a start for each
@@ -48,8 +60,11 @@ int jkCoop_HostKeepsProtagonist(void);
 typedef struct jkCoopKitBin
 {
     flex_t amount;
-    int32_t state; // (SITHINVENTORY_ITEM_AVAILABLE, _FOUND)
+    int32_t state; // (SITHINVENTORY_ITEM_AVAILABLE, _FOUND; and JKCOOP_KIT_PEDS_CARRIED)
 } jkCoopKitBin;
+// A kit's innocents counted (SITHBIN_PEDS_TOTAL) are those carried into its level only, not the level's
+// own (a kit taken in a level: the level counts its own again as it is played). A kit's mark, not a bin's
+#define JKCOOP_KIT_PEDS_CARRIED 0x80
 
 // The kit this player carries (this level's start, or the last level's end), 0 if none
 int jkCoop_GetKit(jkCoopKitBin aOut[SITHBIN_NUMBINS]);
@@ -57,14 +72,58 @@ int jkCoop_GetKit(jkCoopKitBin aOut[SITHBIN_NUMBINS]);
 // already in the level
 void jkCoop_SetKit(const jkCoopKitBin aKit[SITHBIN_NUMBINS]);
 
+// The Force bins among the carried ones (its energy, stars, side, rank and powers, and what tips a Jedi's
+// side: the innocents killed, the alignment), which jkCoopForce keeps as the story gives them
+int jkCoop_BinIsForce(int bin);
+// This level's starting kit (taken once the player is in) has been taken
+int jkCoop_StartKitTaken(void);
+// The kit's Force bins as aForce has them (jkCoopForce: the story's, or as the screens after a level
+// left them)
+void jkCoop_KeepForce(const jkCoopKitBin aForce[SITHBIN_NUMBINS]);
+
+// A kit as this level can have it: Jedi Knight's lightsaber not before the story's level 4 (none of an
+// older save's from levels 1 to 3), had from it on
+void jkCoop_StoryKit(jkCoopKitBin aKit[SITHBIN_NUMBINS]);
 // The level has ended (its Force power given): the local player's gear kept
 void jkCoop_LevelEnded(void);
 // The multiplayer game left (sithMulti_Shutdown): nothing kept for another game
 void jkCoop_SessionEnded(void);
-// A multiplayer level has been opened
+// A multiplayer level is opening (sithOpenPostProcess, before its scripts' startup): the gear carried
+// in given now
 void jkCoop_LevelOpened(void);
 // Once a frame in a level
 void jkCoop_Tick(void);
+
+// The local player coming into the level or back after dying (sithPlayer_NewPlayer, around its
+// "newplayer" to the scripts): in co-op, the multiplayer spawn kit changes none of the gear
+void jkCoop_SpawnBegin(SithThing* pPlayer);
+void jkCoop_SpawnEnd(SithThing* pPlayer);
+// A cog asks IsMulti() (sithCogFunction_IsMulti): the player's class cog does, between its one-player
+// start and its multiplayer spawn kit
+void jkCoop_CogAsksIsMulti(sithCog* pCog);
+// A cog about to set a player's bin (SetInv: amount; SetInvAvailable: bAvailable, else -1): one of the
+// level's own scripts taking the local player's gear, kept in mind for the level. (Not ChangeInv: no
+// level takes gear that way, and a dark Jedi's Force pull, ChangeInv of the weapon in hand, is a loss
+// for the moment, given back after dying as ever)
+void jkCoop_CogSetsInv(sithCog* pCog, SithThing* pThing, int bin, flex_t amount, int bAvailable);
+// A cog about to change a player's bin by some (ChangeInv: amount, what it will then have): of the
+// story's Force only (jkCoopForce: a level's end giving stars), not the gear
+void jkCoop_CogChangesInv(sithCog* pCog, SithThing* pThing, int bin, flex_t amount);
+
+// What the level's scripts took: no more of the bin than cap (JKCOOP_TAKEN_CAP), not available
+// (JKCOOP_TAKEN_OFF)
+#define JKCOOP_TAKEN_CAP 1
+#define JKCOOP_TAKEN_OFF 2
+typedef struct jkCoopTaken
+{
+    int32_t flags;
+    flex_t cap;
+} jkCoopTaken;
+// The host's: what its level took from it as it began (sent to the guests), 1 if anything
+int jkCoop_GetStartTaken(jkCoopTaken aOut[SITHBIN_NUMBINS]);
+// A guest: the host's level took that as it began, taken here too (the game runs some of a level's
+// start on the host only); pLevel the host's level
+void jkCoop_TakeAsHost(const char* pLevel, const jkCoopTaken aTaken[SITHBIN_NUMBINS]);
 
 // A player just put at their starting spot (sithPlayer_SpawnPlayerAt's
 // placement): moved beside anyone already standing there, in co-op
@@ -79,9 +138,13 @@ int jkCoop_FollowHostLevel(void);
 
 // The co-op host may pick a level for everyone (cheats allowed, as sithewok's level pick)
 int jkCoop_HostMayPickLevel(void);
-// The co-op host picked the episode's entry: everyone goes there (the level ends for all; the host
-// then loads that entry, and the guests follow the host's level); 1 if so
+// The co-op host picked the episode's entry: everyone goes there (the level ends for all, and every
+// game, the host's and the guests', then loads that entry); 1 if so
 int jkCoop_HostPickLevel(int entryIdx);
+// The host's level end message (jkDSS_SendEndLevel) says which: the picked entry's line, -1 if none
+int jkCoop_PickedLevelLine(void);
+// A guest: the host's level end message said it picked the entry on that line (-1: none)
+void jkCoop_HostPickedLevel(int lineNum);
 // At the level's end (jkMain_EndLevel): the entry the host picked, -1 if none (taken once)
 int jkCoop_TakePickedLevel(void);
 

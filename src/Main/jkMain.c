@@ -22,6 +22,7 @@
 #include "Main/jkDev.h"
 #include "Main/jkCoop.h"
 #include "Main/jkCoopSave.h" // Added
+#include "Main/jkCoopForce.h" // Added
 #include "Main/jkEpisode.h"
 #include "Main/jkRes.h"
 #include "Main/jkStrings.h"
@@ -433,6 +434,9 @@ void jkMain_EscapeMenuLeave(int a2, int a3)
         {
             jkPlayer_Shutdown();
             sithClose();
+#ifdef QOL_IMPROVEMENTS
+            jkCoopForce_LevelClosed(); // Added: co-op, the Force as the level's end left it kept
+#endif
             jkMain_bInit = 0;
             thing_eight = 0;
         }
@@ -490,6 +494,9 @@ void jkMain_EndLevelScreenShow(int a1, int a2)
         // MOTS added
         if (jkGuiSingleTally_Show() != -1) {
             if (sithPlayer_GetInvItemAmount(SITHBIN_NEW_STARS) <= 0.0 && sithPlayer_GetInvItemAmount(SITHBIN_SPEND_STARS) <= 0.0) {
+#ifdef QOL_IMPROVEMENTS
+                jkCoop_LevelEnded(); // Added: co-op, what the level's end gave kept
+#endif
                 jkMain_StartNextLevelInEpisode(0, 1);
                 return;
             }
@@ -642,6 +649,11 @@ void jkMain_GameplayShow(int a1, int a2)
         {
 LABEL_28:
             sithInventory_InitInventory(sithPlayer_g_pLocalPlayerThing);
+#ifdef QOL_IMPROVEMENTS
+            if (jkCoop_IsActive())
+                jkCoopForce_MpcInitLooks(sithPlayer_g_pLocalPlayer); // Added: co-op, the character's looks only (the Force is the story's)
+            else
+#endif
             jkPlayer_MpcInitBins(sithPlayer_g_pLocalPlayer);
             
             jkPlayer_Startup();
@@ -668,7 +680,6 @@ LABEL_28:
             }
 #ifdef QOL_IMPROVEMENTS
             jkDev_Custom_LevelOpened(); // Added: (multiplayer) the host's address shown
-            jkCoop_LevelOpened(); // Added: co-op
 #endif
         }
         else {
@@ -843,6 +854,9 @@ void jkMain_GameplayLeave(int a2, int a3)
     {
         jkPlayer_Shutdown();
         sithClose();
+#ifdef QOL_IMPROVEMENTS
+        jkCoopForce_LevelClosed(); // Added: co-op, the Force as the level's end left it kept
+#endif
         jkMain_bInit = 0;
         thing_eight = 0;
     }
@@ -926,6 +940,9 @@ void jkMain_ChoiceShow(int a1, int a2)
     }
     else
     {
+#ifdef QOL_IMPROVEMENTS
+        jkCoop_LevelEnded(); // Added: co-op, the side chosen kept
+#endif
         jkMain_StartNextLevelInEpisode(0, v1);
     }
 }
@@ -1437,6 +1454,7 @@ int jkMain_EndLevel(int bIsAPath)
     }
 
 #ifdef QOL_IMPROVEMENTS
+    jkCoopForce_LevelEnding(); // Added: co-op, where the paths split, the power of the player's side
     jkCoop_LevelEnded(); // Added: co-op, each player's gear kept for the next level
 #endif
     return jkMain_StartNextLevelInEpisode(0, bIsAPath);

@@ -15,6 +15,7 @@
 #include "Main/jkPlayerLook.h" // Added
 #include "Main/jkCoop.h" // Added
 #include "Main/jkCoopSave.h" // Added
+#include "Main/jkCoopForce.h" // Added
 #include "Main/jkRes.h"
 #include "Main/jkStrings.h"
 #include "World/sithTemplate.h"
@@ -75,6 +76,7 @@ int jkDSS_Startup()
     jkNetExt_Startup();
     jkPlayerLook_Startup();
     jkCoopSave_Startup();
+    jkCoopForce_Startup();
 #endif
     sithMessage_RegisterFunction(DSS_JKENABLESABER, jkDSS_ProcessJKEnableSaber);
     sithMessage_RegisterFunction(DSS_SABERINFO3, jkDSS_ProcessSetSaberInfo2);
@@ -1098,9 +1100,18 @@ int jkDSS_ProcessJKPrintUniString(SithMessage *msg)
 
 void jkDSS_SendEndLevel()
 {
+#ifdef QOL_IMPROVEMENTS
+    jkCoopForce_HostEndingLevel(); // Added: co-op, the secrets' count sent first (each guest's star by it)
+#endif
     NETMSG_START;
 
     NETMSG_PUSHS32(jkEpisode_GetCurrentEpisodeEntry(&jkEpisode_mLoad)->level);
+#ifdef QOL_IMPROVEMENTS
+    // Added: co-op, the level the host picked (its entry's line), after the number older builds read
+    const int pickedLine = jkCoop_PickedLevelLine();
+    if (pickedLine >= 0)
+        NETMSG_PUSHS32(pickedLine);
+#endif
     NETMSG_END(DSS_ENDLEVEL);
 
     // lol
@@ -1126,6 +1137,10 @@ int jkDSS_ProcessEndLevel(SithMessage *msg)
     if (!jkCoop_IsActive() || !pCurEnt || pCurEnt->level != arg0)
 #endif
     jkEpisode_EndLevel(&jkEpisode_mLoad, arg0);
+#ifdef QOL_IMPROVEMENTS
+    // Added: co-op, a level the host picked: this game's level ends there too, not at its own next
+    jkCoop_HostPickedLevel(msg->netMsg.msg_size >= 8 ? NETMSG_POPS32() : -1);
+#endif
     sithMulti_QuitGame(sithTime_g_msecGameTime + 10000, 1);
     return 1;
 }

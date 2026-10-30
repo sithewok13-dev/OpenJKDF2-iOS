@@ -196,6 +196,9 @@ static void jkGuiNetHost_LobbyLayout(void)
     }
     for (int i = NETHOST_SCORELIMIT_CHECKBOX; i <= NETHOST_SINGLELEVEL_CHECKBOX; i++)
         jkGuiNetHost_aElements[i].bIsVisible = !bCoop;
+    // (Max Rank, deathmatch's: in co-op everyone plays the story's Force, jkCoopForce)
+    for (int i = NETHOST_STARS_TEXT - 1; i <= NETHOST_STARS_TEXT + 2; i++)
+        jkGuiNetHost_aElements[i].bIsVisible = !bCoop;
     jkGuiNetHost_aElements[NETHOST_MAXPLAYERS_TEXTBOX - 1].wstr = jkStrings_GetUniStringWithFallback(bCoop ? "GUIEXT_MP_MAXPLAYERS_COOP" : "GUI_MAXPLAYERS");
     jkGuiNetHost_aSettingsElements[5].bIsVisible = !bLobby;
     jkGuiNetHost_aSettingsElements[7].bIsVisible = !bLobby;

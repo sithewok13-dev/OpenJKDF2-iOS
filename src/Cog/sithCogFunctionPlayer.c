@@ -6,6 +6,10 @@
 #include "World/sithWeapon.h"
 #include "World/sithActor.h"
 #include "Gameplay/sithInventory.h"
+#ifdef QOL_IMPROVEMENTS
+#include "Main/jkCoop.h" // Added
+#include "Main/jkCoopForce.h" // Added
+#endif
 #ifdef JK_ENHANCED
 #include "Enhanced/iosGame.h" // Added
 #endif
@@ -33,6 +37,9 @@ void sithCogFunctionPlayer_SetInvAvailable(sithCog *pCog)
 
     if (player && player->type == SITH_THING_PLAYER && player->actorParams.pPlayer && binIdx < SITHBIN_NUMBINS)
     {
+#ifdef QOL_IMPROVEMENTS
+        jkCoop_CogSetsInv(pCog, player, binIdx, 0.0, bAvailable != 0); // Added: co-op, what a level takes stays taken
+#endif
         if (bAvailable)
             sithInventory_SetInventoryAvailable(player, binIdx, 1);
         else
@@ -127,6 +134,15 @@ void sithCogFunctionPlayer_GetAbsoluteMaxPlayers(sithCog *pCog)
 
 void sithCogFunctionPlayer_GetLocalPlayerThing(sithCog *pCog)
 {
+#ifdef QOL_IMPROVEMENTS
+    // Added: co-op, an innocent a guest killed is told to its cog as that guest's kill (on the host)
+    SithThing* pFor = jkCoopForce_LocalPlayerFor(pCog);
+    if (pFor)
+    {
+        sithCogExec_PushInt(pCog, pFor->idx);
+        return;
+    }
+#endif
     if (sithPlayer_g_pLocalPlayerThing)
         sithCogExec_PushInt(pCog, sithPlayer_g_pLocalPlayerThing->idx);
     else

@@ -43,6 +43,9 @@
 #ifdef JK_ENHANCED
 #include "Enhanced/iosPhotoCam.h" // Added
 #endif
+#ifdef QOL_IMPROVEMENTS
+#include "Main/jkCoop.h" // Added
+#endif
 
 #ifdef FIXED_TIMESTEP_PHYS
 #include <math.h>
@@ -524,6 +527,9 @@ void sithOpenPostProcess()
 #endif
     sithTime_Startup();
     sithInventory_ResetInventory(sithPlayer_g_pLocalPlayerThing);
+#ifdef QOL_IMPROVEMENTS
+    jkCoop_LevelOpened(); // Added: co-op, the gear carried in had before the level's scripts start
+#endif
 
     sithCog_BroadcastMessage(SITH_MESSAGE_STARTUP, 0, 0, 0, 0);
     for (uint32_t v2 = 0; v2 < sithWorld_g_pCurrentWorld->numThingsLoaded; v2++)

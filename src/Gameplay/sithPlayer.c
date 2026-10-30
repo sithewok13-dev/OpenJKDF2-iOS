@@ -642,7 +642,13 @@ void sithPlayer_NewPlayer(SithThing *pPlayer)
             sithCamera_Update(sithCamera_g_pCurCamera);
             sithPhysics_ResetThingMovement(pPlayer);
             sithWeapon_SyncPuppet(pPlayer);
+#ifdef QOL_IMPROVEMENTS
+            jkCoop_SpawnBegin(pPlayer); // Added: co-op, the multiplayer spawn kit changes none of the gear
+#endif
             sithCog_BroadcastMessage(SITH_MESSAGE_NEWPLAYER, SENDERTYPE_THING, pPlayer->idx, SENDERTYPE_THING, pPlayer->idx);
+#ifdef QOL_IMPROVEMENTS
+            jkCoop_SpawnEnd(pPlayer);
+#endif
             if ( sithMessage_g_outputstream )
                 sithDSSThing_UpdateState(pPlayer, -1, 255);
         }

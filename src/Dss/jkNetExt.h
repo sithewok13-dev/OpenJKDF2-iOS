@@ -6,6 +6,8 @@
 // Kinds (each the business of its own module):
 //   JKNETEXT_LOOK    -- a player's saber as they chose it (jkPlayerLook)
 //   JKNETEXT_COOPKIT -- a co-op player's gear, for the host's save (jkCoopSave)
+//   JKNETEXT_COOPTAKEN -- what the co-op host's level took as it began, taken from the guests too (jkCoopSave)
+//   JKNETEXT_COOPFORCE -- the co-op host's level's Force as it began, and its secrets, everyone's (jkCoopForce)
 
 #ifndef _DSS_JKNETEXT_H
 #define _DSS_JKNETEXT_H
@@ -25,6 +27,8 @@ enum
 {
     JKNETEXT_LOOK = 1,
     JKNETEXT_COOPKIT = 2,
+    JKNETEXT_COOPTAKEN = 3,
+    JKNETEXT_COOPFORCE = 4,
     JKNETEXT_NUM_KINDS = 16
 };
 

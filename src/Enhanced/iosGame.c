@@ -8,6 +8,7 @@
 #include "Dss/sithGamesave.h"
 #include "General/stdString.h"
 #include "Main/jkDev.h"
+#include "Main/jkCoop.h"
 #include "Main/jkHud.h"
 #include "Main/sithMain.h"
 #include "Gameplay/sithInventory.h"
@@ -485,10 +486,11 @@ int iosGame_HoldGameplay(void)
 // (kyle.cog "Set Mana to full", force_well.cog, pow_mana.cog); the HUD's own
 // 0-400 scale is the meter at the top rank. Mysteries of the Sith keeps its
 // multiplayer top in the max mana bin (force_well.cog); in single player that
-// bin is set out of reach and the cog caps the meter at rank x 50 itself.
+// bin is set out of reach and the cog caps the meter at rank x 50 itself (as it also does in co-op:
+// jkCoopForce_CogIsMulti).
 static float iosGame_GetForceManaMax(SithThing* pPlayer)
 {
-    if (Main_bMotsCompat && sithNet_isMulti)
+    if (Main_bMotsCompat && sithNet_isMulti && !jkCoop_IsActive())
     {
         float maxMana = (float)sithInventory_GetInventory(pPlayer, SITHBIN_MAXMANA);
         if (maxMana > 0.0f)

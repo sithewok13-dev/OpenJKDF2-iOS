@@ -31,7 +31,8 @@ void jkCoopSave_LevelLoading(const char* pEpisodeGob, char** ppLevel);
 void jkCoopSave_LevelOpened(void);
 // This player's kit as the level began has been taken (jkCoop): sent to the host, or, the host's,
 // saved. bCarried: the kit came from the last level (not the level's own start: a guest who joins
-// with nothing gets theirs back from the host)
+// with nothing gets theirs back from the host). The host also tells the guests what its level took
+// from it as it began (jkCoop_GetStartTaken), now and to each guest whose kit comes later
 void jkCoopSave_KitTaken(int bCarried);
 // Once a frame in a level
 void jkCoopSave_Tick(void);

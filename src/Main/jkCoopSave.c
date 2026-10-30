@@ -12,6 +12,7 @@
 #include "jk.h"
 #include "stdPlatform.h"
 #include "Main/jkCoop.h"
+#include "Main/jkCoopForce.h"
 #include "Dss/jkNetExt.h"
 #include "Dss/sithMulti.h"
 #include "Win95/stdComm.h"
@@ -41,6 +42,7 @@ static int jkCoopSave_bDirty = 0;
 static uint32_t jkCoopSave_dirtyMs = 0;
 static char jkCoopSave_level[64];       // (the level a save is of: the one being played)
 static int jkCoopSave_bResumed = 0;      // (this session carried on from the save)
+static int jkCoopSave_bResumeOpened = 0; // (and its level opened)
 static int jkCoopSave_bWrittenThisSession = 0;
 
 static int jkCoopSave_IdOk(const char* id)
@@ -341,6 +343,57 @@ static void jkCoopSave_SendKit(const char* id, const jkCoopKitBin* aKit, int fla
     jkNetExt_Send(JKNETEXT_COOPKIT, aMsg, n, idTo);
 }
 
+// What the host's level took from it as it began (jkCoop: the game runs some of a level's start on the host
+// only), for a guest, or everyone (-1): ([version][the level: 32][count: u8][count x (bin: u8, flags: u8,
+// cap: f32)])
+static void jkCoopSave_SendTaken(int idTo)
+{
+    jkCoopTaken aTaken[SITHBIN_NUMBINS];
+    if (!jkCoop_GetStartTaken(aTaken) || !sithWorld_g_pCurrentWorld)
+        return;
+    uint8_t aMsg[JKNETEXT_MAX_LEN];
+    int n = 0;
+    aMsg[n++] = JKCOOPSAVE_VERSION;
+    memset(aMsg + n, 0, 32);
+    stdString_SafeStrCopy((char*)aMsg + n, sithWorld_g_pCurrentWorld->map_jkl_fname, 32);
+    n += 32;
+    const int countAt = n++;
+    int count = 0;
+    for (int b = 0; b < SITHBIN_NUMBINS && b < 256 && count < 255 && n + 6 <= (int)sizeof(aMsg); b++) {
+        if (!aTaken[b].flags) continue;
+        const float cap = (float)aTaken[b].cap;
+        aMsg[n++] = (uint8_t)b;
+        aMsg[n++] = (uint8_t)aTaken[b].flags;
+        memcpy(aMsg + n, &cap, 4); n += 4;
+        count++;
+    }
+    aMsg[countAt] = (uint8_t)count;
+    jkNetExt_Send(JKNETEXT_COOPTAKEN, aMsg, n, idTo);
+}
+
+static void jkCoopSave_TakenArrived(int idFrom, const uint8_t* pData, int len)
+{
+    if (!jkCoop_IsActive() || stdComm_bIsServer || idFrom != (int)sithNet_serverNetId || len < 1 + 32 + 1
+        || pData[0] != JKCOOPSAVE_VERSION)
+        return;
+    char level[33];
+    memcpy(level, pData + 1, 32);
+    level[32] = 0;
+    jkCoopTaken aTaken[SITHBIN_NUMBINS];
+    memset(aTaken, 0, sizeof(aTaken));
+    const int count = pData[33];
+    int n = 34;
+    for (int k = 0; k < count && n + 6 <= len; k++, n += 6) {
+        float cap;
+        memcpy(&cap, pData + n + 2, 4);
+        if (pData[n] < SITHBIN_NUMBINS) {
+            aTaken[pData[n]].flags = pData[n + 1] & (JKCOOP_TAKEN_CAP | JKCOOP_TAKEN_OFF);
+            aTaken[pData[n]].cap = cap;
+        }
+    }
+    jkCoop_TakeAsHost(level, aTaken);
+}
+
 static void jkCoopSave_KitArrived(int idFrom, const uint8_t* pData, int len)
 {
     if (!jkCoop_IsActive() || len < 2 + (JKCOOPSAVE_ID_LEN - 1) + 2 || pData[0] != JKCOOPSAVE_VERSION)
@@ -374,13 +427,19 @@ static void jkCoopSave_KitArrived(int idFrom, const uint8_t* pData, int len)
         if (!p || (p->netId && p->netId != idFrom))
             return;
         p->netId = idFrom;
+        jkCoopSave_SendTaken(idFrom); // (what the level took as it began, taken from this guest too)
         int bKnown = 0;
         for (int b = 0; b < SITHBIN_NUMBINS && !bKnown; b++) bKnown = p->aKit[b].amount != 0.0 || p->aKit[b].state;
         if ((flags & JKCOOPSAVE_FRESH) && bKnown) {
             stdPlatform_Printf("OpenJKDF2: co-op, %s's gear given back\n", id);
             jkCoopSave_SendKit(id, p->aKit, 0, idFrom);
+            jkCoopForce_TellGuest(idFrom);
             return;
         }
+        // (one new to the campaign: caught up with the host's Force, jkCoopForce)
+        if ((flags & JKCOOPSAVE_FRESH) && jkCoopForce_CatchUp(aKit))
+            jkCoopSave_SendKit(id, aKit, 0, idFrom);
+        jkCoopForce_TellGuest(idFrom);
         memcpy(p->aKit, aKit, sizeof(aKit));
         jkCoopSave_MarkDirty();
     }
@@ -396,6 +455,7 @@ static void jkCoopSave_KitArrived(int idFrom, const uint8_t* pData, int len)
 void jkCoopSave_Startup(void)
 {
     jkNetExt_Register(JKNETEXT_COOPKIT, jkCoopSave_KitArrived);
+    jkNetExt_Register(JKNETEXT_COOPTAKEN, jkCoopSave_TakenArrived);
 }
 
 void jkCoopSave_LevelLoading(const char* pEpisodeGob, char** ppLevel)
@@ -405,6 +465,7 @@ void jkCoopSave_LevelLoading(const char* pEpisodeGob, char** ppLevel)
     memset(jkCoopSave_aPlayer, 0, sizeof(jkCoopSave_aPlayer));
     jkCoopSave_bDirty = 0;
     jkCoopSave_bResumed = 0;
+    jkCoopSave_bResumeOpened = 0;
     jkCoopSave_bWrittenThisSession = 0;
     // (a co-op game being hosted, from its start: carried on from the save)
     if (!stdComm_bIsServer || !(sithMulti_multiModeFlags & MULTIMODEFLAG_COOP) || !wuRegistry_GetBool("bCoopResume", 1))
@@ -420,6 +481,14 @@ void jkCoopSave_LevelLoading(const char* pEpisodeGob, char** ppLevel)
 
 void jkCoopSave_LevelOpened(void)
 {
+    // (the resumed level: every saved kit as it can be had there, an older save's lightsaber that came
+    // too early taken out)
+    if (jkCoopSave_bResumed && !jkCoopSave_bResumeOpened && jkCoop_IsActive() && stdComm_bIsServer) {
+        jkCoopSave_bResumeOpened = 1;
+        for (int i = 0; i < JKCOOPSAVE_PLAYERS; i++)
+            if (jkCoopSave_aPlayer[i].id[0])
+                jkCoop_StoryKit(jkCoopSave_aPlayer[i].aKit);
+    }
     if (!jkCoopSave_bHostKitPending || !jkCoop_IsActive() || !stdComm_bIsServer)
         return;
     jkCoopSave_bHostKitPending = 0;
@@ -438,6 +507,7 @@ void jkCoopSave_KitTaken(int bCarried)
         if (p)
             memcpy(p->aKit, aKit, sizeof(aKit));
         jkCoopSave_MarkDirty();
+        jkCoopSave_SendTaken(-1); // (the guests already in the level)
     }
     else {
         jkCoopSave_SendKit(jkCoopSave_MyId(), aKit, bCarried ? 0 : JKCOOPSAVE_FRESH, sithNet_serverNetId);

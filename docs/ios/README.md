@@ -1312,18 +1312,60 @@ Things to know:
   Everyone else plays the multiplayer character they picked.
 - Objectives are shared. When the level ends, everyone goes to the next
   level together.
-- After a level, the score screen and the Force powers screen go on by
-  themselves (30 s and 90 s). Stars you don't spend are kept.
+- After a level, the two score screens and the Force powers screen go on
+  by themselves (30 s each, and 90 s). Stars you don't spend are kept.
 - Each player keeps their own weapons, ammo, items and Force powers from
   level to level. Keys and objectives stay with the level, as in single
   player.
+- Your weapons follow the story, as in single player. In Jedi Knight you
+  start with your fists and the Bryar pistol, and the lightsaber comes in
+  level 4.
+- When a level takes your weapons, it takes them from everyone: on the
+  light side path in Jedi Knight, Sariss's level takes the lightsaber
+  until its end, and Mara's prison in OpenMoTS takes everything but her
+  fists.
 - If you die, you come back at the level's start with what you had when
-  the level began.
+  the level began, but not what the level has taken from you.
 - If your path differs from the host's (light or dark side), you follow
   the host's level.
 - With cheats allowed, the host can pick a level for everyone (sithewok,
   hold LEVEL in MENU's tray), and a level in which you used cheats adds
-  nothing to the gear you carry on.
+  nothing to the gear you carry on. In Jedi Knight, everyone has the
+  lightsaber from level 4 on, wherever you pick, and not in levels 1 to 3.
+
+### The Force in co-op
+
+Everyone's Force follows the story, as in single player. Each player has
+their own.
+
+- Your multiplayer character only gives your looks (and in OpenMoTS its
+  class's ammo). Its rank and stars aren't used in co-op, and every class
+  plays the story's Jedi Force. The **Max Rank** setting is for deathmatch
+  only, so co-op doesn't show it.
+- In Jedi Knight you have no Force in levels 1 to 3. Force Speed comes at
+  the end of level 3, your rank goes up from level 4, and new powers come
+  as the story gives them.
+- At the end of a level you get the story's stars, and spend them on the
+  Force powers screen. What you buy is kept for the next levels. The
+  screen only shows the powers the story has given you so far.
+- Secrets count for everyone: when anyone finds one, it counts for the
+  whole team. Find them all and everyone gets the extra star.
+- Each player picks their own powers and keeps their own light or dark
+  side. The host's side decides the levels and the ending. If you are on
+  the other side, you still get your side's power where the story splits
+  (for example Force Destruction on the dark side).
+- Someone who joins a campaign that has already started gets the host's
+  rank and as many stars as the host has earned. They spend them on the
+  Force powers screen at the end of that level.
+- In OpenMoTS, Kyle's levels start with his Force as in single player.
+  Mara starts over at rank 2 with 3 stars on her first level. Each level
+  gives 2 stars (one more for all its secrets), and your rank comes from
+  the stars you have spent.
+- With cheats allowed, a level in which you used cheats still gives the
+  story's rank, stars and powers, but you don't keep the cheats' Force.
+- Killing innocent people counts towards the dark side for whoever did
+  it, as in single player, and carries on from level to level.
+- The Force energy bar is full at the start of every level.
 
 ### Co-op saves
 
@@ -1333,6 +1375,11 @@ Things to know:
   per episode).
 - To carry on, tap **Multiplayer**, then **Resume Co-op**, and pick the
   campaign. A player who drops out and rejoins gets their gear back.
+- A Jedi Knight save from v0.9-beta1 or earlier, at level 1, 2 or 3, has
+  a lightsaber it shouldn't. Carrying the campaign on takes it away.
+- A save from v0.9-beta1 or earlier keeps everyone's Force as it is (often
+  rank 4, with all the powers on offer), but it isn't topped up any more:
+  from then on it follows the story.
 - Starting a new **Co-op Campaign** on an episode that has a save asks
   first. The old save is kept, with the date and time added to its name
   (the five most recent for each episode). Put the date part back as
@@ -1487,8 +1534,13 @@ on, add your own:
    to 16 MB each. The app picks one at random each time (never the same one
    twice in a row), from the first 16 by name.
 
+An `Emperor` folder in your game files' folder works too: next to `Episode`
+and `Resource`, in `jk1` (`mots` for OpenMoTS) or wherever your game files are.
+If both have clips, the one straight in the OpenJKDF2 (or OpenMoTS) folder is
+used.
+
 Clips you add while the game is running count from the next time cheat mode
-goes on. With the folder empty or missing, cheat mode is silent.
+goes on. With neither folder holding any, cheat mode is silent.
 
 ### sithewok's catches in Jedi Knight
 
