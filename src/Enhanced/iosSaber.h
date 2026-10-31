@@ -154,9 +154,9 @@ int iosSaber_HandHilt(struct SithThing* pThing, int hand);
 // ---- the engine's side.
 // Round the drawing of one of a thing's blades (blade 0: the right hand's, 1:
 // the left's; with IOSSABER_BLADE_SECOND, that hand's second blade, STAFF's
-// and FOLD's other one): its colour put on, then the game's put back. Nothing changes
-// for anyone but the local player (and, in multiplayer, the other players
-// whose games sent their choice), or for the game's own colour.
+// and FOLD's other one): its colour put on, then the game's put back. Its colour changes
+// for no one but the local player (and, in multiplayer, the other players
+// whose games sent their choice), and not for the game's own colour.
 // Its shape, spike or beam (or the crossguard's, the CROSS hilt), is put on here too
 // (iosSaberShape), whatever the colour. With FILM, a character no player plays (a dark
 // Jedi) has its blade drawn as FILM's too, in its own colour (its game material's);

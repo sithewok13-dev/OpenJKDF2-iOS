@@ -1034,11 +1034,15 @@ hand's colours and has its own **HILT** button.
     Players on other builds keep the game's blade.
   - **Enemies get it too.** With FILM on, the enemy Jedi's sabers have the
     same film look: Yun, Gorc and Pic, Maw, Sariss, Boc and Jerec in Jedi
-    Knight, and the saber-wielding enemies in Mysteries of the Sith. Each
-    keeps its own colour (Maw's dark red, Jerec's red, Gorc's and Pic's
-    orange, Yun's yellow, Sariss's blue, Boc's purple) and the length the
-    game gives it, and big Gorc keeps his broad blade. CLASSIC or REFORGED
-    doesn't change them. With FILM off they look exactly as before.
+    Knight, and in Mysteries of the Sith the Sith statues and the dark
+    visions of Kyle and Mara. So do the other characters the game gives a
+    saber, like Kyle and Mara in the final scene of Mysteries of the Sith,
+    in that scene's own colours. Each keeps its own colour (Maw's dark red,
+    Jerec's red, Gorc's and Pic's orange, Yun's yellow, Sariss's blue,
+    Boc's purple) and the length the game gives it, and big Gorc keeps his
+    broad blade. A saber in a colour the game doesn't have (from a mod)
+    stays as the game draws it. CLASSIC or REFORGED doesn't change them.
+    With FILM off they look exactly as before.
   - Only the look changes: the reach and damage of every attack stay as the
     game has them.
 - **AUTO OPEN**, an on/off switch under FILM, shows only while a FOLD is in

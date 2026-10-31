@@ -18,8 +18,8 @@
 // players' whose games sent their choice), every colour (the game's own
 // included: its colour never changes, only its shape), first and third
 // person, two sabers, selfies, Action Freeze; and a glow along a thrown saber
-// (Mysteries of the Sith). With FILM, also the blades the game gives the
-// characters no player plays (the dark Jedi, iosSaber_BeginBlade): FILM's
+// (Mysteries of the Sith). With FILM, also the blades of a known game colour
+// the game gives the characters no player plays (the dark Jedi, iosSaber_BeginBlade): FILM's
 // beam in the colour of the game's blade each has, as long as the game
 // draws it, its width from the game's as the player's is (a broad blade
 // stays broad). Only how it looks: the game's own drawn length
