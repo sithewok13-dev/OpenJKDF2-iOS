@@ -58,6 +58,18 @@
 #define TU_MENU_PULSE_FRAMES 2
 #define TU_TRAY_STEP 50.0f
 #define TU_TRAY_CLEAR 8.0f
+// The tray's OPACITY (iosTouch.m's IOSTOUCH_OPACITY_*): the touch controls
+// in play at this strength times their own look, the tray, its rows and the
+// wheels at full; its slider under the tray, TU_OPACITY_MIN to 100% in
+// TU_OPACITY_STEP steps, on a backing TU_OPACITY_W x _H, the slider itself
+// TU_OPACITY_INSET in from each end (its thumb TU_OPACITY_THUMB across: a
+// finger anywhere on the slider takes it there and slides it)
+#define TU_OPACITY_MIN 0.2f
+#define TU_OPACITY_STEP 0.05f
+#define TU_OPACITY_W 240.0f
+#define TU_OPACITY_H 44.0f
+#define TU_OPACITY_INSET 16.0f
+#define TU_OPACITY_THUMB 28.0f
 #define TU_FPS_PERIOD 0.5
 #define TU_TOPTEXT_GAP 6.0f
 #define TU_TOPTEXT_DEPTH 70.0f
@@ -121,7 +133,8 @@ enum {
 enum { ROLE_NONE = 0, ROLE_STICK, ROLE_LOOK, ROLE_BUTTON, ROLE_WHEEL, ROLE_IGNORED,
        ROLE_FREEZE,      // Action Freeze: moving the camera (one finger turns it, two move and zoom it)
        ROLE_FREEZESHOT,  // Action Freeze: on CAMERA (a tap takes a photo)
-       ROLE_FREEZECLOSE  // Action Freeze: on its X (a tap goes back to the game)
+       ROLE_FREEZECLOSE, // Action Freeze: on its X (a tap goes back to the game)
+       ROLE_OPACITY      // on OPACITY's slider: it follows the finger
 };
 
 enum {
@@ -129,6 +142,7 @@ enum {
     KIND_GYROMODE, KIND_GYROSENS, KIND_CAMSWITCH, KIND_CHEAT, KIND_CHEATSWITCH, KIND_VIEW, KIND_VIEWSWITCH,
     KIND_CONTROLS, KIND_JUMPSTYLE, KIND_CAMERA, KIND_CAMPHOTO, KIND_SELFIES, KIND_FREEZEOPT, KIND_CAMKIND,
     KIND_LEVEL, // (MENU tray, while sithewok is on) held still: counts the levels; lifted, goes to the one on show
+    KIND_OPACITY, // (MENU tray) its slider under the tray, out or away; held still: back to 100%
 };
 
 #define BIN_BACTATANK 40
@@ -140,7 +154,7 @@ enum {
     BTN_NEXTWPN, BTN_WHEEL, BTN_LIGHT, BTN_IR, BTN_BACTA,
     BTN_QUICKSAVE, BTN_QUICKLOAD, BTN_MENU,
     BTN_CAMERA, BTN_SABER, BTN_CHEAT, BTN_VIEW,
-    BTN_TRAYGYRO, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS,
+    BTN_TRAYGYRO, BTN_TRAYOPACITY, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS,
     BTN_GYROOPT_MODE, BTN_GYROOPT_SENS,
     BTN_CAMROW_PHOTO, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE,
     BTN_CAMOPT_CLEAN, BTN_CAMOPT_HUD, BTN_CAMOPT_BTNS,
@@ -182,6 +196,7 @@ static tuButton tu_aButtons[BTN_COUNT] = {
     [BTN_CHEAT]     = { "",             KIND_CHEAT,    -1,           22.0f, 0, 0 },
     [BTN_VIEW]      = { "1P",           KIND_VIEW,     -1,           22.0f, 0, 0 },
     [BTN_TRAYGYRO]  = { "GYRO",         KIND_GYRO,     -1,           20.0f, 0, 0 },
+    [BTN_TRAYOPACITY] = { "OPACITY",    KIND_OPACITY,  -1,           20.0f, 0, 0 },
     [BTN_TRAYFPS]   = { "FPS",          KIND_FPS,      -1,           20.0f, 0, 0 },
     [BTN_TRAYCAM]   = { "",             KIND_CAMSWITCH, -1,          20.0f, 0, 0 },
     [BTN_TRAYCHEAT] = { "CHEAT",        KIND_CHEATSWITCH, -1,        20.0f, 0, 0 },
@@ -203,14 +218,24 @@ static tuButton tu_aButtons[BTN_COUNT] = {
 static int tu_IsTrayButton(int b) { return b >= BTN_TRAY_FIRST && b <= BTN_TRAY_LAST; }
 static int tu_IsCamOptButton(int b) { return b >= BTN_CAMOPT_FIRST && b <= BTN_CAMOPT_LAST; }
 // The rows under the tray (one at a time): the gyro options, the camera
-// options; and the photo kinds under the camera options
-enum { TU_ROW_NONE = 0, TU_ROW_GYRO, TU_ROW_CAMERA };
+// options, OPACITY's slider; and the photo kinds under the camera options
+enum { TU_ROW_NONE = 0, TU_ROW_GYRO, TU_ROW_CAMERA, TU_ROW_OPACITY };
 static int tu_IsOptButton(int b)
 {
     return (b >= BTN_GYROOPT_FIRST && b <= BTN_GYROOPT_LAST) || (b >= BTN_CAMROW_FIRST && b <= BTN_CAMROW_LAST) || tu_IsCamOptButton(b);
 }
-// A tray button held still opens its row (GYRO, the camera switch)
+// A tray button held still opens its row (GYRO, the camera switch); and the
+// tray's buttons with a hold of their own (a ring fills; the lift is then no
+// tap): those, and OPACITY (back to 100%)
 static int tu_IsRowOpener(int b) { return b == BTN_TRAYGYRO || b == BTN_TRAYCAM; }
+static int tu_IsTrayHold(int b) { return tu_IsRowOpener(b) || b == BTN_TRAYOPACITY; }
+// A strength for OPACITY: in its range, at its nearest step
+static float tu_OpacityStep(float k)
+{
+    if (!(k > TU_OPACITY_MIN)) return TU_OPACITY_MIN;
+    if (k > 1.0f) return 1.0f;
+    return roundf(k / TU_OPACITY_STEP) * TU_OPACITY_STEP;
+}
 static int tu_IsQuickHold(int b) { return b == BTN_QUICKSAVE || b == BTN_QUICKLOAD; }
 
 // ------------------------------------------------------------ state
@@ -272,10 +297,14 @@ static struct {
     float aLayoutGauge[4];
     int bTopText;
     float aTopText[3];
-    float aTopTextTray[4][3]; // (while MENU's tray is open: under it, or under the row open below it)
+    float aTopTextTray[5][3]; // (while MENU's tray is open: under it, or under the row open below it)
     int bFpsBottom;
     float fpsX, fpsY;
     float trayBack[4], aRowBack[3][4]; // (the rows: the gyro options, the camera options, the photo kinds)
+    float trayBack2[4];  // (its second row's, where it takes two)
+    int numTrayRows;     // (1, or 2 where one would run off the left: tu_TrayTopCount)
+    float aTrayRow[2][3]; // (each row's left and right buttons' x and its y)
+    float opBack[4];     // OPACITY's slider's backing
     int bBurstUnder;
     float freezeX, freezeY;
     // MENU's tray and the rows under it
@@ -288,6 +317,7 @@ static struct {
     int bShowFps, bShowCheat, bShowView, bThirdPerson, bSwapped, jumpStyle;
     int bShowCamera, cameraKinds, selfieShots, bFreezeOn;
     int gyroMode, gyroLastMode, gyroSens;
+    float opacity; // the tray's OPACITY
     // what the buttons show
     int bCheatOn;
     const char* forceName;
@@ -411,6 +441,7 @@ static void tu_SaveSettings(void)
             tu.gyroMode, tu.gyroLastMode, (double)tu_aGyroSens[tu.gyroSens], tu.bShowFps, tu.bShowCheat, tu.bShowView,
             tu.bThirdPerson, tu.jumpStyle, tu.bSwapped);
     fprintf(f, "showCamera=%d\ncameraKinds=%d\nselfieShots=%d\nfreeze=%d\n", tu.bShowCamera, tu.cameraKinds, tu.selfieShots, tu.bFreezeOn);
+    fprintf(f, "opacity=%.2f\n", (double)tu.opacity);
     // the saber: the look and shape by their names, THROW; the saber wheel's choices, each by its name
     if (G(SaberGetLook) && G(SaberLookName)) {
         const char* name = tu.game->SaberLookName(tu.game->SaberGetLook());
@@ -451,6 +482,7 @@ static void tu_LoadSettings(void)
     tu.cameraKinds = TOUCHUI_CAPTURE_CLEAN;
     tu.selfieShots = 3;
     tu.bFreezeOn = 1;
+    tu.opacity = 1.0f;
     // (the saber wheel's choices: each by its name, and what builds before kept, moved)
     iosSaberWheel_BeginLoad();
     FILE* f = tu.settingsPath[0] ? fopen(tu.settingsPath, "r") : NULL;
@@ -483,6 +515,7 @@ static void tu_LoadSettings(void)
         else if (!strcmp(k, "cameraKinds")) tu.cameraKinds = (n & 7) ? (n & 7) : TOUCHUI_CAPTURE_CLEAN;
         else if (!strcmp(k, "selfieShots")) tu.selfieShots = (n == 1 || n == 5) ? n : 3;
         else if (!strcmp(k, "freeze")) tu.bFreezeOn = n != 0;
+        else if (!strcmp(k, "opacity")) tu.opacity = tu_OpacityStep((float)v);
         else if (!strcmp(k, "saberTarget")) {} // (LEFT, BOTH, RIGHT: what the cards' picks replaced)
         else if (!strcmp(k, "saberThrow")) {
             if (G(SaberSetThrow)) tu.game->SaberSetThrow(n != 0);
@@ -629,14 +662,26 @@ static int tu_TrayFromRight(int b)
     return n;
 }
 
-// iosTouch_TrayKeysAt: where MENU's tray goes, clear of the buttons round
-// FIRE. bAsShown: the row as it is now, with LEVEL while sithewok is on (the
-// tray's own place); otherwise without it (FORCE's search: FORCE never moves
-// with the cheat)
+// iosTouch_TrayTopCount: how many of the tray's n buttons go in its top row
+// -- all of them where the one row, ending under MENU (at mx), stays right
+// of left; otherwise the first half, the rest in a second row under it
+static int tu_TrayTopCount(int n, float mx, float left)
+{
+    if (mx - TU_TRAY_STEP * (n - 1) - 26 >= left) return n;
+    return (n + 1) / 2;
+}
+
+// iosTouch_TrayKeysAt: where MENU's tray goes (its top row's right end),
+// clear of the buttons round FIRE. bAsShown: the row as it is now, with
+// LEVEL while sithewok is on (the tray's own place); otherwise without it
+// nor OPACITY (FORCE's search: FORCE never moves with the cheat, and stays
+// where it was before OPACITY joined the tray)
 static void tu_TrayKeysAt(float mx, float my, float left, const float* pForce, float* pKx, float* pKy, float* pClear, float* pForceClear, int bAsShown)
 {
     const float ty = my + 52;
-    const float len = TU_TRAY_STEP * (bAsShown ? tu_TrayFromRight(BTN_TRAY_FIRST) : BTN_TRAY_LAST - BTN_TRAYGYRO - 1);
+    const int n = bAsShown ? tu_TrayFromRight(BTN_TRAY_FIRST) + 1 : BTN_TRAY_LAST - BTN_TRAY_FIRST - 1;
+    const int top = tu_TrayTopCount(n, mx, left);
+    const float len = TU_TRAY_STEP * (top - 1), len2 = TU_TRAY_STEP * (n - top - 1); // (the second row's, if any)
     float kx = mx, bestClear = -1e9f, bestForce = 1e9f;
     for (float x = mx; ; x -= 4) {
         float clear = 1e9f, forceClear = 1e9f;
@@ -648,7 +693,9 @@ static void tu_TrayKeysAt(float mx, float my, float left, const float* pForce, f
                 px = pForce[0];
                 py = pForce[1];
             }
-            float d = tu_DistToSegment(px, py, x - len, ty, x, ty) - 26 - c->radius;
+            float d = tu_DistToSegment(px, py, x - len, ty, x, ty);
+            if (top < n) d = TU_MIN(d, tu_DistToSegment(px, py, x - len2, ty + 52, x, ty + 52));
+            d -= 26 + c->radius;
             clear = TU_MIN(clear, d);
             if (i == BTN_FORCE) forceClear = d;
         }
@@ -859,18 +906,32 @@ static void tu_Layout(void)
         float kx, ky;
         tu_TrayKeysAt(tu_aButtons[BTN_MENU].x, tu_aButtons[BTN_MENU].y, left, force, &kx, &ky, NULL, NULL, 1);
         // (LEVEL, while sithewok is on, right of the cheat switch; otherwise
-        // the row closes up from the keyboard leftwards)
-        const float len = TU_TRAY_STEP * tu_TrayFromRight(BTN_TRAY_FIRST);
+        // the row closes up from the keyboard leftwards. Two rows where one
+        // would run off the left: the first half above, both ending here)
+        const int n = tu_TrayFromRight(BTN_TRAY_FIRST) + 1;
+        const int topN = tu_TrayTopCount(n, tu_aButtons[BTN_MENU].x, left);
+        tu.numTrayRows = topN < n ? 2 : 1;
         for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) {
-            tu_aButtons[i].x = kx - TU_TRAY_STEP * tu_TrayFromRight(i);
-            tu_aButtons[i].y = ky;
+            const int fromRight = tu_TrayFromRight(i);
+            const int bLower = n - 1 - fromRight >= topN;
+            tu_aButtons[i].x = kx - TU_TRAY_STEP * (bLower ? fromRight : fromRight - (n - topN));
+            tu_aButtons[i].y = ky + (bLower ? 52 : 0);
         }
-        tu.trayBack[0] = kx - len - 26; tu.trayBack[1] = ky - 26; tu.trayBack[2] = len + 52; tu.trayBack[3] = 52;
+        float* aBack[2] = { tu.trayBack, tu.trayBack2 };
+        for (int r = 0; r < 2; r++) {
+            const float len = TU_TRAY_STEP * ((r == 0 ? topN : n - topN) - 1);
+            float* row = tu.aTrayRow[r];
+            row[0] = kx - len;
+            row[1] = kx;
+            row[2] = ky + 52 * r;
+            aBack[r][0] = row[0] - 26; aBack[r][1] = row[2] - 26; aBack[r][2] = len + 52; aBack[r][3] = 52;
+        }
     }
     // The rows under the tray, each centred under the button that opens it
     // (kept on screen): the gyro options under GYRO and the camera options
-    // under the camera switch, a row down; the photo kinds under PHOTO, a
-    // row further
+    // under the camera switch, a row down from the tray (its second row, if
+    // it has two); the photo kinds under PHOTO, a row further
+    const float trayLastY = tu.aTrayRow[tu.numTrayRows - 1][2];
     {
         const int aFirst[3] = { BTN_GYROOPT_FIRST, BTN_CAMROW_FIRST, BTN_CAMOPT_FIRST };
         const int aLast[3] = { BTN_GYROOPT_LAST, BTN_CAMROW_LAST, BTN_CAMOPT_LAST };
@@ -882,13 +943,20 @@ static void tu_Layout(void)
             float x0 = c->x - len * 0.5f;
             x0 = TU_MIN(x0, right - 26 - len);
             x0 = TU_MAX(x0, left + 26);
-            const float y = c->y + 52;
+            const float y = (k < 2 ? trayLastY : c->y) + 52;
             for (int i = aFirst[k]; i <= aLast[k]; i++) {
                 tu_aButtons[i].x = x0 + TU_TRAY_STEP * (i - aFirst[k]);
                 tu_aButtons[i].y = y;
             }
             tu.aRowBack[k][0] = x0 - 26; tu.aRowBack[k][1] = y - 26; tu.aRowBack[k][2] = len + 52; tu.aRowBack[k][3] = 52;
         }
+    }
+    // OPACITY's slider: centred under OPACITY (kept on screen), a row down
+    // from the tray, as the rows are
+    {
+        const float w = TU_OPACITY_W, h = TU_OPACITY_H;
+        const float cx = TU_MAX(TU_MIN(tu_aButtons[BTN_TRAYOPACITY].x, right - w * 0.5f), left + w * 0.5f);
+        tu.opBack[0] = roundf(cx - w * 0.5f); tu.opBack[1] = roundf(trayLastY + 52 - h * 0.5f); tu.opBack[2] = w; tu.opBack[3] = h;
     }
     // Action Freeze's X: top right, inside the safe area
     tu.freezeX = right - TU_FREEZE_CLOSE_R - 4;
@@ -901,8 +969,8 @@ static void tu_Layout(void)
     // under the tray or the row open under it (not covered by it), over the
     // widest stretch of game view no button reaches into, all the way down
     // TU_TOPTEXT_DEPTH (stacked lines too): never behind FORCE or DUCK
-    for (int k = 0; k < 5; k++) {
-        const float* aUnder[4] = { tu.trayBack, tu.aRowBack[0], tu.aRowBack[1], tu.aRowBack[2] };
+    for (int k = 0; k < 6; k++) {
+        const float* aUnder[5] = { tu.numTrayRows > 1 ? tu.trayBack2 : tu.trayBack, tu.aRowBack[0], tu.aRowBack[1], tu.aRowBack[2], tu.opBack };
         const float textTop = k == 0 ? top + 26 + tu_aButtons[BTN_MENU].radius + TU_TOPTEXT_GAP
                                      : aUnder[k - 1][1] + aUnder[k - 1][3] + TU_TOPTEXT_GAP;
         float half = TU_MIN(W * 0.5f - (left + TU_TOPTEXT_SIDE), (right - TU_TOPTEXT_SIDE) - W * 0.5f);
@@ -956,17 +1024,20 @@ static void tu_Layout(void)
     tu.bLaidOut = 1;
 }
 
-// The button a touch at (px, py) is on (the open tray's buttons first: its
-// whole backing is on the nearest of them; then the gyro row likewise)
+// The button a touch at (px, py) is on (the open tray's buttons first: each
+// row's whole backing is on the nearest of its buttons; then the rows under
+// it likewise)
 static int tu_ButtonAt(float px, float py)
 {
     int best = -1;
     float bestDist = 0;
-    const tuButton* l = &tu_aButtons[BTN_TRAY_FIRST];
-    const tuButton* r = &tu_aButtons[BTN_TRAY_LAST];
-    if (tu.bTrayOpen && tu_DistToSegment(px, py, l->x, l->y, r->x, r->y) <= 26) {
+    const tuButton* l;
+    const tuButton* r;
+    for (int k = 0; k < tu.numTrayRows && tu.bTrayOpen && best < 0; k++) {
+        const float* row = tu.aTrayRow[k];
+        if (tu_DistToSegment(px, py, row[0], row[2], row[1], row[2]) > 26) continue;
         for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) {
-            if (!tu_TrayShown(i)) continue;
+            if (!tu_TrayShown(i) || fabsf(tu_aButtons[i].y - row[2]) > 1.0f) continue;
             float d = fabsf(px - tu_aButtons[i].x);
             if (best < 0 || d < bestDist) { best = i; bestDist = d; }
         }
@@ -1198,10 +1269,30 @@ static void tu_ReleaseOptTouches(void)
 static void tu_SetOptRow(int row)
 {
     if (tu.optRow == row) return;
+    // (OPACITY's slider going with a finger on it: that slide ends, kept)
+    int bSlid = 0;
+    for (int i = 0; i < TU_MAX_TOUCHES && tu.optRow == TU_ROW_OPACITY; i++) {
+        tuSlot* s = &tu.aSlots[i];
+        if (s->bUsed && s->role == ROLE_OPACITY) {
+            s->role = ROLE_IGNORED;
+            bSlid = 1;
+        }
+    }
     tu.optRow = row;
     tu.bGyroRow = row == TU_ROW_GYRO;
     if (row != TU_ROW_CAMERA) tu.bKindsOpen = 0;
     tu_ReleaseOptTouches();
+    if (bSlid) tu_SaveSettings();
+}
+
+// OPACITY's slider under a finger at px: the strength there (the thumb's
+// middle travels from one end of the slider to the other), at once
+static void tu_SlideOpacity(float px)
+{
+    const float x0 = tu.opBack[0] + TU_OPACITY_INSET + TU_OPACITY_THUMB * 0.5f;
+    const float x1 = tu.opBack[0] + tu.opBack[2] - TU_OPACITY_INSET - TU_OPACITY_THUMB * 0.5f;
+    const float f = TU_MAX(0.0f, TU_MIN(1.0f, (px - x0) / (x1 - x0)));
+    tu.opacity = tu_OpacityStep(TU_OPACITY_MIN + f * (1.0f - TU_OPACITY_MIN));
 }
 
 // Opens or closes the photo kinds' row, under the camera options
@@ -1246,7 +1337,7 @@ static void tu_SetTrayOpen(int bOpen)
         for (int i = 0; i < TU_MAX_TOUCHES; i++) {
             tuSlot* s = &tu.aSlots[i];
             if (!s->bUsed || s->role != ROLE_BUTTON) continue;
-            if (tu_IsRowOpener(s->button)) tu.aRing[s->button] = 0.0f;
+            if (tu_IsTrayHold(s->button)) tu.aRing[s->button] = 0.0f;
             if (s->button == BTN_TRAYLEVEL) {
                 tu_EndLevelPick(s); // (closing the tray: no level)
                 tu.aRing[BTN_TRAYLEVEL] = 0.0f;
@@ -1341,7 +1432,11 @@ static void tu_UseTrayButton(int button)
         if (G(SetForceJumpStyle)) tu.game->SetForceJumpStyle(tu.jumpStyle);
         tu_SaveSettings();
     }
-    if (kind == KIND_GYRO || kind == KIND_JUMPSTYLE || kind == KIND_CONTROLS || kind == KIND_LEVEL) {
+    else if (kind == KIND_OPACITY) {
+        // its slider, under the tray; tapped again, away
+        tu_SetOptRow(tu.optRow == TU_ROW_OPACITY ? TU_ROW_NONE : TU_ROW_OPACITY);
+    }
+    if (kind == KIND_GYRO || kind == KIND_JUMPSTYLE || kind == KIND_CONTROLS || kind == KIND_LEVEL || kind == KIND_OPACITY) {
         // (the tray stays, for another tap)
     }
     else {
@@ -1933,8 +2028,21 @@ static void tu_TouchDown(long long id, float px, float py, double t)
         if (tu_SaberChipAt(px, py) == TOUCHUI_CHIP_RANDOM) s->randomHold = 1; // (a tap, or held: the tick)
         return;
     }
+    // OPACITY's slider out: a finger on the slider takes it there and slides
+    // it; one on its backing beside it does nothing
+    if (tu.optRow == TU_ROW_OPACITY && px >= tu.opBack[0] && px <= tu.opBack[0] + tu.opBack[2] && py >= tu.opBack[1] && py <= tu.opBack[1] + tu.opBack[3]) {
+        if (px >= tu.opBack[0] + TU_OPACITY_INSET && px <= tu.opBack[0] + tu.opBack[2] - TU_OPACITY_INSET) {
+            s->role = ROLE_OPACITY;
+            tu_SlideOpacity(px);
+        }
+        else s->role = ROLE_IGNORED;
+        return;
+    }
     s->button = tu_ButtonAt(px, py);
-    if (tu.optRow != TU_ROW_NONE && !tu_IsOptButton(s->button)) tu_SetOptRow(TU_ROW_NONE);
+    // (OPACITY's own button leaves its slider for the lift, which puts it
+    // away, or the hold)
+    if (tu.optRow != TU_ROW_NONE && !tu_IsOptButton(s->button) && !(tu.optRow == TU_ROW_OPACITY && s->button == BTN_TRAYOPACITY))
+        tu_SetOptRow(TU_ROW_NONE);
     if (tu.bTrayOpen && !tu_IsTrayButton(s->button) && !tu_IsOptButton(s->button)) {
         tu_SetTrayOpen(0);
         if (s->button == BTN_MENU) {
@@ -1985,6 +2093,12 @@ static void tu_TouchMove(tuSlot* s, float px, float py, double t)
         s->ly = py;
         return;
     }
+    if (s->role == ROLE_OPACITY) {
+        tu_SlideOpacity(px); // (the controls follow at once)
+        s->lx = px;
+        s->ly = py;
+        return;
+    }
     // QUICK SAVE, QUICK LOAD: off the button even once, no save or load
     if (s->role == ROLE_BUTTON && tu_IsQuickHold(s->button) && !s->bFired && !tu_IsPointOnButton(px, py, s->button))
         s->bFired = 1;
@@ -1994,8 +2108,8 @@ static void tu_TouchMove(tuSlot* s, float px, float py, double t)
     // burst until this finger lifts -- or, with FREEZE on, mostly up or down
     // as far as TU_FREEZE_SWIPE: down, Action Freeze; up (CAMERA is at the
     // top: up to near the edge counts), the cinematic burst. The tray's
-    // camera switch or GYRO slid off isn't held any more.
-    if (s->role == ROLE_BUTTON && !s->bFired && (s->button == BTN_CAMERA || tu_IsRowOpener(s->button))) {
+    // camera switch, GYRO or OPACITY slid off isn't held any more.
+    if (s->role == ROLE_BUTTON && !s->bFired && (s->button == BTN_CAMERA || tu_IsTrayHold(s->button))) {
         const int bOut = hypotf(px - s->ox, py - s->oy) >= TU_WHEEL_OPEN_SLIDE;
         const float dx = px - s->ox, dy = py - s->oy;
         const int bDown = s->button == BTN_CAMERA && tu.bFreezeOn && fabsf(dy) >= fabsf(dx) && dy != 0.0f;
@@ -2082,6 +2196,12 @@ static void tu_TouchUp(tuSlot* s, float px, float py, double t, int bCancelled)
             tu_TakeFreezePhoto();
         memset(s, 0, sizeof(*s));
         if (bClose) tu_EndFreeze();
+        return;
+    }
+    if (s->role == ROLE_OPACITY) {
+        // lifted (or taken by the system) off OPACITY's slider: the strength kept
+        memset(s, 0, sizeof(*s));
+        tu_SaveSettings();
         return;
     }
     if (s->role == ROLE_WHEEL && tu.bWheelOpen && !s->bWheelOpener && (s->randomHold || tu_SaberChipAt(px, py) == TOUCHUI_CHIP_RANDOM)) {
@@ -2189,8 +2309,9 @@ static void tu_TouchUp(tuSlot* s, float px, float py, double t, int bCancelled)
                 if (G(SelectItem)) tu.game->SelectItem(b->bin);
                 tu_QueuePress(b->scancode);
             }
-            else if (tu_IsTrayButton(s->button) && !(tu_IsRowOpener(s->button) && s->bFired)) {
-                // (GYRO or the camera switch held until its row opened, or slid off: not a tap)
+            else if (tu_IsTrayButton(s->button) && !(tu_IsTrayHold(s->button) && s->bFired)) {
+                // (GYRO or the camera switch held until its row opened, OPACITY
+                // held back to 100%, or slid off: not a tap)
                 tu_UseTrayButton(s->button);
             }
             else if (tu_IsOptButton(s->button) && !tu_Hidden(s->button)) {
@@ -2212,7 +2333,7 @@ static void tu_TouchUp(tuSlot* s, float px, float py, double t, int bCancelled)
             if (tu_IsTrayButton(tb)) tu_UseTrayButton(tb);
         }
         if (s->button == BTN_QUICKSAVE || s->button == BTN_QUICKLOAD || s->button == BTN_MENU || s->button == BTN_BACTA
-            || tu_IsRowOpener(s->button) || s->button == BTN_CAMERA)
+            || tu_IsTrayHold(s->button) || s->button == BTN_CAMERA)
             tu.aRing[s->button] = 0.0f;
     }
     else if (s->role == ROLE_STICK) {
@@ -2550,6 +2671,19 @@ void touchUi_Tick(double known, double now)
                 else loadProgress = TU_MAX(loadProgress, progress);
             }
         }
+        else if (s->button == BTN_TRAYOPACITY && !s->bFired && tu.bTrayOpen) {
+            // The tray's OPACITY held still: back to 100% (kept), with a word
+            // and a tick (the lift then doesn't put out or away its slider)
+            if (known - s->tDown >= TU_MENU_HOLD) {
+                s->bFired = 1;
+                tu.aRing[s->button] = 0.0f;
+                tu.opacity = 1.0f;
+                tu_SaveSettings();
+                if (G(ShowMessageInPlace)) tu.game->ShowMessageInPlace("Controls back to full strength");
+                tu_Haptic(TOUCHUI_HAPTIC_TAP);
+            }
+            else tu.aRing[s->button] = (float)TU_MIN((now - s->tDown) / TU_MENU_HOLD, 1.0);
+        }
         else if (tu_IsRowOpener(s->button) && !s->bFired && tu.bTrayOpen && (s->button != BTN_TRAYGYRO || tu_GyroAvailable())) {
             // The tray's camera switch or GYRO held still: its row opens (the
             // lift then doesn't switch it)
@@ -2671,6 +2805,7 @@ void touchUi_Init(const touchUiGame* pGame, const char* pSettingsPath)
 {
     memset(&tu, 0, sizeof(tu));
     tu.game = pGame;
+    tu.numTrayRows = 1;
     tu.tJumpTapUp = -1.0;
     tu.tSaberTapUp = -1.0;
     tu.gyroTurnedRound = -1.0e9;
@@ -2805,7 +2940,8 @@ int touchUi_GetTopTextRect(float* pTop, float* pLeft, float* pRight)
 {
     if (!tu.bTopText) return 0;
     const float* pText = tu.aTopText;
-    if (tu.bTrayOpen) pText = tu.aTopTextTray[tu.optRow == TU_ROW_CAMERA ? (tu.bKindsOpen ? 3 : 2) : tu.optRow == TU_ROW_GYRO ? 1 : 0];
+    if (tu.bTrayOpen)
+        pText = tu.aTopTextTray[tu.optRow == TU_ROW_CAMERA ? (tu.bKindsOpen ? 3 : 2) : tu.optRow == TU_ROW_GYRO ? 1 : tu.optRow == TU_ROW_OPACITY ? 4 : 0];
     *pTop = pText[0];
     *pLeft = pText[1];
     *pRight = pText[2];
@@ -2857,6 +2993,17 @@ int touchUi_GetJumpStyle(void) { return tu.jumpStyle; }
 int touchUi_IsCameraShown(void) { return tu.bShowCamera; }
 int touchUi_IsSaberShown(void) { return tu.bShowSaber; }
 int touchUi_GetOptRow(void) { return tu.optRow; }
+float touchUi_GetOpacity(void) { return tu.opacity; }
+int touchUi_GetTrayRows(void) { return tu.numTrayRows; }
+int touchUi_GetOpacitySlider(float* pX, float* pY, float* pW, float* pH)
+{
+    if (!tu.bTrayOpen || tu.optRow != TU_ROW_OPACITY) return 0;
+    *pX = tu.opBack[0];
+    *pY = tu.opBack[1];
+    *pW = tu.opBack[2];
+    *pH = tu.opBack[3];
+    return 1;
+}
 int touchUi_IsKindsRowOpen(void) { return tu.bKindsOpen; }
 int touchUi_GetCameraKinds(void) { return tu.cameraKinds; }
 int touchUi_GetSelfieShots(void) { return tu.selfieShots; }
@@ -3087,6 +3234,7 @@ static void tu_DrawButton(int i)
                     || (i == BTN_TRAYVIEW && tu.bShowView)
                     || (i == BTN_TRAYGYRO && bGyro && tu.gyroMode != TOUCHUI_GYRO_OFF)
                     || (i == BTN_TRAYCAM && tu.bShowCamera)
+                    || (i == BTN_TRAYOPACITY && tu.optRow == TU_ROW_OPACITY)
                     || (tu_IsCamOptButton(i) && (tu.cameraKinds & tu_aButtons[i].bin))
                     || (i == BTN_CAMROW_PHOTO && tu.bKindsOpen)
                     || (i == BTN_CAMROW_FREEZE && tu.bFreezeOn)
@@ -3097,6 +3245,7 @@ static void tu_DrawButton(int i)
     if (i == BTN_TRAYGYRO && !bGyro) alpha *= 0.45f;
     if (i == BTN_TRAYLEVEL && !(G(NumPickableLevels) && tu.game->NumPickableLevels() > 0)) alpha *= 0.45f; // (no level can be picked now)
     if ((i == BTN_GYROOPT_MODE || i == BTN_GYROOPT_SENS) && (!bGyro || tu.gyroMode == TOUCHUI_GYRO_OFF)) alpha *= 0.45f;
+    if (!bTray) alpha *= tu.opacity; // (OPACITY: the touch controls; the tray and its rows at full)
     tu_draw.alpha = alpha;
 
     touchUiColor bg = bWheel ? TU_BLUE(0.55f) : (bHeld ? touchUi_White(0.30f) : touchUi_Black(0.22f));
@@ -3149,8 +3298,9 @@ static void tu_DrawButton(int i)
         size = tu_FontSize("GYRO\nALWAYS", b->radius);
         xscale = TU_WHEEL_XSCALE;
     }
-    else if (i == BTN_CAMROW_SELFIES || i == BTN_CAMROW_FREEZE) {
-        if (i == BTN_CAMROW_SELFIES) snprintf(buf, sizeof(buf), "SELFIES\n%d", tu.selfieShots);
+    else if (i == BTN_TRAYOPACITY || i == BTN_CAMROW_SELFIES || i == BTN_CAMROW_FREEZE) {
+        if (i == BTN_TRAYOPACITY) snprintf(buf, sizeof(buf), "OPACITY\n%d%%", (int)lroundf(tu.opacity * 100.0f));
+        else if (i == BTN_CAMROW_SELFIES) snprintf(buf, sizeof(buf), "SELFIES\n%d", tu.selfieShots);
         else snprintf(buf, sizeof(buf), "FREEZE\n%s", tu.bFreezeOn ? "ON" : "OFF");
         label = buf;
         size = tu_FontSize("GYRO\nALWAYS", b->radius);
@@ -3188,7 +3338,7 @@ static void tu_DrawButton(int i)
     // the hold rings
     if (i == BTN_QUICKSAVE || i == BTN_QUICKLOAD || i == BTN_MENU || i == BTN_WHEEL || i == BTN_NEXTWPN || i == BTN_JUMP
         || i == BTN_ACT || i == BTN_TRAYLEVEL || i == BTN_CHEAT || i == BTN_BACTA || i == BTN_TRAYGYRO || i == BTN_TRAYCAM
-        || i == BTN_CAMERA || i == BTN_SABER)
+        || i == BTN_TRAYOPACITY || i == BTN_CAMERA || i == BTN_SABER)
         tu_DrawHoldRing(b, tu.aRing[i], 2.5f, TU_BLUE(0.95f));
     if (i == BTN_FORCE) tu_DrawHoldRing(b, tu.fjumpRing, 7.5f, touchUi_Rgba(1.0f, 0.82f, 0.3f, 0.95f));
     tu_draw.alpha = 1.0f;
@@ -3198,7 +3348,7 @@ static void tu_DrawForceMeter(double now)
 {
     const tuButton* b = &tu_aButtons[BTN_FORCE];
     if (tu.forceFrac < 0.005f) return;
-    float op = tu.bForceFull ? 1.0f : (tu.aButtonHeld[BTN_FORCE] ? 1.0f : TU_IDLE_ALPHA);
+    float op = (tu.bForceFull ? 1.0f : (tu.aButtonHeld[BTN_FORCE] ? 1.0f : TU_IDLE_ALPHA)) * tu.opacity;
     tu_draw.alpha = op;
     if (tu.bForceFull) {
         // a full meter glows, gently pulsing (0.9 s each way, eased)
@@ -3215,25 +3365,28 @@ static void tu_DrawForceMeter(double now)
 static void tu_DrawStick(void)
 {
     if (!tu.bStickActive) return;
+    // (all at OPACITY's strength, as the buttons)
     const float ox = tu.stickOx, oy = tu.stickOy;
+    tu_draw.alpha = tu.opacity;
     touchUiDraw_Circle(&tu_draw, ox, oy, TU_STICK_RADIUS, touchUi_White(0.08f), 1.5f, touchUi_White(0.45f));
     const int bLit = tu.bStickRunning;
     if (tu.bRunMarker) {
         float dx = tu.runX - ox, dy = tu.runY - oy, d = sqrtf(dx * dx + dy * dy);
         if (d - TU_RUN_R - TU_STICK_RADIUS > 1.0f) {
-            tu_draw.alpha = bLit ? 1.0f : TU_IDLE_ALPHA;
+            tu_draw.alpha = (bLit ? 1.0f : TU_IDLE_ALPHA) * tu.opacity;
             touchUiDraw_Line(&tu_draw, ox + dx / d * TU_STICK_RADIUS, oy + dy / d * TU_STICK_RADIUS,
                              ox + dx / d * (d - TU_RUN_R), oy + dy / d * (d - TU_RUN_R), 1.5f,
                              bLit ? TU_BLUE(0.95f) : touchUi_White(0.45f));
-            tu_draw.alpha = 1.0f;
         }
     }
     float kx = bLit ? tu.runX : ox + tu.stickX * TU_STICK_RADIUS;
     float ky = bLit ? tu.runY : oy + tu.stickY * TU_STICK_RADIUS;
+    tu_draw.alpha = tu.opacity;
     touchUiDraw_Circle(&tu_draw, kx, ky, TU_STICK_KNOB, touchUi_White(0.30f), 1.5f, touchUi_White(0.45f));
+    tu_draw.alpha = 1.0f;
     if (tu.bRunMarker) {
         const float rr = TU_RUN_R;
-        tu_draw.alpha = bLit ? 1.0f : TU_IDLE_ALPHA;
+        tu_draw.alpha = (bLit ? 1.0f : TU_IDLE_ALPHA) * tu.opacity;
         touchUiDraw_Circle(&tu_draw, tu.runX, tu.runY, rr, bLit ? TU_BLUE(0.55f) : touchUi_Black(0.35f), 1.5f,
                            touchUi_White(bLit ? 0.85f : 0.45f));
         touchUiColor cc = touchUi_White(bLit ? 1.0f : 0.85f);
@@ -3244,6 +3397,21 @@ static void tu_DrawStick(void)
         }
         tu_draw.alpha = 1.0f;
     }
+}
+
+// OPACITY's slider, out under the tray, at full strength: its dark backing,
+// the track (blue up to the thumb, as the ring's blue), the thumb (as iOS's)
+static void tu_DrawOpacitySlider(void)
+{
+    const float* b = tu.opBack;
+    touchUiDraw_RRect(&tu_draw, b[0], b[1], b[2], b[3], b[3] * 0.5f, touchUi_Black(0.55f), 1.5f, touchUi_White(0.4f));
+    const float x0 = b[0] + TU_OPACITY_INSET, x1 = b[0] + b[2] - TU_OPACITY_INSET, cy = b[1] + b[3] * 0.5f;
+    const float f = (tu.opacity - TU_OPACITY_MIN) / (1.0f - TU_OPACITY_MIN);
+    const float tx = x0 + TU_OPACITY_THUMB * 0.5f + f * (x1 - x0 - TU_OPACITY_THUMB);
+    touchUiDraw_Line(&tu_draw, x0 + 2.0f, cy, x1 - 2.0f, cy, 4.0f, touchUi_White(0.3f));
+    touchUiDraw_Line(&tu_draw, x0 + 2.0f, cy, tx, cy, 4.0f, TU_BLUE(0.95f));
+    touchUiDraw_Circle(&tu_draw, tx, cy + 1.0f, TU_OPACITY_THUMB * 0.5f, touchUi_Black(0.25f), 0.0f, touchUi_Clear()); // (its shadow)
+    touchUiDraw_Circle(&tu_draw, tx, cy, TU_OPACITY_THUMB * 0.5f, touchUi_White(1.0f), 0.0f, touchUi_Clear());
 }
 
 // The open wheel (inputWheel.c's), over the game dimmed, laid out clear of
@@ -3318,8 +3486,12 @@ const touchUiDrawList* touchUi_Draw(double now)
     if (tu.bTrayOpen) {
         touchUiDraw_RRect(&tu_draw, tu.trayBack[0], tu.trayBack[1], tu.trayBack[2], tu.trayBack[3], 26.0f, touchUi_Black(0.55f), 1.5f,
                           touchUi_White(0.4f));
+        if (tu.numTrayRows > 1)
+            touchUiDraw_RRect(&tu_draw, tu.trayBack2[0], tu.trayBack2[1], tu.trayBack2[2], tu.trayBack2[3], 26.0f, touchUi_Black(0.55f), 1.5f,
+                              touchUi_White(0.4f));
         for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) if (!tu_Hidden(i)) tu_DrawButton(i);
     }
+    if (tu.bTrayOpen && tu.optRow == TU_ROW_OPACITY) tu_DrawOpacitySlider();
     {
         const int aFirst[3] = { BTN_GYROOPT_FIRST, BTN_CAMROW_FIRST, BTN_CAMOPT_FIRST };
         const int aLast[3] = { BTN_GYROOPT_LAST, BTN_CAMROW_LAST, BTN_CAMOPT_LAST };

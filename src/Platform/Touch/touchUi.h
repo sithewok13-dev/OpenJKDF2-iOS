@@ -13,8 +13,11 @@
 //   - QUICK SAVE / QUICK LOAD: a 0.3 s hold with a ring, once per hold;
 //     sliding off cancels; QUICK SAVE wins a tie;
 //   - MENU: a tap is the game menu (Escape), a 0.45 s hold opens the tray
-//     (GYRO, FPS, the camera switch, CHEAT, VIEW, JUMP style, CONTROLS, the
-//     keyboard); holding GYRO there opens MODE and SENS;
+//     (GYRO, OPACITY, FPS, the camera switch, CHEAT, VIEW, JUMP style,
+//     CONTROLS, the keyboard); holding GYRO there opens MODE and SENS;
+//   - OPACITY: a tap opens a slider under the tray, 20% to 100% in 5% steps,
+//     every touch control in play following it at once (the tray, its rows
+//     and the wheels at full), kept as the finger lifts; held 0.45 s, 100%;
 //   - FORCE WHEEL and NEXT WPN: a tap is the next power / weapon, a 10 pt
 //     slide opens the wheel at once to slide to a slice, a 0.3 s hold opens
 //     it to tap one; the gap at the bottom cancels; the game holds still while
@@ -181,7 +184,7 @@ enum {
     TOUCHUI_BTN_NEXTWPN, TOUCHUI_BTN_WHEEL, TOUCHUI_BTN_LIGHT, TOUCHUI_BTN_IR, TOUCHUI_BTN_BACTA,
     TOUCHUI_BTN_QUICKSAVE, TOUCHUI_BTN_QUICKLOAD, TOUCHUI_BTN_MENU,
     TOUCHUI_BTN_CAMERA, TOUCHUI_BTN_SABER, TOUCHUI_BTN_CHEAT, TOUCHUI_BTN_VIEW,
-    TOUCHUI_BTN_TRAYGYRO, TOUCHUI_BTN_TRAYFPS, TOUCHUI_BTN_TRAYCAM, TOUCHUI_BTN_TRAYCHEAT, TOUCHUI_BTN_TRAYLEVEL, TOUCHUI_BTN_TRAYVIEW,
+    TOUCHUI_BTN_TRAYGYRO, TOUCHUI_BTN_TRAYOPACITY, TOUCHUI_BTN_TRAYFPS, TOUCHUI_BTN_TRAYCAM, TOUCHUI_BTN_TRAYCHEAT, TOUCHUI_BTN_TRAYLEVEL, TOUCHUI_BTN_TRAYVIEW,
     TOUCHUI_BTN_TRAYJUMP, TOUCHUI_BTN_TRAYCTRL, TOUCHUI_BTN_TRAYKEYS,
     TOUCHUI_BTN_GYROOPT_MODE, TOUCHUI_BTN_GYROOPT_SENS,
     TOUCHUI_BTN_CAMROW_PHOTO, TOUCHUI_BTN_CAMROW_SELFIES, TOUCHUI_BTN_CAMROW_FREEZE,
@@ -305,7 +308,11 @@ int touchUi_IsSwapped(void);
 int touchUi_GetJumpStyle(void);
 int touchUi_IsCameraShown(void);
 int touchUi_IsSaberShown(void);
-int touchUi_GetOptRow(void); // 0: none, 1: the gyro options, 2: the camera options
+int touchUi_GetOptRow(void); // 0: none, 1: the gyro options, 2: the camera options, 3: OPACITY's slider
+float touchUi_GetOpacity(void); // the tray's OPACITY: the touch controls' strength, 0.2..1
+// OPACITY's slider while it is out: its backing (top left, width, height); 0 if it isn't
+int touchUi_GetOpacitySlider(float* pX, float* pY, float* pW, float* pH);
+int touchUi_GetTrayRows(void); // MENU's tray as laid out: 1 row, or 2 where one would run off the left
 int touchUi_IsKindsRowOpen(void);
 int touchUi_GetCameraKinds(void);
 int touchUi_GetSelfieShots(void);

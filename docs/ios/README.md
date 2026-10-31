@@ -303,10 +303,11 @@ screen, the camera cutout and the HUD.
 ```
  NEXT   FORCE   LIGHT  IR  BACTA  CAMERA  SABER  CHEAT  VIEW  (FPS)  QUICK  QUICK  MENU
  WPN    WHEEL   (only items you have)                         SAVE   LOAD
-                  [GYRO] [RUN] [LOOK] [FPS] [CAMERA] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
+      [GYRO] [RUN] [LOOK] [OPACITY] [FPS] [CAMERA] [AUTO PLAY] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
                   (MENU's tray, when held; LEVEL only while sithewok is on; in co-op, the host's)
                              [MODE] [SENS]             (GYRO held in the tray)
                              [PHOTO] [SELFIES] [FREEZE] (CAMERA held in the tray)
+                             [====o=========]          (OPACITY tapped in the tray)
 
       (^^)  run marker                              JUMP   FORCE
        |                                     ACT
@@ -376,13 +377,14 @@ slide or hold to open the wheel). While
 `sithewok` is on, JUMP and ACT show a small red second line (FLY, NOCLIP)
 for their cheat holds: see [Cheats](#cheats). DUCK only ever crouches.
 
-### MENU's tray: tilt aiming, running, look speed, FPS, camera, cheat mode, view and keyboard
+### MENU's tray: tilt aiming, running, look speed, opacity, FPS, camera, cheat mode, view and keyboard
 
 **Tap MENU** for the game's menu. **Hold MENU** until its ring fills (about
-half a second), and a small tray opens just under it with ten buttons, from
-left to right **GYRO**, **RUN**, **LOOK**, **FPS**, **CAMERA**, **CHEAT**,
-**VIEW**, **JUMP**, **CONTROLS** and the **keyboard**. While `sithewok` is on
-(in co-op, only for the host) there's an eleventh, **LEVEL**, between CHEAT and VIEW.
+half a second), and a small tray opens just under it with twelve buttons, from
+left to right **GYRO**, **RUN**, **LOOK**, **OPACITY**, **FPS**, **CAMERA**,
+**AUTO PLAY**, **CHEAT**, **VIEW**, **JUMP**, **CONTROLS** and the **keyboard**.
+While `sithewok` is on (in co-op, only for the host) there's a thirteenth,
+**LEVEL**, between CHEAT and VIEW.
 Either keep your thumb down, slide it onto a tray button and lift, or lift
 first and then tap one. Anywhere on the tray's dark backing counts as the
 nearest button.
@@ -402,8 +404,19 @@ nearest button.
   default), **1.25x**, **1.5x**, **2x**, **2.5x**, **3x**, then round to
   0.5x; the tray stays open. **Touch and hold** it until its ring fills to go
   back to 1x. The app remembers it. (Tilt aiming has its own SENS, under GYRO.)
+- **OPACITY:** how see-through the touch controls are, shown on the button
+  (**OPACITY 100%**, the default). A **tap** opens a slider just under the
+  tray: slide it anywhere from **20%** to **100%**, in 5% steps, and the
+  buttons, their labels, the move stick and its run marker change as you
+  slide. The app remembers it when you lift your finger. Tap OPACITY again,
+  or touch anywhere outside the slider's dark backing, to close it. **Touch and hold** OPACITY
+  until its ring fills to go back to 100%. The tray itself, the rows under
+  it, the Force, weapon and saber wheels and the FPS counter always stay at
+  full strength, and the lowest is 20%, so MENU never disappears.
 - **FPS:** shows or hides a frame-rate counter, to the left of QUICK SAVE. The FPS
   button is yellow while the counter is on.
+- **AUTO PLAY** (single player): opens the panel for a self-playing show, for
+  screen recordings.
 - **CAMERA** (the camera symbol): a tap shows or hides the CAMERA button
   (yellow while it's shown). Touch and hold it until its ring fills for
   CAMERA's options, **PHOTO**, **SELFIES** and **FREEZE**: see
@@ -445,18 +458,21 @@ nearest button.
   again to close the line. While it's open, MENU and the keyboard button are
   lit yellow.
 
-GYRO, JUMP and CONTROLS show their setting on the button (for example *GYRO OFF*,
-*JUMP STEPS*), and MODE and SENS show theirs. Each tap on JUMP, CONTROLS, MODE or SENS
+GYRO, LOOK, OPACITY, JUMP and CONTROLS show their setting on the button (for example
+*GYRO OFF*, *OPACITY 60%*), and MODE and SENS show theirs. Each tap on JUMP, CONTROLS, MODE or SENS
 goes on to the next setting, and the tray (or row) stays open so you can tap
 again.
 
-The app remembers GYRO, SENS, FPS, CAMERA and its options, CHEAT, VIEW, JUMP and CONTROLS
-next time you open it. The `sithewok` cheat itself always starts off when you open
+The app remembers GYRO, SENS, LOOK, OPACITY, FPS, CAMERA and its options, CHEAT, VIEW,
+JUMP and CONTROLS next time you open it. The `sithewok` cheat itself always starts off when you open
 the app: hold the CHEAT button to switch it on.
 
 The tray usually sits right under MENU. On smaller screens (with the camera
 cutout on the right, with Display Zoom, or at a large HUD Scale) it sits
-further left, so that it never covers FORCE or the buttons around FIRE. The
+further left, so that it covers FORCE or the buttons around FIRE as little as it
+can. On the smallest screens (the first iPhone SE, or a small iPhone with
+Display Zoom), where one row would run off the screen, it takes two rows, one
+under the other. The
 tray closes after you pick FPS, CAMERA, CHEAT, VIEW or the keyboard, or when you
 touch anywhere else. That touch still counts: touching FIRE closes the tray
 and fires. Touching MENU again just closes it. If you slide off MENU while

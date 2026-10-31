@@ -978,9 +978,11 @@ static void check_level_tray_layout(const char* name, float W, float H, float l,
     CHECKF(vx - lx, 50.0, 0.5);
     float gx, kx, ky; bxy(TOUCHUI_BTN_TRAYGYRO, &gx, &y); bxy(TOUCHUI_BTN_TRAYKEYS, &kx, &ky);
     // its left end inside the safe area; its right end where it was without
-    // LEVEL (the row grows to the left only)
+    // LEVEL (the row grows to the left only) -- unless the longer row can't
+    // reach that far left (a small screen, OPACITY in the row too): then as
+    // far left as it goes
     CHECK(gx - 26 >= (l > 8 ? l : 0) - 0.5f && ky - 26 >= t - 0.5f);
-    CHECKF(kx, aOff[TOUCHUI_BTN_TRAYKEYS], 0.5);
+    if (fabsf(kx - aOff[TOUCHUI_BTN_TRAYKEYS]) > 0.5f) CHECK(kx > aOff[TOUCHUI_BTN_TRAYKEYS] && gx - 26 <= (l > 8 ? l : 8) + 4.5f);
     printf("  [%s] tray with LEVEL %.0f..%.0f (off: %.0f..%.0f)\n", name, gx - 26, kx + 26, aOff[TOUCHUI_BTN_TRAYGYRO] - 26, aOff[TOUCHUI_BTN_TRAYKEYS] + 26);
     // the moved message line with the tray and each row open: clear of every
     // button shown, down 70 pt (stacked lines), at least 120 pt wide
@@ -4054,6 +4056,198 @@ static void test_saber_wheel_state(void)
     }
 }
 
+// The tray's OPACITY: its slider, every touch control at its strength, the
+// tray at full, kept; the tray in two rows where one won't fit
+static float buttonFillAlpha(int btn)
+{
+    // (the button's round in the draw list: its fill's alpha, the button's own look times its strength)
+    float x, y, r;
+    if (!touchUi_GetButton(btn, &x, &y, &r)) return -1.0f;
+    const touchUiDrawList* l = touchUi_Draw(T);
+    for (int i = 0; i < l->numItems; i++) {
+        const touchUiDrawItem* it = &l->aItems[i];
+        if (it->type == TOUCHUI_DRAW_CIRCLE && fabsf(it->x0 - x) < 0.01f && fabsf(it->y0 - y) < 0.01f && fabsf(it->r - r) < 0.01f) return it->fill.a;
+    }
+    return -1.0f;
+}
+
+static void test_opacity(void)
+{
+    float x, y, r, ox, oy, sx, sy, sw, sh;
+    g_case = "OPACITY: in the tray after GYRO, 100% to begin with";
+    setup();
+    openTrayT();
+    CHECK(touchUi_IsTrayOpen() && touchUi_GetButton(TOUCHUI_BTN_TRAYOPACITY, &ox, &oy, &r) && fabsf(touchUi_GetOpacity() - 1.0f) < 1e-4f);
+    float gx, fx; bxy(TOUCHUI_BTN_TRAYGYRO, &gx, &y); bxy(TOUCHUI_BTN_TRAYFPS, &fx, &y);
+    CHECKF(ox - gx, 50.0, 0.5);
+    CHECKF(fx - ox, 50.0, 0.5);
+    const float aFire1 = buttonFillAlpha(TOUCHUI_BTN_FIRE), aKeys1 = buttonFillAlpha(TOUCHUI_BTN_TRAYKEYS);
+    CHECKF(aFire1, 0.22 * 0.65, 0.002);
+    CHECKF(aKeys1, 0.22, 0.002);
+
+    g_case = "OPACITY: a tap puts out its slider under the tray (240 x 44), the tray stays";
+    downOn(2, TOUCHUI_BTN_TRAYOPACITY); upOn(2, TOUCHUI_BTN_TRAYOPACITY); tick();
+    CHECK(touchUi_IsTrayOpen() && touchUi_GetOptRow() == 3 && touchUi_GetOpacitySlider(&sx, &sy, &sw, &sh));
+    CHECKF(sw, 240.0, 0.01);
+    CHECKF(sh, 44.0, 0.01);
+    CHECK(sy >= oy + 26 - 0.5f && sx >= 59 - 0.5f && sx + sw <= 852 - 59 + 0.5f && sy + sh <= 393 - 21);
+    CHECKF(sx + sw * 0.5f, ox, 0.6);
+
+    g_case = "OPACITY: a touch on the slider's backing beside it: nothing";
+    down(3, sx + 6, sy + sh * 0.5f); up(3, sx + 6, sy + sh * 0.5f); tick();
+    CHECK(touchUi_IsTrayOpen() && touchUi_GetOptRow() == 3 && fabsf(touchUi_GetOpacity() - 1.0f) < 1e-4f);
+
+    g_case = "OPACITY: the slider follows the finger in 5% steps, the controls at once; kept on the lift";
+    const float x0 = sx + 16 + 14, x1 = sx + sw - 16 - 14, cy = sy + sh * 0.5f;
+    down(3, sx + 17, cy); tick();
+    CHECKF(touchUi_GetOpacity(), 0.2, 1e-4);
+    int bSteps = 1;
+    for (int k = 0; k <= 60; k++) {
+        const float px = x0 + (x1 - x0) * k / 60.0f;
+        move(3, px, cy); tick();
+        const float want = roundf((0.2f + 0.8f * k / 60.0f) / 0.05f) * 0.05f;
+        if (fabsf(touchUi_GetOpacity() - want) > 1e-4f) bSteps = 0;
+    }
+    CHECK(bSteps);
+    move(3, x0 + (x1 - x0) * 0.25f, cy); tick(); // (40%)
+    CHECKF(touchUi_GetOpacity(), 0.4, 1e-4);
+    CHECKF(buttonFillAlpha(TOUCHUI_BTN_FIRE), 0.22 * 0.65 * 0.4, 0.002);
+    {
+        char buf[4096] = "";
+        FILE* f = fopen(g_settings, "r");
+        if (f) { buf[fread(buf, 1, sizeof(buf) - 1, f)] = 0; fclose(f); }
+        CHECK(!strstr(buf, "opacity=0.40")); // (not kept until the lift)
+        up(3, x0 + (x1 - x0) * 0.25f, cy); tick();
+        buf[0] = 0;
+        f = fopen(g_settings, "r");
+        if (f) { buf[fread(buf, 1, sizeof(buf) - 1, f)] = 0; fclose(f); }
+        CHECK(strstr(buf, "opacity=0.40\n") != NULL);
+    }
+    move(3, x1 + 40, cy); // (gone: nothing)
+    CHECKF(touchUi_GetOpacity(), 0.4, 1e-4);
+
+    g_case = "OPACITY: every control at its look x 40%, the tray at full";
+    CHECKF(buttonFillAlpha(TOUCHUI_BTN_MENU), 0.22 * 0.65 * 0.4, 0.002);
+    CHECKF(buttonFillAlpha(TOUCHUI_BTN_TRAYKEYS), 0.22, 0.002);
+    CHECKF(buttonFillAlpha(TOUCHUI_BTN_TRAYOPACITY), 0.22, 0.002);
+    closeTrayT();
+    CHECK(!touchUi_IsTrayOpen() && touchUi_GetOptRow() == 0);
+    CHECKF(buttonFillAlpha(TOUCHUI_BTN_JUMP), 0.22 * 0.65 * 0.4, 0.002);
+    CHECKF(buttonFillAlpha(TOUCHUI_BTN_NEXTWPN), 0.22 * 0.65 * 0.4, 0.002);
+    {   // the stick: its ring at 40% (white 0.08 x 0.4)
+        down(4, 150, 280); tick();
+        const touchUiDrawList* l = touchUi_Draw(T);
+        int bStick = 0;
+        for (int i = 0; i < l->numItems; i++) {
+            const touchUiDrawItem* it = &l->aItems[i];
+            if (it->type == TOUCHUI_DRAW_CIRCLE && fabsf(it->x0 - 150) < 0.01f && fabsf(it->y0 - 280) < 0.01f && fabsf(it->r - 60) < 0.01f)
+                bStick = fabsf(it->fill.a - 0.08f * 0.4f) < 0.002f;
+        }
+        CHECK(touchUi_IsStickActive() && bStick);
+        up(4, 150, 280); tick();
+    }
+    downOn(1, TOUCHUI_BTN_FIRE); tick();
+    CHECKF(buttonFillAlpha(TOUCHUI_BTN_FIRE), 0.30 * 0.4, 0.002); // (held: white 0.30, at full x 40%)
+    upOn(1, TOUCHUI_BTN_FIRE); tick();
+
+    g_case = "OPACITY: kept across launches";
+    touchUi_Init(&fakeGame, g_settings);
+    touchUi_SetGyroAvailable(1);
+    setup_screen(852, 393, 59, 0, 59, 21);
+    touchUi_SetShown(1);
+    tick();
+    CHECKF(touchUi_GetOpacity(), 0.4, 1e-4);
+    CHECKF(buttonFillAlpha(TOUCHUI_BTN_FIRE), 0.22 * 0.65 * 0.4, 0.002);
+
+    g_case = "OPACITY: held 0.45 s, back to 100% (kept), with a word; the lift puts out no slider";
+    openTrayT(); fg.lastMsg[0] = 0;
+    downOn(2, TOUCHUI_BTN_TRAYOPACITY); wait(0.25);
+    const float ring = touchUi_GetRingProgress(TOUCHUI_BTN_TRAYOPACITY);
+    wait(0.3); upOn(2, TOUCHUI_BTN_TRAYOPACITY); tick();
+    CHECK(ring > 0.3f && ring < 0.8f && fabsf(touchUi_GetOpacity() - 1.0f) < 1e-4f && !strcmp(fg.lastMsg, "Controls back to full strength")
+          && touchUi_IsTrayOpen() && touchUi_GetOptRow() == 0 && touchUi_GetRingProgress(TOUCHUI_BTN_TRAYOPACITY) == 0.0f);
+
+    g_case = "OPACITY: one row under the tray at a time; tapped again, the slider goes";
+    downOn(2, TOUCHUI_BTN_TRAYGYRO); wait(0.55); upOn(2, TOUCHUI_BTN_TRAYGYRO);
+    CHECK(touchUi_GetOptRow() == 1);
+    downOn(2, TOUCHUI_BTN_TRAYOPACITY); upOn(2, TOUCHUI_BTN_TRAYOPACITY); tick();
+    CHECK(touchUi_GetOptRow() == 3 && !touchUi_GetButton(TOUCHUI_BTN_GYROOPT_MODE, &x, &y, &r));
+    downOn(2, TOUCHUI_BTN_TRAYCAM); wait(0.55); upOn(2, TOUCHUI_BTN_TRAYCAM);
+    CHECK(touchUi_GetOptRow() == 2 && !touchUi_GetOpacitySlider(&sx, &sy, &sw, &sh));
+    downOn(2, TOUCHUI_BTN_TRAYOPACITY); upOn(2, TOUCHUI_BTN_TRAYOPACITY); tick();
+    CHECK(touchUi_GetOptRow() == 3);
+    downOn(2, TOUCHUI_BTN_TRAYOPACITY); upOn(2, TOUCHUI_BTN_TRAYOPACITY); tick();
+    CHECK(touchUi_GetOptRow() == 0 && touchUi_IsTrayOpen());
+
+    g_case = "OPACITY: the slider out, a touch on the game closes the tray and it";
+    downOn(2, TOUCHUI_BTN_TRAYOPACITY); upOn(2, TOUCHUI_BTN_TRAYOPACITY); tick();
+    down(5, 430, 300); up(5, 430, 300); tick();
+    CHECK(!touchUi_IsTrayOpen() && touchUi_GetOptRow() == 0);
+
+    g_case = "OPACITY: the tray closed under a sliding finger: the slide ends, kept";
+    openTrayT();
+    downOn(2, TOUCHUI_BTN_TRAYOPACITY); upOn(2, TOUCHUI_BTN_TRAYOPACITY); tick();
+    touchUi_GetOpacitySlider(&sx, &sy, &sw, &sh);
+    down(3, sx + 17, sy + sh * 0.5f); tick();
+    down(5, 430, 300); up(5, 430, 300); tick();
+    move(3, sx + sw - 17, sy + sh * 0.5f); up(3, sx + sw - 17, sy + sh * 0.5f); tick();
+    {
+        char buf[4096] = "";
+        FILE* f = fopen(g_settings, "r");
+        if (f) { buf[fread(buf, 1, sizeof(buf) - 1, f)] = 0; fclose(f); }
+        CHECK(fabsf(touchUi_GetOpacity() - 0.2f) < 1e-4f && strstr(buf, "opacity=0.20\n") != NULL);
+    }
+
+    g_case = "OPACITY: kept strengths out of range or between steps";
+    {
+        const char* aIn[3] = { "opacity=0.03\n", "opacity=7\n", "opacity=0.523\n" };
+        const float aWant[3] = { 0.2f, 1.0f, 0.5f };
+        for (int k = 0; k < 3; k++) {
+            FILE* f = fopen(g_settings, "w");
+            if (f) { fputs(aIn[k], f); fclose(f); }
+            touchUi_Init(&fakeGame, g_settings);
+            CHECKF(touchUi_GetOpacity(), aWant[k], 1e-4);
+        }
+    }
+
+    // the tray where one row won't fit (a narrow window): two rows, each
+    // button its own touch, the slider under them
+    static const struct { const char* name; float W, H, l, t, r, b; } aS[] = {
+        { "OPACITY: two-row tray, narrow window (400x640)", 400, 640, 0, 0, 0, 0 },
+        { "OPACITY: two-row tray, standing phone (360x740)", 360, 740, 0, 24, 0, 16 },
+    };
+    for (int k = 0; k < 2; k++) {
+        g_case = aS[k].name;
+        setup();
+        setup_screen(aS[k].W, aS[k].H, aS[k].l, aS[k].t, aS[k].r, aS[k].b);
+        tick();
+        for (int c = 0; c < 2; c++) {
+            fg.bCheat = c; tick();
+            openTrayT();
+            CHECK(touchUi_IsTrayOpen() && touchUi_GetTrayRows() == 2);
+            int bAll = 1, bOwn = 1;
+            for (int i = TOUCHUI_BTN_TRAYGYRO; i <= TOUCHUI_BTN_TRAYKEYS; i++) {
+                if (!touchUi_GetButton(i, &x, &y, &r)) continue;
+                if (x - 26 < (aS[k].l > 8 ? aS[k].l : 0) - 0.5f || x + 26 > aS[k].W - aS[k].r + 0.5f) bAll = 0;
+                // (its own touch: it lights as held -- the others not -- and the system taking the touch fires nothing)
+                float aIdle[TOUCHUI_BTN_COUNT];
+                for (int j = TOUCHUI_BTN_TRAYGYRO; j <= TOUCHUI_BTN_TRAYKEYS; j++) aIdle[j] = buttonFillAlpha(j);
+                down(6, x + 9, y + 9); tick();
+                for (int j = TOUCHUI_BTN_TRAYGYRO; j <= TOUCHUI_BTN_TRAYKEYS; j++)
+                    if ((buttonFillAlpha(j) > aIdle[j] + 0.01f) != (j == i)) bOwn = 0;
+                cancel(6); tick();
+                if (!touchUi_IsTrayOpen()) bOwn = 0;
+            }
+            CHECK(bAll && bOwn);
+            if (touchUi_GetOptRow() != 3) { downOn(2, TOUCHUI_BTN_TRAYOPACITY); upOn(2, TOUCHUI_BTN_TRAYOPACITY); tick(); }
+            float lastY = 0; for (int i = TOUCHUI_BTN_TRAYGYRO; i <= TOUCHUI_BTN_TRAYKEYS; i++) if (touchUi_GetButton(i, &x, &y, &r)) lastY = fmaxf(lastY, y);
+            CHECK(touchUi_GetOpacitySlider(&sx, &sy, &sw, &sh) && sy >= lastY + 26 - 0.5f && sx >= -0.5f && sx + sw <= aS[k].W + 0.5f);
+            closeTrayT();
+        }
+        fg.bCheat = 0;
+    }
+}
+
 int main(void)
 {
     test_stick();
@@ -4084,6 +4278,7 @@ int main(void)
     test_shared_wheel();
     test_other_photo_and_cancel();
     test_level_tray();
+    test_opacity();
     check_layout("layout: iPhone-sized (852x393, notch insets)", 852, 393, 59, 0, 59, 21);
     check_layout("layout: Android phone (873x393, cutout on the left)", 873, 393, 32, 0, 0, 0);
     check_layout("layout: Android phone (873x393, cutout on the right)", 873, 393, 0, 0, 32, 0);

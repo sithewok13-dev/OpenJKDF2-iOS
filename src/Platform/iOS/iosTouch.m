@@ -391,6 +391,22 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 // (round to the first); held still IOSTOUCH_MENU_HOLD (a ring fills), back to
 // 1x. Remembered under this key.
 #define IOSTOUCH_LOOKSCALE_DEFAULTS_KEY @"iosTouchLookScale"
+// The tray's OPACITY: how strongly the touch controls show in play (every
+// button with its label, rings and pictures, the move stick, its run marker
+// and the force meter), times each one's own idle or pressed look; the tray,
+// the rows under it, the wheels, the readouts (FPS, a burst's count) and
+// Action Freeze's X stay at full. A tap opens its slider under the tray (a
+// tap again, or a touch anywhere off the slider's backing, closes it): from
+// IOSTOUCH_OPACITY_MIN, so MENU can always be found, to 100%, in
+// IOSTOUCH_OPACITY_STEP steps, the controls following as it slides, kept as
+// the finger lifts. Held still IOSTOUCH_MENU_HOLD (a ring fills), back to
+// 100%. Remembered under this key (100% unless set). The slider's backing is
+// IOSTOUCH_OPACITY_W x _H, a row under the tray as the other rows are.
+#define IOSTOUCH_OPACITY_DEFAULTS_KEY @"iosTouchOpacity"
+#define IOSTOUCH_OPACITY_MIN 0.2
+#define IOSTOUCH_OPACITY_STEP 0.05
+#define IOSTOUCH_OPACITY_W 240.0
+#define IOSTOUCH_OPACITY_H 44.0
 // The tray's LEVEL in cheat mode (in multiplayer only for a co-op host who
 // may pick the level): a tap opens the list of the episode's levels
 // (iosGame_LevelRowInfo; Jedi Knight's light and dark paths a row each, Mysteries of the Sith's secret level a last one when the files have it), the game held still while it is open (single player); a level tapped loads, its X or a tap off it closes it. The list
@@ -429,6 +445,7 @@ enum {
     KIND_GYRO,     // (MENU tray) gyro aiming on or off (back to its last mode), when the touch lifts on it; held: its options
     KIND_RUN,      // (MENU tray) the game's Always Run option on or off, when the touch lifts on it
     KIND_LOOKSPEED, // (MENU tray) the touch look speed's next step, when the touch lifts on it; held: back to 1x
+    KIND_OPACITY,  // (MENU tray) opens or closes its slider under the tray, when the touch lifts on it; held: back to 100%
     KIND_GYROMODE, // (gyro options) the mode gyro aiming goes on in: TOUCH or ALWAYS
     KIND_GYROSENS, // (gyro options) the next gyro aiming sensitivity, when the touch lifts on it
     KIND_CAMSWITCH, // (MENU tray) shows or hides the CAMERA button, when the touch lifts on it
@@ -489,7 +506,7 @@ enum {
     BTN_SABER,  // between CAMERA and QUICK SAVE, once the saber is had (or sithewok is on)
     BTN_CHEAT,  // ...right of SABER, in cheat mode (switched on in the tray)
     BTN_VIEW,   // ...right of CHEAT: first or third person (switched on in the tray)
-    BTN_TRAYGYRO, BTN_TRAYRUN, BTN_TRAYLOOK, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYAUTO, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS, // MENU's tray (left to right), hidden unless it is open (LEVEL only while sithewok is on; in multiplayer only for the co-op host)
+    BTN_TRAYGYRO, BTN_TRAYRUN, BTN_TRAYLOOK, BTN_TRAYOPACITY, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYAUTO, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS, // MENU's tray (left to right), hidden unless it is open (LEVEL only while sithewok is on; in multiplayer only for the co-op host)
     // Rows under the tray, one at a time (iosTouch_optRow), hidden until opened:
     BTN_GYROOPT_MODE, BTN_GYROOPT_SENS,  // the gyro options (a hold on the tray's GYRO)
     BTN_CAMROW_PHOTO, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE, // the camera options (a hold on the tray's camera switch)
@@ -522,6 +539,7 @@ static iosTouchButton iosTouch_aButtons[] = {
     [BTN_TRAYGYRO]  = { "GYRO",        KIND_GYRO,     -1,                  20.0f, 0 },
     [BTN_TRAYRUN]   = { "",            KIND_RUN,      -1,                  20.0f, 0 },
     [BTN_TRAYLOOK]  = { "LOOK",        KIND_LOOKSPEED, -1,                 20.0f, 0 },
+    [BTN_TRAYOPACITY] = { "OPACITY",   KIND_OPACITY,  -1,                  20.0f, 0 },
     [BTN_TRAYFPS]   = { "FPS",         KIND_FPS,      -1,                  20.0f, 0 },
     [BTN_TRAYCAM]   = { "",            KIND_CAMSWITCH, -1,                 20.0f, 0 },
     [BTN_TRAYAUTO]  = { "AUTO\nPLAY",   KIND_AUTOPLAY, -1,                  20.0f, 0 },
@@ -553,9 +571,10 @@ static int iosTouch_IsCamOptButton(int button)
     return button >= BTN_CAMOPT_FIRST && button <= BTN_CAMOPT_LAST;
 }
 
-// The rows under the tray: the gyro options or the camera options (one at a
-// time), and the photo kinds under the camera options
-enum { IOSTOUCH_ROW_NONE = 0, IOSTOUCH_ROW_GYRO, IOSTOUCH_ROW_CAMERA };
+// The rows under the tray: the gyro options, the camera options or
+// OPACITY's slider (one at a time), and the photo kinds under the camera
+// options
+enum { IOSTOUCH_ROW_NONE = 0, IOSTOUCH_ROW_GYRO, IOSTOUCH_ROW_CAMERA, IOSTOUCH_ROW_OPACITY };
 static int iosTouch_IsOptButton(int button)
 {
     return (button >= BTN_GYROOPT_FIRST && button <= BTN_GYROOPT_LAST)
@@ -569,10 +588,19 @@ static int iosTouch_IsRowOpener(int button)
 }
 
 // A tray button with a hold of its own (a ring fills; the lift is then no
-// tap): the row openers, and LOOK (back to 1x)
+// tap): the row openers, LOOK (back to 1x) and OPACITY (back to 100%)
 static int iosTouch_IsTrayHold(int button)
 {
-    return iosTouch_IsRowOpener(button) || button == BTN_TRAYLOOK;
+    return iosTouch_IsRowOpener(button) || button == BTN_TRAYLOOK || button == BTN_TRAYOPACITY;
+}
+
+// A strength for OPACITY: in its range, at its nearest step (a kept one that
+// isn't a number: the lowest)
+static float iosTouch_OpacityStep(float k)
+{
+    if (!(k > IOSTOUCH_OPACITY_MIN)) return IOSTOUCH_OPACITY_MIN;
+    if (k > 1.0f) return 1.0f;
+    return roundf(k / IOSTOUCH_OPACITY_STEP) * IOSTOUCH_OPACITY_STEP;
 }
 
 static int iosTouch_IsQuickHold(int button)
@@ -839,8 +867,9 @@ static int iosTouch_bTopText = 0;
 static float iosTouch_aTopText[3];
 // ...and where it goes while MENU's tray is open (it would be under the
 // tray: the level count, LEVEL's hint): under the tray, or under the row
-// open below it (the gyro options, the camera options, the photo kinds)
-static float iosTouch_aTopTextTray[4][3];
+// open below it (the gyro options, the camera options, the photo kinds,
+// OPACITY's slider)
+static float iosTouch_aTopTextTray[5][3];
 static float iosTouch_aLayoutGauge[4];
 static int iosTouch_layoutCutoutRight = -1;
 // The wheel: open or not (and whether it is open to tap a slice), which one
@@ -887,6 +916,11 @@ static int iosTouch_bTrayOpen = 0;
 static int iosTouch_bTrayLevel = 0; // the tray's LEVEL in its row (sithewok on, not multiplayer, as the tray last read it)
 static float iosTouch_lookScale = 1.0f; // the tray's LOOK (remembered)
 static const float iosTouch_aLookSteps[] = { 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 2.5f, 3.0f };
+static float iosTouch_opacity = 1.0f; // the tray's OPACITY: the touch controls' strength (remembered)
+// MENU's tray as laid out: one row, or two where one would run off the left
+// (iosTouch_TrayTopCount); each row's left and right buttons' x and its y
+static int iosTouch_numTrayRows = 1;
+static CGFloat iosTouch_aTrayRow[2][3];
 static int iosTouch_menuPulse = 0;
 static int iosTouch_bShowFps = 0;
 static int iosTouch_bShowCamera = 0;
@@ -1055,23 +1089,40 @@ static int iosTouch_TrayFromRight(int button)
     return n;
 }
 
+// How many of the tray's n buttons go in its top row: all of them where the
+// one row, ending under MENU (at menuX), stays right of left (the safe area's
+// edge); otherwise (the smallest iPhones, with OPACITY and LEVEL in it) the
+// first half, the larger, and the rest in a second row just under it, both
+// rows ending at the same place
+static int iosTouch_TrayTopCount(int n, CGFloat menuX, CGFloat left)
+{
+    if (menuX - IOSTOUCH_TRAY_STEP * (n - 1) - 26 >= left) return n;
+    return (n + 1) / 2;
+}
+
 // Where MENU's tray goes (see layoutSubviews), with FORCE at *pForce: a row
-// of its buttons, IOSTOUCH_TRAY_STEP apart, just under MENU, the keyboard (the
-// right end) right below it, moved left (4 pt at a time, as long as its
-// backing stays right of left, the safe area's edge) until its backing is
-// IOSTOUCH_TRAY_CLEAR from every button round FIRE (FIRE, ALT, DUCK, ACT,
-// JUMP and FORCE) -- or, if it never is, to wherever the nearest of them is
-// furthest from it. Returns the keyboard button's centre; *pClear is how far
-// the backing is from the nearest of them, *pForceClear how far from FORCE.
+// of its buttons (or two: iosTouch_TrayTopCount), IOSTOUCH_TRAY_STEP apart,
+// just under MENU, the keyboard (the right end) right below it, moved left
+// (4 pt at a time, as long as its backing stays right of left, the safe
+// area's edge) until its backing is IOSTOUCH_TRAY_CLEAR from every button
+// round FIRE (FIRE, ALT, DUCK, ACT, JUMP and FORCE) -- or, if it never is, to
+// wherever the nearest of them is furthest from it. Returns the keyboard
+// button's centre (the top row's right end); *pClear is how far the backing
+// is from the nearest of them, *pForceClear how far from FORCE.
 // With pForce NULL, FORCE is left out (FORCE's own search: how clear the tray
 // can be without it).
 // bAsShown: the row as it is now, LEVEL in it while sithewok is on (where
-// the tray goes); otherwise the row without LEVEL (FORCE's own search, so
-// FORCE never moves as the cheat goes on and off).
+// the tray goes); otherwise the row without LEVEL, nor OPACITY (FORCE's own
+// search, so FORCE never moves as the cheat goes on and off, and stays where
+// it was before OPACITY joined the tray: on a few screens the open tray now
+// reaches over it, as it already did there with LEVEL in it, and takes the
+// touches there first while it is open).
 static CGPoint iosTouch_TrayKeysAt(CGPoint menu, CGFloat left, const CGPoint* pForce, CGFloat* pClear, CGFloat* pForceClear, int bAsShown)
 {
     const CGFloat ty = menu.y + 52;
-    const CGFloat len = IOSTOUCH_TRAY_STEP * (bAsShown ? iosTouch_TrayFromRight(BTN_TRAY_FIRST) : BTN_TRAY_LAST - BTN_TRAYGYRO - 1);
+    const int n = bAsShown ? iosTouch_TrayFromRight(BTN_TRAY_FIRST) + 1 : BTN_TRAY_LAST - BTN_TRAY_FIRST - 1;
+    const int top = iosTouch_TrayTopCount(n, menu.x, left);
+    const CGFloat len = IOSTOUCH_TRAY_STEP * (top - 1), len2 = IOSTOUCH_TRAY_STEP * (n - top - 1); // (the second row's, if any)
     CGFloat kx = menu.x, bestClear = -1e9, bestForce = 1e9;
     for (CGFloat x = menu.x; ; x -= 4) {
         CGFloat clear = 1e9, forceClear = 1e9;
@@ -1082,7 +1133,9 @@ static CGPoint iosTouch_TrayKeysAt(CGPoint menu, CGFloat left, const CGPoint* pF
                 if (!pForce) continue;
                 p = *pForce;
             }
-            CGFloat d = iosTouch_DistToSegment(p, x - len, ty, x, ty) - 26 - c->radius;
+            CGFloat d = iosTouch_DistToSegment(p, x - len, ty, x, ty);
+            if (top < n) d = MIN(d, iosTouch_DistToSegment(p, x - len2, ty + 52, x, ty + 52));
+            d -= 26 + c->radius;
             clear = MIN(clear, d);
             if (i == BTN_FORCE) forceClear = d;
         }
@@ -1488,7 +1541,8 @@ typedef struct {
     UILabel* aCardHiltName[2];
     CAShapeLayer* aCardHiltArrow[2];
     CAShapeLayer* plusEdge;       // "+ 2ND SABER"'s dashed edge
-    UIView* trayBack;       // behind MENU's tray
+    UIView* trayBack;       // behind MENU's tray...
+    UIView* trayBack2;      // ...and behind its second row, where it takes two
     UIView* cameraFlash;    // the CAMERA button's white flash, over everything
     UIImpactFeedbackGenerator* cameraTap;
     UIView* camOptBack;     // behind the photo kinds
@@ -1497,6 +1551,9 @@ typedef struct {
     CAShapeLayer* camOptRing; // the tray's camera switch, held to open the camera options
     CAShapeLayer* gyroOptRing; // the tray's GYRO, held to open the gyro options
     CAShapeLayer* lookRing;    // the tray's LOOK, held to go back to 1x
+    CAShapeLayer* opacityRing; // the tray's OPACITY, held to go back to 100%
+    UIView* opacityBack;       // OPACITY's slider: its backing, a row under the tray...
+    UISlider* opacitySlider;   // ...and the slider
     CAShapeLayer* runTrayChevrons; // the tray's RUN: the run marker's "^^"
     // The level list (the tray's LEVEL, in cheat mode): made the first time
     // it opens -- the game dimmed behind a card, its title, X and the rows
@@ -2014,6 +2071,14 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         trayBack.userInteractionEnabled = NO;
         trayBack.hidden = YES;
         [self insertSubview:trayBack belowSubview:aButtonViews[BTN_TRAY_FIRST]];
+        trayBack2 = [[UIView alloc] initWithFrame:CGRectZero]; // (its second row's, the same)
+        trayBack2.backgroundColor = trayBack.backgroundColor;
+        trayBack2.layer.cornerRadius = 26.0;
+        trayBack2.layer.borderWidth = 1.5;
+        trayBack2.layer.borderColor = trayBack.layer.borderColor;
+        trayBack2.userInteractionEnabled = NO;
+        trayBack2.hidden = YES;
+        [self insertSubview:trayBack2 belowSubview:aButtonViews[BTN_TRAY_FIRST]];
         for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) aButtonViews[i].hidden = YES;
         iosTouch_GyroSetup();
         [self refreshGyroLabels]; // (and their fonts)
@@ -2101,6 +2166,31 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
                 if (fabsf(iosTouch_aLookSteps[i] - k) < 0.01f) iosTouch_lookScale = iosTouch_aLookSteps[i];
             }
         }
+        // the tray's OPACITY: its hold ring, the strength kept (100% unless
+        // set), and its slider, on a backing like the rows', over the
+        // buttons, hidden until a tap on OPACITY opens it. (The slider takes
+        // its own touches; one on the backing beside it comes to the
+        // overlay, which lets it be: touchesBegan.)
+        opacityRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_TRAYOPACITY].radius);
+        [aButtonViews[BTN_TRAYOPACITY].layer addSublayer:opacityRing];
+        if ([[NSUserDefaults standardUserDefaults] objectForKey:IOSTOUCH_OPACITY_DEFAULTS_KEY])
+            iosTouch_opacity = iosTouch_OpacityStep([[NSUserDefaults standardUserDefaults] floatForKey:IOSTOUCH_OPACITY_DEFAULTS_KEY]);
+        opacityBack = [[UIView alloc] initWithFrame:CGRectMake(0, 0, IOSTOUCH_OPACITY_W, IOSTOUCH_OPACITY_H)];
+        opacityBack.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.55];
+        opacityBack.layer.cornerRadius = IOSTOUCH_OPACITY_H * 0.5;
+        opacityBack.layer.borderWidth = 1.5;
+        opacityBack.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.4].CGColor;
+        opacityBack.hidden = YES;
+        opacitySlider = [[UISlider alloc] initWithFrame:CGRectMake(16, 7, IOSTOUCH_OPACITY_W - 32, 30)];
+        opacitySlider.minimumValue = IOSTOUCH_OPACITY_MIN;
+        opacitySlider.maximumValue = 1.0;
+        opacitySlider.value = iosTouch_opacity;
+        opacitySlider.minimumTrackTintColor = [UIColor colorWithRed:0.47 green:0.78 blue:1.0 alpha:0.95];
+        [opacitySlider addTarget:self action:@selector(opacitySlid:) forControlEvents:UIControlEventValueChanged];
+        [opacitySlider addTarget:self action:@selector(opacityLifted:)
+                forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+        [opacityBack addSubview:opacitySlider];
+        [self insertSubview:opacityBack aboveSubview:aButtonViews[IOSTOUCH_NUM_BUTTONS - 1]];
         // the tray's RUN: the stick's run marker's "^^", as big as there
         {
             const CGFloat r = iosTouch_aButtons[BTN_TRAYRUN].radius;
@@ -2202,6 +2292,7 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         stickKnob = IOSTouch_MakeCircle(IOSTOUCH_STICK_KNOB, 0.30);
         stickBase.hidden = YES;
         stickKnob.hidden = YES;
+        stickBase.alpha = stickKnob.alpha = iosTouch_opacity; // (OPACITY's)
         [self addSubview:stickBase];
         [self addSubview:stickKnob];
 
@@ -2807,7 +2898,9 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     // IOSTOUCH_TRAY_CLEAR clear of all of them, never off the left of the
     // screen (iosTouch_TrayKeysAt); FORCE's placement above makes sure FORCE
     // never stops it, unless FORCE fell back to its last resort. (While open,
-    // the tray is on top and takes its own touches.)
+    // the tray is on top and takes its own touches.) Where one row would run
+    // off the left even right under MENU, it takes two, the first half of its
+    // buttons above the rest, both ending there (iosTouch_TrayTopCount).
     {
         iosTouchButton* m = &iosTouch_aButtons[BTN_MENU];
         iosTouchButton* f = &iosTouch_aButtons[BTN_FORCE];
@@ -2815,17 +2908,31 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         CGPoint k = iosTouch_TrayKeysAt(CGPointMake(m->x, m->y), left, &force, NULL, NULL, 1);
         // (LEVEL, while sithewok is on, right of the cheat switch; otherwise
         // the row closes up, from the keyboard leftwards, as it always was)
-        const CGFloat len = IOSTOUCH_TRAY_STEP * iosTouch_TrayFromRight(BTN_TRAY_FIRST);
+        const int n = iosTouch_TrayFromRight(BTN_TRAY_FIRST) + 1;
+        const int topN = iosTouch_TrayTopCount(n, m->x, left);
+        iosTouch_numTrayRows = topN < n ? 2 : 1;
         for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) {
-            iosTouch_aButtons[i].x = k.x - IOSTOUCH_TRAY_STEP * iosTouch_TrayFromRight(i);
-            iosTouch_aButtons[i].y = k.y;
+            const int fromRight = iosTouch_TrayFromRight(i);
+            const int bLower = n - 1 - fromRight >= topN; // (its place from the left: in the second row)
+            iosTouch_aButtons[i].x = k.x - IOSTOUCH_TRAY_STEP * (bLower ? fromRight : fromRight - (n - topN));
+            iosTouch_aButtons[i].y = k.y + (bLower ? 52 : 0);
         }
-        trayBack.frame = CGRectMake(k.x - len - 26, k.y - 26, len + 52, 52);
+        UIView* aBack[2] = { trayBack, trayBack2 };
+        for (int r = 0; r < 2; r++) {
+            const CGFloat len = IOSTOUCH_TRAY_STEP * ((r == 0 ? topN : n - topN) - 1);
+            CGFloat* row = iosTouch_aTrayRow[r];
+            row[0] = k.x - len;
+            row[1] = k.x;
+            row[2] = k.y + 52 * r;
+            aBack[r].frame = CGRectMake(row[0] - 26, row[2] - 26, len + 52, 52);
+        }
+        trayBack2.hidden = !iosTouch_bTrayOpen || iosTouch_numTrayRows < 2;
     }
     // The rows under the tray, each centred under the button that opens it
     // (kept on screen): the gyro options under GYRO and the camera options
-    // under the camera switch, a row down; the photo kinds under PHOTO, a
-    // row further
+    // under the camera switch, a row down from the tray (its second row, if
+    // it has two); the photo kinds under PHOTO, a row further
+    const CGFloat trayLastY = iosTouch_aTrayRow[iosTouch_numTrayRows - 1][2];
     {
         const int aFirst[3] = { BTN_GYROOPT_FIRST, BTN_CAMROW_FIRST, BTN_CAMOPT_FIRST };
         const int aLast[3] = { BTN_GYROOPT_LAST, BTN_CAMROW_LAST, BTN_CAMOPT_LAST };
@@ -2838,13 +2945,20 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
             CGFloat x0 = c->x - len * 0.5;
             x0 = MIN(x0, right - 26 - len);
             x0 = MAX(x0, left + 26);
-            CGFloat y = c->y + 52;
+            CGFloat y = (k < 2 ? trayLastY : c->y) + 52;
             for (int i = aFirst[k]; i <= aLast[k]; i++) {
                 iosTouch_aButtons[i].x = x0 + IOSTOUCH_TRAY_STEP * (i - aFirst[k]);
                 iosTouch_aButtons[i].y = y;
             }
             aRowBack[k].frame = CGRectMake(x0 - 26, y - 26, len + 52, 52);
         }
+    }
+    // OPACITY's slider: centred under OPACITY (kept on screen), a row down
+    // from the tray, as the rows are
+    {
+        const CGFloat w = IOSTOUCH_OPACITY_W, h = IOSTOUCH_OPACITY_H;
+        const CGFloat cx = MAX(MIN(iosTouch_aButtons[BTN_TRAYOPACITY].x, right - w * 0.5), left + w * 0.5);
+        opacityBack.frame = CGRectMake(round(cx - w * 0.5), round(trayLastY + 52 - h * 0.5), w, h);
     }
     burstLabel.center = iosTouch_bBurstUnder
         ? CGPointMake(iosTouch_aButtons[BTN_CAMERA].x, iosTouch_aButtons[BTN_CAMERA].y + iosTouch_aButtons[BTN_CAMERA].radius + 12)
@@ -2867,9 +2981,9 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     // widest stretch of game view that no button reaches into, all the way
     // down IOSTOUCH_TOPTEXT_DEPTH (stacked lines too), so that on a short
     // screen it never runs behind FORCE, DUCK or the rest
-    for (int k = 0; k < 5; k++) {
-        // (k 1..4: just under the tray's backing, or the row's)
-        UIView* aUnder[4] = { trayBack, gyroOptBack, camRowBack, camOptBack };
+    for (int k = 0; k < 6; k++) {
+        // (k 1..5: just under the tray's backing, or the row's)
+        UIView* aUnder[5] = { iosTouch_numTrayRows > 1 ? trayBack2 : trayBack, gyroOptBack, camRowBack, camOptBack, opacityBack };
         const CGFloat textTop = k == 0 ? top + 26 + iosTouch_aButtons[BTN_MENU].radius + IOSTOUCH_TOPTEXT_GAP
                                        : CGRectGetMaxY(aUnder[k - 1].frame) + IOSTOUCH_TOPTEXT_GAP;
         CGFloat half = MIN(W * 0.5 - (left + IOSTOUCH_TOPTEXT_SIDE), (right - IOSTOUCH_TOPTEXT_SIDE) - W * 0.5);
@@ -2940,16 +3054,18 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
 // The open MENU tray is drawn on top of the rest (on a very short screen it can
 // lie over the buttons round FIRE), so its buttons come first: anywhere on its
 // backing (which reaches as far round each as that forgiveness does) is on the
-// nearest one, the corners between two of them too.
+// nearest one in that row, the corners between two of them too.
 - (int)buttonAt:(CGPoint)p
 {
     int best = -1;
     CGFloat bestDist = 0;
-    iosTouchButton* l = &iosTouch_aButtons[BTN_TRAY_FIRST];
-    iosTouchButton* r = &iosTouch_aButtons[BTN_TRAY_LAST];
-    if (iosTouch_bTrayOpen && iosTouch_DistToSegment(p, l->x, l->y, r->x, r->y) <= 26) {
+    iosTouchButton* l;
+    iosTouchButton* r;
+    for (int k = 0; k < iosTouch_numTrayRows && iosTouch_bTrayOpen && best < 0; k++) {
+        const CGFloat* row = iosTouch_aTrayRow[k];
+        if (iosTouch_DistToSegment(p, row[0], row[2], row[1], row[2]) > 26) continue;
         for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) {
-            if (!iosTouch_TrayShown(i)) continue;
+            if (!iosTouch_TrayShown(i) || fabs(iosTouch_aButtons[i].y - row[2]) > 1.0) continue;
             CGFloat d = fabs(p.x - iosTouch_aButtons[i].x);
             if (best < 0 || d < bestDist) {
                 best = i;
@@ -3028,6 +3144,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
                   || (i == BTN_TRAYCHEAT && iosTouch_bShowCheat)
                   || (i == BTN_TRAYVIEW && iosTouch_bShowView)
                   || (i == BTN_TRAYRUN && iosGame_IsAlwaysRun())
+                  || (i == BTN_TRAYOPACITY && iosTouch_optRow == IOSTOUCH_ROW_OPACITY)
                   || (iosTouch_IsCamOptButton(i) && (iosTouch_cameraKinds & iosTouch_aButtons[i].bin))
                   || (i == BTN_CAMROW_PHOTO && iosTouch_bKindsOpen)
                   || (i == BTN_CAMROW_FREEZE && iosTouch_bFreezeOn)
@@ -3045,6 +3162,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         if (iosTouch_SaberWheelHides(i)) alpha = 0.0; // (the saber wheel open: its parts have the room, the top row stays)
         if (i == BTN_TRAYAUTO && iosGame_IsMultiplayer()) alpha *= 0.45; // (single player only)
         if (iosTouch_bAutoplay && (!iosTouch_bApShown || bTray)) alpha = 0.0; // (AUTOPLAY's show: nothing, or the controls as played)
+        if (!bTray) alpha *= iosTouch_opacity; // (OPACITY: the touch controls; the tray and its rows at full)
         aButtonViews[i].alpha = alpha;
         if (i != BTN_FIRE) {
             aButtonViews[i].layer.borderColor = bOn ? [UIColor colorWithRed:1.0 green:0.85 blue:0.3 alpha:0.95].CGColor
@@ -3053,7 +3171,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     }
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    forceRing.opacity = iosTouch_SaberWheelHides(BTN_FORCE) ? 0.0 : bForceRingFull ? 1.0 : (iosTouch_aButtonHeld[BTN_FORCE] ? 1.0 : IOSTOUCH_IDLE_ALPHA);
+    forceRing.opacity = iosTouch_SaberWheelHides(BTN_FORCE) ? 0.0 : (bForceRingFull ? 1.0 : (iosTouch_aButtonHeld[BTN_FORCE] ? 1.0 : IOSTOUCH_IDLE_ALPHA)) * iosTouch_opacity;
     if (iosTouch_bAutoplay && !iosTouch_bApShown) forceRing.opacity = 0.0; // (AUTOPLAY's show, nothing shown)
     for (int k = 0; k < 2; k++) aCheatSub[k].hidden = !iosTouch_bCheatOn;
     runTrayChevrons.strokeColor = [UIColor colorWithWhite:1.0 alpha:(iosGame_IsAlwaysRun() ? 1.0 : 0.85)].CGColor;
@@ -3131,13 +3249,14 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
 
 // The run marker's look: as an idle button (a little darker inside, like the
 // FPS readout, so its "^^" shows over bright walls too), or lit (blue, like
-// FORCE WHEEL while its wheel is open) at full strength while the thumb is on it
+// FORCE WHEEL while its wheel is open) at full strength while the thumb is on
+// it -- both times OPACITY's strength, as the buttons
 - (void)setRunLit:(int)bLit
 {
     bLit = bLit != 0;
     if (bRunLit == bLit) return;
     bRunLit = bLit;
-    runMarker.alpha = bLit ? 1.0 : IOSTOUCH_IDLE_ALPHA;
+    runMarker.alpha = (bLit ? 1.0 : IOSTOUCH_IDLE_ALPHA) * iosTouch_opacity;
     runMarker.backgroundColor = bLit ? [UIColor colorWithRed:0.47 green:0.78 blue:1.0 alpha:0.55]
                                      : [UIColor colorWithWhite:0.0 alpha:0.35];
     runMarker.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:(bLit ? 0.85 : 0.45)].CGColor;
@@ -3146,7 +3265,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     runChevrons.strokeColor = [UIColor colorWithWhite:1.0 alpha:(bLit ? 1.0 : 0.85)].CGColor;
     runLink.strokeColor = bLit ? [UIColor colorWithRed:0.47 green:0.78 blue:1.0 alpha:0.95].CGColor
                                : [UIColor colorWithWhite:1.0 alpha:0.45].CGColor;
-    runLink.opacity = bLit ? 1.0 : IOSTOUCH_IDLE_ALPHA;
+    runLink.opacity = (bLit ? 1.0 : IOSTOUCH_IDLE_ALPHA) * iosTouch_opacity;
     [CATransaction commit];
 }
 
@@ -3223,6 +3342,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     iosTouch_bTrayOpen = bOpen;
     if (!bOpen) [self setOptRow:IOSTOUCH_ROW_NONE];
     trayBack.hidden = !bOpen;
+    trayBack2.hidden = !bOpen || iosTouch_numTrayRows < 2;
     for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) aButtonViews[i].hidden = !bOpen;
     [self refreshTrayLevel]; // (LEVEL only while sithewok is on)
     if (!bOpen) {
@@ -3232,6 +3352,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
             if (s->button == BTN_TRAYCAM) [self setRing:camOptRing progress:0.0];
             if (s->button == BTN_TRAYGYRO) [self setRing:gyroOptRing progress:0.0];
             if (s->button == BTN_TRAYLOOK) [self setRing:lookRing progress:0.0];
+            if (s->button == BTN_TRAYOPACITY) [self setRing:opacityRing progress:0.0];
             if (s->button == BTN_TRAYLEVEL) {
                 [self endLevelPick:s]; // (closing the tray: no level)
                 [self setRing:levelRing progress:0.0];
@@ -4057,6 +4178,8 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     for (int i = BTN_CAMROW_FIRST; i <= BTN_CAMROW_LAST; i++) aButtonViews[i].hidden = row != IOSTOUCH_ROW_CAMERA;
     camOptBack.hidden = !iosTouch_bKindsOpen;
     for (int i = BTN_CAMOPT_FIRST; i <= BTN_CAMOPT_LAST; i++) aButtonViews[i].hidden = !iosTouch_bKindsOpen;
+    opacityBack.hidden = row != IOSTOUCH_ROW_OPACITY;
+    opacitySlider.value = iosTouch_opacity;
     [self releaseOptTouches];
     [self refreshGyroLabels];
     [self refreshButtonLooks];
@@ -4401,10 +4524,11 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     aButtonViews[BTN_TRAYJUMP].text = aJumpName[iosTouch_jumpStyle];
     aButtonViews[BTN_TRAYCTRL].text = iosTouch_bSwapped ? @"CONTROLS\nSWAPPED" : @"CONTROLS\nNORMAL";
     aButtonViews[BTN_TRAYLOOK].text = [NSString stringWithFormat:@"LOOK\n%gx", (double)iosTouch_lookScale];
+    aButtonViews[BTN_TRAYOPACITY].text = [NSString stringWithFormat:@"OPACITY\n%d%%", (int)lroundf(iosTouch_opacity * 100.0f)];
     // GYRO and SENS say what they are set to on a second line: at the size
     // of a two-line label, condensed so "ALWAYS" fits a circle this small,
     // and smaller where a line is longer ("CONTROLS"), inside the 1.5 pt border
-    static const int aTwoLine[] = { BTN_TRAYGYRO, BTN_TRAYLOOK, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_GYROOPT_MODE, BTN_GYROOPT_SENS, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE };
+    static const int aTwoLine[] = { BTN_TRAYGYRO, BTN_TRAYLOOK, BTN_TRAYOPACITY, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_GYROOPT_MODE, BTN_GYROOPT_SENS, BTN_CAMROW_SELFIES, BTN_CAMROW_FREEZE };
     for (int k = 0; k < IOSTOUCH_COUNT(aTwoLine); k++) {
         const int i = aTwoLine[k];
         const CGFloat r = iosTouch_aButtons[i].radius;
@@ -4420,14 +4544,42 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     [self refreshGyroLabels];
 }
 
+// The touch controls at OPACITY's strength k (to its steps): every button
+// but the tray's and its rows' (refreshButtonLooks), the move stick and its
+// run marker; the slider and OPACITY's label follow. Remembered with bKeep.
+- (void)setOpacity:(float)k keep:(int)bKeep
+{
+    iosTouch_opacity = iosTouch_OpacityStep(k);
+    opacitySlider.value = iosTouch_opacity;
+    stickBase.alpha = stickKnob.alpha = iosTouch_opacity;
+    const int bLit = bRunLit > 0;
+    bRunLit = -1; // (its look made again, at this strength)
+    [self setRunLit:bLit];
+    [self refreshGyroLabels];
+    [self refreshButtonLooks];
+    if (bKeep) [[NSUserDefaults standardUserDefaults] setFloat:iosTouch_opacity forKey:IOSTOUCH_OPACITY_DEFAULTS_KEY];
+}
+
+// OPACITY's slider moved (as the finger slides): the controls follow at once...
+- (void)opacitySlid:(UISlider*)slider
+{
+    [self setOpacity:slider.value keep:0];
+}
+
+// ...and lifted (or the touch taken by iOS): the strength kept
+- (void)opacityLifted:(UISlider*)slider
+{
+    [self setOpacity:slider.value keep:1];
+}
+
 // The hold ring of a tray button with a hold of its own (iosTouch_IsTrayHold)
 - (CAShapeLayer*)trayHoldRing:(int)button
 {
-    return button == BTN_TRAYGYRO ? gyroOptRing : button == BTN_TRAYLOOK ? lookRing : camOptRing;
+    return button == BTN_TRAYGYRO ? gyroOptRing : button == BTN_TRAYLOOK ? lookRing : button == BTN_TRAYOPACITY ? opacityRing : camOptRing;
 }
 
 // A tray button picked: it does its thing, and the tray closes -- except
-// after GYRO, LOOK, JUMP and CONTROLS, which stay for another tap
+// after GYRO, LOOK, OPACITY, JUMP and CONTROLS, which stay for another tap
 - (void)useTrayButton:(int)button
 {
     int kind = iosTouch_aButtons[button].kind;
@@ -4496,13 +4648,18 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
         }
         [self setLookScale:next];
     }
+    else if (kind == KIND_OPACITY) {
+        // its slider, under the tray; tapped again, away
+        [self setOptRow:(iosTouch_optRow == IOSTOUCH_ROW_OPACITY ? IOSTOUCH_ROW_NONE : IOSTOUCH_ROW_OPACITY)];
+    }
     else if (kind == KIND_JUMPSTYLE) {
         iosTouch_jumpStyle = (iosTouch_jumpStyle + 1) % IOSGAME_JUMP_NUM_STYLES;
         iosGame_SetForceJumpStyle(iosTouch_jumpStyle);
         [[NSUserDefaults standardUserDefaults] setInteger:iosTouch_jumpStyle forKey:IOSTOUCH_JUMPSTYLE_DEFAULTS_KEY];
         [self refreshGyroLabels];
     }
-    if (kind == KIND_GYRO || kind == KIND_JUMPSTYLE || kind == KIND_CONTROLS || kind == KIND_LOOKSPEED) [self refreshButtonLooks]; // (the tray stays, for another tap)
+    if (kind == KIND_GYRO || kind == KIND_JUMPSTYLE || kind == KIND_CONTROLS || kind == KIND_LOOKSPEED || kind == KIND_OPACITY)
+        [self refreshButtonLooks]; // (the tray stays, for another tap)
     else [self setTrayOpen:0];
 }
 
@@ -5061,6 +5218,7 @@ static void iosTouch_ReadWheelSlices(int kind)
         if (s->role == ROLE_BUTTON && s->button == BTN_MENU) [self setRing:menuRing progress:0.0];
         if (s->role == ROLE_BUTTON && s->button == BTN_TRAYCAM) [self setRing:camOptRing progress:0.0];
         if (s->role == ROLE_BUTTON && s->button == BTN_TRAYLOOK) [self setRing:lookRing progress:0.0];
+        if (s->role == ROLE_BUTTON && s->button == BTN_TRAYOPACITY) [self setRing:opacityRing progress:0.0];
         if (s->role == ROLE_STICK) {
             iosTouch_bStickActive = 0;
             iosTouch_stickX = iosTouch_stickY = 0.0f;
@@ -5283,13 +5441,22 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             continue;
         }
 
+        // OPACITY's slider open: a touch on its backing, beside the slider
+        // (which takes its own touches), does nothing
+        if (iosTouch_optRow == IOSTOUCH_ROW_OPACITY && CGRectContainsPoint(opacityBack.frame, p)) {
+            s->role = ROLE_IGNORED;
+            continue;
+        }
         s->button = [self buttonAt:p];
         // An open tray closes at a touch anywhere else, which then does what
         // it would anyway -- except on MENU, where it only closes the tray
         // ...and a row open under it at a touch anywhere but on the rows
         // (on the tray, the tray stays: holding GYRO or the camera switch
-        // there opens its row instead)
-        if (iosTouch_optRow != IOSTOUCH_ROW_NONE && !iosTouch_IsOptButton(s->button)) [self setOptRow:IOSTOUCH_ROW_NONE];
+        // there opens its row instead; OPACITY's own button leaves its
+        // slider for the lift, which closes it, or the hold)
+        if (iosTouch_optRow != IOSTOUCH_ROW_NONE && !iosTouch_IsOptButton(s->button)
+            && !(iosTouch_optRow == IOSTOUCH_ROW_OPACITY && s->button == BTN_TRAYOPACITY))
+            [self setOptRow:IOSTOUCH_ROW_NONE];
         if (iosTouch_bTrayOpen && !iosTouch_IsTrayButton(s->button) && !iosTouch_IsOptButton(s->button)) {
             [self setTrayOpen:0];
             if (s->button == BTN_MENU) {
@@ -5695,6 +5862,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 if (s->button == BTN_TRAYCAM) [self setRing:camOptRing progress:0.0];
                 if (s->button == BTN_TRAYGYRO) [self setRing:gyroOptRing progress:0.0];
                 if (s->button == BTN_TRAYLOOK) [self setRing:lookRing progress:0.0];
+                if (s->button == BTN_TRAYOPACITY) [self setRing:opacityRing progress:0.0];
                 if (s->button == BTN_CAMERA) [self setRing:cameraRing progress:0.0];
             }
             else if (s->role == ROLE_STICK) {
@@ -6081,6 +6249,21 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 [self setRing:lookRing progress:MIN((CGFloat)((now - s->tDown) / IOSTOUCH_MENU_HOLD), 1.0)];
             }
         }
+        else if (s->button == BTN_TRAYOPACITY && !s->bFired && iosTouch_bTrayOpen) {
+            // The tray's OPACITY held still: the controls back to 100%,
+            // with a word and a tick (the lift then doesn't open or close
+            // its slider)
+            if (known - s->tDown >= IOSTOUCH_MENU_HOLD) {
+                s->bFired = 1;
+                [self setRing:opacityRing progress:0.0];
+                [self setOpacity:1.0f keep:1];
+                iosGame_ShowMessageInPlace("Controls back to full strength");
+                [cameraTap impactOccurred];
+            }
+            else {
+                [self setRing:opacityRing progress:MIN((CGFloat)((now - s->tDown) / IOSTOUCH_MENU_HOLD), 1.0)];
+            }
+        }
         else if (iosTouch_IsRowOpener(s->button) && !s->bFired && iosTouch_bTrayOpen
                  && (s->button != BTN_TRAYGYRO || iosTouch_GyroAvailable())) {
             // The tray's camera switch or GYRO held still: its row opens (the
@@ -6299,6 +6482,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self setRing:menuRing progress:0.0];
     [self setRing:camOptRing progress:0.0];
     [self setRing:lookRing progress:0.0];
+    [self setRing:opacityRing progress:0.0];
     [self setRing:cameraRing progress:0.0];
     [self setRing:wheelRing progress:0.0];
     [self setRing:weaponRing progress:0.0];
@@ -6394,8 +6578,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     stickKnob.center = want;
     stickBase.hidden = NO;
     stickKnob.hidden = NO;
-    stickBase.alpha = 1.0;
-    stickKnob.alpha = 1.0;
+    stickBase.alpha = stickKnob.alpha = iosTouch_opacity; // (as a player's, at OPACITY's strength)
     [self setRunLit:0];
     // the buttons it uses, lit as a thumb on them would
     unsigned int lit = 0;
@@ -6799,7 +6982,8 @@ int iosTouch_GetTopTextRectPt(float* pTop, float* pLeft, float* pRight)
     if (!iosTouch_bTopText) return 0;
     const float* pText = iosTouch_aTopText;
     if (iosTouch_bTrayOpen && iosTouch_pOverlay && !iosTouch_pOverlay.hidden) {
-        const int k = iosTouch_optRow == IOSTOUCH_ROW_CAMERA ? (iosTouch_bKindsOpen ? 3 : 2) : iosTouch_optRow == IOSTOUCH_ROW_GYRO ? 1 : 0;
+        const int k = iosTouch_optRow == IOSTOUCH_ROW_CAMERA ? (iosTouch_bKindsOpen ? 3 : 2) : iosTouch_optRow == IOSTOUCH_ROW_GYRO ? 1
+                    : iosTouch_optRow == IOSTOUCH_ROW_OPACITY ? 4 : 0;
         pText = iosTouch_aTopTextTray[k];
     }
     *pTop = pText[0];

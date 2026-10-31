@@ -75,8 +75,11 @@ everything on a phone.
   - Move stick where the left thumb lands; drag elsewhere to look.
   - QUICK SAVE / QUICK LOAD: a 0.3 s hold with a ring. Sliding off cancels; QUICK
     SAVE wins a tie.
-  - MENU: tap = game menu; hold 0.45 s = tray with SENS, GYRO, FPS, AUTOPLAY,
-    keyboard.
+  - MENU: tap = game menu; hold 0.45 s = tray with SENS, GYRO, OPACITY, FPS,
+    AUTOPLAY, keyboard.
+  - OPACITY (tray): tap = a slider under the tray, 20% to 100% in 5% steps, live,
+    saved on lift (`iosTouchOpacity`, default 100%); hold = back to 100%. Every
+    control in play follows it; the tray, its rows and the wheels stay at full.
   - GYRO: OFF (default) / TOUCH (aims while either thumb is down; lifting both
     freezes the view) / ALWAYS. SENS 1.0/1.5/2.0/3.0, default 1.5. Remembered.
   - FORCE WHEEL and NEXT WPN: tap = next; a 10 pt slide opens the wheel at once; a
