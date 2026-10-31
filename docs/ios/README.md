@@ -1031,8 +1031,14 @@ hand's colours and has its own **HILT** button.
     Mysteries of the Sith, and SABER THROW in Jedi Knight).
   - It's a setting for your own screen. It changes your blade, and in
     multiplayer the blades of players whose game sends their saber choice.
-    Enemy Jedi (the bosses) and
-    players on other builds keep the game's blade.
+    Players on other builds keep the game's blade.
+  - **Enemies get it too.** With FILM on, the enemy Jedi's sabers have the
+    same film look: Yun, Gorc and Pic, Maw, Sariss, Boc and Jerec in Jedi
+    Knight, and the saber-wielding enemies in Mysteries of the Sith. Each
+    keeps its own colour (Maw's dark red, Jerec's red, Gorc's and Pic's
+    orange, Yun's yellow, Sariss's blue, Boc's purple) and the length the
+    game gives it, and big Gorc keeps his broad blade. CLASSIC or REFORGED
+    doesn't change them. With FILM off they look exactly as before.
   - Only the look changes: the reach and damage of every attack stay as the
     game has them.
 - **AUTO OPEN**, an on/off switch under FILM, shows only while a FOLD is in

@@ -158,7 +158,9 @@ int iosSaber_HandHilt(struct SithThing* pThing, int hand);
 // for anyone but the local player (and, in multiplayer, the other players
 // whose games sent their choice), or for the game's own colour.
 // Its shape, spike or beam (or the crossguard's, the CROSS hilt), is put on here too
-// (iosSaberShape), whatever the colour.
+// (iosSaberShape), whatever the colour. With FILM, a character no player plays (a dark
+// Jedi) has its blade drawn as FILM's too, in its own colour (its game material's);
+// without FILM, as the game draws it.
 struct SithThing;
 struct rdThing;
 #define IOSSABER_BLADE_SECOND 2

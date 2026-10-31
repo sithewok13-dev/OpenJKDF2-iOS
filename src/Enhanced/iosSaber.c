@@ -917,6 +917,19 @@ int iosSaber_HandHilt(SithThing* pThing, int hand)
 static rdPolyline* iosSaber_pWidthLine = NULL;
 static flex_t iosSaber_savedBase, iosSaber_savedTip;
 
+// A blade the game gives a character no player plays (an actor, or its
+// corpse: the dark Jedi, and the characters of a level's own scenes): with
+// FILM, FILM's blade (iosSaberShape) in the colour of the game's blade it is
+// (by its material, as the player's ORIGINAL), as long as the game draws it,
+// as wide as FILM makes the game's width; without FILM, or a blade of no
+// colour known here, as the game draws it
+static void iosSaber_BeginCharacterBlade(SithThing* pThing, rdThing* pLine, int blade)
+{
+    if (iosSaberShape_Get() != IOSSABERSHAPE_BEAM || !pThing || (pThing->type != SITH_THING_ACTOR && pThing->type != SITH_THING_CORPSE)) return;
+    const unsigned char* rgb = iosSaber_SwatchOf(pLine->polyline->face.material);
+    if (rgb) iosSaberShape_BeginBlade(pThing, pLine, rgb, NULL, IOSSABERSHAPE_FORM_CHOSEN, blade & ~IOSSABER_BLADE_SECOND);
+}
+
 void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
 {
     iosSaberShape_EndBlade(); // (begun twice with no end between: its shape's widths put back first)
@@ -927,7 +940,11 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
         iosSaber_pWidthLine = NULL;
     }
     iosSaberChoice c;
-    if (!pLine || !pLine->polyline || !iosSaber_LookOf(pThing, &c)) return;
+    if (!pLine || !pLine->polyline) return;
+    if (!iosSaber_LookOf(pThing, &c)) {
+        iosSaber_BeginCharacterBlade(pThing, pLine, blade); // (no player's: a dark Jedi's)
+        return;
+    }
     // (which hand's, and which of its blades)
     const int sub = (blade & IOSSABER_BLADE_SECOND) ? 1 : 0;
     blade &= ~IOSSABER_BLADE_SECOND;
