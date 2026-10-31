@@ -60,7 +60,7 @@
 #define TU_TRAY_CLEAR 8.0f
 // The tray's OPACITY (iosTouch.m's IOSTOUCH_OPACITY_*): the touch controls
 // in play at this strength times their own look, the tray, its rows and the
-// wheels at full; its slider under the tray, TU_OPACITY_MIN to 100% in
+// wheels (with the button lit above one) at full; its slider under the tray, TU_OPACITY_MIN to 100% in
 // TU_OPACITY_STEP steps, on a backing TU_OPACITY_W x _H, the slider itself
 // TU_OPACITY_INSET in from each end (its thumb TU_OPACITY_THUMB across: a
 // finger anywhere on the slider takes it there and slides it)
@@ -229,10 +229,11 @@ static int tu_IsOptButton(int b)
 // tap): those, and OPACITY (back to 100%)
 static int tu_IsRowOpener(int b) { return b == BTN_TRAYGYRO || b == BTN_TRAYCAM; }
 static int tu_IsTrayHold(int b) { return tu_IsRowOpener(b) || b == BTN_TRAYOPACITY; }
-// A strength for OPACITY: in its range, at its nearest step
+// A strength for OPACITY: in its range, at its nearest step (not a number: 100%)
 static float tu_OpacityStep(float k)
 {
-    if (!(k > TU_OPACITY_MIN)) return TU_OPACITY_MIN;
+    if (k != k) return 1.0f;
+    if (k < TU_OPACITY_MIN) return TU_OPACITY_MIN;
     if (k > 1.0f) return 1.0f;
     return roundf(k / TU_OPACITY_STEP) * TU_OPACITY_STEP;
 }
@@ -302,7 +303,7 @@ static struct {
     float fpsX, fpsY;
     float trayBack[4], aRowBack[3][4]; // (the rows: the gyro options, the camera options, the photo kinds)
     float trayBack2[4];  // (its second row's, where it takes two)
-    int numTrayRows;     // (1, or 2 where one would run off the left: tu_TrayTopCount)
+    int numTrayRows;     // (1, or 2: tu_TrayPlace)
     float aTrayRow[2][3]; // (each row's left and right buttons' x and its y)
     float opBack[4];     // OPACITY's slider's backing
     int bBurstUnder;
@@ -515,7 +516,11 @@ static void tu_LoadSettings(void)
         else if (!strcmp(k, "cameraKinds")) tu.cameraKinds = (n & 7) ? (n & 7) : TOUCHUI_CAPTURE_CLEAN;
         else if (!strcmp(k, "selfieShots")) tu.selfieShots = (n == 1 || n == 5) ? n : 3;
         else if (!strcmp(k, "freeze")) tu.bFreezeOn = n != 0;
-        else if (!strcmp(k, "opacity")) tu.opacity = tu_OpacityStep((float)v);
+        else if (!strcmp(k, "opacity")) {
+            char* end;
+            const double o = strtod(eq + 1, &end);
+            tu.opacity = end != eq + 1 ? tu_OpacityStep((float)o) : 1.0f; // (not a number: 100%)
+        }
         else if (!strcmp(k, "saberTarget")) {} // (LEFT, BOTH, RIGHT: what the cards' picks replaced)
         else if (!strcmp(k, "saberThrow")) {
             if (G(SaberSetThrow)) tu.game->SaberSetThrow(n != 0);
@@ -662,29 +667,21 @@ static int tu_TrayFromRight(int b)
     return n;
 }
 
-// iosTouch_TrayTopCount: how many of the tray's n buttons go in its top row
-// -- all of them where the one row, ending under MENU (at mx), stays right
-// of left; otherwise the first half, the rest in a second row under it
-static int tu_TrayTopCount(int n, float mx, float left)
-{
-    if (mx - TU_TRAY_STEP * (n - 1) - 26 >= left) return n;
-    return (n + 1) / 2;
-}
-
 // iosTouch_TrayKeysAt: where MENU's tray goes (its top row's right end),
-// clear of the buttons round FIRE. bAsShown: the row as it is now, with
-// LEVEL while sithewok is on (the tray's own place); otherwise without it
-// nor OPACITY (FORCE's search: FORCE never moves with the cheat, and stays
-// where it was before OPACITY joined the tray)
-static void tu_TrayKeysAt(float mx, float my, float left, const float* pForce, float* pKx, float* pKy, float* pClear, float* pForceClear, int bAsShown)
+// clear of the buttons round FIRE: its n buttons in a row (top n) or two (the
+// first top above, the rest under them at the end away from FIRE: the left,
+// or SWAPPED the right; bRight2). FORCE's own search takes the tray as it was
+// before OPACITY, one row without LEVEL (TU_TRAY_FORCE_N): FORCE never moves
+// with the cheat, nor with OPACITY in the tray.
+#define TU_TRAY_FORCE_N (BTN_TRAY_LAST - BTN_TRAY_FIRST - 1)
+static void tu_TrayKeysAt(float mx, float my, float left, const float* pForce, float* pKx, float* pKy, float* pClear, float* pForceClear, int n, int top, int bRight2)
 {
     const float ty = my + 52;
-    const int n = bAsShown ? tu_TrayFromRight(BTN_TRAY_FIRST) + 1 : BTN_TRAY_LAST - BTN_TRAY_FIRST - 1;
-    const int top = tu_TrayTopCount(n, mx, left);
     const float len = TU_TRAY_STEP * (top - 1), len2 = TU_TRAY_STEP * (n - top - 1); // (the second row's, if any)
     float kx = mx, bestClear = -1e9f, bestForce = 1e9f;
     for (float x = mx; ; x -= 4) {
         float clear = 1e9f, forceClear = 1e9f;
+        const float x2 = bRight2 ? x - len2 : x - len; // (the second row's left end)
         for (int i = BTN_FIRE; i <= BTN_FORCE; i++) {
             const tuButton* c = &tu_aButtons[i];
             float px = c->x, py = c->y;
@@ -694,7 +691,7 @@ static void tu_TrayKeysAt(float mx, float my, float left, const float* pForce, f
                 py = pForce[1];
             }
             float d = tu_DistToSegment(px, py, x - len, ty, x, ty);
-            if (top < n) d = TU_MIN(d, tu_DistToSegment(px, py, x - len2, ty + 52, x, ty + 52));
+            if (top < n) d = TU_MIN(d, tu_DistToSegment(px, py, x2, ty + 52, x2 + len2, ty + 52));
             d -= 26 + c->radius;
             clear = TU_MIN(clear, d);
             if (i == BTN_FORCE) forceClear = d;
@@ -711,6 +708,35 @@ static void tu_TrayKeysAt(float mx, float my, float left, const float* pForce, f
     if (pForceClear) *pForceClear = bestForce;
     *pKx = kx;
     *pKy = ty;
+}
+
+// iosTouch_TrayPlace: the tray as it is now in one row where it fits and
+// keeps TU_TRAY_CLEAR off the buttons round FIRE; otherwise in two, split as
+// evenly as keeps them that clear (if none does, whichever way is clearest).
+// *pTop: the buttons in the top row.
+static void tu_TrayPlace(float mx, float my, float left, const float* pForce, int bRight2, float* pKx, float* pKy, int* pTop)
+{
+    const int n = tu_TrayFromRight(BTN_TRAY_FIRST) + 1;
+    const int bFits = mx - TU_TRAY_STEP * (n - 1) - 26 >= left;
+    float bestClear = -1e9f;
+    *pKx = mx;
+    *pKy = my + 52;
+    *pTop = n;
+    if (bFits) {
+        tu_TrayKeysAt(mx, my, left, pForce, pKx, pKy, &bestClear, NULL, n, n, 0);
+        if (bestClear >= TU_TRAY_CLEAR) return;
+    }
+    for (int top = (n + 1) / 2; top < n; top++) {
+        float kx, ky, clear;
+        tu_TrayKeysAt(mx, my, left, pForce, &kx, &ky, &clear, NULL, n, top, bRight2);
+        if (clear >= TU_TRAY_CLEAR || clear > bestClear) {
+            *pKx = kx;
+            *pKy = ky;
+            bestClear = clear;
+            *pTop = top;
+        }
+        if (clear >= TU_TRAY_CLEAR) break;
+    }
 }
 
 static void tu_Layout(void)
@@ -847,7 +873,7 @@ static void tu_Layout(void)
         const float topGap = TU_TOUCH_SLOP + TU_TOUCH_SLOP + 10.0f;
         const float mx = tu_aButtons[BTN_MENU].x, my = tu_aButtons[BTN_MENU].y;
         float trayFree, kx, ky;
-        tu_TrayKeysAt(mx, my, left, NULL, &kx, &ky, &trayFree, NULL, 0);
+        tu_TrayKeysAt(mx, my, left, NULL, &kx, &ky, &trayFree, NULL, TU_TRAY_FORCE_N, TU_TRAY_FORCE_N, 0);
         const float trayNeed = TU_MIN(TU_TRAY_CLEAR, trayFree);
         tuButton* d = &tu_aButtons[BTN_DUCK];
         float dist = d->radius + R + TU_CLUSTER_GAP;
@@ -884,7 +910,7 @@ static void tu_Layout(void)
                 if (!tu.bSwapped) {
                     float trayClear, trayForce, kx2, ky2;
                     const float pf[2] = { qx, qy };
-                    tu_TrayKeysAt(mx, my, left, pf, &kx2, &ky2, &trayClear, &trayForce, 0);
+                    tu_TrayKeysAt(mx, my, left, pf, &kx2, &ky2, &trayClear, &trayForce, TU_TRAY_FORCE_N, TU_TRAY_FORCE_N, 0);
                     if (trayClear < trayNeed || trayForce < TU_TRAY_CLEAR) continue;
                 }
                 bestX = qx;
@@ -904,27 +930,28 @@ static void tu_Layout(void)
     {
         const float force[2] = { tu_aButtons[BTN_FORCE].x, tu_aButtons[BTN_FORCE].y };
         float kx, ky;
-        tu_TrayKeysAt(tu_aButtons[BTN_MENU].x, tu_aButtons[BTN_MENU].y, left, force, &kx, &ky, NULL, NULL, 1);
+        int topN;
+        tu_TrayPlace(tu_aButtons[BTN_MENU].x, tu_aButtons[BTN_MENU].y, left, force, tu.bSwapped, &kx, &ky, &topN);
         // (LEVEL, while sithewok is on, right of the cheat switch; otherwise
-        // the row closes up from the keyboard leftwards. Two rows where one
-        // would run off the left: the first half above, both ending here)
+        // the row closes up from the keyboard leftwards. Two rows: the second
+        // under the top row's end away from FIRE)
         const int n = tu_TrayFromRight(BTN_TRAY_FIRST) + 1;
-        const int topN = tu_TrayTopCount(n, tu_aButtons[BTN_MENU].x, left);
         tu.numTrayRows = topN < n ? 2 : 1;
-        for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) {
-            const int fromRight = tu_TrayFromRight(i);
-            const int bLower = n - 1 - fromRight >= topN;
-            tu_aButtons[i].x = kx - TU_TRAY_STEP * (bLower ? fromRight : fromRight - (n - topN));
-            tu_aButtons[i].y = ky + (bLower ? 52 : 0);
-        }
         float* aBack[2] = { tu.trayBack, tu.trayBack2 };
         for (int r = 0; r < 2; r++) {
             const float len = TU_TRAY_STEP * ((r == 0 ? topN : n - topN) - 1);
+            const float len0 = TU_TRAY_STEP * (topN - 1);
             float* row = tu.aTrayRow[r];
-            row[0] = kx - len;
-            row[1] = kx;
+            row[0] = (r == 0 || tu.bSwapped) ? kx - len : kx - len0;
+            row[1] = row[0] + len;
             row[2] = ky + 52 * r;
             aBack[r][0] = row[0] - 26; aBack[r][1] = row[2] - 26; aBack[r][2] = len + 52; aBack[r][3] = 52;
+        }
+        for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) {
+            const int place = n - 1 - tu_TrayFromRight(i); // (from the left)
+            const int r = place >= topN;
+            tu_aButtons[i].x = tu.aTrayRow[r][0] + TU_TRAY_STEP * (r ? place - topN : place);
+            tu_aButtons[i].y = tu.aTrayRow[r][2];
         }
     }
     // The rows under the tray, each centred under the button that opens it
@@ -3245,7 +3272,7 @@ static void tu_DrawButton(int i)
     if (i == BTN_TRAYGYRO && !bGyro) alpha *= 0.45f;
     if (i == BTN_TRAYLEVEL && !(G(NumPickableLevels) && tu.game->NumPickableLevels() > 0)) alpha *= 0.45f; // (no level can be picked now)
     if ((i == BTN_GYROOPT_MODE || i == BTN_GYROOPT_SENS) && (!bGyro || tu.gyroMode == TOUCHUI_GYRO_OFF)) alpha *= 0.45f;
-    if (!bTray) alpha *= tu.opacity; // (OPACITY: the touch controls; the tray and its rows at full)
+    if (!bTray && !bWheel) alpha *= tu.opacity; // (OPACITY: the touch controls; the tray, its rows and an open wheel's button at full)
     tu_draw.alpha = alpha;
 
     touchUiColor bg = bWheel ? TU_BLUE(0.55f) : (bHeld ? touchUi_White(0.30f) : touchUi_Black(0.22f));

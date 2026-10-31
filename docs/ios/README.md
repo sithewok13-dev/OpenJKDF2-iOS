@@ -408,11 +408,14 @@ nearest button.
   (**OPACITY 100%**, the default). A **tap** opens a slider just under the
   tray: slide it anywhere from **20%** to **100%**, in 5% steps, and the
   buttons, their labels, the move stick and its run marker change as you
-  slide. The app remembers it when you lift your finger. Tap OPACITY again,
-  or touch anywhere outside the slider's dark backing, to close it. **Touch and hold** OPACITY
-  until its ring fills to go back to 100%. The tray itself, the rows under
-  it, the Force, weapon and saber wheels and the FPS counter always stay at
-  full strength, and the lowest is 20%, so MENU never disappears.
+  slide. The app remembers it when you lift your finger (or when the slider
+  closes). Tap OPACITY again to close the slider. Any other touch closes it
+  too, including one on another tray button, which then does its own thing;
+  a touch on the slider's dark backing beside the slider does nothing.
+  **Touch and hold** OPACITY until its ring fills to go back to 100%. The
+  tray itself, the rows under it, the Force, weapon and saber wheels (and
+  the lit button that opened one) and the FPS counter always stay at full
+  strength, and the lowest is 20%, so MENU never disappears.
 - **FPS:** shows or hides a frame-rate counter, to the left of QUICK SAVE. The FPS
   button is yellow while the counter is on.
 - **AUTO PLAY** (single player): opens the panel for a self-playing show, for
@@ -469,11 +472,11 @@ the app: hold the CHEAT button to switch it on.
 
 The tray usually sits right under MENU. On smaller screens (with the camera
 cutout on the right, with Display Zoom, or at a large HUD Scale) it sits
-further left, so that it covers FORCE or the buttons around FIRE as little as it
-can. On the smallest screens (the first iPhone SE, or a small iPhone with
-Display Zoom), where one row would run off the screen, it takes two rows, one
-under the other. The
-tray closes after you pick FPS, CAMERA, CHEAT, VIEW or the keyboard, or when you
+further left, so that it stays clear of FORCE and the buttons around FIRE.
+Where one row can't do that, or would run off the screen (some iPhones, more
+often with `sithewok` on or the controls SWAPPED), the tray takes two rows
+instead, the second starting under the left end of the first (under its
+right end, with the controls SWAPPED). The tray closes after you pick FPS, CAMERA, CHEAT, VIEW or the keyboard, or when you
 touch anywhere else. That touch still counts: touching FIRE closes the tray
 and fires. Touching MENU again just closes it. If you slide off MENU while
 holding it, nothing happens.

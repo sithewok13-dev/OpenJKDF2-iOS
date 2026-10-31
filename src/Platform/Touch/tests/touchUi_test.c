@@ -966,23 +966,46 @@ static void check_level_tray_layout(const char* name, float W, float H, float l,
     openTrayT();
     CHECK(!touchUi_GetButton(TOUCHUI_BTN_TRAYLEVEL, &x, &y, &rr));
     for (int i = TOUCHUI_BTN_TRAYGYRO; i <= TOUCHUI_BTN_TRAYKEYS; i++) { touchUi_GetButton(i, &aOff[i], &y, &rr); }
+    const int rowsOff = touchUi_GetTrayRows();
     closeTrayT();
     fg.bCheat = 1; tick();
     float fx1, fy1; bxy(TOUCHUI_BTN_FORCE, &fx1, &fy1);
     CHECK(fx0 == fx1 && fy0 == fy1); // (FORCE never moves with the cheat)
     openTrayT();
-    float lx, ly, cx, vx;
+    float lx, ly, cx, cy, vx, vy;
     CHECK(touchUi_GetButton(TOUCHUI_BTN_TRAYLEVEL, &lx, &ly, &rr));
-    bxy(TOUCHUI_BTN_TRAYCHEAT, &cx, &y); bxy(TOUCHUI_BTN_TRAYVIEW, &vx, &y);
-    CHECKF(lx - cx, 50.0, 0.5);
-    CHECKF(vx - lx, 50.0, 0.5);
+    bxy(TOUCHUI_BTN_TRAYCHEAT, &cx, &cy); bxy(TOUCHUI_BTN_TRAYVIEW, &vx, &vy);
+    const int rowsOn = touchUi_GetTrayRows();
+    if (rowsOn == 1) {
+        CHECKF(lx - cx, 50.0, 0.5);
+        CHECKF(vx - lx, 50.0, 0.5);
+    }
+    else {
+        // (two rows: LEVEL still between CHEAT and VIEW, read row by row)
+        float aKey[TOUCHUI_BTN_COUNT];
+        for (int i = TOUCHUI_BTN_TRAYGYRO; i <= TOUCHUI_BTN_TRAYKEYS; i++) aKey[i] = touchUi_GetButton(i, &x, &y, &rr) ? y * 10000.0f + x : -1.0f;
+        int bBetween = 0;
+        for (int i = TOUCHUI_BTN_TRAYGYRO; i <= TOUCHUI_BTN_TRAYKEYS; i++)
+            if (i != TOUCHUI_BTN_TRAYLEVEL && aKey[i] > aKey[TOUCHUI_BTN_TRAYCHEAT] && aKey[i] < aKey[TOUCHUI_BTN_TRAYVIEW]) bBetween = 1;
+        CHECK(aKey[TOUCHUI_BTN_TRAYCHEAT] < aKey[TOUCHUI_BTN_TRAYLEVEL] && aKey[TOUCHUI_BTN_TRAYLEVEL] < aKey[TOUCHUI_BTN_TRAYVIEW] && !bBetween);
+    }
     float gx, kx, ky; bxy(TOUCHUI_BTN_TRAYGYRO, &gx, &y); bxy(TOUCHUI_BTN_TRAYKEYS, &kx, &ky);
-    // its left end inside the safe area; its right end where it was without
-    // LEVEL (the row grows to the left only) -- unless the longer row can't
-    // reach that far left (a small screen, OPACITY in the row too): then as
-    // far left as it goes
+    // its left end inside the safe area; in one row as without LEVEL, its
+    // right end where it was then (the row grows to the left only) -- unless
+    // the longer row can't reach that far left (a small screen, OPACITY in the
+    // row too): then as far left as it goes
     CHECK(gx - 26 >= (l > 8 ? l : 0) - 0.5f && ky - 26 >= t - 0.5f);
-    if (fabsf(kx - aOff[TOUCHUI_BTN_TRAYKEYS]) > 0.5f) CHECK(kx > aOff[TOUCHUI_BTN_TRAYKEYS] && gx - 26 <= (l > 8 ? l : 8) + 4.5f);
+    if (rowsOn == 1 && rowsOff == 1 && fabsf(kx - aOff[TOUCHUI_BTN_TRAYKEYS]) > 0.5f) CHECK(kx > aOff[TOUCHUI_BTN_TRAYKEYS] && gx - 26 <= (l > 8 ? l : 8) + 4.5f);
+    // the open tray over none of the buttons round FIRE (as far as the screen allows: none here)
+    for (int i = TOUCHUI_BTN_FIRE; i <= TOUCHUI_BTN_FORCE; i++) {
+        float bx2, by2, br2;
+        if (!touchUi_GetButton(i, &bx2, &by2, &br2)) continue;
+        for (int j = TOUCHUI_BTN_TRAYGYRO; j <= TOUCHUI_BTN_TRAYKEYS; j++) {
+            float tx, ty2, tr;
+            if (touchUi_GetButton(j, &tx, &ty2, &tr) && hypotf(bx2 - tx, by2 - ty2) < br2 + 26.0f) printf("  [%s] tray button %d over button %d\n", name, j, i);
+            if (touchUi_GetButton(j, &tx, &ty2, &tr)) CHECK(hypotf(bx2 - tx, by2 - ty2) >= br2 + 26.0f);
+        }
+    }
     printf("  [%s] tray with LEVEL %.0f..%.0f (off: %.0f..%.0f)\n", name, gx - 26, kx + 26, aOff[TOUCHUI_BTN_TRAYGYRO] - 26, aOff[TOUCHUI_BTN_TRAYKEYS] + 26);
     // the moved message line with the tray and each row open: clear of every
     // button shown, down 70 pt (stacked lines), at least 120 pt wide
@@ -4149,6 +4172,17 @@ static void test_opacity(void)
     downOn(1, TOUCHUI_BTN_FIRE); tick();
     CHECKF(buttonFillAlpha(TOUCHUI_BTN_FIRE), 0.30 * 0.4, 0.002); // (held: white 0.30, at full x 40%)
     upOn(1, TOUCHUI_BTN_FIRE); tick();
+    g_case = "OPACITY: an open wheel's button, lit above it, at full; shut, back at 40%";
+    {
+        float wx, wy; bxy(TOUCHUI_BTN_NEXTWPN, &wx, &wy);
+        down(1, wx, wy); wait(0.35); up(1, wx, wy); tick();
+        CHECK(touchUi_IsWheelOpen());
+        CHECKF(buttonFillAlpha(TOUCHUI_BTN_NEXTWPN), 0.55, 0.002); // (blue 0.55, at full)
+        float wcx, wcy, wr0, wr1; touchUi_GetWheelGeometry(&wcx, &wcy, &wr0, &wr1);
+        down(2, wcx, wcy); up(2, wcx, wcy); tick();
+        CHECK(!touchUi_IsWheelOpen());
+        CHECKF(buttonFillAlpha(TOUCHUI_BTN_NEXTWPN), 0.22 * 0.65 * 0.4, 0.002);
+    }
 
     g_case = "OPACITY: kept across launches";
     touchUi_Init(&fakeGame, g_settings);
@@ -4200,9 +4234,9 @@ static void test_opacity(void)
 
     g_case = "OPACITY: kept strengths out of range or between steps";
     {
-        const char* aIn[3] = { "opacity=0.03\n", "opacity=7\n", "opacity=0.523\n" };
-        const float aWant[3] = { 0.2f, 1.0f, 0.5f };
-        for (int k = 0; k < 3; k++) {
+        const char* aIn[4] = { "opacity=0.03\n", "opacity=7\n", "opacity=0.523\n", "opacity=abc\n" };
+        const float aWant[4] = { 0.2f, 1.0f, 0.5f, 1.0f };
+        for (int k = 0; k < 4; k++) {
             FILE* f = fopen(g_settings, "w");
             if (f) { fputs(aIn[k], f); fclose(f); }
             touchUi_Init(&fakeGame, g_settings);
@@ -4225,6 +4259,13 @@ static void test_opacity(void)
             fg.bCheat = c; tick();
             openTrayT();
             CHECK(touchUi_IsTrayOpen() && touchUi_GetTrayRows() == 2);
+            {   // (the second row under the top row's left end, away from FIRE)
+                float topY = 1e9f, l0 = 1e9f, l1 = 1e9f;
+                for (int i = TOUCHUI_BTN_TRAYGYRO; i <= TOUCHUI_BTN_TRAYKEYS; i++) if (touchUi_GetButton(i, &x, &y, &r)) topY = fminf(topY, y);
+                for (int i = TOUCHUI_BTN_TRAYGYRO; i <= TOUCHUI_BTN_TRAYKEYS; i++)
+                    if (touchUi_GetButton(i, &x, &y, &r)) { if (fabsf(y - topY) < 1.0f) l0 = fminf(l0, x); else l1 = fminf(l1, x); }
+                CHECKF(l1, l0, 0.5);
+            }
             int bAll = 1, bOwn = 1;
             for (int i = TOUCHUI_BTN_TRAYGYRO; i <= TOUCHUI_BTN_TRAYKEYS; i++) {
                 if (!touchUi_GetButton(i, &x, &y, &r)) continue;

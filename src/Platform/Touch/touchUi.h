@@ -17,7 +17,9 @@
 //     CONTROLS, the keyboard); holding GYRO there opens MODE and SENS;
 //   - OPACITY: a tap opens a slider under the tray, 20% to 100% in 5% steps,
 //     every touch control in play following it at once (the tray, its rows
-//     and the wheels at full), kept as the finger lifts; held 0.45 s, 100%;
+//     and the wheels with the button lit above one at full), kept as the
+//     finger lifts; held 0.45 s, 100%; the tray in two rows where one would
+//     run off the left or not keep off the buttons round FIRE;
 //   - FORCE WHEEL and NEXT WPN: a tap is the next power / weapon, a 10 pt
 //     slide opens the wheel at once to slide to a slice, a 0.3 s hold opens
 //     it to tap one; the gap at the bottom cancels; the game holds still while
@@ -312,7 +314,7 @@ int touchUi_GetOptRow(void); // 0: none, 1: the gyro options, 2: the camera opti
 float touchUi_GetOpacity(void); // the tray's OPACITY: the touch controls' strength, 0.2..1
 // OPACITY's slider while it is out: its backing (top left, width, height); 0 if it isn't
 int touchUi_GetOpacitySlider(float* pX, float* pY, float* pW, float* pH);
-int touchUi_GetTrayRows(void); // MENU's tray as laid out: 1 row, or 2 where one would run off the left
+int touchUi_GetTrayRows(void); // MENU's tray as laid out: 1 row, or 2 where one would run off the left or not keep off the buttons round FIRE
 int touchUi_IsKindsRowOpen(void);
 int touchUi_GetCameraKinds(void);
 int touchUi_GetSelfieShots(void);

@@ -394,13 +394,15 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 // The tray's OPACITY: how strongly the touch controls show in play (every
 // button with its label, rings and pictures, the move stick, its run marker
 // and the force meter), times each one's own idle or pressed look; the tray,
-// the rows under it, the wheels, the readouts (FPS, a burst's count) and
-// Action Freeze's X stay at full. A tap opens its slider under the tray (a
+// the rows under it, the wheels (and the button lit above one while it is
+// open), the readouts (FPS, a burst's count) and Action Freeze's X stay at
+// full. A tap opens its slider under the tray (a
 // tap again, or a touch anywhere off the slider's backing, closes it): from
 // IOSTOUCH_OPACITY_MIN, so MENU can always be found, to 100%, in
-// IOSTOUCH_OPACITY_STEP steps, the controls following as it slides, kept as
-// the finger lifts. Held still IOSTOUCH_MENU_HOLD (a ring fills), back to
-// 100%. Remembered under this key (100% unless set). The slider's backing is
+// IOSTOUCH_OPACITY_STEP steps, the controls following as it slides (only
+// while it is out), kept as the finger lifts or the slider goes. Held still
+// IOSTOUCH_MENU_HOLD (a ring fills), back to 100%. Remembered under this key
+// (100% unless set, or set to something that isn't a number). The slider's backing is
 // IOSTOUCH_OPACITY_W x _H, a row under the tray as the other rows are.
 #define IOSTOUCH_OPACITY_DEFAULTS_KEY @"iosTouchOpacity"
 #define IOSTOUCH_OPACITY_MIN 0.2
@@ -594,11 +596,12 @@ static int iosTouch_IsTrayHold(int button)
     return iosTouch_IsRowOpener(button) || button == BTN_TRAYLOOK || button == BTN_TRAYOPACITY;
 }
 
-// A strength for OPACITY: in its range, at its nearest step (a kept one that
-// isn't a number: the lowest)
+// A strength for OPACITY: in its range, at its nearest step (one that isn't
+// a number: 100%, the default)
 static float iosTouch_OpacityStep(float k)
 {
-    if (!(k > IOSTOUCH_OPACITY_MIN)) return IOSTOUCH_OPACITY_MIN;
+    if (k != k) return 1.0f;
+    if (k < IOSTOUCH_OPACITY_MIN) return IOSTOUCH_OPACITY_MIN;
     if (k > 1.0f) return 1.0f;
     return roundf(k / IOSTOUCH_OPACITY_STEP) * IOSTOUCH_OPACITY_STEP;
 }
@@ -917,8 +920,8 @@ static int iosTouch_bTrayLevel = 0; // the tray's LEVEL in its row (sithewok on,
 static float iosTouch_lookScale = 1.0f; // the tray's LOOK (remembered)
 static const float iosTouch_aLookSteps[] = { 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 2.5f, 3.0f };
 static float iosTouch_opacity = 1.0f; // the tray's OPACITY: the touch controls' strength (remembered)
-// MENU's tray as laid out: one row, or two where one would run off the left
-// (iosTouch_TrayTopCount); each row's left and right buttons' x and its y
+// MENU's tray as laid out: one row, or two (iosTouch_TrayPlace); each row's
+// left and right buttons' x and its y
 static int iosTouch_numTrayRows = 1;
 static CGFloat iosTouch_aTrayRow[2][3];
 static int iosTouch_menuPulse = 0;
@@ -1089,43 +1092,30 @@ static int iosTouch_TrayFromRight(int button)
     return n;
 }
 
-// How many of the tray's n buttons go in its top row: all of them where the
-// one row, ending under MENU (at menuX), stays right of left (the safe area's
-// edge); otherwise (the smallest iPhones, with OPACITY and LEVEL in it) the
-// first half, the larger, and the rest in a second row just under it, both
-// rows ending at the same place
-static int iosTouch_TrayTopCount(int n, CGFloat menuX, CGFloat left)
-{
-    if (menuX - IOSTOUCH_TRAY_STEP * (n - 1) - 26 >= left) return n;
-    return (n + 1) / 2;
-}
-
-// Where MENU's tray goes (see layoutSubviews), with FORCE at *pForce: a row
-// of its buttons (or two: iosTouch_TrayTopCount), IOSTOUCH_TRAY_STEP apart,
-// just under MENU, the keyboard (the right end) right below it, moved left
-// (4 pt at a time, as long as its backing stays right of left, the safe
-// area's edge) until its backing is IOSTOUCH_TRAY_CLEAR from every button
-// round FIRE (FIRE, ALT, DUCK, ACT, JUMP and FORCE) -- or, if it never is, to
-// wherever the nearest of them is furthest from it. Returns the keyboard
-// button's centre (the top row's right end); *pClear is how far the backing
-// is from the nearest of them, *pForceClear how far from FORCE.
+// Where MENU's tray goes (see layoutSubviews), with FORCE at *pForce: its n
+// buttons in a row (top n), or in two (the first top of them above, the rest
+// under them, at the end away from FIRE: the left end, or with the controls
+// SWAPPED the right; bRight2), IOSTOUCH_TRAY_STEP apart, just under MENU, the
+// top row's right end right below it, moved left (4 pt at a time, as long as
+// its backing stays right of left, the safe area's edge) until its backing is
+// IOSTOUCH_TRAY_CLEAR from every button round FIRE (FIRE, ALT, DUCK, ACT,
+// JUMP and FORCE) -- or, if it never is, to wherever the nearest of them is
+// furthest from it. Returns the top row's right end (the keyboard's centre,
+// in one row); *pClear is how far the backing is from the nearest of them,
+// *pForceClear how far from FORCE.
 // With pForce NULL, FORCE is left out (FORCE's own search: how clear the tray
-// can be without it).
-// bAsShown: the row as it is now, LEVEL in it while sithewok is on (where
-// the tray goes); otherwise the row without LEVEL, nor OPACITY (FORCE's own
-// search, so FORCE never moves as the cheat goes on and off, and stays where
-// it was before OPACITY joined the tray: on a few screens the open tray now
-// reaches over it, as it already did there with LEVEL in it, and takes the
-// touches there first while it is open).
-static CGPoint iosTouch_TrayKeysAt(CGPoint menu, CGFloat left, const CGPoint* pForce, CGFloat* pClear, CGFloat* pForceClear, int bAsShown)
+// can be without it). FORCE's own search takes the tray as it was before
+// OPACITY, in one row without LEVEL (IOSTOUCH_TRAY_FORCE_N), so FORCE never
+// moves as the cheat goes on and off, nor with OPACITY in the tray.
+#define IOSTOUCH_TRAY_FORCE_N (BTN_TRAY_LAST - BTN_TRAY_FIRST - 1)
+static CGPoint iosTouch_TrayKeysAt(CGPoint menu, CGFloat left, const CGPoint* pForce, CGFloat* pClear, CGFloat* pForceClear, int n, int top, int bRight2)
 {
     const CGFloat ty = menu.y + 52;
-    const int n = bAsShown ? iosTouch_TrayFromRight(BTN_TRAY_FIRST) + 1 : BTN_TRAY_LAST - BTN_TRAY_FIRST - 1;
-    const int top = iosTouch_TrayTopCount(n, menu.x, left);
     const CGFloat len = IOSTOUCH_TRAY_STEP * (top - 1), len2 = IOSTOUCH_TRAY_STEP * (n - top - 1); // (the second row's, if any)
     CGFloat kx = menu.x, bestClear = -1e9, bestForce = 1e9;
     for (CGFloat x = menu.x; ; x -= 4) {
         CGFloat clear = 1e9, forceClear = 1e9;
+        const CGFloat x2 = bRight2 ? x - len2 : x - len; // (the second row's left end)
         for (int i = BTN_FIRE; i <= BTN_FORCE; i++) {
             iosTouchButton* c = &iosTouch_aButtons[i];
             CGPoint p = CGPointMake(c->x, c->y);
@@ -1134,7 +1124,7 @@ static CGPoint iosTouch_TrayKeysAt(CGPoint menu, CGFloat left, const CGPoint* pF
                 p = *pForce;
             }
             CGFloat d = iosTouch_DistToSegment(p, x - len, ty, x, ty);
-            if (top < n) d = MIN(d, iosTouch_DistToSegment(p, x - len2, ty + 52, x, ty + 52));
+            if (top < n) d = MIN(d, iosTouch_DistToSegment(p, x2, ty + 52, x2 + len2, ty + 52));
             d -= 26 + c->radius;
             clear = MIN(clear, d);
             if (i == BTN_FORCE) forceClear = d;
@@ -1150,6 +1140,38 @@ static CGPoint iosTouch_TrayKeysAt(CGPoint menu, CGFloat left, const CGPoint* pF
     if (pClear) *pClear = bestClear;
     if (pForceClear) *pForceClear = bestForce;
     return CGPointMake(kx, ty);
+}
+
+// Where MENU's tray goes, as it is now (LEVEL in it while sithewok is on),
+// and in how many rows (*pTop: the buttons in its top row, all n in one;
+// iosTouch_TrayKeysAt). One row, as ever, where it fits on the screen and
+// keeps IOSTOUCH_TRAY_CLEAR from the buttons round FIRE. Otherwise (with
+// OPACITY and LEVEL in it, one row is too long for some screens to keep off
+// FORCE, or to fit at all on the smallest) two rows: split as evenly as
+// keeps them that clear; if no split does, whichever way is clearest (one
+// row too, where it fits).
+static CGPoint iosTouch_TrayPlace(CGPoint menu, CGFloat left, CGPoint force, int bRight2, int* pTop)
+{
+    const int n = iosTouch_TrayFromRight(BTN_TRAY_FIRST) + 1;
+    const int bFits = menu.x - IOSTOUCH_TRAY_STEP * (n - 1) - 26 >= left;
+    CGFloat bestClear = -1e9;
+    CGPoint best = CGPointMake(menu.x, menu.y + 52);
+    *pTop = n;
+    if (bFits) {
+        best = iosTouch_TrayKeysAt(menu, left, &force, &bestClear, NULL, n, n, 0);
+        if (bestClear >= IOSTOUCH_TRAY_CLEAR) return best;
+    }
+    for (int top = (n + 1) / 2; top < n; top++) {
+        CGFloat clear;
+        const CGPoint k = iosTouch_TrayKeysAt(menu, left, &force, &clear, NULL, n, top, bRight2);
+        if (clear >= IOSTOUCH_TRAY_CLEAR || clear > bestClear) {
+            best = k;
+            bestClear = clear;
+            *pTop = top;
+        }
+        if (clear >= IOSTOUCH_TRAY_CLEAR) break;
+    }
+    return best;
 }
 
 // Whether the camera cutout may be on the right of the screen. Landscape right
@@ -2173,8 +2195,10 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         // overlay, which lets it be: touchesBegan.)
         opacityRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_TRAYOPACITY].radius);
         [aButtonViews[BTN_TRAYOPACITY].layer addSublayer:opacityRing];
-        if ([[NSUserDefaults standardUserDefaults] objectForKey:IOSTOUCH_OPACITY_DEFAULTS_KEY])
-            iosTouch_opacity = iosTouch_OpacityStep([[NSUserDefaults standardUserDefaults] floatForKey:IOSTOUCH_OPACITY_DEFAULTS_KEY]);
+        {
+            id kept = [[NSUserDefaults standardUserDefaults] objectForKey:IOSTOUCH_OPACITY_DEFAULTS_KEY];
+            if (kept) iosTouch_opacity = [kept isKindOfClass:[NSNumber class]] ? iosTouch_OpacityStep([kept floatValue]) : 1.0f;
+        }
         opacityBack = [[UIView alloc] initWithFrame:CGRectMake(0, 0, IOSTOUCH_OPACITY_W, IOSTOUCH_OPACITY_H)];
         opacityBack.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.55];
         opacityBack.layer.cornerRadius = IOSTOUCH_OPACITY_H * 0.5;
@@ -2834,7 +2858,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         // FIRE as it could without FORCE (IOSTOUCH_TRAY_CLEAR, unless they
         // leave it less), and that clear of FORCE
         CGFloat trayFree;
-        iosTouch_TrayKeysAt(menu, left, NULL, &trayFree, NULL, 0);
+        iosTouch_TrayKeysAt(menu, left, NULL, &trayFree, NULL, IOSTOUCH_TRAY_FORCE_N, IOSTOUCH_TRAY_FORCE_N, 0);
         const CGFloat trayNeed = MIN((CGFloat)IOSTOUCH_TRAY_CLEAR, trayFree);
         // If nothing fits (a very short screen at a large HUD scale, e.g. with
         // Display Zoom): just outside the arc, IOSTOUCH_CLUSTER_GAP from both
@@ -2874,7 +2898,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
                 if (bNearTop) continue;
                 if (!iosTouch_bSwapped) {                                              // MENU's tray (swapped: FORCE is on the other side)
                     CGFloat trayClear, trayForce;
-                    iosTouch_TrayKeysAt(menu, left, &p, &trayClear, &trayForce, 0);
+                    iosTouch_TrayKeysAt(menu, left, &p, &trayClear, &trayForce, IOSTOUCH_TRAY_FORCE_N, IOSTOUCH_TRAY_FORCE_N, 0);
                     if (trayClear < trayNeed || trayForce < IOSTOUCH_TRAY_CLEAR) continue;
                 }
                 best = p;
@@ -2899,32 +2923,33 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     // screen (iosTouch_TrayKeysAt); FORCE's placement above makes sure FORCE
     // never stops it, unless FORCE fell back to its last resort. (While open,
     // the tray is on top and takes its own touches.) Where one row would run
-    // off the left even right under MENU, it takes two, the first half of its
-    // buttons above the rest, both ending there (iosTouch_TrayTopCount).
+    // off the left, or can't keep clear of them, it takes two rows
+    // (iosTouch_TrayPlace).
     {
         iosTouchButton* m = &iosTouch_aButtons[BTN_MENU];
         iosTouchButton* f = &iosTouch_aButtons[BTN_FORCE];
-        const CGPoint force = CGPointMake(f->x, f->y);
-        CGPoint k = iosTouch_TrayKeysAt(CGPointMake(m->x, m->y), left, &force, NULL, NULL, 1);
+        int topN;
+        CGPoint k = iosTouch_TrayPlace(CGPointMake(m->x, m->y), left, CGPointMake(f->x, f->y), iosTouch_bSwapped, &topN);
         // (LEVEL, while sithewok is on, right of the cheat switch; otherwise
         // the row closes up, from the keyboard leftwards, as it always was)
+        // (two rows: the second under the top row's end away from FIRE)
         const int n = iosTouch_TrayFromRight(BTN_TRAY_FIRST) + 1;
-        const int topN = iosTouch_TrayTopCount(n, m->x, left);
         iosTouch_numTrayRows = topN < n ? 2 : 1;
-        for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) {
-            const int fromRight = iosTouch_TrayFromRight(i);
-            const int bLower = n - 1 - fromRight >= topN; // (its place from the left: in the second row)
-            iosTouch_aButtons[i].x = k.x - IOSTOUCH_TRAY_STEP * (bLower ? fromRight : fromRight - (n - topN));
-            iosTouch_aButtons[i].y = k.y + (bLower ? 52 : 0);
-        }
         UIView* aBack[2] = { trayBack, trayBack2 };
         for (int r = 0; r < 2; r++) {
             const CGFloat len = IOSTOUCH_TRAY_STEP * ((r == 0 ? topN : n - topN) - 1);
+            const CGFloat len0 = IOSTOUCH_TRAY_STEP * (topN - 1);
             CGFloat* row = iosTouch_aTrayRow[r];
-            row[0] = k.x - len;
-            row[1] = k.x;
+            row[0] = (r == 0 || iosTouch_bSwapped) ? k.x - len : k.x - len0;
+            row[1] = row[0] + len;
             row[2] = k.y + 52 * r;
             aBack[r].frame = CGRectMake(row[0] - 26, row[2] - 26, len + 52, 52);
+        }
+        for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) {
+            const int place = n - 1 - iosTouch_TrayFromRight(i); // (from the left)
+            const int r = place >= topN;
+            iosTouch_aButtons[i].x = iosTouch_aTrayRow[r][0] + IOSTOUCH_TRAY_STEP * (r ? place - topN : place);
+            iosTouch_aButtons[i].y = iosTouch_aTrayRow[r][2];
         }
         trayBack2.hidden = !iosTouch_bTrayOpen || iosTouch_numTrayRows < 2;
     }
@@ -3162,7 +3187,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         if (iosTouch_SaberWheelHides(i)) alpha = 0.0; // (the saber wheel open: its parts have the room, the top row stays)
         if (i == BTN_TRAYAUTO && iosGame_IsMultiplayer()) alpha *= 0.45; // (single player only)
         if (iosTouch_bAutoplay && (!iosTouch_bApShown || bTray)) alpha = 0.0; // (AUTOPLAY's show: nothing, or the controls as played)
-        if (!bTray) alpha *= iosTouch_opacity; // (OPACITY: the touch controls; the tray and its rows at full)
+        if (!bTray && !bWheel) alpha *= iosTouch_opacity; // (OPACITY: the touch controls; the tray, its rows and an open wheel's button at full)
         aButtonViews[i].alpha = alpha;
         if (i != BTN_FIRE) {
             aButtonViews[i].layer.borderColor = bOn ? [UIColor colorWithRed:1.0 green:0.85 blue:0.3 alpha:0.95].CGColor
@@ -4170,6 +4195,9 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
 - (void)setOptRow:(int)row
 {
     if (iosTouch_optRow == row) return;
+    // (OPACITY's slider going away: the strength kept, however it was set)
+    if (iosTouch_optRow == IOSTOUCH_ROW_OPACITY)
+        [[NSUserDefaults standardUserDefaults] setFloat:iosTouch_opacity forKey:IOSTOUCH_OPACITY_DEFAULTS_KEY];
     iosTouch_optRow = row;
     if (row != IOSTOUCH_ROW_CAMERA) iosTouch_bKindsOpen = 0;
     gyroOptBack.hidden = row != IOSTOUCH_ROW_GYRO;
@@ -4560,15 +4588,27 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     if (bKeep) [[NSUserDefaults standardUserDefaults] setFloat:iosTouch_opacity forKey:IOSTOUCH_OPACITY_DEFAULTS_KEY];
 }
 
-// OPACITY's slider moved (as the finger slides): the controls follow at once...
+// OPACITY's slider moved (as the finger slides, or VoiceOver's swipe): the
+// controls follow at once -- only while it is out (a finger still on it
+// after the tray closed under it, a second finger or a game controller,
+// moves nothing: the slider stays where the strength is)...
 - (void)opacitySlid:(UISlider*)slider
 {
+    if (iosTouch_optRow != IOSTOUCH_ROW_OPACITY || !iosTouch_bTrayOpen) {
+        slider.value = iosTouch_opacity;
+        return;
+    }
     [self setOpacity:slider.value keep:0];
 }
 
-// ...and lifted (or the touch taken by iOS): the strength kept
+// ...and lifted (or the touch taken by iOS): the strength kept (as it is
+// too as the slider goes away: setOptRow)
 - (void)opacityLifted:(UISlider*)slider
 {
+    if (iosTouch_optRow != IOSTOUCH_ROW_OPACITY || !iosTouch_bTrayOpen) {
+        slider.value = iosTouch_opacity;
+        return;
+    }
     [self setOpacity:slider.value keep:1];
 }
 
