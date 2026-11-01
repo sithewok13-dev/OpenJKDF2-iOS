@@ -215,6 +215,9 @@ jobs:
           # A new build number (CFBundleVersion) for every run, so AltStore and
           # SideStore can tell releases apart (cmake_modules/target_ios_all.cmake)
           export IOS_BUNDLE_VERSION="${{ github.run_number }}"
+          # The release tag (empty for other builds), which the version
+          # readout under MENU's tray shows (cmake_modules/target_ios_all.cmake)
+          export IOS_RELEASE_TAG="$RELEASE_TAG"
           ./build_ios.sh
           test -d OpenJKDF2-iOS.app
 

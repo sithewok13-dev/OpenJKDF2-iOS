@@ -305,6 +305,7 @@ screen, the camera cutout and the HUD.
  WPN    WHEEL   (only items you have)                         SAVE   LOAD
       [GYRO] [RUN] [LOOK] [OPACITY] [FPS] [CAMERA] [AUTO PLAY] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
                   (MENU's tray, when held; LEVEL only while sithewok is on; in co-op, the host's)
+                                  v0.5 (123)                (which build this is, under the tray)
                              [MODE] [SENS]             (GYRO held in the tray)
                              [PHOTO] [SELFIES] [FREEZE] (CAMERA held in the tray)
                              [====o=========]          (OPACITY tapped in the tray)
@@ -388,6 +389,12 @@ While `sithewok` is on (in co-op, only for the host) there's a thirteenth,
 Either keep your thumb down, slide it onto a tray button and lift, or lift
 first and then tap one. Anywhere on the tray's dark backing counts as the
 nearest button.
+
+Just under the tray (or the row open under it), small dim text shows which
+build you have: for a release, its name and build number, such as
+*v0.5 (123)*; for a test build (ios-latest), *dev*, the commit it was built
+from and the build number, such as *dev 1a2b3c4d (124)*. It's only text,
+not a button. OpenMoTS shows its own the same way.
 
 - **GYRO:** a **tap** switches tilt aiming on or off. It comes back on in the
   mode you last used (TOUCH the first time), and it's lit yellow while it's

@@ -115,6 +115,12 @@ macro(postcompile_ios)
         set(IOS_BUNDLE_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
     endif()
 
+    # For the version readout under MENU's tray (iosTouch.m), since the version
+    # above is the engine's whichever build this is: the release tag CI is
+    # building for (IOS_RELEASE_TAG, such as v0.5; empty for any other build)
+    # as OpenJKDF2Release, and the commit (version.cmake) as OpenJKDF2Commit.
+    set(IOS_RELEASE_TAG "$ENV{IOS_RELEASE_TAG}")
+
     # CFBundleSupportedPlatforms/MinimumOSVersion differ per slice, so the plist is
     # a template rather than a static file.
     configure_file(${PROJECT_SOURCE_DIR}/packaging/ios/Info.plist.in

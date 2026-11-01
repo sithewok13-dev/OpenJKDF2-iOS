@@ -18,6 +18,10 @@
 	<string>@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@</string>
 	<key>CFBundleVersion</key>
 	<string>@IOS_BUNDLE_VERSION@</string>
+	<key>OpenJKDF2Release</key>
+	<string>@IOS_RELEASE_TAG@</string>
+	<key>OpenJKDF2Commit</key>
+	<string>@OPENJKDF2_RELEASE_COMMIT_SHORT@</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon.png</string>
 	<key>CFBundleSupportedPlatforms</key>

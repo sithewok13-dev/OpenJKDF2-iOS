@@ -161,6 +161,10 @@ extern int jkHud_bChatOpen;
 // row moves left, as far as the screen allows
 #define IOSTOUCH_TRAY_STEP 50.0
 #define IOSTOUCH_TRAY_CLEAR 8.0
+// The version readout (iosTouch_VersionText), while the tray is open: small
+// dim text IOSTOUCH_VERSION_H tall, just under the tray (or the row open
+// under it); the game's text there goes under it
+#define IOSTOUCH_VERSION_H 14.0
 // The FPS readout counts frames over at least this many seconds; whether it
 // shows is kept in the app's settings under this key
 #define IOSTOUCH_FPS_PERIOD 0.5
@@ -1174,6 +1178,26 @@ static CGPoint iosTouch_TrayPlace(CGPoint menu, CGFloat left, CGPoint force, int
     return best;
 }
 
+// The version readout's text, from the app's Info.plist (NULL or "" for a
+// key it hasn't got). The version (CFBundleShortVersionString) is the
+// engine's, 0.9.9, whichever build this is, so a release build shows its
+// release tag instead (OpenJKDF2Release, "v0.5"), and any other build "dev"
+// and the commit it was built from (OpenJKDF2Commit); only with neither,
+// "v" and the version. Then the build number (CFBundleVersion, CI's run
+// number) in brackets, where it isn't just the version again:
+// "v0.5 (123)", "dev 1a2b3c4d (124)", "v0.9.9".
+static void iosTouch_VersionText(char* out, size_t size, const char* version, const char* build,
+                                 const char* release, const char* commit)
+{
+    if (!version) version = "";
+    int n;
+    if (release && *release) n = snprintf(out, size, "%s", release);
+    else if (commit && *commit) n = snprintf(out, size, "dev %s", commit);
+    else n = snprintf(out, size, "v%s", version);
+    if (n < 0 || (size_t)n >= size) return;
+    if (build && *build && strcmp(build, version) != 0) snprintf(out + n, size - n, " (%s)", build);
+}
+
 // Whether the camera cutout may be on the right of the screen. Landscape right
 // has the bottom of the phone on the right, so the cutout (at the top) is on
 // the left; landscape left puts it on the right. Not known yet: assume it can be.
@@ -1565,6 +1589,7 @@ typedef struct {
     CAShapeLayer* plusEdge;       // "+ 2ND SABER"'s dashed edge
     UIView* trayBack;       // behind MENU's tray...
     UIView* trayBack2;      // ...and behind its second row, where it takes two
+    UILabel* versionLabel;  // ...and under it, which build this is (iosTouch_VersionText)
     UIView* cameraFlash;    // the CAMERA button's white flash, over everything
     UIImpactFeedbackGenerator* cameraTap;
     UIView* camOptBack;     // behind the photo kinds
@@ -1653,6 +1678,7 @@ typedef struct {
 - (void)endBurst;
 - (void)setShowFps:(int)bShow;
 - (void)setTrayOpen:(int)bOpen;
+- (void)placeVersionLabel;
 - (void)openLevels;
 - (void)closeLevels;
 - (CAShapeLayer*)trayHoldRing:(int)button;
@@ -2101,6 +2127,30 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         trayBack2.userInteractionEnabled = NO;
         trayBack2.hidden = YES;
         [self insertSubview:trayBack2 belowSubview:aButtonViews[BTN_TRAY_FIRST]];
+        // Under the tray, with it: which build this is, read from the app's
+        // Info.plist (the same in OpenMoTS, a copy of this app). Only text,
+        // not a button: it takes no touches, and OPACITY doesn't dim it.
+        {
+            NSDictionary* info = [[NSBundle mainBundle] infoDictionary];
+            const char* aValue[4] = { NULL, NULL, NULL, NULL };
+            NSString* aKey[4] = { @"CFBundleShortVersionString", @"CFBundleVersion", @"OpenJKDF2Release", @"OpenJKDF2Commit" };
+            for (int k = 0; k < 4; k++) {
+                id v = info[aKey[k]];
+                if ([v isKindOfClass:[NSString class]]) aValue[k] = [(NSString*)v UTF8String];
+            }
+            char text[96];
+            iosTouch_VersionText(text, sizeof(text), aValue[0], aValue[1], aValue[2], aValue[3]);
+            versionLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, IOSTOUCH_VERSION_H)];
+            versionLabel.textAlignment = NSTextAlignmentCenter;
+            versionLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.5];
+            versionLabel.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.8];
+            versionLabel.shadowOffset = CGSizeMake(0, 1);
+            versionLabel.font = [UIFont monospacedDigitSystemFontOfSize:10 weight:UIFontWeightMedium];
+            versionLabel.text = [NSString stringWithUTF8String:text];
+            versionLabel.userInteractionEnabled = NO;
+            versionLabel.hidden = YES;
+            [self insertSubview:versionLabel belowSubview:aButtonViews[BTN_TRAY_FIRST]];
+        }
         for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) aButtonViews[i].hidden = YES;
         iosTouch_GyroSetup();
         [self refreshGyroLabels]; // (and their fonts)
@@ -2985,6 +3035,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         const CGFloat cx = MAX(MIN(iosTouch_aButtons[BTN_TRAYOPACITY].x, right - w * 0.5), left + w * 0.5);
         opacityBack.frame = CGRectMake(round(cx - w * 0.5), round(trayLastY + 52 - h * 0.5), w, h);
     }
+    [self placeVersionLabel];
     burstLabel.center = iosTouch_bBurstUnder
         ? CGPointMake(iosTouch_aButtons[BTN_CAMERA].x, iosTouch_aButtons[BTN_CAMERA].y + iosTouch_aButtons[BTN_CAMERA].radius + 12)
         : CGPointMake(iosTouch_aButtons[BTN_CAMERA].x + iosTouch_aButtons[BTN_CAMERA].radius + 20, iosTouch_aButtons[BTN_CAMERA].y);
@@ -3010,7 +3061,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         // (k 1..5: just under the tray's backing, or the row's)
         UIView* aUnder[5] = { iosTouch_numTrayRows > 1 ? trayBack2 : trayBack, gyroOptBack, camRowBack, camOptBack, opacityBack };
         const CGFloat textTop = k == 0 ? top + 26 + iosTouch_aButtons[BTN_MENU].radius + IOSTOUCH_TOPTEXT_GAP
-                                       : CGRectGetMaxY(aUnder[k - 1].frame) + IOSTOUCH_TOPTEXT_GAP;
+                                       : CGRectGetMaxY(aUnder[k - 1].frame) + IOSTOUCH_VERSION_H + IOSTOUCH_TOPTEXT_GAP; // (under the version readout)
         CGFloat half = MIN(W * 0.5 - (left + IOSTOUCH_TOPTEXT_SIDE), (right - IOSTOUCH_TOPTEXT_SIDE) - W * 0.5);
         for (int i = 0; i < IOSTOUCH_NUM_BUTTONS; i++) {
             if (iosTouch_IsTrayButton(i) || iosTouch_IsOptButton(i)) continue; // only over the text while open
@@ -3368,6 +3419,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     if (!bOpen) [self setOptRow:IOSTOUCH_ROW_NONE];
     trayBack.hidden = !bOpen;
     trayBack2.hidden = !bOpen || iosTouch_numTrayRows < 2;
+    versionLabel.hidden = !bOpen;
     for (int i = BTN_TRAY_FIRST; i <= BTN_TRAY_LAST; i++) aButtonViews[i].hidden = !bOpen;
     [self refreshTrayLevel]; // (LEVEL only while sithewok is on)
     if (!bOpen) {
@@ -3390,6 +3442,27 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         }
     }
     [self refreshButtonLooks];
+}
+
+// The version readout's place: centred under the tray's last row, just
+// under whichever is lowest of that row and the row open under the tray (kept
+// on screen). The game's text there goes under it (layoutSubviews).
+- (void)placeVersionLabel
+{
+    UIView* aBelow[5] = { iosTouch_numTrayRows > 1 ? trayBack2 : trayBack, gyroOptBack, camRowBack, camOptBack, opacityBack };
+    CGFloat y = CGRectGetMaxY(aBelow[0].frame);
+    for (int k = 1; k < 5; k++) {
+        if (!aBelow[k].hidden) y = MAX(y, CGRectGetMaxY(aBelow[k].frame));
+    }
+    [versionLabel sizeToFit];
+    CGRect r = versionLabel.frame;
+    r.size.height = IOSTOUCH_VERSION_H;
+    const UIEdgeInsets in = self.safeAreaInsets;
+    CGFloat x = CGRectGetMidX(aBelow[0].frame) - r.size.width * 0.5;
+    x = MIN(x, self.bounds.size.width - MAX(in.right, 8.0) - r.size.width);
+    x = MAX(x, MAX(in.left, 8.0));
+    r.origin = CGPointMake(round(x), round(y));
+    versionLabel.frame = r;
 }
 
 - (void)setShowFps:(int)bShow
@@ -4208,6 +4281,7 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     for (int i = BTN_CAMOPT_FIRST; i <= BTN_CAMOPT_LAST; i++) aButtonViews[i].hidden = !iosTouch_bKindsOpen;
     opacityBack.hidden = row != IOSTOUCH_ROW_OPACITY;
     opacitySlider.value = iosTouch_opacity;
+    [self placeVersionLabel];
     [self releaseOptTouches];
     [self refreshGyroLabels];
     [self refreshButtonLooks];
@@ -4221,6 +4295,7 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     iosTouch_bKindsOpen = bOpen;
     camOptBack.hidden = !bOpen;
     for (int i = BTN_CAMOPT_FIRST; i <= BTN_CAMOPT_LAST; i++) aButtonViews[i].hidden = !bOpen;
+    [self placeVersionLabel];
     [self releaseOptTouches];
     [self refreshButtonLooks];
 }
