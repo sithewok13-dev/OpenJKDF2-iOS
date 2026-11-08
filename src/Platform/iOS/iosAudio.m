@@ -17,14 +17,16 @@ static int iosAudio_bStarted = 0;
 static int iosAudio_bInRestart = 0;
 static CFTimeInterval iosAudio_lastRestart = 0.0;
 
-// Exactly what SDL3's UpdateAudioSession picks for a playback-only app with no
-// SDL_HINT_AUDIO_CATEGORY set. Matching it means SDL finds the session already
-// configured when the music device opens and leaves it alone. (Playback also
-// plays with the ring/silent switch on, like the SDL default.)
+// Exactly what SDL3's UpdateAudioSession picks for a playback-only app with
+// SDL_HINT_AUDIO_CATEGORY "playback" (set in Window.c). Matching it means SDL
+// finds the session already configured when the music device opens and
+// leaves it alone. Playback plays with the ring/silent switch on, and without
+// MixWithOthers the game takes over the sound: other apps' music stops while
+// it plays (the owner's choice, as in the Raze port).
 static void iosAudio_ConfigureSession(void)
 {
     AVAudioSession* session = [AVAudioSession sharedInstance];
-    NSUInteger options = AVAudioSessionCategoryOptionMixWithOthers | AVAudioSessionCategoryOptionDuckOthers;
+    NSUInteger options = AVAudioSessionCategoryOptionDuckOthers;
     NSError* err = nil;
 
     if (![session.category isEqualToString:AVAudioSessionCategoryPlayback] || session.categoryOptions != options) {

@@ -1638,6 +1638,9 @@ int Window_Main_Linux(int argc, char** argv)
 #if defined(TARGET_IOS)
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI, "1");
+    // Added: the game's sound replaces other apps' audio (not mixed with it),
+    // and plays with the silent switch on: see iosAudio.m
+    SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "playback");
 #endif
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD);
