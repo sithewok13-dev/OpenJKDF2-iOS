@@ -234,9 +234,9 @@ const char* iosSaberWheel_HubText(int bTapMode)
         snprintf(text, sizeof(text), "%s saber, blade %d", side, blade + 1);
         return text;
     }
-    if (iosSaberWheel_NumSabers() < 2) return bTapMode ? "tap a colour" : "slide toward a colour";
-    if (iosSaberWheel_SameColourActs()) return "colour for both sabers";
-    snprintf(text, sizeof(text), "colour for the %s saber", side);
+    if (iosSaberWheel_NumSabers() < 2) return bTapMode ? "tap a color" : "slide toward a color";
+    if (iosSaberWheel_SameColourActs()) return "color for both";
+    snprintf(text, sizeof(text), "%s saber color", side);
     return text;
 }
 

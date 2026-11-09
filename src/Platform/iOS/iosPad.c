@@ -405,9 +405,9 @@ static void iosPad_SetWheelPrompt(void)
         snprintf(rnd, sizeof(rnd), "%s: random   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_BACK, 0));
         if (st & 4) snprintf(y, sizeof(y), "%s: pick   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_NORTH, 0));
         if (bTwo || (st & 2)) snprintf(x, sizeof(x), "%s: %s   ", iosPad_ButtonName(SDL_GAMEPAD_BUTTON_WEST, 0), bTwo ? "one saber" : "2nd saber");
-        if (bTwo) snprintf(same, sizeof(same), "%s: same colour   %s: same hilt   ", iosPad_PbName(PB_RB, 0), iosPad_PbName(PB_LT, 0));
+        if (bTwo) snprintf(same, sizeof(same), "%s: same color   %s: same hilt   ", iosPad_PbName(PB_RB, 0), iosPad_PbName(PB_LT, 0));
         if (st & 8) snprintf(aut, sizeof(aut), "%s: auto open   ", iosPad_PbName(PB_RT, 0));
-        snprintf(t, sizeof(t), "Right stick: colour   %s: set   %s%s: hilt   %s%s%s%sD-pad up: film   %sL3: look   R3: equip   %s: close",
+        snprintf(t, sizeof(t), "Right stick: color   %s: set   %s%s: hilt   %s%s%s%sD-pad up: film   %sL3: look   R3: equip   %s: close",
                  a, y, iosPad_PbName(PB_LB, 0), rnd, x, same, aut, (st & 16) ? "D-pad down: saber throw   " : "", bb);
         iosPad_s.saberPrompt = st;
     }

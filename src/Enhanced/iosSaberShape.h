@@ -85,6 +85,9 @@ enum { IOSSABERSHAPE_FORM_CHOSEN = 0, IOSSABERSHAPE_FORM_CROSS, IOSSABERSHAPE_FO
 // the widths back. blade: which of the thing's (0, 1: each crackles its own way).
 void iosSaberShape_BeginBlade(struct SithThing* pThing, struct rdThing* pLine, const unsigned char rgb[3], const unsigned char core[3], int form, int blade);
 void iosSaberShape_EndBlade(void);
+// (just before BeginBlade: with FILM, the next blade's glow softer, IOSSABERSHAPE_SOFT as strong (WHITE's);
+// BeginBlade takes it, once)
+void iosSaberShape_SetSoftGlow(int bSoft);
 // (between them: the blade drawn a little ragged along its whole length, FOLD's, whatever the
 // shape; id: whose and which blade, each its own way; 0 not. A thrown FOLD's, its model: drawn
 // so over it, iosSaberShape_DrawThrownGlow; whether pLine is so now)

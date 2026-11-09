@@ -555,10 +555,10 @@ switch the controller off and they come back.
   | --- | --- |
   | Right stick | Point at a colour (D-pad right steps round) |
   | A / Cross | Set the colour (the wheel stays open) |
-  | Y / Triangle | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades (only the cards with SAME COLOUR on). Picking blade 2 doesn't split joined dots: a colour different from blade 1's does |
+  | Y / Triangle | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades (only the cards with SAME COLOR on). Picking blade 2 doesn't split joined dots: a colour different from blade 1's does |
   | LB / L1 | The next hilt for the card you picked |
   | X / Square | Add the second saber, or go back to one |
-  | RB / R1 | SAME COLOUR on or off (two sabers) |
+  | RB / R1 | SAME COLOR on or off (two sabers) |
   | LT / L2 | SAME HILT on or off (two sabers) |
   | RT / R2 | AUTO OPEN on or off (with a FOLD) |
   | D-pad up | FILM on or off |
@@ -646,13 +646,13 @@ Turn on FPS in MENU's tray to see what the app gets (below).
   | Mouse, scroll wheel | Point at a colour |
   | Click | Set the colour (the wheel stays open) |
   | 1 | Add the second saber, or go back to one |
-  | 2 | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades (only the cards with SAME COLOUR on) |
+  | 2 | The next card or blade: the RIGHT card, its blades, the LEFT card, its blades (only the cards with SAME COLOR on) |
   | 3 | Take the saber in hand ("equip") |
   | 4 | CLASSIC or REFORGED |
   | 5 | FILM on or off |
   | 6 | SABER THROW on or off (Jedi Knight only) |
   | 7 | The next hilt for the card you picked |
-  | 8 | SAME COLOUR on or off (two sabers) |
+  | 8 | SAME COLOR on or off (two sabers) |
   | 9 | SAME HILT on or off (two sabers) |
   | 0 | AUTO OPEN on or off (with a FOLD) |
   | R | RANDOM: a new hilt and new colours. Hold it (0.3 s, RANDOM's ring fills): new colours only |
@@ -1005,8 +1005,8 @@ hand's colours and has its own **HILT** button.
 
 - **Tap a card** to choose which hand the ring paints: its edge turns gold.
   The line under the colour's name, in the middle of the wheel, says where a
-  colour goes: "colour for the right saber", "colour for the left saber",
-  "colour for both sabers", or "right saber, blade 2".
+  colour goes: "right saber color", "left saber color", "color for both", or
+  "right saber, blade 2".
 - **Each blade has its own colour.** A card shows a dot and the colour's name
   for each blade. NORMAL and CROSS have one blade, STAFF and FOLD two.
   - A new STAFF or FOLD starts with both blades the same colour: two joined
@@ -1031,8 +1031,8 @@ hand's colours and has its own **HILT** button.
   LEFT card has a small **x** in its top right corner: tap it to go back to
   one saber. It's a separate small spot above the colour, so a tap on the
   card or its colour can't drop your saber by mistake.
-- **SAME COLOUR and SAME HILT**, two switches under the LEFT card (with two
-  sabers). With SAME COLOUR on, a colour you tap goes to every blade of both
+- **SAME COLOR and SAME HILT**, two switches under the LEFT card (with two
+  sabers). With SAME COLOR on, a colour you tap goes to every blade of both
   sabers, and a tap on a dot picks its whole card. With SAME HILT on, a HILT
   tap changes both sabers. Both are off to start, so nothing changes unless
   you switch them on. They only work while you hold two sabers: with one,
@@ -1074,7 +1074,8 @@ hand's colours and has its own **HILT** button.
     is at the edges and in a soft glow close round it, and it shimmers very
     faintly (still while the game is held). The glow only adds light: it's
     strong in the dark and gentler on bright walls, and never darkens what's
-    behind it.
+    behind it. White's glow is a softer, cool silver blue, so its white
+    middle looks as slim as the other colours'.
   - Hits work as the game's always have, and the game's hits already reach
     past its own blade: a normal swing hits a quarter further than the blade
     it draws, the strongest attacks up to two and a half times as far, and
@@ -1177,11 +1178,12 @@ hand's colours and has its own **HILT** button.
   glow, the vents and the two short blades too. With FILM on, a CROSS is
   Kylo Ren's blade as the films show it: FILM's white-hot core and glow,
   narrowing a little over its last quarter to a small soft point, but
-  unstable. Its edges crackle and its width flickers, and now and then,
-  at no set beat, a small spark in its own colour spits off it or a side
-  blade and fades close by; its two short blades are the same, narrowing
-  to slightly sharper points, their glow running into the blade's at the
-  hilt. A thrown one looks the same. With FILM off it's the jagged blade
+  unstable. Its edges crackle in fine, rough bits right up to a ragged tip
+  that flickers out a little past the end, while its white-hot middle stays
+  steady, and now and then, at no set beat, a small spark in its own colour
+  spits off it or a side blade and fades close by; its two short blades are
+  the same, narrowing to slightly sharper points, their glow running into
+  the blade's at the hilt. A thrown one looks the same. With FILM off it's the jagged blade
   above, as before. Only the look changes: the
   main blade hits as usual, and the vents and the short side blades don't
   hit anything.
@@ -1189,8 +1191,9 @@ hand's colours and has its own **HILT** button.
     saber low, the hand by the hip and the blade angled down and out to the
     side, the free hand hanging (with two, both sabers low, the hands
     further apart), standing, walking, running, crouching and
-    jumping alike. In first person the blade is tipped out to the side, and
-    the crossguard always faces you side on. A swing starts from the guard
+    jumping alike. In first person the blade leans out a little to the side
+    and stands as tall as your other blades, and the crossguard always
+    faces you side on. A swing starts from the guard
     and is the game's own swing exactly (the same reach, timing and
     damage), and he settles back into the guard after. Blocks, Force powers
     and drawing or putting the saber away play as the game has them.

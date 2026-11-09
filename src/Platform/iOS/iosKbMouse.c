@@ -201,8 +201,8 @@ static void iosKbMouse_SetWheelPrompt(void)
         // (what each key does now: 2 with more than one card or blade to
         // pick, 8 and 9 with two sabers, 0 with a FOLD, 6 where THROW is)
         const int st = iosKbMouse_SaberPromptState(), bTwo = st & 1;
-        snprintf(t, sizeof(t), "Mouse: colour   Click: set   %s%s7: hilt   R: random   %s%s3: equip   4: look   5: film   %sEsc: close",
-                 bTwo ? "1: one saber   " : (st & 2) ? "1: 2nd saber   " : "", (st & 4) ? "2: pick   " : "", bTwo ? "8: same colour   9: same hilt   " : "",
+        snprintf(t, sizeof(t), "Mouse: color   Click: set   %s%s7: hilt   R: random   %s%s3: equip   4: look   5: film   %sEsc: close",
+                 bTwo ? "1: one saber   " : (st & 2) ? "1: 2nd saber   " : "", (st & 4) ? "2: pick   " : "", bTwo ? "8: same color   9: same hilt   " : "",
                  (st & 8) ? "0: auto open   " : "", (st & 16) ? "6: saber throw   " : "");
         iosKbMouse_s.saberPrompt = st;
     }

@@ -1533,7 +1533,7 @@ static void inputWheel_DrawChips(void)
     for (int hand = IOSSABER_HAND_RIGHT; hand < IOSSABER_NUM_HANDS; hand++) inputWheel_DrawCard(hand);
     inputWheel_DrawAddSlot();
     static const struct { int chip; const char* name; } aSwitch[] = {
-        { INPUTWHEEL_CHIP_SAME_COLOUR, "SAME COLOUR" }, { INPUTWHEEL_CHIP_SAME_HILT, "SAME HILT" }, { INPUTWHEEL_CHIP_SHAPE, "FILM" },
+        { INPUTWHEEL_CHIP_SAME_COLOUR, "SAME COLOR" }, { INPUTWHEEL_CHIP_SAME_HILT, "SAME HILT" }, { INPUTWHEEL_CHIP_SHAPE, "FILM" },
         { INPUTWHEEL_CHIP_AUTO, "AUTO\nOPEN" }, { INPUTWHEEL_CHIP_THROW, "SABER\nTHROW" },
     };
     for (int k = 0; k < INPUTWHEEL_COUNT(aSwitch); k++) {

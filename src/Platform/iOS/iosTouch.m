@@ -2560,7 +2560,7 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         {
             // the switches: the name on the left, a small on/off switch on the right
             const int aSw[5] = { IOSTOUCH_CHIP_SHAPE, IOSTOUCH_CHIP_AUTO, IOSTOUCH_CHIP_THROW, IOSTOUCH_CHIP_SAMECOLOUR, IOSTOUCH_CHIP_SAMEHILT };
-            NSString* aSwText[5] = { @"FILM", @"AUTO\nOPEN", @"SABER\nTHROW", @"SAME COLOUR", @"SAME HILT" };
+            NSString* aSwText[5] = { @"FILM", @"AUTO\nOPEN", @"SABER\nTHROW", @"SAME COLOR", @"SAME HILT" };
             for (int k = 0; k < 5; k++) {
                 UILabel* c = aSaberChips[aSw[k]];
                 const CGFloat w = c.bounds.size.width;
