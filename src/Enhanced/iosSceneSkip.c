@@ -94,16 +94,26 @@ static void iosSceneSkip_End(void)
 }
 
 // (still the same scene, in the same game, playing on; given up on after
-// IOSSCENESKIP_MAX_MS of it)
+// IOSSCENESKIP_MAX_MS of it -- counted again from a clock gone back, a game
+// loaded in the same scene)
 static int iosSceneSkip_GoesOn(void)
 {
-    if (sithTime_g_msecGameTime - iosSceneSkip_startGameMs >= IOSSCENESKIP_MAX_MS) {
+    if (!(sithWorld_g_pCurrentWorld == iosSceneSkip_pWorld && sithPlayer_g_pLocalPlayerThing == iosSceneSkip_pPlayer
+          && jkSmack_currentGuiState == JK_GAMEMODE_GAMEPLAY && !jkSmack_stopTick && g_sithMode != 5 && !sithMain_bEndLevel
+          && sithGamesave_state == SITH_GS_NONE && !iosGame_WantsHold() && iosSceneSkip_InScene()))
+        return 0;
+    const uint32_t now = sithTime_g_msecGameTime;
+    if (now < iosSceneSkip_startGameMs) iosSceneSkip_startGameMs = now;
+    if (now - iosSceneSkip_startGameMs >= IOSSCENESKIP_MAX_MS) {
         iosSceneSkip_bGaveUp = 1;
         return 0;
     }
-    return sithWorld_g_pCurrentWorld == iosSceneSkip_pWorld && sithPlayer_g_pLocalPlayerThing == iosSceneSkip_pPlayer
-           && jkSmack_currentGuiState == JK_GAMEMODE_GAMEPLAY && !jkSmack_stopTick && g_sithMode != 5 && !sithMain_bEndLevel
-           && sithGamesave_state == SITH_GS_NONE && !iosGame_WantsHold() && iosSceneSkip_InScene();
+    return 1;
+}
+
+int iosSceneSkip_IsGivenUp(void)
+{
+    return iosSceneSkip_bGaveUp;
 }
 
 void iosSceneSkip_SetAuto(int bOn)

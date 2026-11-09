@@ -6815,10 +6815,12 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self showSceneLabel:sceneSkipping width:96.0 alpha:(!iosTouch_bAutoplay && iosSceneSkip_IsSkipping()) ? 1.0 : 0.0
                       at:CGPointMake(sz.width * 0.5, sz.height * 0.5)];
     if (iosTouch_bPadMasked && (bWasHint != sceneHint.hidden || bWasSkipping != sceneSkipping.hidden)) [self applyPadMask]; // (shown through it)
-    // the scene over: a finger that came down during it (a tap still on the
-    // glass, a thumb waiting for the fight) works from now on, as if it had
-    // landed now where it is -- the stick under a left thumb, looking...
-    if (bCan || iosSceneSkip_IsSkipping()) return;
+    // the scene over (ended, or given up on; not only paused a moment -- a
+    // save being written, a wheel or panel holding the game): a finger that
+    // came down during it (a tap still on the glass, a thumb waiting for the
+    // fight) works from now on as the stick where a left thumb starts it, or
+    // looking -- never a button, which needs a press of its own
+    if ((iosSceneSkip_InScene() && !iosSceneSkip_IsGivenUp()) || iosSceneSkip_IsSkipping()) return;
     int bTaken = 0;
     for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
         iosTouchSlot* s = &iosTouch_aSlots[i];
@@ -6835,12 +6837,10 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         s->trayButton = -1;
         s->wheelSlot = -1;
         if (iosTouch_bAutoplay || iosTouch_bPadMasked || iosTouch_bWheelOpen || iosTouch_bTrayOpen || iosTouch_selfieStage != IOSTOUCH_SELFIE_NONE
-            || iosTouch_bFreezing || iosTouch_bCinema)
+            || iosTouch_bFreezing || iosTouch_bCinema || [self levelsOpen] || iosAutoplayPanel_IsOpen())
             s->role = ROLE_IGNORED; // (something else has the screen: left alone until it lifts)
-        else {
-            s->button = [self buttonAt:p];
-            [self takeTouch:s at:p];
-        }
+        else
+            [self takeTouch:s at:p]; // (s->button -1: the stick or looking, whatever is under it)
         bTaken = 1;
     }
     if (bTaken) {

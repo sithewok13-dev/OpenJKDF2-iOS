@@ -36,6 +36,10 @@ int iosSceneSkip_InScene(void);
 // away) is given up on: it plays on as it is, and can't be skipped again.
 int iosSceneSkip_CanSkip(void);
 
+// Whether the scene playing now was given up on (above): over as far as
+// skipping goes
+int iosSceneSkip_IsGivenUp(void);
+
 // The scene skipped: run on unseen to its own end. 0, and nothing changed,
 // if it can't be now.
 int iosSceneSkip_Skip(void);
