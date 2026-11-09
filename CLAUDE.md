@@ -80,6 +80,12 @@ everything on a phone.
   - OPACITY (tray): tap = a slider under the tray, 20% to 100% in 5% steps, live,
     saved on lift (`iosTouchOpacity`, default 100%); hold = back to 100%. Every
     control in play follows it; the tray, its rows and the wheels stay at full.
+  - FPS (tray): tap = show/hide the FPS readout; hold 0.45 s (ring) = 60 <-> 120
+    ("FPS 60", default 60) with a toast and a haptic. Remembered
+    (`iosTouchMaxFps`). A display link asks the screen for it; `iosAngle_FrameCap`
+    keeps frames 1/60 s apart at 60, and the saved r_fpslimit/vsync are ignored.
+    The game's physics, AI and scripts step at a fixed 150 Hz, so 120 doesn't
+    change game speed. A log line every 5 s of play gives fps and ms per frame.
   - GYRO: OFF (default) / TOUCH (aims while either thumb is down; lifting both
     freezes the view) / ALWAYS. SENS 1.0/1.5/2.0/3.0, default 1.5. Remembered.
   - FORCE WHEEL and NEXT WPN: tap = next; a 10 pt slide opens the wheel at once; a

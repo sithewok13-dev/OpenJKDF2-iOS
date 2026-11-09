@@ -6,6 +6,8 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <time.h>
 
 #include <SDL.h>
 #include <SDL_metal.h>
@@ -15,6 +17,7 @@
 #include <GLES3/gl3.h>
 
 #include "stdPlatform.h"
+#include "Platform/iOS/iosTouch.h" // (the tray's FPS: 60 or 120)
 
 static SDL_MetalView iosAngle_metalView = NULL;
 static EGLDisplay    iosAngle_display   = EGL_NO_DISPLAY;
@@ -177,12 +180,87 @@ void iosAngle_DestroyContext(void)
     }
 }
 
+static uint64_t iosAngle_Ns(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+}
+
+// The tray's FPS at 60 on a 120 Hz screen: the screen is asked for 60, but
+// frames could still come at the screen's 120 (vsync), so they are kept at
+// least 1/60 s apart here (the waits are battery saved). At 120 the screen
+// alone paces them.
+static void iosAngle_FrameCap(void)
+{
+    static uint64_t next = 0;
+    const int fps = iosTouch_MaxFps();
+    if (fps <= 0 || fps >= 120) {
+        next = 0;
+        return;
+    }
+    const uint64_t period = 1000000000ull / (uint64_t)fps;
+    const uint64_t now = iosAngle_Ns();
+    // (far behind, after a pause or a load: from now on)
+    if (next == 0 || now > next + period) next = now;
+    if (now < next) {
+        const uint64_t wait = next - now;
+        struct timespec ts = { (time_t)(wait / 1000000000ull), (long)(wait % 1000000000ull) };
+        nanosleep(&ts, NULL);
+    }
+    next += period;
+}
+
+// The frame-time log: every 5 s of play, the frames a second and the time
+// per frame (the average and the worst), with the rate asked for. Only
+// frames of play count (iosAngle_MarkGameFrame); a gap of over 0.5 s (a
+// menu, a load, the app away) starts the count again.
+static int iosAngle_bGameFrame = 0;
+
+void iosAngle_MarkGameFrame(void)
+{
+    iosAngle_bGameFrame = 1;
+}
+
+static void iosAngle_LogFrame(void)
+{
+    static uint64_t tLast = 0, tStart = 0, sum = 0, worst = 0;
+    static int frames = 0;
+    const uint64_t now = iosAngle_Ns();
+    if (!iosAngle_bGameFrame) {
+        tLast = 0;
+        return;
+    }
+    iosAngle_bGameFrame = 0;
+    if (tLast == 0 || now - tLast > 500000000ull) {
+        tLast = tStart = now;
+        sum = worst = 0;
+        frames = 0;
+        return;
+    }
+    const uint64_t dt = now - tLast;
+    tLast = now;
+    frames++;
+    sum += dt;
+    if (dt > worst) worst = dt;
+    if (now - tStart >= 5000000000ull) {
+        printf("iOS: frames %.1f fps; per frame %.2f ms (worst %.1f); asked for %d\n",
+               frames * 1e9 / (double)(now - tStart), sum * 1e-6 / frames, worst * 1e-6, iosTouch_MaxFps());
+        fflush(stdout);
+        tStart = now;
+        sum = worst = 0;
+        frames = 0;
+    }
+}
+
 void iosAngle_SwapBuffers(void)
 {
     if (iosAngle_display == EGL_NO_DISPLAY || iosAngle_surface == EGL_NO_SURFACE) {
         return;
     }
+    iosAngle_FrameCap();
     eglSwapBuffers(iosAngle_display, iosAngle_surface);
+    iosAngle_LogFrame();
 }
 
 void iosAngle_SetSwapInterval(int interval)

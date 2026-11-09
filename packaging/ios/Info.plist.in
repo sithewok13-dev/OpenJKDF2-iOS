@@ -68,6 +68,11 @@
 	     mouse-based JK menus; iOS also logs a warning about it at launch. -->
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Lets the tray's FPS ask a ProMotion iPhone for 120 Hz (iPhones give
+	     an app 60 without it). The game stays at 60 unless switched. MotS's
+	     app is a copy of this one's (make_mots_app.sh), so it has it too. -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<!-- The game assets live in Documents/ (see InstallHelper_GetLocalDataDir);
 	     these two make that folder reachable from Finder file sharing and the
 	     Files app, which is the only way to get a JKDF2 install onto an iPhone. -->

@@ -164,6 +164,8 @@ int iosTouch_IsPhotoModeUp(void);
 // The FPS readout (the tray's FPS), on or off
 int iosTouch_IsFpsShown(void);
 void iosTouch_SetFpsShown(int bShow);
+// The frame rate asked for (the tray's FPS held): 60 (the default) or 120
+int iosTouch_MaxFps(void);
 
 // A keyboard and mouse (iosKbMouse). The touch controls hidden while they
 // are played, as for a pad (either can hide them; a touch -- not a click --

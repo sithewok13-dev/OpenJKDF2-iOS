@@ -25,8 +25,13 @@ int iosAngle_CreateContext(SDL_Window* pWindow);
 // Tears down surface/context/display and the SDL metal view, in that order.
 void iosAngle_DestroyContext(void);
 
-// eglSwapBuffers; no-op if there is no current surface.
+// eglSwapBuffers; no-op if there is no current surface. Frames are kept
+// 1/60 s apart while the tray's FPS is at 60 (iosTouch_MaxFps).
 void iosAngle_SwapBuffers(void);
+
+// The next swap is a frame of play: counted in the frame-time log (every 5 s
+// of play: frames a second, ms per frame).
+void iosAngle_MarkGameFrame(void);
 
 // eglSwapInterval. 0 = tear, 1 = vsync. iOS always composites on vsync, so 0
 // only means "don't block", it can't actually tear.

@@ -16,6 +16,7 @@
 #include "Primitives/rdMatrix.h"
 #include "Primitives/rdVector.h"
 #include "jk.h"
+#include "stdPlatform.h" // (the real clock: stdPlatform_GetTimeMsec)
 
 // The focus at first: the nearest person or thing the player is looking
 // straight at, within this far (world units; Kyle is some 0.18 tall), or,
@@ -35,12 +36,13 @@
 #define IOSFREEZE_STEPS_IN    12
 #define IOSFREEZE_FIT_HALVINGS 7
 // With the camera moved by a finger (iosFreeze_SetSmooth): back out from a
-// wall, it covers this part of the way each frame
+// wall, it covers this part of the way each 1/60 s (less in a shorter frame:
+// the same glide at 60 or 120 frames a second)
 #define IOSFREEZE_EASE_OUT    0.25f
-// ...once it has been this many frames without being pushed in (sliding
+// ...once it has been this many 1/60 s without being pushed in (sliding
 // along a wall, the room for it can come and go from one step to the next:
 // it would go in and out)
-#define IOSFREEZE_HOLD_IN     12
+#define IOSFREEZE_HOLD_IN     12.0f
 // The player is left out of the view with the camera this near their head
 #define IOSFREEZE_NEAR_HEAD   0.07f
 // Up and down, kept this short of straight up or down (degrees)
@@ -55,7 +57,9 @@ static float iosFreeze_shownDist = 0;      // ...and as it is
 static int iosFreeze_bInsideMe = 0;        // started from first person, the camera not moved yet
 static float iosFreeze_targetDist = 0;     // where the walls let it be (it may still be gliding out to it)
 static int iosFreeze_bSmooth = 0;          // moved by a finger: glides back out from walls
-static int iosFreeze_holdIn = 0;           // frames to wait before gliding out
+static float iosFreeze_holdIn = 0;         // 1/60 s to wait before gliding out
+static float iosFreeze_frameK = 1.0f;      // the last frame's length, in 1/60 s (at most 1)
+static uint32_t iosFreeze_lastFrameMs = 0;
 
 static void iosFreeze_Dir(rdVector3* pDir)
 {
@@ -129,7 +133,7 @@ static int iosFreeze_Find(int bApply, float* pDist, rdVector3* pPosOut, SithSect
         rdVector3 p2;
         SithSector* s2 = NULL;
         const float e = iosFreeze_holdIn > 0 ? iosFreeze_shownDist
-                                             : iosFreeze_shownDist + (d - iosFreeze_shownDist) * IOSFREEZE_EASE_OUT;
+                                             : iosFreeze_shownDist + (d - iosFreeze_shownDist) * (1.0f - powf(1.0f - IOSFREEZE_EASE_OUT, iosFreeze_frameK));
         if (iosFreeze_FitsAt(&dir, e, &p2, &s2)) { d = e; pos = p2; sector = s2; }
     }
     else if (iosFreeze_bSmooth && d < iosFreeze_shownDist - 0.0005f) {
@@ -319,6 +323,8 @@ int iosFreeze_Begin(void)
     iosFreeze_bActive = 1;
     iosFreeze_bSmooth = 0; // (placed at once; the touch overlay turns it on)
     iosFreeze_holdIn = 0;
+    iosFreeze_frameK = 1.0f;
+    iosFreeze_lastFrameMs = 0;
     iosFreeze_bInsideMe = cur == &sithCamera_g_aCameras[0];
     iosPhotoCam_SetFov(fov);
     if (!iosFreeze_Place()) {
@@ -404,9 +410,13 @@ void iosFreeze_SetSmooth(int bSmooth)
 
 void iosFreeze_Frame(void)
 {
+    // (the frame's length, by the real clock: the game's stands still)
+    const uint32_t now = stdPlatform_GetTimeMsec();
+    iosFreeze_frameK = iosFreeze_lastFrameMs ? fminf((float)(now - iosFreeze_lastFrameMs) * 0.06f, 1.0f) : 1.0f;
+    iosFreeze_lastFrameMs = now;
     // (still gliding back out from a wall, after the wait)
-    if (iosFreeze_holdIn > 0) iosFreeze_holdIn--;
-    if (iosFreeze_bActive && iosFreeze_bSmooth && iosFreeze_holdIn == 0 && iosFreeze_shownDist < iosFreeze_targetDist - 0.0005f) iosFreeze_Place();
+    if (iosFreeze_holdIn > 0) iosFreeze_holdIn = fmaxf(iosFreeze_holdIn - iosFreeze_frameK, 0.0f);
+    if (iosFreeze_bActive && iosFreeze_bSmooth && iosFreeze_holdIn <= 0.0f && iosFreeze_shownDist < iosFreeze_targetDist - 0.0005f) iosFreeze_Place();
 }
 
 void iosFreeze_End(void)

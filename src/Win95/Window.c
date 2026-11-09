@@ -1287,6 +1287,15 @@ void Window_SdlUpdate()
     static int jkPlayer_enableVsync_last = 0;
     int menu_framelimit_amt_ms = 16;
 
+#ifdef TARGET_IOS
+    // Added: the frame rate is the tray's FPS (60 or 120: the screen's
+    // vsync, kept 1/60 s apart at 60 by iosAngle_SwapBuffers), so saved
+    // settings can't cap or unpace it (r_fpslimit's whole milliseconds
+    // would drop frames at 60)
+    jkPlayer_fpslimit = 0;
+    jkPlayer_enableVsync = 1;
+#endif
+
     if (jkPlayer_enableVsync_last != jkPlayer_enableVsync)
     {
         SDL_GL_SetSwapInterval(jkPlayer_enableVsync);
@@ -1414,6 +1423,9 @@ void Window_SdlVblank()
 
 #ifdef ARCH_WASM
     if (!jkGuiBuildMulti_bRendering)
+#endif
+#ifdef TARGET_IOS
+    iosAngle_MarkGameFrame(); // Added: counted in the frame-time log
 #endif
     SDL_GL_SwapWindow(displayWindow);
     //uint32_t after = stdPlatform_GetTimeMsec();
