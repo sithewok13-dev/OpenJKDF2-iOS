@@ -162,7 +162,7 @@ extern int jkHud_bChatOpen;
 // row moves left, as far as the screen allows
 #define IOSTOUCH_TRAY_STEP 50.0
 #define IOSTOUCH_TRAY_CLEAR 8.0
-// The version readout (iosTouch_VersionText), while the tray is open: small
+// The build stamp (iosTouch_VersionText), while the tray is open: small
 // dim text IOSTOUCH_VERSION_H tall, just under the tray (or the row open
 // under it); the game's text there goes under it
 #define IOSTOUCH_VERSION_H 14.0
@@ -1206,24 +1206,20 @@ static CGPoint iosTouch_TrayPlace(CGPoint menu, CGFloat left, CGPoint force, int
     return best;
 }
 
-// The version readout's text, from the app's Info.plist (NULL or "" for a
-// key it hasn't got). The version (CFBundleShortVersionString) is the
-// engine's, 0.9.9, whichever build this is, so a release build shows its
-// release tag instead (OpenJKDF2Release, "v0.5"), and any other build "dev"
-// and the commit it was built from (OpenJKDF2Commit); only with neither,
-// "v" and the version. Then the build number (CFBundleVersion, CI's run
-// number) in brackets, where it isn't just the version again:
-// "v0.5 (123)", "dev 1a2b3c4d (124)", "v0.9.9".
-static void iosTouch_VersionText(char* out, size_t size, const char* version, const char* build,
-                                 const char* release, const char* commit)
+// The build stamp's text, from the app's Info.plist: SWBuildNumber and
+// SWBuildDate (YYYY-MM-DD, UTC), which CI writes, as "build 80 · Nov 9"
+// (the owner compares it with the builds page). A build without them
+// (local, or a date it can't read): "build dev".
+static void iosTouch_VersionText(char* out, size_t size, const char* number, const char* date)
 {
-    if (!version) version = "";
-    int n;
-    if (release && *release) n = snprintf(out, size, "%s", release);
-    else if (commit && *commit) n = snprintf(out, size, "dev %s", commit);
-    else n = snprintf(out, size, "v%s", version);
-    if (n < 0 || (size_t)n >= size) return;
-    if (build && *build && strcmp(build, version) != 0) snprintf(out + n, size - n, " (%s)", build);
+    static const char* aMonth[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    int y, m, d;
+    if (number && *number && date && sscanf(date, "%4d-%2d-%2d", &y, &m, &d) == 3
+        && m >= 1 && m <= 12 && d >= 1 && d <= 31)
+        snprintf(out, size, "build %s \u00B7 %s %d", number, aMonth[m - 1], d);
+    else
+        snprintf(out, size, "build dev");
 }
 
 // Whether the camera cutout may be on the right of the screen. Landscape right
@@ -2170,20 +2166,20 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         // not a button: it takes no touches, and OPACITY doesn't dim it.
         {
             NSDictionary* info = [[NSBundle mainBundle] infoDictionary];
-            const char* aValue[4] = { NULL, NULL, NULL, NULL };
-            NSString* aKey[4] = { @"CFBundleShortVersionString", @"CFBundleVersion", @"OpenJKDF2Release", @"OpenJKDF2Commit" };
-            for (int k = 0; k < 4; k++) {
+            const char* aValue[2] = { NULL, NULL };
+            NSString* aKey[2] = { @"SWBuildNumber", @"SWBuildDate" };
+            for (int k = 0; k < 2; k++) {
                 id v = info[aKey[k]];
                 if ([v isKindOfClass:[NSString class]]) aValue[k] = [(NSString*)v UTF8String];
             }
             char text[96];
-            iosTouch_VersionText(text, sizeof(text), aValue[0], aValue[1], aValue[2], aValue[3]);
+            iosTouch_VersionText(text, sizeof(text), aValue[0], aValue[1]);
             versionLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, IOSTOUCH_VERSION_H)];
             versionLabel.textAlignment = NSTextAlignmentCenter;
             versionLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.5];
             versionLabel.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.8];
             versionLabel.shadowOffset = CGSizeMake(0, 1);
-            versionLabel.font = [UIFont monospacedDigitSystemFontOfSize:10 weight:UIFontWeightMedium];
+            versionLabel.font = [UIFont monospacedDigitSystemFontOfSize:11 weight:UIFontWeightMedium];
             versionLabel.text = [NSString stringWithUTF8String:text];
             versionLabel.userInteractionEnabled = NO;
             versionLabel.hidden = YES;

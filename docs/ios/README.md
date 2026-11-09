@@ -333,7 +333,7 @@ screen, the camera cutout and the HUD.
  WPN    WHEEL   (only items you have)                         SAVE   LOAD
       [GYRO] [RUN] [LOOK] [OPACITY] [FPS] [CAMERA] [AUTO PLAY] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
                   (MENU's tray, when held; LEVEL only while sithewok is on; in co-op, the host's)
-                                  v0.5 (123)                (which build this is, under the tray)
+                                build 80 · Nov 9            (which build this is, under the tray)
                              [MODE] [SENS]             (GYRO held in the tray)
                              [PHOTO] [SELFIES] [FREEZE] (CAMERA held in the tray)
                              [====o=========]          (OPACITY tapped in the tray)
@@ -419,9 +419,10 @@ first and then tap one. Anywhere on the tray's dark backing counts as the
 nearest button.
 
 Just under the tray (or the row open under it), small dim text shows which
-build you have: for a release, its name and build number, such as
-*v0.5 (123)*; for a test build (ios-latest), *dev*, the commit it was built
-from and the build number, such as *dev 1a2b3c4d (124)*. It's only text,
+build you have: the build number and the day it was built, such as
+*build 80 · Nov 9*. The first line of each release's description (and of
+the "iOS latest build") has the same number, such as *Build 80 ·
+2026-11-09*, so you can tell whether yours is the newest. It's only text,
 not a button. OpenMoTS shows its own the same way.
 
 - **GYRO:** a **tap** switches tilt aiming on or off. It comes back on in the
@@ -1917,8 +1918,8 @@ To help track a bug down, please include:
 
 - your device model and iOS version, for example *iPhone 15, iOS 18.5*
 - which app: OpenJKDF2 (Jedi Knight) or OpenMoTS (Mysteries of the Sith)
-- which build you're using: the release name (for example *v0.6*), or, for an
-  "iOS latest build", the run number and commit from its description. (AltStore
+- which build you're using: the line under MENU's tray (for example
+  *build 80 · Nov 9*), or the release name (for example *v0.6*). (AltStore
   and Settings show the app's version as 0.9.9: that's the engine's version,
   not the release name.)
 - what you did, what you expected, and what happened instead, plus the

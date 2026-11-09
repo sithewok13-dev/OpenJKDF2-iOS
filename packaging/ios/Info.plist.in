@@ -22,6 +22,7 @@
 	<string>@IOS_RELEASE_TAG@</string>
 	<key>OpenJKDF2Commit</key>
 	<string>@OPENJKDF2_RELEASE_COMMIT_SHORT@</string>
+	@IOS_BUILD_STAMP_KEYS@
 	<key>CFBundleIconFile</key>
 	<string>AppIcon.png</string>
 	<key>CFBundleSupportedPlatforms</key>

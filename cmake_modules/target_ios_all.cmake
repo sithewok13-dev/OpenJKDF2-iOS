@@ -115,11 +115,20 @@ macro(postcompile_ios)
         set(IOS_BUNDLE_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
     endif()
 
-    # For the version readout under MENU's tray (iosTouch.m), since the version
-    # above is the engine's whichever build this is: the release tag CI is
-    # building for (IOS_RELEASE_TAG, such as v0.5; empty for any other build)
-    # as OpenJKDF2Release, and the commit (version.cmake) as OpenJKDF2Commit.
+    # Which build this is, kept in Info.plist since the version above is the
+    # engine's whichever build this is: the release tag CI is building for
+    # (IOS_RELEASE_TAG, such as v0.5; empty for any other build) as
+    # OpenJKDF2Release, and the commit (version.cmake) as OpenJKDF2Commit.
     set(IOS_RELEASE_TAG "$ENV{IOS_RELEASE_TAG}")
+
+    # The build stamp under MENU's tray ("build 80 · Nov 9", iosTouch.m): CI
+    # sets SW_BUILD_NUMBER (its run number) and SW_BUILD_DATE (YYYY-MM-DD, UTC)
+    # and they go in as SWBuildNumber and SWBuildDate. Any other build leaves
+    # both keys out, and the app shows "build dev".
+    set(IOS_BUILD_STAMP_KEYS "")
+    if(NOT "$ENV{SW_BUILD_NUMBER}" STREQUAL "" AND NOT "$ENV{SW_BUILD_DATE}" STREQUAL "")
+        set(IOS_BUILD_STAMP_KEYS "<key>SWBuildNumber</key>\n\t<string>$ENV{SW_BUILD_NUMBER}</string>\n\t<key>SWBuildDate</key>\n\t<string>$ENV{SW_BUILD_DATE}</string>")
+    endif()
 
     # CFBundleSupportedPlatforms/MinimumOSVersion differ per slice, so the plist is
     # a template rather than a static file.
