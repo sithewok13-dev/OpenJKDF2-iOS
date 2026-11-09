@@ -1304,8 +1304,8 @@ static void inputWheel_DrawShapeSwitch(touchUiDrawList* l, const char* name, flo
     float size = 10.0f, tw;
     // (the name in the middle of the room left of the switch, 4 pt in from the edge and
     // 2 short of the track, as iosTouch.m's label: smaller if it is long)
-    // (a wide switch's long name, SAME COLOUR, or one on two lines, SABER THROW: a little
-    // condensed first, at its size)
+    // (a wide switch's name too long for its room (SAME COLOR fits as it is), or one on two
+    // lines, SABER THROW: a little condensed first, at its size)
     const int bTwoLines = strchr(name, '\n') != NULL;
     const float bx = x - w * 0.5f + 4.0f + (bTwoLines ? INPUTWHEEL_SWITCH_INSET2 : 0.0f);
     const float bw = x + w * 0.5f - 9.0f - INPUTWHEEL_SWITCH_W - bx;

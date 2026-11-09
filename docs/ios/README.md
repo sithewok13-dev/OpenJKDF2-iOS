@@ -1074,8 +1074,9 @@ hand's colours and has its own **HILT** button.
     is at the edges and in a soft glow close round it, and it shimmers very
     faintly (still while the game is held). The glow only adds light: it's
     strong in the dark and gentler on bright walls, and never darkens what's
-    behind it. White's glow is a softer, cool silver blue, so its white
-    middle looks as slim as the other colours'.
+    behind it. White's glow is a softer, cool silver blue (thrown too), and
+    so is the coloured edge of its core; only its middle stays white, so it
+    looks as slim as the other colours'.
   - Hits work as the game's always have, and the game's hits already reach
     past its own blade: a normal swing hits a quarter further than the blade
     it draws, the strongest attacks up to two and a half times as far, and
@@ -1179,8 +1180,9 @@ hand's colours and has its own **HILT** button.
   Kylo Ren's blade as the films show it: FILM's white-hot core and glow,
   narrowing a little over its last quarter to a small soft point, but
   unstable. Its edges crackle in fine, rough bits right up to a ragged tip
-  that flickers out a little past the end, while its white-hot middle stays
-  steady, and now and then, at no set beat, a small spark in its own colour
+  that flickers out a little past the end, while its white-hot middle keeps
+  a steady width (only its rounded end moves with the tip), and now and
+  then, at no set beat, a small spark in its own colour
   spits off it or a side blade and fades close by; its two short blades are
   the same, narrowing to slightly sharper points, their glow running into
   the blade's at the hilt. A thrown one looks the same. With FILM off it's the jagged blade

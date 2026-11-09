@@ -170,7 +170,7 @@ Tick what works, note what doesn't (a photo of the screen helps).
       gold ring round it; the dots stay joined until blade 2 gets a colour
       other than blade 1's, then they split; a tap on the colour's name is
       the card's). The wheel's middle says what a colour tap paints. Under
-      the LEFT card: SAME COLOUR (a colour goes to every blade of both
+      the LEFT card: SAME COLOR (a colour goes to every blade of both
       sabers; a dot tap picks its card) and SAME HILT (a HILT tap changes
       both hands), both off to start, and only working with two sabers (with
       one they wait, still on, for the second). A tap from just over the
@@ -204,7 +204,7 @@ Tick what works, note what doesn't (a photo of the screen helps).
       that becomes a FOLD stays split). Held 0.3 s (a gold ring fills round
       it, as QUICK SAVE's): new colours only, the hilts stay; let go sooner,
       the tap; slid off, nothing. SAME HILT on: both get the same new hilt;
-      SAME COLOUR on: every blade the same new colour. It never changes one
+      SAME COLOR on: every blade the same new colour. It never changes one
       saber or two, CLASSIC / REFORGED, FILM, AUTO OPEN or SABER THROW; the
       colours come from the wheel as you see it. A tick, kept at once, the
       wheel stays open. Where there's no room under AUTO OPEN's spot (a short
@@ -237,8 +237,8 @@ Tick what works, note what doesn't (a photo of the screen helps).
       or D-pad right points at a colour, A sets it (D-pad left, which opens
       the wheel, closes it; L again closes the keys' wheel); Y / 2 the next
       card or blade (RIGHT, its blades, LEFT, its blades; only the cards with
-      SAME COLOUR on; blade 2 picked stays joined); X / 1 add or take away the
-      second saber; LB / 7 the picked card's HILT; RB / 8 SAME COLOUR; LT / 9
+      SAME COLOR on; blade 2 picked stays joined); X / 1 add or take away the
+      second saber; LB / 7 the picked card's HILT; RB / 8 SAME COLOR; LT / 9
       SAME HILT; RT / 0 AUTO OPEN (with a FOLD in hand); D-pad up / 5 FILM; D-pad
       down / 6 SABER THROW (Jedi Knight; with `sithewok` on it shows on, a
       little dim, and a press leaves it as you set it); L3 / 4 the look; R3 / 3
@@ -254,7 +254,7 @@ Tick what works, note what doesn't (a photo of the screen helps).
       and they come back.
 - [ ] Quit and start again: GYRO, SENS, FPS, CHEAT, VIEW, CONTROLS, the
       camera options and the saber's colours (each blade's), one saber or
-      two, each hand's hilt, SAME COLOUR, SAME HILT, AUTO OPEN, look and FILM
+      two, each hand's hilt, SAME COLOR, SAME HILT, AUTO OPEN, look and FILM
       are kept, also when picked with a pad or the keys.
 
 **Start up**

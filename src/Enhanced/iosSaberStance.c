@@ -77,8 +77,8 @@ static const iosSaberStanceArm iosSaberStance_aArm[2][IOSSABERSTANCE_NUM_ARMS] =
 // (roll, degrees) and back (pitch, degrees: + its tip toward the eye), the hand
 // moved out, down and forward (model units); one saber, or each of two. CROSS's
 // a slight slant out, its tip a little toward the eye, so on screen it stands
-// as tall as the other blades (as high as a NORMAL's tip beside it, as long):
-// tipped out further it looked shorter than them
+// about as tall as the other blades (its tip about as high as a NORMAL's, as
+// long): tipped out further it looked shorter than them
 typedef struct {
     float roll, pitch, side, lower, fwd;
 } iosSaberStancePov;

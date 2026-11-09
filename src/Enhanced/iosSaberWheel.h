@@ -81,9 +81,9 @@ void iosSaberWheel_ApplyColour(int id);
 // The colour the hub names and the ring shows as picked (as shown): the
 // picked blade's, or the picked hand's first blade's
 int iosSaberWheel_PaintColour(void);
-// The hub's line under the colour's name: what the ring paints ("colour for
-// both sabers", "colour for the left saber", "right saber, blade 2"; one
-// saber's whole hand: bTapMode "tap a colour", else "slide toward a colour")
+// The hub's line under the colour's name: what the ring paints ("color for
+// both", "left saber color", "right saber, blade 2"; one saber's whole hand:
+// bTapMode "tap a color", else "slide toward a color")
 const char* iosSaberWheel_HubText(int bTapMode);
 
 // ---- a hand's card

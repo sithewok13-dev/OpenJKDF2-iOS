@@ -3669,10 +3669,10 @@ static void test_saber_random(void)
 static void test_prompt_lines(void)
 {
     static const char* const aPrompt[] = {
-        "Right stick: colour   A: set   Y: pick   LB: hilt   View: random   X: one saber   RB: same colour   LT: same hilt   RT: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
-        "Right stick: colour   Cross: set   Triangle: pick   L1: hilt   Create: random   Square: one saber   R1: same colour   L2: same hilt   R2: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   Circle: close",
-        "Mouse: colour   Click: set   1: one saber   2: pick   7: hilt   R: random   8: same colour   9: same hilt   0: auto open   3: equip   4: look   5: film   6: saber throw   Esc: close",
-        "Right stick: colour   A: set   LB: hilt   View: random   X: 2nd saber   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
+        "Right stick: color   A: set   Y: pick   LB: hilt   View: random   X: one saber   RB: same color   LT: same hilt   RT: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
+        "Right stick: color   Cross: set   Triangle: pick   L1: hilt   Create: random   Square: one saber   R1: same color   L2: same hilt   R2: auto open   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   Circle: close",
+        "Mouse: color   Click: set   1: one saber   2: pick   7: hilt   R: random   8: same color   9: same hilt   0: auto open   3: equip   4: look   5: film   6: saber throw   Esc: close",
+        "Right stick: color   A: set   LB: hilt   View: random   X: 2nd saber   D-pad up: film   D-pad down: saber throw   L3: look   R3: equip   B: close",
     };
     static const float aW[] = { 568, 640, 667, 693, 720, 732, 780, 812, 852, 874, 912, 932, 956, 1024, 1366, 427, 480, 400, 320 };
     int bOk = 1, nTwo = 0, nMore = 0;

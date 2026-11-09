@@ -69,10 +69,12 @@ enum { IOSSABER_HIDE_JK = 1, IOSSABER_HIDE_MOTS = 2 };
 // than red, pink lightly); yellow stays the game's own yellow blade, blue the
 // deep blue, and white and black the plain look of the game's blue blade.
 // Green is not on Jedi Knight's wheel: ORIGINAL is its green.
-// WHITE with FILM (either look): a softer (iosSaberShape_SetSoftGlow), cooler, silver-blue glow round its
-// white middle, as the white blades of the shows; the glow of its edge colour, near white, ran into the
-// middle and made the blade look thicker than the others
-// (also seen: the old glow, its edge colour 215,225,255 at FILM's full glow strength: the WHITE rows without .film)
+// WHITE with FILM (either look): a softer (iosSaberShape_SetSoftGlow), cooler, silver-blue glow, held or
+// thrown, and the coloured edge of its core (made from the glow's colour) the same blue: only its white
+// middle stays white, as the white blades of the shows. The glow of its edge colour, near white, ran into
+// the middle and made the blade look thicker than the others
+// (also seen: the old glow and core edge, its edge colour 215,225,255, the glow at FILM's full strength: the
+// WHITE rows without .film)
 #define IOSSABER_WHITE_FILM { 150, 175, 230 }
 static const iosSaberColour iosSaber_aColours[] = {
     { "game",      "ORIGINAL",   NULL,    NULL,    {   0,   0,   0 }, { 150, 150, 150 } },
@@ -793,8 +795,11 @@ void iosSaber_EndThrownBlade(SithThing* pThing, int blade)
             // (FOLD's ragged blade with FILM off narrowing as the game's blade does, the thrower's)
             const rdPolyline* w = sithPlayer_g_pLocalPlayerThing && sithPlayer_g_pLocalPlayerThing->playerInfo ? &sithPlayer_g_pLocalPlayerThing->playerInfo->polyline : NULL;
             const float tipShare = iosSaberShape_Get() != IOSSABERSHAPE_BEAM && w && w->baseRadius > 0 && w->tipRadius < w->baseRadius ? (float)(w->tipRadius / w->baseRadius) : 1.0f;
+            // (WHITE's own with FILM: softer, as in hand)
+            const int bSoft = rgb && id != IOSSABER_COLOUR_GAME && rgb == iosSaber_Row(iosSaber_look, id)->film;
             iosSaberShape_DrawThrownGlow(pThing, pBlade, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge,
-                                         bCross ? IOSSABERSHAPE_FORM_CROSS : bFold ? IOSSABERSHAPE_FORM_FOLD : IOSSABERSHAPE_FORM_CHOSEN, pSideFace, pSideMat, tipShare);
+                                         bCross ? IOSSABERSHAPE_FORM_CROSS : bFold ? IOSSABERSHAPE_FORM_FOLD : IOSSABERSHAPE_FORM_CHOSEN, pSideFace, pSideMat, tipShare,
+                                         bSoft);
         }
     }
     if (!iosSaber_pThrownModel) return;
