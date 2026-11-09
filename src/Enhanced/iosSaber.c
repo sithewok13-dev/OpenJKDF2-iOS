@@ -13,9 +13,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef IOSSABER_COMPARE
-#include <stdio.h> // (the comparisons' settings, below)
-#endif
 
 #include "Engine/rdMaterial.h"
 #include "Platform/std3D.h"
@@ -75,6 +72,7 @@ enum { IOSSABER_HIDE_JK = 1, IOSSABER_HIDE_MOTS = 2 };
 // WHITE with FILM (either look): a softer (iosSaberShape_SetSoftGlow), cooler, silver-blue glow round its
 // white middle, as the white blades of the shows; the glow of its edge colour, near white, ran into the
 // middle and made the blade look thicker than the others
+// (also seen: the old glow, its edge colour 215,225,255 at FILM's full glow strength: the WHITE rows without .film)
 #define IOSSABER_WHITE_FILM { 150, 175, 230 }
 static const iosSaberColour iosSaber_aColours[] = {
     { "game",      "ORIGINAL",   NULL,    NULL,    {   0,   0,   0 }, { 150, 150, 150 } },
@@ -125,17 +123,6 @@ typedef char iosSaber_aClassicColours_size_check[(sizeof(iosSaber_aClassicColour
 // (a colour's glow, and with FILM its core's edges: its edge colour, or with FILM its own, film)
 static const unsigned char* iosSaber_GlowOf(const iosSaberColour* c)
 {
-#ifdef IOSSABER_COMPARE
-    // (for the comparisons only: RIG_WHITEFILM=old, WHITE's glow as it was; or "r,g,b", another to try)
-    static unsigned char aTry[3];
-    const char* e = getenv("RIG_WHITEFILM");
-    if (e && c->film[0] && e[0] == 'o') return c->edge;
-    int t[3];
-    if (e && c->film[0] && sscanf(e, "%d,%d,%d", &t[0], &t[1], &t[2]) == 3) {
-        for (int k = 0; k < 3; k++) aTry[k] = (unsigned char)t[k];
-        if (iosSaberShape_Get() == IOSSABERSHAPE_BEAM) return aTry;
-    }
-#endif
     if (iosSaberShape_Get() == IOSSABERSHAPE_BEAM && (c->film[0] || c->film[1] || c->film[2])) return c->film;
     return c->edge;
 }
@@ -975,23 +962,6 @@ int iosSaber_HandHilt(SithThing* pThing, int hand)
 // (the blade's width as it was, while it is drawn shimmering: two sabers)
 static rdPolyline* iosSaber_pWidthLine = NULL;
 static flex_t iosSaber_savedBase, iosSaber_savedTip;
-#ifdef IOSSABER_COMPARE
-// (for the comparisons only: RIG_CROSSPOV=b, CROSS's blade in first person drawn RIG_CROSSLONG="one,two"
-// (default IOSSABER_COMPARE_CROSS_LONG: one saber, two) times as long, its pose as it was (iosSaberStance);
-// its length as it was)
-#define IOSSABER_COMPARE_CROSS_LONG 1.14f, 1.22f
-static rdPolyline* iosSaber_pLongLine = NULL;
-static flex_t iosSaber_savedLong;
-static float iosSaber_CompareCrossLong(SithThing* pThing, int blade)
-{
-    const char* e = getenv("RIG_CROSSPOV");
-    if (!e || e[0] != 'b' || !iosSaber_SeenInFirstPerson(pThing) || iosSaber_HandHilt(pThing, blade) != IOSSABER_HILT_CROSS) return 1.0f;
-    float a[2] = { IOSSABER_COMPARE_CROSS_LONG };
-    const char* k = getenv("RIG_CROSSLONG");
-    if (k) sscanf(k, "%f,%f", &a[0], &a[1]);
-    return a[iosSaber_HasSecondBlade(pThing) ? 1 : 0];
-}
-#endif
 
 // A blade the game gives a character no player plays (an actor, or its
 // corpse: the dark Jedi, and the characters of a level's own scenes): with
@@ -1015,12 +985,6 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
         iosSaber_pWidthLine->tipRadius = iosSaber_savedTip;
         iosSaber_pWidthLine = NULL;
     }
-#ifdef IOSSABER_COMPARE
-    if (iosSaber_pLongLine) {
-        iosSaber_pLongLine->length = iosSaber_savedLong;
-        iosSaber_pLongLine = NULL;
-    }
-#endif
     iosSaberChoice c;
     if (!pLine || !pLine->polyline) return;
     if (!iosSaber_LookOf(pThing, &c)) {
@@ -1057,16 +1021,6 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
     int form = IOSSABERSHAPE_FORM_CHOSEN;
     if (iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_CROSS)
         form = (iosSaber_HasSecondBlade(pThing) && iosSaber_HandHilt(pThing, !blade) == IOSSABER_HILT_CROSS) ? IOSSABERSHAPE_FORM_CROSS_PAIR : IOSSABERSHAPE_FORM_CROSS;
-#ifdef IOSSABER_COMPARE
-    {
-        const float k = iosSaber_CompareCrossLong(pThing, blade);
-        if (k != 1.0f) {
-            iosSaber_pLongLine = pLine->polyline;
-            iosSaber_savedLong = pLine->polyline->length;
-            pLine->polyline->length *= k;
-        }
-    }
-#endif
     iosSaberShape_SetSoftGlow(aMat && rgb != iosSaber_Row(iosSaber_look, id)->edge); // (WHITE's own with FILM: softer)
     iosSaberShape_BeginBlade(pThing, pLine, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge, aMat ? iosSaber_Row(iosSaber_look, id)->core : NULL,
                              form, blade);
@@ -1084,12 +1038,6 @@ void iosSaber_EndBlade(rdThing* pLine)
 {
     iosSaberShape_SetJag(NULL, 0);
     iosSaberShape_EndBlade(); // (first: it put its widths on over the shimmer's)
-#ifdef IOSSABER_COMPARE
-    if (iosSaber_pLongLine) {
-        iosSaber_pLongLine->length = iosSaber_savedLong;
-        iosSaber_pLongLine = NULL;
-    }
-#endif
     if (iosSaber_pWidthLine) {
         iosSaber_pWidthLine->baseRadius = iosSaber_savedBase;
         iosSaber_pWidthLine->tipRadius = iosSaber_savedTip;

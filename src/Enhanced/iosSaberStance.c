@@ -82,34 +82,13 @@ static const iosSaberStanceArm iosSaberStance_aArm[2][IOSSABERSTANCE_NUM_ARMS] =
 typedef struct {
     float roll, pitch, side, lower, fwd;
 } iosSaberStancePov;
+// (also seen: the old pose, roll 32 pitch 12, two sabers 22 / 10; and b, that pose with the blade drawn
+// x1.14 as long, two sabers x1.22, in first person only: the polyline's length scaled in iosSaber_BeginBlade
+// just before iosSaberShape_BeginBlade, and put back as the shimmer's widths are, iosSaber_pWidthLine)
 static const iosSaberStancePov iosSaberStance_aPov[2] = {
     { 16.0f, 5.0f, 0.004f, 0.0f, 0.0f },
     { 11.0f, 6.0f, 0.010f, -0.003f, 0.0f },
 };
-#ifdef IOSSABER_COMPARE
-// (for the comparisons only: RIG_CROSSPOV=old, CROSS's pose before (tipped out further, its tip further toward the eye); b, that pose,
-// its blade drawn longer (iosSaber); RIG_CROSSPOV_A="roll,pitch,roll two,pitch two" another pose to try)
-#include <stdio.h>
-#include <stdlib.h>
-static const iosSaberStancePov iosSaberStance_aOldPov[2] = {
-    { 32.0f, 12.0f, 0.004f, 0.0f, 0.0f },
-    { 22.0f, 10.0f, 0.010f, -0.003f, 0.0f },
-};
-static const iosSaberStancePov* iosSaberStance_ComparePov(int bTwo)
-{
-    static iosSaberStancePov aTry[2];
-    const char* e = getenv("RIG_CROSSPOV");
-    if (e && (e[0] == 'o' || e[0] == 'b')) return &iosSaberStance_aOldPov[bTwo];
-    const char* t = getenv("RIG_CROSSPOV_A");
-    if (t) {
-        aTry[0] = iosSaberStance_aPov[0];
-        aTry[1] = iosSaberStance_aPov[1];
-        sscanf(t, "%f,%f,%f,%f", &aTry[0].roll, &aTry[0].pitch, &aTry[1].roll, &aTry[1].pitch);
-        return &aTry[bTwo];
-    }
-    return &iosSaberStance_aPov[bTwo];
-}
-#endif
 // ...a STAFF or FOLD (open) as one of two: the arm moved up a little and out ahead (further from the
 // eye), so the staff, turned across the view in the hand (iosSaberStaff), shows both its blades, the
 // back one clear of the arm
@@ -465,9 +444,6 @@ static const iosSaberStancePov* iosSaberStance_PovOf(SithThing* pActor, int hand
 {
     const int hilt = iosSaber_HandHilt(pActor, hand), bTwo = iosSaber_HasSecondBlade(pActor);
     *pShare = 1.0f;
-#ifdef IOSSABER_COMPARE
-    if (hilt == IOSSABER_HILT_CROSS) return iosSaberStance_ComparePov(bTwo ? 1 : 0);
-#endif
     if (hilt == IOSSABER_HILT_CROSS) return &iosSaberStance_aPov[bTwo ? 1 : 0];
     if (bTwo && iosSaberStaff_IsDouble(hilt)) {
         *pShare = iosSaberStance_StaffShare(pActor, hand);
