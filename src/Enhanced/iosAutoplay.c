@@ -10,8 +10,9 @@
 // the next of a shuffled round, never the one just played) straight in: its
 // mission text doesn't wait for a tap, and the episode's cutscenes are never
 // on the way (each level loads as its own entry; a level finished, a boss
-// down or its exit reached, goes on to the next of the show's own). Its
-// enemies are grouped by where they stand (close together, in sight of each
+// down or its exit reached, goes on to the next of the show's own). A
+// level's own scene (a dark Jedi met before a duel) is skipped: run on,
+// unseen, to its end (iosSceneSkip). Its enemies are grouped by where they stand (close together, in sight of each
 // other) and ranked by size and light; one of the top few is picked at
 // random, so each show differs. Kyle (Mara) is placed near it, somewhere
 // safe (a level floor with room round him, no pit, water or lift) with a
@@ -65,6 +66,7 @@
 #include "Enhanced/iosSaberWheel.h"
 #include "Enhanced/iosSaberThrow.h"
 #include "Enhanced/iosSaberThrowJk.h"
+#include "Enhanced/iosSceneSkip.h"
 #include "AI/sithAI.h"
 #include "AI/sithAIAwareness.h"
 #include "Dss/sithGamesave.h"
@@ -1916,6 +1918,9 @@ void iosAutoplay_Tick(double now)
     if (s_tRestoring > 0.0 && now > s_tRestoring) s_tRestoring = 0.0;
     if (s_stage == ST_OFF) return;
     if (s_stage != ST_SCENE) memset(s_aKeys, 0, sizeof(s_aKeys));
+    // a level's own scene (a dark Jedi met before a duel, a level's end):
+    // skipped, run on to its end unseen (iosSceneSkip); the show goes on after it
+    if (iosSceneSkip_CanSkip() && iosSceneSkip_Skip()) APLOG("a level's scene skipped at %.1f s\n", now - s_tStart);
 
     if (s_stage == ST_SAVING) {
         // (the save is written as the game next runs: then on to the level)

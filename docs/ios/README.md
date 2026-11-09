@@ -295,6 +295,28 @@ the intro plays, then the main menu.
 The touch controls appear once you're actually playing a level, and they hide again in menus
 and cutscenes.
 
+### Skipping a level's own scenes
+
+Some levels play a short scene with the game itself before a fight: the camera
+flies round a dark Jedi before the duel (Yun, Gorc and Pic, Maw, Sariss, Boc,
+Jerec; in Mysteries of the Sith the rancor, Abron, the last level), or shows a
+level's end. You can't move during one.
+
+- **Tap anywhere** to skip it. *Tap to skip* shows at the bottom for a few
+  seconds as the scene starts.
+- The screen goes black with *Skipping…* for a moment, then the fight starts.
+- The scene isn't cut short: the game plays the rest of it unseen and very
+  fast, with its sounds off (the music goes on). So everything ends up as if
+  you had watched it: the dark Jedi wakes, doors and music are where the scene
+  leaves them, and the game saves as it normally does after the scene.
+- **MENU**, **QUICK SAVE** and **QUICK LOAD** still work during a scene. A tap
+  on any other button skips the scene and does nothing else (it doesn't fire).
+- You can quick save in the middle of a scene; after loading that save the
+  scene goes on, and a tap still skips it.
+- Not in multiplayer or co-op: there the scenes play as always.
+- **AUTO PLAY**'s show skips these scenes by itself.
+- In these scenes, Kyle (or Mara) holds your own lightsabers, as in play.
+
 ## Touch controls
 
 The layout looks roughly like this. Exact positions shift a little to fit your

@@ -29,6 +29,8 @@
 #include "jk.h"
 #include "Main/jkPlayerLook.h" // (other players' sabers, in multiplayer)
 #include "Main/Main.h"
+#include "Engine/sithCamera.h"
+#include "Enhanced/iosPhotoCam.h"
 
 // ------------------------------------------------------------ the colours
 
@@ -847,12 +849,42 @@ static int iosSaber_IsPlayers(SithThing* pThing)
     return pThing && pThing == sithPlayer_g_pLocalPlayerThing;
 }
 
-// A thing's sabers as its player chose them: the local player's own, or in multiplayer
-// another player's as their game sent it (jkPlayerLook: a style or hilt this game
-// hasn't, SINGLE or NORMAL); 0 for anyone else
+int iosSaber_SeenInFirstPerson(SithThing* pThing)
+{
+    return iosSaber_IsPlayers(pThing) && sithCamera_g_pCurCamera == &sithCamera_g_aCameras[0]
+           && sithCamera_g_aCameras[0].pPrimaryFocusThing == pThing && !iosPhotoCam_IsActive();
+}
+
+// (a model's name without its ".3do", nor a cut-scene copy's "-0": "mj-0.3do", "mj")
+static size_t iosSaber_ModelStem(const char* name)
+{
+    size_t n = strlen(name);
+    const char* dot = strrchr(name, '.');
+    if (dot) n = (size_t)(dot - name);
+    size_t k = n;
+    while (k > 0 && name[k - 1] >= '0' && name[k - 1] <= '9') k--;
+    if (k < n && k > 1 && name[k - 1] == '-') n = k - 1;
+    return n;
+}
+
+int iosSaber_StandsInForPlayer(SithThing* pThing)
+{
+    SithThing* me = sithPlayer_g_pLocalPlayerThing;
+    if (!pThing || !me || pThing == me || pThing->type != SITH_THING_ACTOR || sithNet_isMulti) return 0;
+    const rdModel3* a = pThing->renderData.type == RD_THING_MODEL3 ? pThing->renderData.model3 : NULL;
+    const rdModel3* b = me->renderData.type == RD_THING_MODEL3 ? me->renderData.model3 : NULL;
+    if (!a || !b) return 0;
+    const size_t na = iosSaber_ModelStem(a->filename), nb = iosSaber_ModelStem(b->filename);
+    return na && na == nb && !__strnicmp(a->filename, b->filename, na);
+}
+
+// A thing's sabers as its player chose them: the local player's own (also for
+// someone standing in for him in a level's scene, iosSaber_StandsInForPlayer),
+// or in multiplayer another player's as their game sent it (jkPlayerLook: a
+// style or hilt this game hasn't, SINGLE or NORMAL); 0 for anyone else
 static int iosSaber_LookOf(SithThing* pThing, iosSaberChoice* p)
 {
-    if (iosSaber_IsPlayers(pThing)) {
+    if (iosSaber_IsPlayers(pThing) || iosSaber_StandsInForPlayer(pThing)) {
         p->style = iosSaber_style;
         for (int h = 0; h < IOSSABER_NUM_HANDS; h++) {
             p->aHilt[h] = iosSaber_aHand[h].hilt;

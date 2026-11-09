@@ -93,6 +93,11 @@
 //     tap), or at a touch off it.
 // In menus and cutscenes the overlay hides, so touches reach SDL as mouse
 // clicks like before. If SDL's window is recreated the overlay follows it.
+// During one of a level's own scenes (iosSceneSkip: the game's camera on a
+// dark Jedi before a duel, the player's controls taken away) a touch anywhere
+// but QUICK SAVE, QUICK LOAD, MENU and the tray is a tap to skip it, and
+// nothing else; "Tap to skip" shows as each one starts, "Skipping..." while
+// the game runs it on unseen.
 // A mouse or trackpad's clicks in play are the mouse's buttons, not fingers
 // (passed on to SDL), but where the game lets go of the pointer
 // (iosTouch_WantsPointer). A hardware keyboard and a mouse: iosKbMouse.h.

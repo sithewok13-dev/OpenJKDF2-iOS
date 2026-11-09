@@ -28,6 +28,7 @@
 #ifdef JK_ENHANCED
 #include "Enhanced/iosPhotoCam.h" // Added
 #include "Enhanced/iosAutoplay.h" // Added
+#include "Enhanced/iosSceneSkip.h" // Added
 #endif
 
 #if defined(TARGET_TWL)
@@ -258,6 +259,9 @@ int jkGame_Update()
     if ( Video_modeStruct.b3DAccel )
 #endif
     {
+#ifdef JK_ENHANCED
+        if (!iosSceneSkip_HidesWorld()) // Added: a level's scene being skipped is run on unseen (iosSceneSkip)
+#endif
         sithDrawScene();
     }
 #if !defined(SDL2_RENDER) && !defined(TARGET_RETRO_HOMEBREW)
@@ -292,6 +296,9 @@ int jkGame_Update()
         rdroid_curAcceleration = rdsw_savedAccel;
     }
 #else
+#ifdef JK_ENHANCED
+    if (!iosSceneSkip_HidesWorld()) // Added: as the world, above
+#endif
     jkPlayer_DrawPov();
 #endif
     jkGame_Update_DrawPov = stdPlatform_GetTimeMsec();

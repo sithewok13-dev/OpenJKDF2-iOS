@@ -174,6 +174,18 @@ void iosSaber_EndBlade(struct rdThing* pLine);
 // (jkSaber_IsDual: JKFLAG_DUALSABERS, which the game itself never sets)
 int iosSaber_HasSecondBlade(struct SithThing* pThing);
 
+// Whether this is the local player seen through his own eyes now: the game's
+// first-person camera on him (not a level's scene, which puts the same camera
+// on a ghost and shows him whole, as in third person; nor a photo mode's)
+int iosSaber_SeenInFirstPerson(struct SithThing* pThing);
+
+// Whether this is someone standing in for the local player in a level's own
+// scene: an actor with the player's own body (its model by name, a "-0"
+// cut-scene copy too: Mysteries of the Sith's rancor scene has one for Mara),
+// single player. Its sabers are the player's own (iosSaber_LookOf), not a
+// character's (FILM's blade in the game's colour).
+int iosSaber_StandsInForPlayer(struct SithThing* pThing);
+
 // Second, the two-saber style's left arm (rdPuppet_BuildJointMatrices, each
 // joint posed and not yet put together; each two-saber player's, up to eight
 // at once): the player's left arm takes the

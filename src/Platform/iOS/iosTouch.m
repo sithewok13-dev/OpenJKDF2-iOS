@@ -33,6 +33,7 @@
 #include "Platform/iOS/iosKbMouse.h"
 #include "Platform/iOS/iosAutoplayPanel.h"
 #include "Enhanced/iosAutoplay.h"
+#include "Enhanced/iosSceneSkip.h"
 
 extern SDL_Window* displayWindow;
 extern int stdControl_bControlsActive;
@@ -290,6 +291,17 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 // SABER keeps clear of
 #define IOSTOUCH_FPS_LABEL_X 216.0     // (its middle, this far in from the right)
 #define IOSTOUCH_FPS_LABEL_HALF 27.0
+// One of the level's own scenes (a dark Jedi met before a duel: iosSceneSkip):
+// a tap skips it -- anywhere but QUICK SAVE, QUICK LOAD, MENU and the tray,
+// and nothing else (the game takes no controls then anyway) -- and a hint
+// says so as the scene starts, for this long (s), fading out over the last
+// part of it; while the skip runs (the game unseen, a black frame), a line
+// says so in the middle
+#define IOSTOUCH_SCENE_HINT 4.0
+#define IOSTOUCH_SCENE_HINT_FADE 0.6
+#define IOSTOUCH_SCENE_TAP 0.8          // a tap: lifted within this (s)...
+#define IOSTOUCH_SCENE_STILL 30.0       // ...moving no further than this (pt)
+#define IOSTOUCH_SCENE_HINT_LIFT 34.0   // the hint's middle, this far above the bottom of the safe area (pt)
 #define IOSTOUCH_BURST_LABEL_HALF 15.0
 // On the CAMERA button: lifted sooner than this (not slid) takes the photos;
 // held still this long is the selfie; slid IOSTOUCH_WHEEL_OPEN_SLIDE starts a
@@ -437,6 +449,7 @@ enum {
     ROLE_FREEZESHOT,  // Action Freeze: on CAMERA (a tap takes a photo)
     ROLE_FREEZECLOSE, // Action Freeze: on its X (a tap goes back to the game)
     ROLE_AUTOPLAY,    // AUTOPLAY's show: anywhere (its gestures: a double tap, a long press)
+    ROLE_SCENESKIP,   // one of the level's scenes: anywhere but QUICK SAVE, QUICK LOAD, MENU and the tray (a tap skips it)
 };
 
 enum {
@@ -585,6 +598,13 @@ static int iosTouch_IsOptButton(int button)
 {
     return (button >= BTN_GYROOPT_FIRST && button <= BTN_GYROOPT_LAST)
            || (button >= BTN_CAMROW_FIRST && button <= BTN_CAMROW_LAST) || iosTouch_IsCamOptButton(button);
+}
+
+// (one of the level's scenes, iosSceneSkip: what still works as always --
+// QUICK SAVE, QUICK LOAD, MENU and the tray; a touch anywhere else skips it)
+static int iosTouch_KeptInScene(int button)
+{
+    return button == BTN_QUICKSAVE || button == BTN_QUICKLOAD || button == BTN_MENU || iosTouch_IsTrayButton(button) || iosTouch_IsOptButton(button);
 }
 
 // A tray button held still opens its row (GYRO, the camera switch)
@@ -839,6 +859,8 @@ static int iosTouch_bAutoplay = 0;    // the show is on (as -tick last saw it)
 static int iosTouch_bApShown = 0;     // ...with the controls shown (CONTROLS ON)
 static unsigned int iosTouch_apLit = 0; // ...lit: a bit for each button (1 << BTN_*)
 static double iosTouch_tApTap = -1.0; // the last tap's lift (the touch's clock), for the double tap
+static unsigned int iosTouch_sceneSerial = 0; // the level's scenes begun, as -tickScene: last saw (iosSceneSkip_Serial)...
+static double iosTouch_tSceneHint = -1.0;     // ...and when the last one's hint came up (-1: none)
 static CGPoint iosTouch_apTapAt;
 static CGPoint iosTouch_apStick;      // where the shown stick sits (a left thumb's place, a little different each show)
 #define IOSTOUCH_AP_MAX_VIEWS 128
@@ -1614,6 +1636,8 @@ typedef struct {
     CAShapeLayer* cameraRing; // CAMERA's, held for the selfie
     CGFloat aSelfieAlpha[IOSTOUCH_MAX_SUBVIEWS]; // the overlay's views as they were, hidden during a selfie
     UILabel* fpsLabel;      // the FPS readout...
+    UILabel* sceneHint;     // "Tap to skip", as one of the level's scenes starts...
+    UILabel* sceneSkipping; // ...and "Skipping..." while it is skipped
     int bFpsBase;           // ...counting frames since fpsBaseFrames, at fpsBaseTime
     unsigned int fpsBaseFrames;
     CFTimeInterval fpsBaseTime;
@@ -1685,6 +1709,7 @@ typedef struct {
 - (BOOL)levelsOpen;
 - (void)setAutoplay:(int)bOn;
 - (void)tickAutoplay:(CFTimeInterval)now;
+- (void)tickScene:(CFTimeInterval)now;
 - (void)autoplayLifted:(iosTouchSlot*)s at:(CGPoint)p cancelled:(int)bCancelled time:(NSTimeInterval)t;
 @end
 
@@ -2346,6 +2371,23 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         iosTouch_bShowFps = [[NSUserDefaults standardUserDefaults] boolForKey:IOSTOUCH_FPS_DEFAULTS_KEY] ? 1 : 0;
         fpsLabel.hidden = !iosTouch_bShowFps;
         [self addSubview:fpsLabel];
+
+        // One of the level's scenes: its hint, and the line while it is
+        // skipped (shown by -tickScene:)
+        for (int k = 0; k < 2; k++) {
+            UILabel* l = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 120, 26)];
+            l.textAlignment = NSTextAlignmentCenter;
+            l.textColor = [UIColor colorWithWhite:1.0 alpha:0.9];
+            l.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+            l.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.45];
+            l.layer.cornerRadius = 13.0;
+            l.clipsToBounds = YES;
+            l.userInteractionEnabled = NO;
+            l.text = k ? @"Skipping\u2026" : @"Tap to skip";
+            l.hidden = YES;
+            [self addSubview:l];
+            if (k) sceneSkipping = l; else sceneHint = l;
+        }
 
         // The flash after a photo: on top of everything, hidden between photos
         // (so it is never in one)
@@ -5579,6 +5621,13 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 continue;
             }
         }
+        // One of the level's scenes (iosSceneSkip): a touch anywhere but QUICK
+        // SAVE, QUICK LOAD, MENU and the tray is a tap to skip it, and nothing
+        // else -- no button, no look (the game takes no controls then anyway)
+        if ((iosSceneSkip_CanSkip() || iosSceneSkip_IsSkipping()) && !iosTouch_KeptInScene(s->button)) {
+            s->role = ROLE_SCENESKIP;
+            continue;
+        }
         if (s->button >= 0 && iosTouch_aButtons[s->button].kind == KIND_WHEEL) {
             // FORCE WHEEL, NEXT WPN: nothing yet -- a tap, a slide or a hold
             // (touchesMoved, -tick, endTouches). A second finger on the same
@@ -5649,6 +5698,12 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             if (s->role == ROLE_AUTOPLAY) {
                 // (slid: neither a tap nor a long press)
                 if (hypot(p.x - s->origin.x, p.y - s->origin.y) >= IOSTOUCH_AP_STILL) s->bFired = 1;
+                s->last = p;
+                continue;
+            }
+            if (s->role == ROLE_SCENESKIP) {
+                // (slid: no tap)
+                if (hypot(p.x - s->origin.x, p.y - s->origin.y) >= IOSTOUCH_SCENE_STILL) s->bFired = 1;
                 s->last = p;
                 continue;
             }
@@ -5789,6 +5844,17 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             if (t == iosTouch_pBurstTouch) [self endBurst];
             if (s->role == ROLE_AUTOPLAY) {
                 [self autoplayLifted:s at:p cancelled:bCancelled time:t.timestamp];
+                memset(s, 0, sizeof(*s));
+                continue;
+            }
+            if (s->role == ROLE_SCENESKIP) {
+                // a tap: the scene skipped (a light tap of the phone)
+                if (!bCancelled && !s->bFired && t.timestamp - s->tDownTouch <= IOSTOUCH_SCENE_TAP
+                    && hypot(p.x - s->origin.x, p.y - s->origin.y) < IOSTOUCH_SCENE_STILL && iosSceneSkip_Skip()) {
+                    static UIImpactFeedbackGenerator* pSkip = nil;
+                    if (!pSkip) pSkip = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+                    [pSkip impactOccurred];
+                }
                 memset(s, 0, sizeof(*s));
                 continue;
             }
@@ -6045,7 +6111,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     CFTimeInterval known = lastTickTime;
     lastTickTime = now;
     // AUTOPLAY's show: on or off; while it plays, nothing else goes on here
+    // (but for one of the level's scenes' hint, put away)
     if ((iosAutoplay_IsOn() ? 1 : 0) != iosTouch_bAutoplay) [self setAutoplay:iosAutoplay_IsOn()];
+    [self tickScene:now];
     if (iosTouch_bAutoplay) {
         [self tickAutoplay:now];
         return;
@@ -6708,6 +6776,39 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         iosTouch_apLit = lit;
         [self refreshButtonLooks];
     }
+}
+
+// One of the level's scenes (iosSceneSkip): "Tap to skip" for a while as
+// each one starts, low in the middle, and "Skipping..." in the middle while
+// one is skipped (the game unseen: a black frame). Neither in AUTOPLAY's
+// show, which shows nothing and skips them by itself.
+- (void)tickScene:(CFTimeInterval)now
+{
+    const int bCan = iosSceneSkip_CanSkip();
+    const unsigned int serial = iosSceneSkip_Serial();
+    if (serial != iosTouch_sceneSerial) {
+        iosTouch_sceneSerial = serial;
+        iosTouch_tSceneHint = bCan ? now : -1.0;
+    }
+    const CGSize sz = self.bounds.size;
+    const UIEdgeInsets in = self.safeAreaInsets;
+    double a = 0.0;
+    if (!iosTouch_bAutoplay && bCan && iosTouch_tSceneHint >= 0.0 && now - iosTouch_tSceneHint < IOSTOUCH_SCENE_HINT)
+        a = fmin(1.0, (IOSTOUCH_SCENE_HINT - (now - iosTouch_tSceneHint)) / IOSTOUCH_SCENE_HINT_FADE);
+    [self showSceneLabel:sceneHint width:104.0 alpha:a at:CGPointMake(sz.width * 0.5, sz.height - in.bottom - IOSTOUCH_SCENE_HINT_LIFT)];
+    [self showSceneLabel:sceneSkipping width:96.0 alpha:(!iosTouch_bAutoplay && iosSceneSkip_IsSkipping()) ? 1.0 : 0.0
+                      at:CGPointMake(sz.width * 0.5, sz.height * 0.5)];
+}
+
+- (void)showSceneLabel:(UILabel*)l width:(CGFloat)w alpha:(double)a at:(CGPoint)c
+{
+    if (a <= 0.0) {
+        if (!l.hidden) l.hidden = YES;
+        return;
+    }
+    l.frame = CGRectMake(c.x - w * 0.5, c.y - 13.0, w, 26.0);
+    l.alpha = a;
+    l.hidden = NO;
 }
 
 // A finger lifted during the show: a tap -- the second of two quick ones

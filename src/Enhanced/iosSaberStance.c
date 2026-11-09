@@ -385,8 +385,9 @@ void iosSaberStance_PoseArms(rdThing* pRdThing)
     // (the game counting hits: its own pose, exactly)
     if (t->jkFlags & JKFLAG_SABERDAMAGE) s->blend.aP[0] = s->blend.aP[1] = 0.0f;
     // (the player's own body unseen, in first person: left as the game poses it, so the saber's light,
-    // which the game puts at this body's blade, stays near the blade in view, as it always has)
-    if (t == sithPlayer_g_pLocalPlayerThing && sithCamera_g_pCurCamera == &sithCamera_g_aCameras[0] && !iosPhotoCam_IsActive()) return;
+    // which the game puts at this body's blade, stays near the blade in view, as it always has; a
+    // level's scene's camera shows him whole, posed as in third person)
+    if (iosSaber_SeenInFirstPerson(t)) return;
 
     const int primary = t->pPuppetClass->aJoints[JOINTTYPE_PRIMARYWEAP];
     for (int side = 0; side < 2; side++) {

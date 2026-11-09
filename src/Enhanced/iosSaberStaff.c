@@ -704,8 +704,9 @@ void iosSaberStaff_Tick(void)
     if ((int32_t)(now - iosSaberStaff_spin.nextMs) < 0) return;
     // due: only standing still, well away from any fight, in the player's own view of the game
     const iosSaberStaffSlot* s = iosSaberStaff_SlotOf(p);
+    // (not a level's scene, its camera on its ghost)
     const int bView = (sithCamera_g_pCurCamera == &sithCamera_g_aCameras[0] || sithCamera_g_pCurCamera == &sithCamera_g_aCameras[1])
-                      && !iosPhotoCam_IsActive() && !iosSelfie_IsActive() && !iosFreeze_IsActive() && !iosCinema_IsActive() && !iosGame_IsHolding();
+                      && sithCamera_g_pCurCamera->pPrimaryFocusThing == p && !iosPhotoCam_IsActive() && !iosSelfie_IsActive() && !iosFreeze_IsActive() && !iosCinema_IsActive() && !iosGame_IsHolding();
     const int bWater = p->sector && (p->sector->flags & SITH_SECTOR_UNDERWATER);
     if (!bView || bWater || bBusy || s->rest < 1.0f || s->active < 1.0f || s->stand < 1.0f || now - iosSaberStaff_spin.calmMs < IOSSABERSTAFF_SPIN_CALM_MS
         || iosSaberStaff_AnyoneNear(p)) {
@@ -1459,7 +1460,7 @@ void iosSaberStaff_PoseArms(rdThing* pRdThing)
     const int hilt = iosSaberStaff_HiltOf(t, 0);
     if (!iosSaberStaff_IsDouble(hilt) || iosSaber_HasSecondBlade(t) || !t->playerInfo || !iosSaberStaff_InHand(t, t->playerInfo->rd_thing.model3)) return;
     // (a selfie poses the arms itself; the player's own body unseen in first person, as the game poses it)
-    if (t == sithPlayer_g_pLocalPlayerThing && (iosSelfie_IsActive() || (sithCamera_g_pCurCamera == &sithCamera_g_aCameras[0] && !iosPhotoCam_IsActive())))
+    if (t == sithPlayer_g_pLocalPlayerThing && (iosSelfie_IsActive() || iosSaber_SeenInFirstPerson(t)))
         return;
     iosSaberStaffSlot* s = iosSaberStaff_SlotOf(t);
     if (s->pModel != pRdThing->model3) {

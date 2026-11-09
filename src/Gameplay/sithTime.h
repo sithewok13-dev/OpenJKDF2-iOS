@@ -17,6 +17,12 @@ void sithTime_Resume();
 MATH_FUNC void sithTime_SetFrameTime(int frameTime);
 void sithTime_Startup();
 MATH_FUNC void sithTime_SetGameTime(uint32_t msecTime);
+#ifdef JK_ENHANCED
+// Added: the next sithTime_Advance finds this much time passed since the last
+// one, whatever really has (a level's scene skipped, iosSceneSkip: update
+// after update run within one frame, each a step of game time)
+void sithTime_SetNextStep(int msec);
+#endif
 
 extern flex_d_t sithTime_physicsRolloverFrames;
 

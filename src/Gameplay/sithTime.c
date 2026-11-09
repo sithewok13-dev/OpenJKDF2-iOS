@@ -52,6 +52,17 @@ void sithTime_Resume()
     }
 }
 
+#ifdef JK_ENHANCED
+// Added: see sithTime.h
+void sithTime_SetNextStep(int msec)
+{
+    sithTime_g_clockTime = stdPlatform_GetTimeMsec() - msec;
+#ifdef MICROSECOND_TIME
+    sithTime_curUsAbsolute = Linux_TimeUs() - (uint64_t)msec * 1000;
+#endif
+}
+#endif
+
 // MOTS altered: min/max are variables
 void sithTime_SetFrameTime(int frameTime)
 {

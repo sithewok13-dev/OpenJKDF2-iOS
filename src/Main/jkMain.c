@@ -56,6 +56,7 @@
 #ifdef JK_ENHANCED
 #include "Enhanced/iosGame.h"
 #include "Enhanced/iosAutoplay.h" // Added
+#include "Enhanced/iosSceneSkip.h" // Added
 #endif
 #include "stdPlatform.h"
 
@@ -793,6 +794,11 @@ void jkMain_GameplayTick(int a2)
         if (!iosGame_HoldGameplay())
 #endif
         if (sithUpdate()) return;
+#ifdef JK_ENHANCED
+        // Added: a level's scene being skipped (iosSceneSkip): the game run on,
+        // many updates more, unseen, until the scene ends by itself
+        iosSceneSkip_Run();
+#endif
     }
     
     if ( g_sithMode == 5 )
