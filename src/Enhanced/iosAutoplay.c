@@ -11,8 +11,8 @@
 // mission text doesn't wait for a tap, and the episode's cutscenes are never
 // on the way (each level loads as its own entry; a level finished, a boss
 // down or its exit reached, goes on to the next of the show's own). A
-// level's own scene (a dark Jedi met before a duel) is skipped: run on,
-// unseen, to its end (iosSceneSkip). Its enemies are grouped by where they stand (close together, in sight of each
+// level's own scene (a dark Jedi met before a duel) is skipped from its
+// first update: run on, unseen, to its end (iosSceneSkip). Its enemies are grouped by where they stand (close together, in sight of each
 // other) and ranked by size and light; one of the top few is picked at
 // random, so each show differs. Kyle (Mara) is placed near it, somewhere
 // safe (a level floor with room round him, no pit, water or lift) with a
@@ -46,7 +46,9 @@
 // at someone (Saber Throw: Jedi Knight's iosSaberThrowJk, Mysteries of the
 // Sith's own) and it comes back. Each fight starts with a new look for the
 // saber: one or two, a random hilt each, random colours (the saber wheel's
-// RANDOM), kept for the whole fight.
+// RANDOM), kept for the whole fight -- a level's first fight's picked as the
+// level opens, so its scenes (unseen, but its first frames, a scene given up
+// on) and the fight after them have one look; never one while a scene is on.
 //
 // Lengths below are in feet as Dark Forces' were (the show's numbers came
 // from there), turned into the level's units by the player's own height
@@ -608,6 +610,10 @@ static iosAutoplayOptions s_opt;
 static double s_tStage = 0.0, s_tPrev = 0.0, s_tStart = 0.0;
 static int s_bWantNext = 0;
 static int s_bOpened = 0;            // a level opened (jkDev_Custom_LevelOpened -> iosAutoplay's own note)
+static int s_bLookPicked = 0;        // the saber's look for the level's first fight, picked as it opened
+static double s_tSceneSeen = -100.0; // when one of the level's scenes was last on
+// A fight placed this soon after a scene (s) keeps the look the scene showed
+#define AP_LOOK_AFTER_SCENE 1.0
 static int s_curRow = -1;            // the level list's row being played
 static int s_aBag[64], s_numBag = 0; // SHUFFLE ALL's rows still to come
 static int s_copies = 0;             // copies made in this level
@@ -768,9 +774,20 @@ int iosAutoplay_LevelEnded(void)
     return entry;
 }
 
+static void ap_newSaberLook(void); // (below)
+
 void iosAutoplay_LevelOpened(void)
 {
     s_bOpened = 1;
+    if (s_stage == ST_TRAVEL) {
+        // the show's next level: the look for its first fight now, before
+        // anything of the level is drawn -- its own scenes too, which play
+        // (unseen, iosSceneSkip) before the fight is placed
+        s_bLookPicked = 0;
+        ap_newSaberLook();
+        s_bLookPicked = 1;
+        APLOG("look picked as the level opened\n");
+    }
     if (s_stage != ST_OFF) return;
     s_tRestoring = 0.0; // (the save loaded back: in play)
     if (s_bCheatOffLater) {
@@ -914,6 +931,9 @@ int iosAutoplay_Start(const iosAutoplayOptions* pOptions)
     ap_clearControls();
     s_bLoaded = 0;
     s_bCheatOffLater = 0;
+    s_bLookPicked = 0;
+    s_tSceneSeen = -100.0;
+    iosSceneSkip_SetAuto(1); // (the level's scenes skipped from their start)
     s_stage = ST_SAVING;
     APLOG("START (saved %d) row %d diff %d crowd %d alarm %d weapons %08x\n", s_bSaved, s_opt.levelRow, s_opt.difficulty,
           s_opt.crowd, s_opt.bAlarm, s_opt.weapons);
@@ -926,6 +946,8 @@ static void ap_end(int bLoad)
     s_stage = ST_OFF;
     ap_clearControls();
     s_target = NULL;
+    s_bLookPicked = 0;
+    iosSceneSkip_SetAuto(0);
     // (everything as it was: the cheat, the difficulty, the saber)
     // (with no level running -- the main menu -- as the next one opens)
     if (!s_bWasSithEwok && jkDev_Custom_SithEwokIsOn() && !jkDev_Custom_CmdSithEwok(NULL, "off")) s_bCheatOffLater = 1;
@@ -1251,7 +1273,10 @@ static void ap_startScene(double now, int bAnother)
         s_tWave = s_tReplace = now;
         ap_resetPilot(now, spot.feet);
         ap_notePowers();
-        ap_newSaberLook();
+        // (each fight a new look: the level's first one's was picked as it opened; none
+        // for a fight just after one of the level's scenes, which showed the one held)
+        if (s_bLookPicked) s_bLookPicked = 0;
+        else if (now - s_tSceneSeen >= AP_LOOK_AFTER_SCENE) ap_newSaberLook();
         ap_pickWeapon(-1);
         // (the saber, when it's one of them, more often than not to start)
         if (s_bSaber && !s_bSaberOnly && ap_randInt(3) == 0) s_weapon = AP_W_SABER;
@@ -1918,9 +1943,19 @@ void iosAutoplay_Tick(double now)
     if (s_tRestoring > 0.0 && now > s_tRestoring) s_tRestoring = 0.0;
     if (s_stage == ST_OFF) return;
     if (s_stage != ST_SCENE) memset(s_aKeys, 0, sizeof(s_aKeys));
-    // a level's own scene (a dark Jedi met before a duel, a level's end):
-    // skipped, run on to its end unseen (iosSceneSkip); the show goes on after it
-    if (iosSceneSkip_CanSkip() && iosSceneSkip_Skip()) APLOG("a level's scene skipped at %.1f s\n", now - s_tStart);
+    // a level's own scene (a dark Jedi met before a duel, a level's end): skipped
+    // from its start by iosSceneSkip (iosSceneSkip_SetAuto); the show goes on after
+    // it. (Noted when it was last on: no new look for a fight just after one.)
+    if (iosSceneSkip_InScene()) s_tSceneSeen = now;
+#ifdef IOSAUTOPLAY_RIG
+    {
+        static int bSkipNoted = 0;
+        if (iosSceneSkip_IsSkipping() != bSkipNoted) {
+            bSkipNoted = iosSceneSkip_IsSkipping();
+            if (bSkipNoted) APLOG("a level's scene skipped at %.1f s\n", now - s_tStart);
+        }
+    }
+#endif
 
     if (s_stage == ST_SAVING) {
         // (the save is written as the game next runs: then on to the level)

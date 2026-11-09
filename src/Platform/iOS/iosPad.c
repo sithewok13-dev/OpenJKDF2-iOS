@@ -18,6 +18,7 @@
 #include "World/sithWorld.h"
 #include "World/sithThing.h"
 #include "Enhanced/iosGame.h"
+#include "Enhanced/iosSceneSkip.h"
 #include "Enhanced/iosSaberThrowJk.h"
 #include "Enhanced/iosSaber.h"
 #include "Enhanced/iosSaberWheel.h"
@@ -1007,6 +1008,12 @@ void iosPad_Update(void)
         return;
     }
     iosPad_s.bOtherWheel = 0;
+    // One of the level's scenes (iosSceneSkip): A (Cross) skips it, as a tap does, and does
+    // nothing else (held on after, it is ignored until let go); Start is still the menu
+    if (iosPad_Pressed(PB_A) && (iosSceneSkip_CanSkip() || iosSceneSkip_IsSkipping())) {
+        iosSceneSkip_Skip();
+        iosPad_s.aStale[PB_A] = 1;
+    }
 
     if (iosPad_s.bPanel) iosPad_PanelInput();
     else if (iosPad_s.wheelState >= IOSPAD_WS_HELD) iosPad_WheelInput();

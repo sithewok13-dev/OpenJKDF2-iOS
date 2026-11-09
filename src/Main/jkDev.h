@@ -111,6 +111,7 @@ int jkDev_Custom_GoToLevelRow(int row); // Added
 int jkDev_Custom_NumEpisodeLevelRows(); // Added
 int jkDev_Custom_LevelRowEntry(int row); // Added
 int jkDev_Custom_PrintInPlace(const char16_t *str); // Added
+void jkDev_Custom_DropLinesSince(uint32_t msec); // Added: the HUD's lines printed since then (stdPlatform_GetTimeMsec), that moment's too, taken away (a level's scene skipped)
 void jkDev_Custom_SithEwokRestored(); // Added
 void jkDev_Custom_GameLoaded(); // Added
 int jkDev_Custom_SaberButtonShown(); // Added

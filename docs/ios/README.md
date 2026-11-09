@@ -311,10 +311,16 @@ level's end. You can't move during one.
   leaves them, and the game saves as it normally does after the scene.
 - **MENU**, **QUICK SAVE** and **QUICK LOAD** still work during a scene. A tap
   on any other button skips the scene and does nothing else (it doesn't fire).
+  A finger still down when the fight starts works straight away (the stick,
+  looking).
+- With a **game controller**, **A** (Cross on a PlayStation controller) skips
+  too, and so does a tap on the screen, while the touch controls stay hidden.
 - You can quick save in the middle of a scene; after loading that save the
   scene goes on, and a tap still skips it.
 - Not in multiplayer or co-op: there the scenes play as always.
-- **AUTO PLAY**'s show skips these scenes by itself.
+- **AUTO PLAY**'s show skips these scenes by itself, from their first moment,
+  and each fight's lightsaber look is already in Kyle's (Mara's) hands as the
+  level opens, so it doesn't change after a scene.
 - In these scenes, Kyle (or Mara) holds your own lightsabers, as in play.
 
 ## Touch controls

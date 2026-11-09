@@ -549,6 +549,20 @@ LABEL_7:
     return v5;
 }
 
+// Added: see jkDev.h (a line shows for 5 s from when it was printed)
+void jkDev_Custom_DropLinesSince(uint32_t msec)
+{
+    int bDropped = 0;
+    for (int i = 0; i < jkDev_log_55A4A4 && i < 5; i++) {
+        const uint32_t until = (uint32_t)jkDev_aEntries[i].timeMsExpiration;
+        if (jkDev_aEntries[i].timeMsExpiration != -1 && until >= msec + 5000) {
+            jkDev_aEntries[i].timeMsExpiration = 0;
+            bDropped = 1;
+        }
+    }
+    if (bDropped) jkDev_UpdateEntries();
+}
+
 // MOTS altered? inlined?
 // Added: a message that changes as it goes (the touch overlay's level count): put in place of the
 // last one it put up, if the newest line on screen still says what that said (lines move up as older

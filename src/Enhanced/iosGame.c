@@ -455,9 +455,14 @@ void iosGame_SetHold(int bHold)
     iosGame_SetHoldReason(IOSGAME_HOLD_WHEEL, bHold);
 }
 
+int iosGame_WantsHold(void)
+{
+    return iosGame_holdReasons && !sithNet_isMulti;
+}
+
 int iosGame_HoldGameplay(void)
 {
-    int bHold = iosGame_holdReasons && !sithNet_isMulti;
+    int bHold = iosGame_WantsHold();
     if (bHold && !iosGame_bHolding)
     {
         // Sounds pause with the clock, as when the Esc menu opens

@@ -128,6 +128,10 @@ int iosGame_HoldGameplay(void);
 // animates on its own, like the weapon in view, should stay still too).
 int iosGame_IsHolding(void);
 
+// Whether something wants the game held (a wheel...; never in multiplayer):
+// what iosGame_HoldGameplay acts on, asked without doing anything
+int iosGame_WantsHold(void);
+
 // Opens the typing line (where cheats go), or closes it if it is open.
 void iosGame_ToggleChat(void);
 

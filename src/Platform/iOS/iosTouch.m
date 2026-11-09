@@ -5515,6 +5515,50 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     return pPass;
 }
 
+// A touch's role from what it went down on (s->button, the button at p, or
+// none): a button, a wheel button's press, the stick, or looking
+- (void)takeTouch:(iosTouchSlot*)s at:(CGPoint)p
+{
+    if (s->button >= 0 && iosTouch_aButtons[s->button].kind == KIND_WHEEL) {
+        // FORCE WHEEL, NEXT WPN: nothing yet -- a tap, a slide or a hold
+        // (touchesMoved, -tick, endTouches). A second finger on the same
+        // button is ignored.
+        int bOther = 0;
+        for (int k = 0; k < IOSTOUCH_MAX_TOUCHES; k++) {
+            iosTouchSlot* o = &iosTouch_aSlots[k];
+            if (o != s && iosTouch_IsWheelPress(o) && o->button == s->button) bOther = 1;
+        }
+        if (bOther) {
+            s->role = ROLE_IGNORED;
+        }
+        else {
+            s->role = ROLE_BUTTON;
+            iosTouch_aButtonHeld[s->button]++;
+            if (s->button == BTN_SABER) {
+                // (a second tap only straight after one that flipped: a slide, a hold, a wheel between, none)
+                s->bSaberAgain = iosTouch_tSaberTapUp >= 0.0 && s->tDownTouch - iosTouch_tSaberTapUp < IOSSABERWHEEL_TAP_AGAIN_SECS;
+                iosTouch_tSaberTapUp = -1.0;
+            }
+        }
+    }
+    else if (s->button >= 0) {
+        s->role = ROLE_BUTTON;
+        iosTouch_aButtonHeld[s->button]++;
+    }
+    else if ((iosTouch_bSwapped ? p.x > self.bounds.size.width * (1.0f - IOSTOUCH_STICK_ZONE)
+                                : p.x < self.bounds.size.width * IOSTOUCH_STICK_ZONE) && !iosTouch_bStickActive) {
+        s->role = ROLE_STICK;
+        iosTouch_bStickActive = 1;
+        iosTouch_stickX = iosTouch_stickY = 0.0f;
+        iosTouch_bAlwaysRun = iosGame_IsAlwaysRun();
+        [self placeRunMarker:p];
+        [self updateStickVisual:s];
+    }
+    else {
+        s->role = ROLE_LOOK;
+    }
+}
+
 - (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event
 {
     if ([self levelsOpen]) {
@@ -5530,6 +5574,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     }
     int bPadTouch = 0; // (the touch controls hidden for a game controller: back now)
     int bFinger = 0;   // (a finger among them, not only clicks)
+    int bSceneOnly = 1; // (only taps on one of the level's scenes: the controls a pad hid stay hidden)
     NSMutableSet* pPass = nil;
     for (UITouch* t in touches) {
         const int bPointer = iosTouch_IsPointerTouch(t);
@@ -5540,6 +5585,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             continue;
         }
         if (!bPointer) bFinger = 1;
+        if (!bPointer && !((iosSceneSkip_CanSkip() || iosSceneSkip_IsSkipping()) && iosTouch_bPadMasked && !iosTouch_bWheelOpen)) bSceneOnly = 0;
         int slot = -1;
         for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
             if (iosTouch_aSlots[i].touch == nil) { slot = i; break; }
@@ -5563,6 +5609,12 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             const CGSize sz = self.bounds.size;
             s->role = ROLE_AUTOPLAY;
             s->bApEdge = p.x < IOSTOUCH_AP_EDGE || p.y < IOSTOUCH_AP_EDGE || p.x > sz.width - IOSTOUCH_AP_EDGE || p.y > sz.height - IOSTOUCH_AP_EDGE;
+            continue;
+        }
+        if (iosTouch_bPadMasked && !iosTouch_bWheelOpen && (iosSceneSkip_CanSkip() || iosSceneSkip_IsSkipping())) {
+            // ...hidden for a game controller in one of the level's scenes: a tap
+            // skips it (its hint shows through), and they stay hidden
+            s->role = ROLE_SCENESKIP;
             continue;
         }
         if (iosTouch_bPadMasked) {
@@ -5628,46 +5680,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             s->role = ROLE_SCENESKIP;
             continue;
         }
-        if (s->button >= 0 && iosTouch_aButtons[s->button].kind == KIND_WHEEL) {
-            // FORCE WHEEL, NEXT WPN: nothing yet -- a tap, a slide or a hold
-            // (touchesMoved, -tick, endTouches). A second finger on the same
-            // button is ignored.
-            int bOther = 0;
-            for (int k = 0; k < IOSTOUCH_MAX_TOUCHES; k++) {
-                iosTouchSlot* o = &iosTouch_aSlots[k];
-                if (o != s && iosTouch_IsWheelPress(o) && o->button == s->button) bOther = 1;
-            }
-            if (bOther) {
-                s->role = ROLE_IGNORED;
-            }
-            else {
-                s->role = ROLE_BUTTON;
-                iosTouch_aButtonHeld[s->button]++;
-                if (s->button == BTN_SABER) {
-                    // (a second tap only straight after one that flipped: a slide, a hold, a wheel between, none)
-                    s->bSaberAgain = iosTouch_tSaberTapUp >= 0.0 && s->tDownTouch - iosTouch_tSaberTapUp < IOSSABERWHEEL_TAP_AGAIN_SECS;
-                    iosTouch_tSaberTapUp = -1.0;
-                }
-            }
-        }
-        else if (s->button >= 0) {
-            s->role = ROLE_BUTTON;
-            iosTouch_aButtonHeld[s->button]++;
-        }
-        else if ((iosTouch_bSwapped ? p.x > self.bounds.size.width * (1.0f - IOSTOUCH_STICK_ZONE)
-                                    : p.x < self.bounds.size.width * IOSTOUCH_STICK_ZONE) && !iosTouch_bStickActive) {
-            s->role = ROLE_STICK;
-            iosTouch_bStickActive = 1;
-            iosTouch_stickX = iosTouch_stickY = 0.0f;
-            iosTouch_bAlwaysRun = iosGame_IsAlwaysRun();
-            [self placeRunMarker:p];
-            [self updateStickVisual:s];
-        }
-        else {
-            s->role = ROLE_LOOK;
-        }
+        [self takeTouch:s at:p];
     }
-    if (bPadTouch || (iosTouch_bPadHud && bFinger)) {
+    if (bPadTouch || (iosTouch_bPadHud && bFinger && !bSceneOnly)) {
         iosTouch_bPadHud = 0;
         iosPad_NoteTouch();
         iosKbMouse_NoteTouch();
@@ -6795,9 +6810,43 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     double a = 0.0;
     if (!iosTouch_bAutoplay && bCan && iosTouch_tSceneHint >= 0.0 && now - iosTouch_tSceneHint < IOSTOUCH_SCENE_HINT)
         a = fmin(1.0, (IOSTOUCH_SCENE_HINT - (now - iosTouch_tSceneHint)) / IOSTOUCH_SCENE_HINT_FADE);
+    const BOOL bWasHint = sceneHint.hidden, bWasSkipping = sceneSkipping.hidden;
     [self showSceneLabel:sceneHint width:104.0 alpha:a at:CGPointMake(sz.width * 0.5, sz.height - in.bottom - IOSTOUCH_SCENE_HINT_LIFT)];
     [self showSceneLabel:sceneSkipping width:96.0 alpha:(!iosTouch_bAutoplay && iosSceneSkip_IsSkipping()) ? 1.0 : 0.0
                       at:CGPointMake(sz.width * 0.5, sz.height * 0.5)];
+    if (iosTouch_bPadMasked && (bWasHint != sceneHint.hidden || bWasSkipping != sceneSkipping.hidden)) [self applyPadMask]; // (shown through it)
+    // the scene over: a finger that came down during it (a tap still on the
+    // glass, a thumb waiting for the fight) works from now on, as if it had
+    // landed now where it is -- the stick under a left thumb, looking...
+    if (bCan || iosSceneSkip_IsSkipping()) return;
+    int bTaken = 0;
+    for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
+        iosTouchSlot* s = &iosTouch_aSlots[i];
+        if (!s->touch || s->role != ROLE_SCENESKIP) continue;
+        UITouch* t = s->touch;
+        const CGPoint p = s->last;
+        const double tTouch = s->tDownTouch + (now - s->tDown); // (now, by the touch's own clock)
+        memset(s, 0, sizeof(*s));
+        s->touch = t;
+        s->origin = s->last = p;
+        s->tDown = now;
+        s->tDownTouch = tTouch;
+        s->button = -1;
+        s->trayButton = -1;
+        s->wheelSlot = -1;
+        if (iosTouch_bAutoplay || iosTouch_bPadMasked || iosTouch_bWheelOpen || iosTouch_bTrayOpen || iosTouch_selfieStage != IOSTOUCH_SELFIE_NONE
+            || iosTouch_bFreezing || iosTouch_bCinema)
+            s->role = ROLE_IGNORED; // (something else has the screen: left alone until it lifts)
+        else {
+            s->button = [self buttonAt:p];
+            [self takeTouch:s at:p];
+        }
+        bTaken = 1;
+    }
+    if (bTaken) {
+        iosTouch_RecomputeKeys();
+        [self refreshButtonLooks];
+    }
 }
 
 - (void)showSceneLabel:(UILabel*)l width:(CGFloat)w alpha:(double)a at:(CGPoint)c
@@ -6863,6 +6912,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         }
     }
     if (!fpsLabel.hidden) [p appendPath:[UIBezierPath bezierPathWithRect:fpsLabel.frame]];
+    if (!sceneHint.hidden) [p appendPath:[UIBezierPath bezierPathWithRect:sceneHint.frame]];         // (one of the level's scenes:
+    if (!sceneSkipping.hidden) [p appendPath:[UIBezierPath bezierPathWithRect:sceneSkipping.frame]]; // its hint, "Skipping...")
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     iosTouch_pPadMask.frame = self.bounds;

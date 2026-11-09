@@ -314,8 +314,9 @@ void jkSaber_UpdateLength(SithThing *thing)
         jkSaber_bSecondaryHadLast = playerInfo->bHasLastJointMat; // Added
         jkSaber_UpdateCollision(thing, thing->pPuppetClass->aJoints[JOINTTYPE_PRIMARYWEAP], 0); // MOTS added: last arg
         // Added: or the player's two-blade style (in multiplayer only drawn, not striking: the others'
-        // games, a desktop's among them, don't all know of it, so they would count hits differently)
-        if ( jkSaber_IsDual(thing) && (!sithNet_isMulti || (thing->jkFlags & JKFLAG_DUALSABERS)) )
+        // games, a desktop's among them, don't all know of it, so they would count hits differently;
+        // nor a stand-in's for the player in a level's scene, iosSaber_StandsInForPlayer)
+        if ( jkSaber_IsDual(thing) && (thing->jkFlags & JKFLAG_DUALSABERS || (!sithNet_isMulti && thing->type == SITH_THING_PLAYER)) )
         {
             int secondary = jkSaber_SecondaryJoint(thing); // Added: the left hand where the puppet has none
             if ( secondary >= 0 )
