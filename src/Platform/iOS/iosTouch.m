@@ -201,6 +201,8 @@ extern int jkHud_bChatOpen;
 // (sliding off cancels; a tap does nothing) it switches sithewok on or off,
 // as typing "sithewok" does. Red whenever the cheat is
 // on, however it was switched (iosGame_IsSithEwokOn, read every frame).
+// The Emperor (iosCheatLaugh) each time the player switches it on: the
+// tray's switch, CHEAT held, or typed; never as it goes off, nor for AUTOPLAY.
 #define IOSTOUCH_CHEAT_DEFAULTS_KEY @"iosTouchShowCheat"
 // The VIEW button (right of CHEAT, or of SABER without it): first or third
 // person, a tap each way at once; it says 1P or 3P. Switched on in MENU's
@@ -4822,7 +4824,7 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
         else {
             [self setShowCheat:1];
             if (!iosGame_IsSithEwokOn()) iosGame_ToggleSithEwok();
-            iosCheatLaugh_Play(iosGame_SfxVolume()); // (the Emperor approves; also on typing it, CHEAT hidden)
+            iosCheatLaugh_Play(iosGame_SfxVolume()); // (the Emperor approves; also on CHEAT held, or typing it, to on)
         }
     }
     else if (kind == KIND_VIEWSWITCH) {
@@ -6378,8 +6380,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self setRing:levelRing progress:levelProgress];
 
     // CHEAT held still IOSTOUCH_CHEAT_HOLD: the cheat on or off, once per
-    // press (the ring fills meanwhile; moved IOSTOUCH_FLY_STILL, no); and its
-    // red following the cheat however it was switched (typed too)
+    // press (the ring fills meanwhile; moved IOSTOUCH_FLY_STILL, no), and on,
+    // the Emperor, as the tray's switch gives; and its red following the
+    // cheat however it was switched (typed too)
     CGFloat cheatProgress = 0.0;
     for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
         iosTouchSlot* s = &iosTouch_aSlots[i];
@@ -6392,7 +6395,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         }
         if (known - s->tDown >= IOSTOUCH_CHEAT_HOLD) {
             s->bFlyDone = 1;
-            if (iosGame_ToggleSithEwok() >= 0) [cameraTap impactOccurred];
+            const int bCheatNow = iosGame_ToggleSithEwok();
+            if (bCheatNow >= 0) [cameraTap impactOccurred];
+            if (bCheatNow > 0) iosCheatLaugh_Play(iosGame_SfxVolume());
             continue;
         }
         cheatProgress = MAX(cheatProgress, MIN((CGFloat)((now - s->tDown) / IOSTOUCH_CHEAT_HOLD), 1.0));
@@ -6454,14 +6459,16 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     }
     if (fjumpProgress <= 0.0) iosTouch_jumpTicked = 0;
     [self setRing:fjumpRing progress:fjumpProgress];
+    // (typed on -- "sithewok" -- the Emperor's laugh, CHEAT shown or not, as the tray's
+    // switch and CHEAT's hold give; AUTOPLAY's cheat, put on for its show, says nothing.
+    // Read every frame, so one left from the show's time can't come later)
+    const int bCheatTypedOn = iosGame_TakeSithEwokTypedOn();
     if (iosGame_IsSithEwokOn() != iosTouch_bCheatOn) {
         iosTouch_bCheatOn = iosGame_IsSithEwokOn();
-        // (switched on some other way -- typed "sithewok" -- with CHEAT hidden: shown, and the
-        // Emperor's laugh, as the tray's switch does)
-        if (iosTouch_bCheatOn && !iosTouch_bShowCheat) {
-            [self setShowCheat:1];
-            iosCheatLaugh_Play(iosGame_SfxVolume());
-        }
+        // (switched on some other way -- typed "sithewok" -- with CHEAT hidden: shown, as the
+        // tray's switch does)
+        if (iosTouch_bCheatOn && !iosTouch_bShowCheat) [self setShowCheat:1];
+        if (iosTouch_bCheatOn && bCheatTypedOn) iosCheatLaugh_Play(iosGame_SfxVolume());
         // (typed off -- "sithewok" again -- CHEAT goes too, as the tray's switch
         // hides it; CHEAT's own hold leaves it showing, grey)
         if (iosGame_TakeSithEwokTypedOff() && !iosTouch_bCheatOn && iosTouch_bShowCheat) [self setShowCheat:0];

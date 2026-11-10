@@ -82,6 +82,9 @@ static int jkDev_bSithEwokShown = 0; // something on screen shows it is on (jkDe
 // Added: sithewok last went off by being typed (jkDev_Custom_TakeSithEwokTypedOff): the touch overlay then
 // hides its CHEAT button too, as typing it on shows it
 static int jkDev_bSithEwokTypedOff = 0;
+// Added: sithewok last went on by being typed (jkDev_Custom_TakeSithEwokTypedOn): the touch overlay then
+// plays its Emperor, as its own CHEAT does (AUTOPLAY's, put on with no command, stays silent)
+static int jkDev_bSithEwokTypedOn = 0;
 // Added: sithewok keeps the weapon in hand from level to level: the one in hand (or being switched to)
 // as last seen, and the one to put back in a new level, for at most so many more frames
 static int jkDev_sithEwokWeapon = -1;
@@ -1992,6 +1995,7 @@ int jkDev_Custom_CmdSithEwok(stdDebugConsoleCmd *pCmd, const char *pArgStr)
     if ( pCmd ? jkDev_bSithEwokOn : !__strcmpi(arg, "off") )
     {
         jkDev_bSithEwokTypedOff = pCmd != NULL;
+        jkDev_bSithEwokTypedOn = 0;
         pPlayer->actorParams.flags &= ~SITH_AF_INVULNERABLE;
         jkDev_bSithEwokOn = 0;
         jkDev_pSithEwokPlayer = NULL;
@@ -2016,6 +2020,7 @@ int jkDev_Custom_CmdSithEwok(stdDebugConsoleCmd *pCmd, const char *pArgStr)
     }
 
     jkDev_bSithEwokTypedOff = 0;
+    jkDev_bSithEwokTypedOn = pCmd != NULL;
     jkDev_Custom_SithEwokOn(pPlayer, 0);
     return 1;
 }
@@ -2025,6 +2030,14 @@ int jkDev_Custom_TakeSithEwokTypedOff()
 {
     const int b = jkDev_bSithEwokTypedOff;
     jkDev_bSithEwokTypedOff = 0;
+    return b;
+}
+
+// Added: whether sithewok last went on by being typed, once (cleared by reading it)
+int jkDev_Custom_TakeSithEwokTypedOn()
+{
+    const int b = jkDev_bSithEwokTypedOn;
+    jkDev_bSithEwokTypedOn = 0;
     return b;
 }
 

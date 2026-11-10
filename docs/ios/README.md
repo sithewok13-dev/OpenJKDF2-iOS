@@ -1573,28 +1573,29 @@ it away).
 ### Cheat mode: the CHEAT button
 
 Hold **MENU** and tap **CHEAT** in the tray. A **CHEAT** button with the **red
-Sith emblem** appears on the top row and `sithewok` goes on. If you've added
-your own sound clips (see [Your own Emperor](#your-own-emperor) below), the
-Emperor greets you with one of them. Then:
+Sith emblem** appears on the top row and `sithewok` goes on. Then:
 
 - **Hold CHEAT** for half a second (a ring fills) to switch `sithewok` off
   (the emblem goes grey) or on again (red). A tap does nothing, so you can't
   switch it by accident.
 - **Typing works too:** typing `sithewok` while it's off switches it on and
-  brings the CHEAT button back (with the Emperor). Typing `sithewok` while it's
-  on switches it off and the button goes away. Holding the button instead
-  leaves it on screen, grey.
+  brings the CHEAT button back. Typing `sithewok` while it's on switches it
+  off and the button goes away. Holding the button instead leaves it on
+  screen, grey.
 - **To leave cheat mode,** tap CHEAT in the tray again: `sithewok` goes off
   and the button goes away.
 - The app remembers cheat mode, but `sithewok` itself starts off each time
   you open the app: hold CHEAT to switch it on.
-- The Emperor plays at the game's sound effects volume, so turn that down if
-  you'd rather not hear him.
+- **The Emperor greets you** whenever you switch `sithewok` on: with CHEAT in
+  the tray, by holding the CHEAT button, or by typing it. He stays quiet when
+  you switch it off. You only hear him if you've added your own sound clips
+  (see [Your own Emperor](#your-own-emperor) below). He plays at the game's
+  sound effects volume, so turn that down if you'd rather not hear him.
 
 #### Your own Emperor
 
-The app doesn't come with any sound clips. To hear one when cheat mode goes
-on, add your own:
+The app doesn't come with any sound clips. To hear one when you switch
+`sithewok` on, add your own:
 
 1. Open the **Files** app and go to *On My iPhone > OpenJKDF2* (*OpenMoTS* for
    Mysteries of the Sith).
@@ -1609,8 +1610,8 @@ and `Resource`, in `jk1` (`mots` for OpenMoTS) or wherever your game files are.
 If both have clips, the one straight in the OpenJKDF2 (or OpenMoTS) folder is
 used.
 
-Clips you add while the game is running count from the next time cheat mode
-goes on. With neither folder holding any, cheat mode is silent.
+Clips you add while the game is running count from the next time you switch
+it on. With neither folder holding any, cheat mode is silent.
 
 ### sithewok's catches in Jedi Knight
 

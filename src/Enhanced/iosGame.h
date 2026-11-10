@@ -181,6 +181,9 @@ int iosGame_ToggleSithEwok(void);
 // Whether sithewok last went off by being typed ("sithewok" again),
 // once: the overlay then hides CHEAT
 int iosGame_TakeSithEwokTypedOff(void);
+// Whether sithewok last went on by being typed, once: the overlay then plays
+// the Emperor (iosCheatLaugh), as its own CHEAT does; never for AUTOPLAY's
+int iosGame_TakeSithEwokTypedOn(void);
 // Whether the overlay's CHEAT button is showing (glowing red while the cheat
 // is on): then a new level puts sithewok on again without saying so
 void iosGame_SetCheatShown(int bShown);

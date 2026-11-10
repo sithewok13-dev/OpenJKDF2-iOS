@@ -121,6 +121,7 @@ int jkDev_Custom_SithEwokIsOn(); // Added
 int jkDev_Custom_EndlessForceIsOn(); // Added
 int jkDev_Custom_ToggleSithEwok(); // Added
 int jkDev_Custom_TakeSithEwokTypedOff(); // Added
+int jkDev_Custom_TakeSithEwokTypedOn(); // Added
 void jkDev_Custom_SetSithEwokShown(int bShown); // Added
 #endif
 

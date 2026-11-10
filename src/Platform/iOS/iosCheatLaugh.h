@@ -1,7 +1,8 @@
 // Added: entire file. The touch overlay's cheat mode easter egg: the Emperor,
-// once each time cheat mode is switched on (iosTouch: the tray's CHEAT switch
-// off to on, or "sithewok" typed with CHEAT hidden) -- nowhere else. One of
-// the recordings, picked at random, never the one played last time.
+// once each time the player switches the sithewok cheat on (iosTouch: the
+// tray's CHEAT switch off to on, CHEAT held to on, or "sithewok" typed on) --
+// never as it goes off, nor for AUTOPLAY's show. One of the recordings,
+// picked at random, never the one played last time.
 //
 // None come with the app: they're the player's own, any audio files (mp3, m4a,
 // aac, wav, caf, aif) in an "Emperor" folder in the app's own folder in the
