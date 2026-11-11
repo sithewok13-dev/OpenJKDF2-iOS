@@ -49,6 +49,8 @@
 // RANDOM), kept for the whole fight -- a level's first fight's picked as the
 // level opens, so its scenes (unseen, but its first frames, a scene given up
 // on) and the fight after them have one look; never one while a scene is on.
+// With the look kept (bKeepLook: WEAPONS' LIGHTSABER held, its look picked
+// on the saber wheel), none: that look the whole show.
 //
 // Lengths below are in feet as Dark Forces' were (the show's numbers came
 // from there), turned into the level's units by the player's own height

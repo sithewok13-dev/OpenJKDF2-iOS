@@ -84,7 +84,7 @@ static uint32_t jkGuiEsc_directMs = 0;
 
 void jkGuiEsc_ShowDirect(int bSave)
 {
-    jkGuiEsc_direct = bSave ? 2 : 1;
+    jkGuiEsc_direct = bSave < 0 ? 0 : (bSave ? 2 : 1);
     jkGuiEsc_directMs = stdPlatform_GetTimeMsec();
 }
 #endif

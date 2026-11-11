@@ -462,7 +462,8 @@ not a button. OpenMoTS shows its own the same way.
   There, **touch and hold LIGHTSABER** (a ring fills, half a second) to open
   the saber wheel and pick its look: the show then keeps that look for every
   fight (the tile says *YOUR LOOK*) instead of a new one each fight, and you
-  keep it afterwards. Tap LIGHTSABER off to go back to a new look each fight.
+  keep it afterwards. Tap LIGHTSABER once to go back to a new look each fight
+  (it stays picked; tap it again to take it off the list).
 - **CAMERA** (the camera symbol): a tap shows or hides the CAMERA button
   (yellow while it's shown). Touch and hold it until its ring fills for
   CAMERA's options, **PHOTO**, **SELFIES** and **FREEZE**: see
@@ -1297,9 +1298,9 @@ hand's colours and has its own **HILT** button.
   game.
 - **Hold SAVE** until the ring fills (about a third of a second) to quick
   save, to the game's quick-save slot, the same one F9 uses on PC. It saves
-  once, while your finger is still down.
-- **Hold LOAD** until the ring fills to load that quick save, once, while
-  your finger is still down. If the quick save is from another level, that
+  once, as soon as the ring is full (even if you lift just then).
+- **Hold LOAD** until the ring fills to load that quick save, once, as soon
+  as the ring is full. If the quick save is from another level, that
   level is loaded. If you haven't quick saved yet, it says *No quicksave yet*.
 - **Slide off** SAVE or LOAD before you lift and nothing happens, even if
   you slide back on. Neither works while the cheat typing line is open.

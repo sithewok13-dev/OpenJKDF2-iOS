@@ -318,6 +318,12 @@ void jkMain_GuiAdvance()
 
         jkSmack_stopTick = 0;
         jkSmack_currentGuiState = jkSmack_nextGuiState;
+#ifdef JK_ENHANCED
+        // Added: a Save or Load screen asked for (iosGame_OpenSaveLoad) is for
+        // the game menu opening now only: anywhere else, it is dropped
+        if (jkSmack_nextGuiState != JK_GAMEMODE_ESCAPE)
+            jkGuiEsc_ShowDirect(-1);
+#endif
         v7 = jkMain_aGuiStateFuncs[jkSmack_nextGuiState].showFunc;
         if ( !v7 )
             goto LABEL_35;

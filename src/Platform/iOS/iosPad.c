@@ -50,9 +50,9 @@ SDL_Gamepad* stdControl_GetSdlGamepad(int idx);
 #define IOSPAD_WHEEL_AIM 0.5f
 #define IOSPAD_WHEEL_LETGO 0.3f
 #define IOSPAD_WHEEL_GRACE 0.25
-// Back held this long quick saves (with D-pad down, quick loads), as QUICK
-// SAVE and QUICK LOAD; let go sooner than IOSPAD_MAP_TAP it is a tap. Its
-// ring shows once it has been held IOSPAD_RING_SHOW (not for every tap)
+// Back held this long quick saves (with D-pad down, quick loads), as the
+// touch overlay's SAVE and LOAD held; let go sooner than IOSPAD_MAP_TAP it
+// is a tap. Its ring shows once it has been held IOSPAD_RING_SHOW (not for every tap)
 #define IOSPAD_SAVE_HOLD 0.3
 #define IOSPAD_LOAD_HOLD 0.3
 #define IOSPAD_MAP_TAP 0.2

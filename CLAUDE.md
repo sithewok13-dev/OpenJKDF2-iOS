@@ -20,8 +20,8 @@ everything on a phone.
   remembered rows: LEVELS SHUFFLE ALL / PICK ONE from the cheat's level list,
   DIFFICULTY, CROWD, ALARM, WEAPONS with a picker of the weapon wheel's names and
   colours (default LIGHTSABER only; LIGHTSABER held 0.5 s opens the saber wheel,
-  and that look is kept, "YOUR LOOK"), HUD, CONTROLS; START, an X, "Double tap:
-  new fight · Hold: exit").
+  and that look is kept, "YOUR LOOK", until a tap on LIGHTSABER), HUD, CONTROLS;
+  START, an X, "Double tap: new fight · Hold: exit").
   The show is `src/Enhanced/iosAutoplay.c`: START saves ("Before AUTOPLAY",
   `autoplay.jks`), turns sithewok on silently (god mode, everything, ammo and
   Force full, falls caught), sets the difficulty and loads a level row straight
@@ -76,8 +76,9 @@ everything on a phone.
     another job may be editing.
 - **Touch controls standard** (shared with the owner's other ports; keep it the same):
   - Move stick where the left thumb lands; drag elsewhere to look.
-  - SAVE / LOAD: tap = the game's own Save or Load screen; a 0.3 s hold with a ring
-    = quick save / quick load. Sliding off cancels; SAVE wins a tie.
+  - SAVE / LOAD: a 0.3 s hold with a ring = quick save / quick load. Sliding off
+    cancels; SAVE wins a tie. iOS for now: a tap = the game's own Save or Load
+    screen (Android's overlay is still QUICK SAVE / QUICK LOAD, hold only).
   - MENU: tap = game menu; hold 0.45 s = tray with SENS, GYRO, OPACITY, FPS,
     AUTOPLAY, keyboard.
   - OPACITY (tray): tap = a slider under the tray, 20% to 100% in 5% steps, live,

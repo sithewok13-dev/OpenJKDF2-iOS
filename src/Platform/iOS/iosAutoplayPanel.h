@@ -21,8 +21,10 @@
 //               the saber wheel (the game's own, SABER's) over the game, the
 //               panel back as it was once it closes: that look is kept the
 //               whole show ("YOUR LOOK" under its name) instead of a new
-//               one each fight, and stays the player's after it. Tapping
-//               LIGHTSABER off lets it go. (Before LIGHTSABER only was the
+//               one each fight, and stays the player's after it; kept at
+//               once, however the picker closes. Tap LIGHTSABER once to go
+//               back to a new look each fight (it stays ticked; the next tap
+//               unticks it). (Before LIGHTSABER only was the
 //               default, ALL was: a kept ALL, or nothing kept, is made
 //               LIGHTSABER only once.)
 //   HUD         OFF (the default) / ON

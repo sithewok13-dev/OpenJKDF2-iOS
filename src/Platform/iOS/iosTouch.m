@@ -1040,6 +1040,24 @@ static void iosTouch_QueuePress(int scancode)
     if (iosTouch_aPulseQueue[scancode] < 255) iosTouch_aPulseQueue[scancode]++;
 }
 
+// SAVE's or LOAD's hold done (button): one quick save or quick load, once. It
+// ends every hold on SAVE and LOAD, so two fingers on one button save or
+// load once (a finger that comes down after that starts a new hold), and the
+// two buttons held together do whichever completes first, never both (both
+// would only load back the game just saved, or save again the one just
+// loaded). A quick load from a lift waits for the next tick, as the holds'.
+static int iosTouch_bQuickLoadDue = 0;
+static void iosTouch_QuickHoldDone(int button, int bNow)
+{
+    for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
+        iosTouchSlot* o = &iosTouch_aSlots[i];
+        if (o->touch && o->role == ROLE_BUTTON && iosTouch_IsQuickHold(o->button)) o->bFired = 1;
+    }
+    if (button == BTN_QUICKSAVE) iosTouch_QueuePress(iosTouch_aButtons[BTN_QUICKSAVE].scancode); // saves once
+    else if (bNow) iosGame_QuickLoad();
+    else iosTouch_bQuickLoadDue = 1;
+}
+
 // The name of a slice's power or weapon on the open wheel
 static const char* iosTouch_WheelSlotName(int bin)
 {
@@ -6176,6 +6194,20 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                         }
                         iosGame_OpenSaveLoad(s->button == BTN_QUICKSAVE);
                     }
+                    else if (iosTouch_IsQuickHold(s->button) && !s->bFired) {
+                        // ...held that long by the touch's own clock, but lifted
+                        // before a frame saw the hold done (a slow frame): the
+                        // hold's quick save or load, now -- SAVE's if a finger
+                        // on SAVE has been held as long too (SAVE wins a tie)
+                        int done = s->button;
+                        for (int k = 0; k < IOSTOUCH_MAX_TOUCHES; k++) {
+                            const iosTouchSlot* o = &iosTouch_aSlots[k];
+                            if (o != s && o->touch && o->role == ROLE_BUTTON && o->button == BTN_QUICKSAVE && !o->bFired
+                                && [self isPoint:o->last onButton:BTN_QUICKSAVE] && t.timestamp - o->tDownTouch >= IOSTOUCH_QUICKSAVE_HOLD)
+                                done = BTN_QUICKSAVE;
+                        }
+                        iosTouch_QuickHoldDone(done, 0);
+                    }
                 }
                 // MENU held until its tray opened, then slid onto one of its buttons
                 if (!bCancelled && s->button == BTN_MENU && s->bFired && iosTouch_bTrayOpen) {
@@ -6660,19 +6692,15 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
 
     [self tickBurst:now];
 
+    if (iosTouch_bQuickLoadDue) {
+        // (LOAD's hold done as it lifted: iosTouch_QuickHoldDone)
+        iosTouch_bQuickLoadDue = 0;
+        iosGame_QuickLoad();
+    }
     if (done >= 0) {
-        // One save or load, once: it ends every hold on SAVE and
-        // LOAD, so two fingers on one button save or load once (a finger that
-        // comes down after that starts a new hold), and the two buttons held
-        // together do whichever completes first, never both (both would only
-        // load back the game just saved, or save again the one just loaded)
-        for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
-            iosTouchSlot* o = &iosTouch_aSlots[i];
-            if (o->touch && o->role == ROLE_BUTTON && iosTouch_IsQuickHold(o->button)) o->bFired = 1;
-        }
+        // One save or load, once (iosTouch_QuickHoldDone)
         saveProgress = loadProgress = 0.0;
-        if (done == BTN_QUICKSAVE) iosTouch_QueuePress(iosTouch_aButtons[BTN_QUICKSAVE].scancode); // saves once
-        else iosGame_QuickLoad();
+        iosTouch_QuickHoldDone(done, 1);
     }
     [self setRing:saveRing progress:saveProgress];
     [self setRing:loadRing progress:loadProgress];
@@ -6830,6 +6858,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     aButtonViews[BTN_TRAYLEVEL].text = @"LEVEL"; // (a level pick on show, dropped)
     iosTouch_levelToLoad = 0;
     iosTouch_levelRowToLoad = 0;
+    iosTouch_bQuickLoadDue = 0;
     [self setRing:loadRing progress:0.0];
     [self setRing:menuRing progress:0.0];
     [self setRing:camOptRing progress:0.0];
@@ -7628,8 +7657,9 @@ int iosTouch_OpenSaberWheelForPanel(void)
 int iosTouch_WantsPointer(void)
 {
     if (!iosTouch_pOverlay || iosTouch_pOverlay.hidden) return 0;
-    // (AUTOPLAY's show and panel: a click is a tap, never the game's button)
-    if (iosTouch_bAutoplay || iosAutoplayPanel_IsOpen()) return 1;
+    // (AUTOPLAY's show and panel, and the saber wheel the panel opened: a
+    // click is a tap, never the game's button)
+    if (iosTouch_bAutoplay || iosAutoplayPanel_IsOpen() || (iosTouch_bWheelOpen && iosTouch_bPanelWheel)) return 1;
     return iosTouch_IsPhotoModeUp() || iosTouch_bTrayOpen || iosTouch_optRow != IOSTOUCH_ROW_NONE;
 }
 

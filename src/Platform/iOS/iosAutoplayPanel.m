@@ -190,6 +190,19 @@ static void iosAp_Save(void)
     [d setBool:(iosAp_opt.bControls ? YES : NO) forKey:IOSAP_KEY_CONTROLS];
 }
 
+// The look kept, or let go, saved at once (the saber wheel set the look as
+// it was picked; the picker's X and a touch off the card keep this too):
+// kept, the lightsaber among the weapons
+static void iosAp_SetKeepLook(int bKeep)
+{
+    iosAp_opt.bKeepLook = bKeep ? 1 : 0;
+    if (bKeep && iosAp_opt.weapons != IOSAUTOPLAY_WEAPONS_ALL) {
+        iosAp_opt.weapons |= iosAp_SaberBits();
+        if ((iosAp_opt.weapons & iosAp_AllBits()) == iosAp_AllBits()) iosAp_opt.weapons = IOSAUTOPLAY_WEAPONS_ALL;
+    }
+    iosAp_Save();
+}
+
 // A level row's name, as the cheat's list shows it ("3  Fuel Station")
 static NSString* iosAp_LevelName(int row)
 {
@@ -478,9 +491,15 @@ static void iosAp_RowText(int row, NSString** pName, NSString** pValue)
         NSString* name = pName ? [NSString stringWithUTF8String:pName] : @"?";
         UIColor* ink = bOn ? [UIColor colorWithWhite:0.05 alpha:1.0] : iosAp_GroupColour(a[i].group, 0.55);
         if (bOn && pickingKeep && a[i].bin == iosAp_SaberBin()) {
-            // (its look kept: a small line under its name says so)
-            NSMutableAttributedString* t = [[NSMutableAttributedString alloc] initWithString:name
-                                                                                   attributes:@{ NSFontAttributeName: iosAp_Font(13.0), NSForegroundColorAttributeName: ink }];
+            // (its look kept: a small line under its name says so -- the name
+            // on one line, "LIGHT- SABER" whole, as big as fits across, so the
+            // two fit the tile's two lines)
+            NSString* one = [name stringByReplacingOccurrencesOfString:@"- " withString:@""];
+            const CGFloat room = aTile[i].bounds.size.width - 8.0;
+            CGFloat size = 13.0;
+            while (size > 8.0 && [one sizeWithAttributes:@{ NSFontAttributeName: iosAp_Font(size) }].width > room) size -= 0.5;
+            NSMutableAttributedString* t = [[NSMutableAttributedString alloc] initWithString:one
+                                                                                   attributes:@{ NSFontAttributeName: iosAp_Font(size), NSForegroundColorAttributeName: ink }];
             NSAttributedString* line = [[NSAttributedString alloc] initWithString:@"\nYOUR LOOK"
                                                                        attributes:@{ NSFontAttributeName: iosAp_Font(9.0),
                                                                                      NSForegroundColorAttributeName: [UIColor colorWithWhite:0.05 alpha:0.7] }];
@@ -609,8 +628,9 @@ static int iosAp_Hit(UIView* v, CGPoint p)
     [self setSaberRing:0.0];
 }
 
-// A tile tapped: ticked or unticked (one at least stays ticked); LIGHTSABER
-// unticked, its look no longer kept (a new one each fight again)
+// A tile tapped: ticked or unticked (one at least stays ticked) -- but
+// LIGHTSABER with its look kept: the look let go (a new one each fight
+// again), LIGHTSABER still ticked; the next tap unticks it
 - (void)toggleTile:(int)i
 {
     int n = 0;
@@ -618,6 +638,12 @@ static int iosAp_Hit(UIView* v, CGPoint p)
     if (i < 0 || i >= n || i >= IOSAP_MAX_WEAPONS) return;
     const int bit = iosAutoplay_WeaponBit(a[i].bin);
     if (bit < 0) return;
+    if (a[i].bin == iosAp_SaberBin() && (picking & (1u << bit)) && pickingKeep) {
+        pickingKeep = 0;
+        iosAp_SetKeepLook(0);
+        [self refresh];
+        return;
+    }
     const unsigned int next = picking ^ (1u << bit);
     if (next & iosAp_AllBits()) picking = next;
     if (!(picking & iosAp_SaberBits())) pickingKeep = 0;
@@ -634,6 +660,7 @@ static int iosAp_Hit(UIView* v, CGPoint p)
     [self setSaberRing:0.0];
     picking |= iosAp_SaberBits();
     pickingKeep = 1;
+    iosAp_SetKeepLook(1); // (kept however the picker closes: DONE, its X, a touch off the card)
     [self refresh];
     self.hidden = YES;
     iosAp_bWheel = 1;
