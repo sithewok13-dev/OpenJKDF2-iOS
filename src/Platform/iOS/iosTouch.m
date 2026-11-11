@@ -149,6 +149,9 @@ extern int jkHud_bChatOpen;
 // for that goes condensed (IOSTouch_FitRound)
 #define IOSTOUCH_LABEL_MIN 8.0
 #define IOSTOUCH_LABEL_MARGIN 1.5
+// FORCE's power name starts this big (the overlay's largest button lettering):
+// a short one ("PULL") stays so, a long one ("LIGHTNING") comes down to fit
+#define IOSTOUCH_FORCE_NAME_MAX 16.0
 // SAVE and LOAD have to be held this long to quick save or quick load, so a
 // stray tap can't save over the quicksave or throw away progress; a tap
 // (lifted on the button sooner, by the touch's own clock, never slid off)
@@ -6676,15 +6679,17 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
 
     int bLooksChanged = 0;
 
-    // FORCE shows the power it uses; dimmed until there is one
+    // FORCE shows the power it uses, by its name alone ("PULL"; a two-word
+    // one on two lines, "DEADLY" over "SIGHT"), as big as it fits up to
+    // IOSTOUCH_FORCE_NAME_MAX; until there is one, FORCE, dimmed
     const char* name = iosGame_GetForcePowerName();
     if (!bForceLabelSet || name != forceLabelName) {
         bForceLabelSet = 1;
         forceLabelName = name;
         UILabel* l = aButtonViews[BTN_FORCE];
-        l.text = name ? [NSString stringWithFormat:@"FORCE\n%s", name] : @"FORCE";
+        l.text = name ? [[NSString stringWithUTF8String:name] stringByReplacingOccurrencesOfString:@" " withString:@"\n"] : @"FORCE";
         // (inside the force meter's ring, whose inside is 4 pt in)
-        IOSTouch_FitRound(l, name ? 10 : 13, iosTouch_aButtons[BTN_FORCE].radius - 4.0 - IOSTOUCH_LABEL_MARGIN, 0);
+        IOSTouch_FitRound(l, name ? IOSTOUCH_FORCE_NAME_MAX : 13, iosTouch_aButtons[BTN_FORCE].radius - 4.0 - IOSTOUCH_LABEL_MARGIN, 0);
         bLooksChanged = 1;
     }
 

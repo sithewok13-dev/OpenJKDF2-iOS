@@ -39,11 +39,11 @@
 //     Should iOS ever refuse the motion data, the tray's GYRO says NO GYRO.
 //   - buttons on the default keyboard keys. Bottom right: FIRE, with DUCK /
 //     ACT / JUMP on an arc around it, ALT above the ammo gauge and FORCE
-//     beside JUMP (tap or hold to use the power it shows; a ring round it is
-//     the force meter, glowing when full); dragging on any of these also
-//     looks. Top left: NEXT WPN, FORCE WHEEL, and a button for each usable
-//     item the player has (field light, IR goggles, bacta). Top right: SAVE,
-//     LOAD and MENU.
+//     beside JUMP (tap or hold to use the power it shows, by its name alone,
+//     a two-word name on two lines; a ring round it is the force meter,
+//     glowing when full); dragging on any of these also looks. Top left: NEXT
+//     WPN, FORCE WHEEL, and a button for each usable item the player has
+//     (field light, IR goggles, bacta). Top right: SAVE, LOAD and MENU.
 //   - SAVE and LOAD: held, a quick save or quick load. A ring round the
 //     button fills while it is held (0.3 s), and once it is full the game
 //     saves or loads -- once, with the finger still down. Sliding off first
