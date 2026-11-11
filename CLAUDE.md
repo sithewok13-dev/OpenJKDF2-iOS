@@ -15,7 +15,8 @@ everything on a phone.
   release text). **CI:** `.github/workflows/ios.yml`.
 - **This port's own layout** (not part of the shared touch standard below): FORCE
   WHEEL is a small button beside FORCE, 10 pt from it (a touch between them is
-  FORCE's); LAST WPN sits right of NEXT WPN (tap = the weapon held before; again
+  FORCE's; only where FORCE lies under the open wheel, as at 568x320, it goes
+  further off, under MENU); LAST WPN sits right of NEXT WPN (tap = the weapon held before; again
   = back; dimmed, doing nothing, with none to go back to, or it's gone or empty).
 - **Mysteries of the Sith** is a separate app, **OpenMoTS**
   (`packaging/ios/make_mots_app.sh`), with its own bundle id and Files folder.

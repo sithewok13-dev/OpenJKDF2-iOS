@@ -425,12 +425,14 @@ void iosGame_CancelWeaponPick(void)
 
 // LAST WPN: the weapon in hand noted each frame (iosLastWeapon), afresh with
 // each level, player and game loaded. A saber thrown leaves the fists in
-// hand, or none, until it is back: no switch, so nothing is noted from the
-// throw until a weapon but the fists is in hand again (the saber, as a rule:
-// then nothing has changed). A throw is ours (iosSaberThrow, two sabers;
-// iosSaberThrowJk, Jedi Knight's), or the game's own (Mysteries of the Sith,
-// one saber): the saber in hand, then the fists or none, the saber gone from
-// the inventory
+// hand, or none, until it is back: no switch, so from a throw on neither is
+// noted until another weapon is in hand (the saber back, as a rule: then
+// nothing has changed; one picked meanwhile counts at once). A throw is ours
+// (iosSaberThrow, two sabers; iosSaberThrowJk, Jedi Knight's), or the game's
+// own (Mysteries of the Sith, one saber): its power switched on while the
+// saber flies (a game saved then and loaded too), or the saber in hand, then
+// the fists or none, the saber gone from the inventory
+#define IOSGAME_MOTS_BIN_SABERTHROW 37 // f_saberthrow
 static SithThing* iosGame_pWeaponPlayer = NULL;
 static SithWorld* iosGame_pWeaponWorld = NULL;
 static int iosGame_bThrowFists = 0;
@@ -456,11 +458,12 @@ void iosGame_WeaponTick(void)
     const int fists = Main_bMotsCompat ? SITHBIN_MOTS_FISTS : SITHBIN_FISTS;
     const int saber = Main_bMotsCompat ? SITHBIN_MOTS_LIGHTSABER : SITHBIN_LIGHTSABER;
     const int bThrown = iosSaberThrow_AnyOut() || iosSaberThrowJk_OnFists()
+                     || (Main_bMotsCompat && sithInventory_IsInventoryActivated(pPlayer, IOSGAME_MOTS_BIN_SABERTHROW))
                      || ((held <= 0 || held == fists) && iosLastWeapon_Held() == saber && sithInventory_GetInventory(pPlayer, saber) <= 0.0);
     if (bThrown) iosGame_bThrowFists = 1;
     if (iosGame_bThrowFists) {
-        if (bThrown || held <= 0 || held == fists) return;
-        iosGame_bThrowFists = 0;
+        if (held <= 0 || held == fists) return; // (any other weapon picked meanwhile counts at once)
+        if (!bThrown) iosGame_bThrowFists = 0;
     }
     if (held > 0 && held < SITHBIN_NUMBINS) iosLastWeapon_Note(held); // (0: none in hand, as in a throw's switch)
 }
