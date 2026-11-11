@@ -3,6 +3,7 @@
 #ifdef JK_ENHANCED
 
 #include "Enhanced/iosStance.h"
+#include "Enhanced/iosSaberStaff.h"
 
 #include <math.h>
 #include <string.h>
@@ -383,8 +384,12 @@ static void iosStance_CutGesture(float now)
     iosStance_s.nextGesture = now + IOSSTANCE_GESTURE_CUT + iosStance_RandRange(IOSSTANCE_GESTURE_GAP_MIN, IOSSTANCE_GESTURE_GAP_MAX);
 }
 
+// (how much further out each hand holds its saber at rest, model units: iosSaberStaff_PovDepths)
+static float iosStance_aDepth[2];
+
 void iosStance_Update(SithThing* pActor, int bBusy)
 {
+    iosSaberStaff_PovDepths(pActor, &iosStance_aDepth[0], &iosStance_aDepth[1]);
     const flex_t gameTime = sithTime_g_secGameTime;
     if (!iosStance_s.bStarted || gameTime < iosStance_s.lastTime || gameTime - iosStance_s.lastTime > 1.0) {
         // (first, after a load, or a long gap: from the V, at rest, at once)
@@ -655,23 +660,6 @@ static void iosStance_AddLife(int hand, float t, iosStancePose* p)
     }
 }
 
-#ifdef IOSDEPTH_COMPARE
-#include <stdio.h>
-#include <stdlib.h>
-// (a compare build only: RIG_DEPTH_B="<right> <left>", each hand moved that much further from the eye (or nearer:
-// less than 0), of IOSSTANCE_U)
-static float iosStance_DepthB(int hand)
-{
-    static int bRead = 0;
-    static float a[2] = { 0.0f, 0.0f };
-    if (!bRead) {
-        bRead = 1;
-        const char* e = getenv("RIG_DEPTH_B");
-        if (e) sscanf(e, "%f %f", &a[0], &a[1]);
-    }
-    return a[hand ? 1 : 0];
-}
-#endif
 int iosStance_GetHand(int hand, const rdVector3* pPivot, rdMatrix34* pOut)
 {
     if (!iosStance_s.bStarted || hand < 0 || hand > 1) return 0;
@@ -707,9 +695,8 @@ int iosStance_GetHand(int hand, const rdVector3* pPivot, rdMatrix34* pOut)
     r.scale.x = pPivot->x - rp.x + IOSSTANCE_SIDE * (w * p.side + (1.0f - w) * (p.side - base.side));
     r.scale.y = pPivot->y - rp.y + (w * p.fwd + (1.0f - w) * (p.fwd - base.fwd));
     r.scale.z = pPivot->z - rp.z - (w * p.lower + (1.0f - w) * (p.lower - base.lower));
-#ifdef IOSDEPTH_COMPARE
-    r.scale.y += iosStance_DepthB(hand) * IOSSTANCE_U;
-#endif
+    // (two sabers held apart in depth, iosSaberStaff_PovDepths: at rest, eased in and out as a swing takes the arm)
+    r.scale.y += iosStance_aDepth[hand] * (w * w * (3.0f - 2.0f * w));
     *pOut = r;
     return 1;
 }

@@ -100,6 +100,10 @@ int iosSaberStaff_DrawThrown(struct SithThing* pThing, int* pRet);
 // rdPuppet_BuildJointMatrices, the joints posed but not yet put together:
 // the left arm's grip on the staff, or let go
 void iosSaberStaff_PoseArms(struct rdThing* pRdThing);
+
+// Two sabers in first person, at rest (iosStance): how much further out each hand holds its saber (less than 0:
+// nearer), so the one turned across the view lies behind the other where their blades cross
+void iosSaberStaff_PovDepths(struct SithThing* pThing, float* pRight, float* pLeft);
 // A swing begun (jkSaber_Enable): no spin for a while; FOLD's AUTO
 void iosSaberStaff_Swing(struct SithThing* pThing);
 // Once a frame (jkDev): the spin, when it is due

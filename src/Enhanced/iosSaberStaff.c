@@ -1485,6 +1485,38 @@ int iosSaberStaff_DrawPovBlades(SithThing* pActor, rdThing* pLine, const rdModel
     return 1;
 }
 
+// Two sabers in first person, at rest (iosStance): the one turned across the view (STAFF; FOLD as far as it is
+// open) held IOSSABERSTAFF_POV_FURTHER further out, the other IOSSABERSTAFF_POV_NEARER nearer, so where their
+// blades cross they read as apart in depth; as much less as both are across, none with neither (two NORMALs) or
+// both (two STAFFs). (also seen: 0.024 and 0.008, clearer but the STAFF small; and the FOLD turned in the hand,
+// 20 or 40 degrees round its blade, which only closed its blades up and left their tips uneven: RIG_DEPTH_A)
+#define IOSSABERSTAFF_POV_FURTHER 0.012f
+#define IOSSABERSTAFF_POV_NEARER 0.004f
+void iosSaberStaff_PovDepths(SithThing* pThing, float* pRight, float* pLeft)
+{
+    *pRight = *pLeft = 0.0f;
+    if (!pThing || !iosSaber_HasSecondBlade(pThing)) return;
+    float further = IOSSABERSTAFF_POV_FURTHER, nearer = IOSSABERSTAFF_POV_NEARER;
+#ifdef IOSDEPTH_COMPARE
+    // (a compare build: RIG_DEPTH_B="<further> <nearer>", thousandths, instead)
+    const char* e = getenv("RIG_DEPTH_B");
+    float f = 0.0f, n = 0.0f;
+    if (e && sscanf(e, "%f %f", &f, &n) == 2) {
+        further = f * 0.001f;
+        nearer = n * 0.001f;
+    }
+#endif
+    float a[2] = { 0.0f, 0.0f }; // (how far each is turned across the view)
+    for (int hand = 0; hand < 2; hand++) {
+        const int hilt = iosSaberStaff_HiltOf(pThing, hand);
+        if (iosSaberStaff_IsDouble(hilt))
+            a[hand] = iosSaberStaff_Smooth(hilt == IOSSABER_HILT_STAFF ? 1.0f : iosSaberFold_OpenFraction(pThing, iosSaberStaff_SaberInHand(pThing, hand)));
+    }
+    const float d = a[0] - a[1]; // (+: the right one across)
+    *pRight = d > 0.0f ? further * d : nearer * d;
+    *pLeft = d < 0.0f ? -further * d : -nearer * d;
+}
+
 // ------------------------------------------------------------ third person: the left arm
 
 void iosSaberStaff_PoseArms(rdThing* pRdThing)
