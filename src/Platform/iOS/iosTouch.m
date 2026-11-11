@@ -34,6 +34,7 @@
 #include "Platform/iOS/iosAutoplayPanel.h"
 #include "Enhanced/iosAutoplay.h"
 #include "Enhanced/iosSceneSkip.h"
+#include "Enhanced/iosItemIcons.h"
 
 extern SDL_Window* displayWindow;
 extern int stdControl_bControlsActive;
@@ -220,7 +221,17 @@ extern int jkHud_bChatOpen;
 #define IOSTOUCH_CHEAT_HOLD 0.5
 // BACTA uses a bacta tank only once held this long (a tap does nothing;
 // lifted or slid off sooner, nothing); one a press, its ring filling meanwhile
+// -- with its picture, the liquid in its glass glowing up from the bottom
 #define IOSTOUCH_BACTA_HOLD 0.3
+// LIGHT, IR and BACTA as the game's own icons (iosItemIcons), the item alone
+// over its button: 1.6 pt for each of the icon's 24 pixels (made for the
+// screen's own pixels), each item's middle at the button's (iosItemIcons_Centre),
+// a soft shadow under it; BACTA's count, more than one, in a round badge
+// IOSTOUCH_BADGE_R round at the tank's lower right
+#define IOSTOUCH_ITEM_PT 1.6
+#define IOSTOUCH_BADGE_R 6.4
+#define IOSTOUCH_BADGE_X 17.3 // (in the icon's pixels)
+#define IOSTOUCH_BADGE_Y 19.4
 // (the saber wheel's choices: "iosTouchSaber" + each name iosSaberWheel keeps, loadSaberChoices;
 // builds before kept iosTouchSaberStyle, iosTouchSaberHilt, iosTouchSaberColour.<style>.<blade>)
 #define IOSTOUCH_SABERLOOK_DEFAULTS_KEY @"iosTouchSaberLook" // (by its name: CLASSIC, REFORGED)
@@ -1612,6 +1623,17 @@ typedef struct {
     CAShapeLayer* cheatRing;  // CHEAT's hold progress
     CAShapeLayer* fjumpRing;  // inside FORCE: how high Force Jump will go (SMOOTH, STEPS)
     CAShapeLayer* bactaRing;  // BACTA's
+    // LIGHT, IR and BACTA as the game's own icons (iosItemIcons): a picture
+    // over each (the button then shows neither its round nor its name, nor
+    // BACTA its ring) and BACTA's count in a round badge. itemPics: 1 in use;
+    // -1 not to be had (the text buttons, as before); 0 not tried yet. The
+    // stills (LIGHT, IR off and on) made once; BACTA drawn again as its
+    // tanks or its hold's glow change (in 20ths)
+    CALayer* aItemPic[3];
+    UILabel* bactaBadge;
+    CGImageRef aItemStill[IOSITEMICON_NUM_STILL];
+    int itemPics, bactaPicTanks, bactaPicGlow, bactaPicCount;
+    CGFloat bactaGlow;
     UILabel* aCheatSub[2];    // under JUMP and ACT while sithewok is on: FLY, NOCLIP
     CAShapeLayer* cheatEmblem; // CHEAT's Sith emblem (red, with its edge, while the cheat is on)
     // The saber's picture on SABER: each saber in its hilt's shape, each
@@ -1857,6 +1879,33 @@ void iosTouch_ShapeTileHoldRing(CAShapeLayer* ring, CGSize size, CGFloat corner)
     ring.path = p.CGPath;
     IOSTouch_StyleHoldRing(ring);
     [CATransaction commit];
+}
+
+// A picture from n x n premultiplied RGBA pixels (copied), or NULL
+static void IOSTouch_FreePixels(void* info, const void* data, size_t size)
+{
+    free((void*)data);
+}
+
+static CGImageRef IOSTouch_ImageFromRGBA(const unsigned char* px, int n)
+{
+    if (!px || n <= 0) return NULL;
+    const size_t len = (size_t)n * (size_t)n * 4;
+    void* copy = malloc(len);
+    if (!copy) return NULL;
+    memcpy(copy, px, len);
+    CGDataProviderRef dp = CGDataProviderCreateWithData(NULL, copy, len, IOSTouch_FreePixels);
+    if (!dp) {
+        free(copy);
+        return NULL;
+    }
+    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+    CGImageRef img = cs ? CGImageCreate(n, n, 8, 32, (size_t)n * 4, cs, (CGBitmapInfo)kCGImageAlphaPremultipliedLast | kCGBitmapByteOrderDefault,
+                                        dp, NULL, false, kCGRenderingIntentDefault)
+                        : NULL;
+    if (cs) CGColorSpaceRelease(cs);
+    CGDataProviderRelease(dp);
+    return img;
 }
 
 // The SABER button's picture (hiltmock's icon.py): each saber on the
@@ -2138,6 +2187,45 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         // BACTA's hold ring
         bactaRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_BACTA].radius);
         [aButtonViews[BTN_BACTA].layer addSublayer:bactaRing];
+        // LIGHT's, IR's and BACTA's pictures, and BACTA's badge (hidden until
+        // the pictures are made: -prepareItemPics, at the first tick)
+        for (int k = 0; k < 3; k++) {
+            const int btn = k == IOSITEMICONS_LIGHT ? BTN_LIGHT : k == IOSITEMICONS_IR ? BTN_IR : BTN_BACTA;
+            const CGFloat r = iosTouch_aButtons[btn].radius, side = IOSITEMICONS_GRID * IOSTOUCH_ITEM_PT;
+            float cx = 12.0f, cy = 12.0f;
+            iosItemIcons_Centre(k, &cx, &cy);
+            CALayer* pic = [CALayer layer];
+            pic.frame = CGRectMake(r - cx * IOSTOUCH_ITEM_PT, r - cy * IOSTOUCH_ITEM_PT, side, side);
+            pic.shadowColor = [UIColor blackColor].CGColor;
+            pic.shadowOpacity = 0.5;
+            pic.shadowOffset = CGSizeMake(0.0, 0.8);
+            pic.shadowRadius = 1.6;
+            pic.hidden = YES;
+            aItemPic[k] = pic;
+            [aButtonViews[btn].layer addSublayer:pic];
+        }
+        {
+            const CGFloat r = iosTouch_aButtons[BTN_BACTA].radius;
+            float cx = 12.0f, cy = 12.0f;
+            iosItemIcons_Centre(IOSITEMICONS_BACTA, &cx, &cy);
+            bactaBadge = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 2.0 * IOSTOUCH_BADGE_R, 2.0 * IOSTOUCH_BADGE_R)];
+            bactaBadge.center = CGPointMake(r + (IOSTOUCH_BADGE_X - cx) * IOSTOUCH_ITEM_PT, r + (IOSTOUCH_BADGE_Y - cy) * IOSTOUCH_ITEM_PT);
+            bactaBadge.textAlignment = NSTextAlignmentCenter;
+            bactaBadge.font = [UIFont systemFontOfSize:10.5 weight:UIFontWeightHeavy];
+            bactaBadge.textColor = [UIColor colorWithRed:0x31 / 255.0 green:0x00 blue:0x5a / 255.0 alpha:1.0];
+            bactaBadge.backgroundColor = [UIColor colorWithRed:1.0 green:0xa5 / 255.0 blue:1.0 alpha:1.0];
+            bactaBadge.layer.cornerRadius = IOSTOUCH_BADGE_R;
+            bactaBadge.layer.borderWidth = 1.3;
+            bactaBadge.layer.borderColor = [UIColor colorWithRed:0x31 / 255.0 green:0x00 blue:0x5a / 255.0 alpha:1.0].CGColor;
+            bactaBadge.layer.shadowColor = [UIColor blackColor].CGColor;
+            bactaBadge.layer.shadowOpacity = 0.5;
+            bactaBadge.layer.shadowOffset = CGSizeMake(0.0, 0.8);
+            bactaBadge.layer.shadowRadius = 1.6;
+            bactaBadge.clipsToBounds = NO;
+            bactaBadge.hidden = YES;
+            [aButtonViews[BTN_BACTA] addSubview:bactaBadge];
+        }
+        bactaPicTanks = bactaPicGlow = bactaPicCount = -1;
         // sithewok's own uses of JUMP and ACT (held), named small under
         // their labels while it is on
         {
@@ -3325,6 +3413,10 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         int bWheel = i == iosTouch_wheelButton && iosTouch_bWheelOpen;
         aButtonViews[i].backgroundColor = bWheel ? [UIColor colorWithRed:0.47 green:0.78 blue:1.0 alpha:0.55]
                                                  : [UIColor colorWithWhite:(bHeld ? 1.0 : 0.0) alpha:(bHeld ? 0.30 : 0.22)];
+        // (LIGHT, IR and BACTA as pictures: the item alone, at full strength --
+        // off is in the picture itself -- no round behind it, no edge)
+        const int bPic = itemPics == 1 && iosTouch_aButtons[i].kind == KIND_ITEM;
+        if (bPic) aButtonViews[i].backgroundColor = [UIColor clearColor];
         // A switched-on item (field light, IR goggles), the open typing line
         // (on MENU and the tray's keyboard), the FPS readout being on (on
         // the tray's FPS) and gyro aiming being on (on the tray's GYRO)
@@ -3343,7 +3435,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
                   || (i == BTN_CAMERA && iosTouch_pBurstTouch)
                   || (i == BTN_TRAYGYRO && bGyro && iosTouch_gyroMode != IOSTOUCH_GYRO_OFF);
         int bTray = iosTouch_IsTrayButton(i) || iosTouch_IsOptButton(i); // only there while open
-        CGFloat alpha = (bHeld || bOn || bWheel || bTray) ? 1.0 : IOSTOUCH_IDLE_ALPHA;
+        CGFloat alpha = (bHeld || bOn || bWheel || bTray || bPic) ? 1.0 : IOSTOUCH_IDLE_ALPHA;
         if (i == BTN_FORCE && bForceLabelSet && !forceLabelName) alpha *= 0.45; // no power to use yet
         if (i == BTN_TRAYGYRO && !bGyro) alpha *= 0.45;                           // no gyro here
         if (i == BTN_TRAYLEVEL && iosGame_NumPickableLevels() <= 0) alpha *= 0.45; // no level can be picked now (multiplayer, not the host)
@@ -4334,6 +4426,80 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
 // SABER's picture as the sabers are now (iosSaberWheel_GetIcon: each hand's
 // hilt, each blade's colour, a FOLD open or folded), in the look's swatches:
 // drawn again whenever one of them changes (each tick; at once on the wheel)
+// LIGHT's, IR's and BACTA's pictures made (once, at the first tick: the game's
+// files are there by then), for the screen's own pixels; not to be had (an
+// icon missing or not as expected), the text buttons stay, as before
+- (void)prepareItemPics
+{
+    CGFloat scale = [UIScreen mainScreen].scale;
+    if (scale < 1.0) scale = 2.0;
+    const int s = MAX(2, MIN(6, (int)ceil(IOSTOUCH_ITEM_PT * scale - 0.01)));
+    itemPics = -1;
+    if (!iosItemIcons_Prepare(s)) return;
+    const int n = iosItemIcons_Size();
+    int bOk = 1;
+    for (int i = 0; i < IOSITEMICON_NUM_STILL; i++) {
+        aItemStill[i] = IOSTouch_ImageFromRGBA(iosItemIcons_Still(i), n);
+        if (!aItemStill[i]) bOk = 0;
+    }
+    if (!bOk) {
+        for (int i = 0; i < IOSITEMICON_NUM_STILL; i++) {
+            if (aItemStill[i]) CGImageRelease(aItemStill[i]);
+            aItemStill[i] = NULL;
+        }
+        return;
+    }
+    itemPics = 1;
+    bactaPicTanks = bactaPicGlow = bactaPicCount = -1;
+    for (int k = 0; k < 3; k++) {
+        const int btn = k == IOSITEMICONS_LIGHT ? BTN_LIGHT : k == IOSITEMICONS_IR ? BTN_IR : BTN_BACTA;
+        aButtonViews[btn].text = @"";
+        aButtonViews[btn].layer.borderWidth = 0.0;
+        aItemPic[k].hidden = NO;
+        aItemPic[k].shouldRasterize = YES; // (its shadow drawn once, not each frame)
+        aItemPic[k].rasterizationScale = scale;
+    }
+    bactaRing.hidden = YES;
+    [self refreshItemPics];
+}
+
+// The pictures as the items are: LIGHT and IR off or on; BACTA's liquid
+// for the tanks carried (a fifth each, five full) glowing up from the bottom
+// while held (bactaGlow), its count in the badge with more than one
+- (void)refreshItemPics
+{
+    if (itemPics != 1) return;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    // (each set only as it changes: a picture set again would be drawn again)
+    id light = (__bridge id)aItemStill[aItemActive[BTN_LIGHT] ? IOSITEMICON_LIGHT_ON : IOSITEMICON_LIGHT_OFF];
+    id ir = (__bridge id)aItemStill[aItemActive[BTN_IR] ? IOSITEMICON_IR_ON : IOSITEMICON_IR_OFF];
+    if (aItemPic[IOSITEMICONS_LIGHT].contents != light) aItemPic[IOSITEMICONS_LIGHT].contents = light;
+    if (aItemPic[IOSITEMICONS_IR].contents != ir) aItemPic[IOSITEMICONS_IR].contents = ir;
+    const int tanks = MAX(0, MIN(5, aItemAmount[BTN_BACTA])), glow = (int)lround(MAX(0.0, MIN(1.0, bactaGlow)) * 20.0);
+    if (tanks != bactaPicTanks || glow != bactaPicGlow) {
+        const int n = iosItemIcons_Size();
+        unsigned char* px = (unsigned char*)malloc((size_t)n * n * 4);
+        if (px && iosItemIcons_Bacta(tanks / 5.0f, glow / 20.0f, px)) {
+            CGImageRef img = IOSTouch_ImageFromRGBA(px, n);
+            if (img) {
+                aItemPic[IOSITEMICONS_BACTA].contents = (__bridge id)img;
+                CGImageRelease(img);
+                bactaPicTanks = tanks;
+                bactaPicGlow = glow;
+            }
+        }
+        free(px);
+    }
+    const int count = aItemAmount[BTN_BACTA];
+    if (count != bactaPicCount) {
+        bactaPicCount = count;
+        bactaBadge.hidden = count <= 1;
+        if (count > 1) bactaBadge.text = [NSString stringWithFormat:@"%d", count];
+    }
+    [CATransaction commit];
+}
+
 - (void)refreshSaberIcons
 {
     iosSaberWheelIcon ic;
@@ -6525,7 +6691,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         }
         bactaProgress = MAX(bactaProgress, MIN((CGFloat)((now - s->tDown) / IOSTOUCH_BACTA_HOLD), 1.0));
     }
-    [self setRing:bactaRing progress:bactaProgress];
+    // (with its picture, the liquid glows instead of the ring: -refreshItemPics, below)
+    bactaGlow = itemPics == 1 ? bactaProgress : 0.0;
+    [self setRing:bactaRing progress:(itemPics == 1 ? 0.0 : bactaProgress)];
 
     // FORCE held with Force Jump selected (SMOOTH or STEPS): how high it will
     // go when lifted, as iosGame_ForceJumpHeld will make it, filling the gold
@@ -6722,6 +6890,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     }
 
     // An item button shows while the player has some of it; bacta says how many
+    // (the game's own icons for them, once: made now, the first time)
+    if (!itemPics) [self prepareItemPics];
     int bItemsChanged = 0;
     for (int i = 0; i < IOSTOUCH_NUM_BUTTONS; i++) {
         if (iosTouch_aButtons[i].kind != KIND_ITEM) continue;
@@ -6735,7 +6905,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         }
         if (amount != aItemAmount[i]) {
             aItemAmount[i] = amount;
-            if (i == BTN_BACTA) {
+            if (i == BTN_BACTA && itemPics != 1) {
                 aButtonViews[i].text = amount > 1 ? [NSString stringWithFormat:@"BACTA\n%d", amount] : @"BACTA";
                 aButtonViews[i].font = [UIFont boldSystemFontOfSize:(amount > 1 ? 9 : 10)];
             }
@@ -6745,6 +6915,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             bLooksChanged = 1;
         }
     }
+    [self refreshItemPics];
 
     // The game's Always Run option can change (in its options menu): the
     // stick has its run marker only while it is off. The marker also moves

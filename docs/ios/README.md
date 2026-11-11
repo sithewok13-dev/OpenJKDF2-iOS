@@ -332,7 +332,8 @@ screen, the camera cutout and the HUD.
 
 ```
  NEXT   FORCE   LIGHT  IR  BACTA  CAMERA  SABER  CHEAT  VIEW  (FPS)  SAVE   LOAD   MENU
- WPN    WHEEL   (only items you have)
+ WPN    WHEEL   (the items' own pictures,
+                 only items you have)
       [GYRO] [RUN] [LOOK] [OPACITY] [FPS] [CAMERA] [AUTO PLAY] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
                   (MENU's tray, when held; LEVEL only while sithewok is on; in co-op, the host's)
                                 build 80 · Nov 9            (which build this is, under the tray)
@@ -386,7 +387,7 @@ never cover them, and long lines wrap between words.
 | **FORCE** | right of JUMP, or above it (a little to its left) on smaller screens with the camera cutout on the right. With Display Zoom, where there's no room there, it can sit further left, between DUCK and ACT. It always keeps a little space from the top row, so holding it can't set off SAVE or LOAD. | Uses your selected Force power, for as long as you hold it. Tap for a single use, hold for powers that charge up (Force Jump: see [Force Jump](#force-jump)) or keep going (Lightning). The button shows just the power's name, as big as fits (two-word names, such as DEADLY SIGHT, on two lines). Until you have a power it says FORCE, dimmed. The **blue ring** around it is your Force meter: it shrinks as you use the Force, and glows and pulses when the meter is full. |
 | **NEXT WPN** | top left | **Tap:** switches to your next weapon. **Slide** or **hold:** opens the weapon wheel to choose one: see [The weapon wheel](#the-weapon-wheel). |
 | **FORCE WHEEL** | top left | **Tap:** selects your next learned Force power (FORCE shows which). **Slide** or **hold:** opens the Force wheel to choose one: see [The Force wheel](#the-force-wheel). |
-| **LIGHT**, **IR**, **BACTA** | top left, after FORCE WHEEL | Field light, IR goggles and bacta tank. **Tap** LIGHT or IR to switch it on or off (yellow while on). **Hold BACTA** for about a third of a second (a ring fills) to use a bacta tank: one per press, and a tap or a brush past uses none. Each button only appears once you have that item, and always in the same spot. BACTA shows how many you have when it's more than one. |
+| **LIGHT**, **IR**, **BACTA** | top left, after FORCE WHEEL | Field light, IR goggles and bacta tank, shown as the game's own pictures of them, made bigger and smoother from your game files (just the item, with a soft dark edge). **Tap** LIGHT or IR to switch it on or off: the lamp lights up with a glow, and the goggles' two eyes light up red. While off they're dimmed. **Hold BACTA** for about a third of a second to use a bacta tank: the liquid in the tank glows brighter from the bottom up as you hold, then one tank is used, with a light tick, and the liquid drops a step. One per press; a tap or a brush past uses none. The liquid shows how many tanks you carry (full with five, a fifth with one), and a round badge shows the number when it's more than one. Each button only appears once you have that item, and always in the same spot. If the pictures can't be read from your game files, the buttons show their names instead (LIGHT, IR, BACTA: yellow while on, and BACTA's ring fills as you hold it). |
 | **SAVE** | top right | **Tap:** opens the game's own Save screen. **Hold** for about a third of a second: a ring fills, then the game quick saves. See [Saving and loading](#saving-and-loading). |
 | **LOAD** | top right | **Tap:** opens the game's own Load screen. **Hold** for about a third of a second: a ring fills, then your quick save loads. To cancel, slide off before you lift. |
 | **MENU** | top right corner | **Tap** opens the game's menu (objectives, map, Jedi powers, save, load, setup and more). **Hold** opens a small tray just under it, see below. |
@@ -1978,9 +1979,13 @@ Please don't attach any of the game's own files.
     (BSD-style license), which runs the game's OpenGL ES graphics on Metal
   - [fcaseopen](../../src/external/fcaseopen/LICENSE.txt) and
     [libsmusher](../../src/external/libsmusher/LICENSE) (MIT license)
+  - Hyllian's xBR-lv2 upscaler (MIT license, its notice in
+    [iosItemIcons.c](../../src/Enhanced/iosItemIcons.c)), which makes LIGHT's,
+    IR's and BACTA's pictures bigger from the game's own icons
 - OpenJKDF2 contains **no original game assets**. You need a legitimately
   purchased copy of Jedi Knight: Dark Forces II to play (and of Mysteries of
-  the Sith, for OpenMoTS).
+  the Sith, for OpenMoTS). The pictures on LIGHT, IR and BACTA are made on
+  your phone from the icons in your own game files; none come with the app.
 - Star Wars, Jedi Knight, LucasArts and related names are trademarks of
   Lucasfilm Ltd. and/or its affiliates. This project is not affiliated with,
   endorsed by or supported by Lucasfilm, Disney or LucasArts.
