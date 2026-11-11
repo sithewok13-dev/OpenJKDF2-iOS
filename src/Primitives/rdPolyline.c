@@ -387,6 +387,13 @@ void rdPolyline_DrawFace(rdThing *pLine, rdFace *pFace, rdVector3 *aVertices, rd
     rdMeshinfo mesh_out;
     flex_t staticLight;
 
+#ifdef JK_ENHANCED
+    // Added: two sabers in first person: kept, to be drawn saber by saber
+    // (iosSaberShape_BeginPovPair)
+    if (iosSaberShape_KeepFace(pLine, pFace, aUVs))
+        return;
+#endif
+
     procEntry = rdCache_GetProcEntry();
     if (!procEntry)
         return;

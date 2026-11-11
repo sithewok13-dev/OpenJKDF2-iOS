@@ -1086,6 +1086,10 @@ hand's colours and has its own **HILT** button.
     REFORGED. It shows in first and third person, with two sabers, in selfies
     and Action Freeze. A thrown saber gets the glow too (Saber Throw in
     Mysteries of the Sith, and SABER THROW in Jedi Knight).
+  - **Two sabers crossing** in first person: each saber is drawn whole, the
+    nearer one over the other (never cut in steps), and with FILM their
+    white-hot middles shine through each other where the blades cross, as
+    light does.
   - It's a setting for your own screen. It changes your blade, and in
     multiplayer the blades of players whose game sends their saber choice.
     Players on other builds keep the game's blade.

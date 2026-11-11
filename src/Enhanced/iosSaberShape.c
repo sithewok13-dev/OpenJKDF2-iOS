@@ -132,10 +132,12 @@ int iosSaberShape_ByName(const char* name)
 // (FILM's at three strengths, its shimmer; and the beam's core, FILM's own blade: not a glow)
 // (and two crossguards drawn together, each softer; and two dimmer strengths of CROSS's, for its sparks fading)
 // (and FILM's three, soft; and a thrown one's, soft)
+// (and the beam's core's white middle alone, two sabers' in first person: iosSaberShape_BeginPovPair)
 enum { IOSSABERSHAPE_GAIN_BLADE = 0, IOSSABERSHAPE_GAIN_THROWN, IOSSABERSHAPE_GAIN_CROSS, IOSSABERSHAPE_GAIN_CROSS_THROWN,
        IOSSABERSHAPE_GAIN_BLADE_DIM, IOSSABERSHAPE_GAIN_BLADE_BRIGHT, IOSSABERSHAPE_GAIN_CORE, IOSSABERSHAPE_GAIN_CROSS_PAIR,
        IOSSABERSHAPE_GAIN_SPARK_DIM, IOSSABERSHAPE_GAIN_SPARK_FAINT,
-       IOSSABERSHAPE_GAIN_SOFT, IOSSABERSHAPE_GAIN_SOFT_DIM, IOSSABERSHAPE_GAIN_SOFT_BRIGHT, IOSSABERSHAPE_GAIN_SOFT_THROWN, IOSSABERSHAPE_NUM_GAINS };
+       IOSSABERSHAPE_GAIN_SOFT, IOSSABERSHAPE_GAIN_SOFT_DIM, IOSSABERSHAPE_GAIN_SOFT_BRIGHT, IOSSABERSHAPE_GAIN_SOFT_THROWN,
+       IOSSABERSHAPE_GAIN_CORE_MID, IOSSABERSHAPE_NUM_GAINS };
 static const float iosSaberShape_aGain[IOSSABERSHAPE_NUM_GAINS] = { 1.15f, 0.85f, 1.35f, 1.15f,
                                                                      1.15f * (1.0f - IOSSABERSHAPE_SHIMMER_GLOW),
                                                                      1.15f * (1.0f + IOSSABERSHAPE_SHIMMER_GLOW), 0, 0.95f, 0.55f, 0.25f,
@@ -259,6 +261,30 @@ static void iosSaberShape_MakeCoreTexels(uint8_t* pOut, int w, int h, const unsi
     }
 }
 
+// A beam's core's white middle alone (two sabers in first person, iosSaberShape_BeginPovPair): the core's
+// middle colour, solid across the middle IOSSABERSHAPE_PAIR_MID_SOLID of its texture's width, fading out
+// by IOSSABERSHAPE_CORE_WHITE, where the core's own begins to take its colour; none further out.
+// Premultiplied, as the core.
+#define IOSSABERSHAPE_PAIR_MID_SOLID 0.3f
+static void iosSaberShape_MakeMidTexels(uint8_t* pOut, int w, int h, const unsigned char rgb[3], const unsigned char core[3])
+{
+    const int m = rgb[0] > rgb[1] ? (rgb[0] > rgb[2] ? rgb[0] : rgb[2]) : (rgb[1] > rgb[2] ? rgb[1] : rgb[2]);
+    float mid[3];
+    for (int k = 0; k < 3; k++) mid[k] = core[k] * (1.0f - IOSSABERSHAPE_CORE_TINT) + (m ? rgb[k] * 255.0f / m : 255.0f) * IOSSABERSHAPE_CORE_TINT;
+    for (int x = 0; x < w; x++) {
+        const float a = fabsf(((x + 0.5f) / w) * 2.0f - 1.0f);
+        float t = (a - IOSSABERSHAPE_PAIR_MID_SOLID) / (IOSSABERSHAPE_CORE_WHITE - IOSSABERSHAPE_PAIR_MID_SOLID);
+        t = t < 0 ? 0 : (t > 1 ? 1 : t);
+        const float op = 1.0f - t * t * (3.0f - 2.0f * t);
+        uint8_t px[4];
+        px[0] = (uint8_t)(mid[2] * op + 0.5f); // (B, G, R, A: as TEX_MODE_16BPP reads them)
+        px[1] = (uint8_t)(mid[1] * op + 0.5f);
+        px[2] = (uint8_t)(mid[0] * op + 0.5f);
+        px[3] = (uint8_t)(op * 255.0f + 0.5f);
+        for (int y = 0; y < h; y++) memcpy(&pOut[(y * w + x) * 4], px, 4);
+    }
+}
+
 static void iosSaberShape_FreeGlow(iosSaberShapeGlow* g)
 {
     iosSaberShape_FreeMat(&g->mat);
@@ -281,6 +307,7 @@ static int iosSaberShape_MakeGlow(iosSaberShapeGlow* g)
                 return 0;
             }
             if (g->gain == IOSSABERSHAPE_GAIN_CORE) iosSaberShape_MakeCoreTexels(pOut, w, h, g->rgb, g->core);
+            else if (g->gain == IOSSABERSHAPE_GAIN_CORE_MID) iosSaberShape_MakeMidTexels(pOut, w, h, g->rgb, g->core);
             else {
                 iosSaberShape_MakeTexels(pOut, w, h, g->rgb, iosSaberShape_aGain[g->gain], iosSaberShape_aWhite[g->gain],
                                          g->gain == IOSSABERSHAPE_GAIN_BLADE || g->gain == IOSSABERSHAPE_GAIN_BLADE_DIM || g->gain == IOSSABERSHAPE_GAIN_BLADE_BRIGHT
@@ -311,7 +338,7 @@ static int iosSaberShape_MakeGlow(iosSaberShapeGlow* g)
 static iosSaberShapeGlow* iosSaberShape_Glow2(const unsigned char rgb[3], int gain, const unsigned char core[3])
 {
     static const unsigned char aWhite[3] = { 255, 255, 255 };
-    if (gain != IOSSABERSHAPE_GAIN_CORE || !core || (!core[0] && !core[1] && !core[2])) core = aWhite;
+    if ((gain != IOSSABERSHAPE_GAIN_CORE && gain != IOSSABERSHAPE_GAIN_CORE_MID) || !core || (!core[0] && !core[1] && !core[2])) core = aWhite;
     for (int i = 0; i < iosSaberShape_numGlows; i++) {
         iosSaberShapeGlow* g = &iosSaberShape_aGlow[i];
         if (g->gain == gain && !memcmp(g->rgb, rgb, 3) && !memcmp(g->core, core, 3)) return g->loaded > 0 ? g : NULL;
@@ -581,6 +608,152 @@ void iosSaberShape_FlushGlows(void)
     iosSaberShape_numQueued = 0;
 }
 
+// ------------------------------------------------------------ two sabers in first person
+
+// Two sabers in first person are drawn in one pass that writes no depth, each
+// face in turn from the furthest (by its nearest point): one saber alone is
+// right so (its glow, set back, under its blade: iosSaberShape_GlowSetBack).
+// But where two blades cross, the two sabers' slices fell in among each other's:
+// one blade's solid core cut the other's in steps (a notch at each slice), its
+// glow lay over the other's core in some slices and under it in the next, and a
+// blade's coloured edges were drawn across the other's white-hot middle. So
+// while both are drawn (iosSaberShape_BeginPovPair .. EndPovPair) their faces
+// are kept here (iosSaberShape_KeepFace, from rdPolyline_DrawFace), and drawn
+// after, saber by saber, the further first, each sorted by depth among its own
+// as ever (so each looks as it does alone, and the nearer lies whole over the
+// other, its glow over it too, never in steps); then the white-hot middle of
+// each FILM blade once more, the same way, fading out before its colour begins
+// (IOSSABERSHAPE_GAIN_CORE_MID), so where two blades cross both stay white
+// through each other's coloured edges, as light does. One saber (one hand:
+// STAFF's and FOLD's two blades too) is drawn as ever.
+#define IOSSABERSHAPE_PAIR_MAX 2048
+#define IOSSABERSHAPE_PAIR_VERTS 8
+// (how much further off (units) the other saber must be, on the mean, for the order to change)
+#define IOSSABERSHAPE_PAIR_SWAP 0.003
+typedef struct {
+    rdFace face;
+    rdVector3 aVerts[IOSSABERSHAPE_PAIR_VERTS];
+    rdVector2 aUVs[IOSSABERSHAPE_PAIR_VERTS];
+    int bUVs;
+    rdGeoMode_t geoMode;
+    rdLightMode_t lightMode;
+    rdTexMode_t texMode;
+    uint32_t wallCel;
+    rdMaterial* pMid; // (a FILM core's: its white middle's, drawn again over it; none, NULL)
+    int hand; // (whose: 0 the right hand's saber, 1 the left's)
+} iosSaberShapePairFace;
+static iosSaberShapePairFace iosSaberShape_aPair[IOSSABERSHAPE_PAIR_MAX];
+static int iosSaberShape_numPair = 0;
+static int iosSaberShape_bPair = 0;
+static int iosSaberShape_pairHand = 0; // (the hand whose blade is being drawn, iosSaberShape_BeginBlade)
+static rdMaterial* iosSaberShape_pMidMat = NULL; // (the core face being drawn's white middle's, iosSaberShape_SetMiddle)
+static int iosSaberShape_aPairIdx[IOSSABERSHAPE_PAIR_VERTS] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+void iosSaberShape_BeginPovPair(void)
+{
+    iosSaberShape_numPair = 0;
+    iosSaberShape_pairHand = 0;
+    // (only where nothing writes depth, as the first person blades are drawn with the hand's depth: elsewhere as ever)
+    iosSaberShape_bPair = rdGetZBufferMethod() == RD_ZBUFFER_READ_NOWRITE;
+}
+
+// (FILM's core's faces about to be drawn, bOn 1, in pFace (none or another: nothing), and 0 after: with two
+// sabers, its white middle to be drawn again over them, in that colour)
+static iosSaberShapeGlow* iosSaberShape_pCore; // (FILM: its core, below)
+static void iosSaberShape_SetMiddle(int bOn, const rdFace* pFace)
+{
+    iosSaberShape_pMidMat = NULL;
+    if (!bOn || !iosSaberShape_bPair || !iosSaberShape_pCore || !pFace || pFace->material != &iosSaberShape_pCore->mat) return;
+    iosSaberShapeGlow* g = iosSaberShape_Glow2(iosSaberShape_pCore->rgb, IOSSABERSHAPE_GAIN_CORE_MID, iosSaberShape_pCore->core);
+    iosSaberShape_pMidMat = g ? &g->mat : NULL;
+}
+
+int iosSaberShape_KeepFace(rdThing* pLine, rdFace* pFace, rdMeshinfo* pInfo)
+{
+    if (!iosSaberShape_bPair || !pLine || !pFace || !pInfo || !pFace->vertexPosIdx || !pInfo->aVertices) return 0;
+    const int n = (int)pFace->numVertices;
+    if (n < 3 || n > IOSSABERSHAPE_PAIR_VERTS || pInfo->intensities || pInfo->paDynamicLight || iosSaberShape_numPair >= IOSSABERSHAPE_PAIR_MAX) return 0;
+    iosSaberShapePairFace* k = &iosSaberShape_aPair[iosSaberShape_numPair++];
+    k->face = *pFace;
+    k->bUVs = pFace->vertexUVIdx && pInfo->aTexVerticies;
+    for (int i = 0; i < n; i++) {
+        k->aVerts[i] = pInfo->aVertices[pFace->vertexPosIdx[i]];
+        if (k->bUVs) k->aUVs[i] = pInfo->aTexVerticies[pFace->vertexUVIdx[i]];
+    }
+    k->face.vertexPosIdx = iosSaberShape_aPairIdx;
+    k->face.vertexUVIdx = k->bUVs ? iosSaberShape_aPairIdx : NULL;
+    k->geoMode = pLine->curGeoMode;
+    k->lightMode = pLine->curLightMode;
+    k->texMode = pLine->curTexMode;
+    k->wallCel = pLine->wallCel;
+    k->hand = iosSaberShape_pairHand;
+    // (its middle: a FILM core's, solid)
+    k->pMid = (k->bUVs && !(pFace->type & RD_FF_TEX_TRANSLUCENT)) ? iosSaberShape_pMidMat : NULL;
+    return 1;
+}
+
+// (a face kept, drawn: whole, or only its middle)
+static void iosSaberShape_DrawKept(const iosSaberShapePairFace* k, int bMiddle)
+{
+    static rdThing line;
+    static rdVector3 aVerts[IOSSABERSHAPE_PAIR_VERTS];
+    static rdVector2 aUVs[IOSSABERSHAPE_PAIR_VERTS];
+    memset(&line, 0, sizeof(line));
+    line.curGeoMode = k->geoMode;
+    line.curLightMode = k->lightMode;
+    line.curTexMode = k->texMode;
+    line.wallCel = k->wallCel;
+    rdFace face = k->face;
+    if (bMiddle) face.material = k->pMid;
+    memcpy(aVerts, k->aVerts, sizeof(aVerts));
+    memcpy(aUVs, k->aUVs, sizeof(aUVs));
+    rdMeshinfo info;
+    memset(&info, 0, sizeof(info));
+    info.numVertices = face.numVertices;
+    info.aVertices = aVerts;
+    info.aTexVerticies = k->bUVs ? aUVs : NULL;
+    rdPolyline_DrawFace(&line, &face, aVerts, &info);
+}
+
+void iosSaberShape_EndPovPair(void)
+{
+    if (!iosSaberShape_bPair) return;
+    iosSaberShape_bPair = 0;
+    iosSaberShape_pMidMat = NULL;
+    if (!iosSaberShape_numPair) return;
+    // (which saber is further off: by the mean depth of its faces' corners, drawn first, so where they
+    // cross the nearer is over it, the same all along, not slice by slice)
+    double aSum[2] = { 0, 0 };
+    int aNum[2] = { 0, 0 };
+    for (int i = 0; i < iosSaberShape_numPair; i++) {
+        const iosSaberShapePairFace* k = &iosSaberShape_aPair[i];
+        for (uint32_t j = 0; j < k->face.numVertices; j++) aSum[k->hand] += (double)k->aVerts[j].y;
+        aNum[k->hand] += (int)k->face.numVertices;
+    }
+    // (kept as it was unless the other is clearly further now, so two sabers about as far off don't swap
+    // from one frame to the next)
+    static int farHand = 0;
+    if (aNum[0] && aNum[1]) {
+        const double d = aSum[1] / aNum[1] - aSum[0] / aNum[0];
+        if (d > IOSSABERSHAPE_PAIR_SWAP) farHand = 1;
+        else if (d < -IOSSABERSHAPE_PAIR_SWAP) farHand = 0;
+    }
+    // each saber, the further first (each sorted by depth among its own, as ever), then their white middles,
+    // the same way (what was drawn at once, if any, first)
+    rdCache_Flush();
+    for (int bMid = 0; bMid < 2; bMid++) {
+        for (int h = 0; h < 2; h++) {
+            const int hand = h ? !farHand : farHand;
+            for (int i = 0; i < iosSaberShape_numPair; i++) {
+                const iosSaberShapePairFace* k = &iosSaberShape_aPair[i];
+                if (k->hand == hand && (!bMid || k->pMid)) iosSaberShape_DrawKept(k, bMid);
+            }
+            rdCache_Flush();
+        }
+    }
+    iosSaberShape_numPair = 0;
+}
+
 // (a camera space point set back from the eye by IOSSABERSHAPE_SET_BACK
 // along the line of sight: where it was on screen, just behind; CROSS's,
 // in first person, further: see iosSaberShape_Cross)
@@ -644,6 +817,7 @@ void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned 
 {
     const int bSoft = iosSaberShape_bSoftNext; // (this blade's alone)
     iosSaberShape_bSoftNext = 0;
+    iosSaberShape_pairHand = blade > 0 ? 1 : 0; // (two sabers in first person: whose, iosSaberShape_KeepFace)
     iosSaberShape_EndBlade(); // (begun twice with no end between: put back first)
     if (!pLine || !pLine->polyline) return;
     if (form == IOSSABERSHAPE_FORM_CROSS || form == IOSSABERSHAPE_FORM_CROSS_PAIR) {
@@ -966,6 +1140,7 @@ static void iosSaberShape_BeamSide(rdThing* pLine, rdFace* pFace, flex_t u0, fle
     info.numVertices = 4;
     info.aVertices = iosSaberShape_aSideVerts;
     info.aTexVerticies = iosSaberShape_aSideUVs;
+    iosSaberShape_SetMiddle(1, pFace); // (FILM's core: its white middle, for two sabers)
     for (int i = 0; i < IOSSABERSHAPE_BEAM_END_SLICES + n; i++) {
         // (along it from the tip, 0, to the hilt, 1; and how much of its width there: the
         // rounded end's slices round a quarter ellipse, the rest the full width)
@@ -996,6 +1171,7 @@ static void iosSaberShape_BeamSide(rdThing* pLine, rdFace* pFace, flex_t u0, fle
         }
         rdPolyline_DrawFace(pLine, pFace, iosSaberShape_aSideVerts, &info);
     }
+    iosSaberShape_SetMiddle(0, NULL);
 }
 
 // (FILM's blade: its core's texture, or with none to be had the blade's own)
@@ -1571,6 +1747,7 @@ static void iosSaberShape_SteadySide(rdThing* pLine, rdFace* pFace, flex_t u0, f
                 iosSaberShape_aSideUVs[e ? 2 : 1].x = uLo;
                 iosSaberShape_aSideUVs[e ? 2 : 1].y = v;
             }
+            iosSaberShape_SetMiddle(q == 0, pFace); // (its middle, FILM's core's white: for two sabers)
             rdPolyline_DrawFace(pLine, pFace, iosSaberShape_aSideVerts, &info);
         }
     }

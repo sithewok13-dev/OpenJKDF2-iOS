@@ -117,6 +117,17 @@ int iosSaberShape_IsOpenEnd(struct rdThing* pLine, int bBase);
 void iosSaberShape_BeginScene(void);
 void iosSaberShape_FlushGlows(void);
 
+// jkSaber_Draw: two sabers in first person (Begin before their blades, End
+// after): each saber drawn whole, the further first, then each FILM blade's
+// white middle again, so where they cross they glow through each other (see
+// iosSaberShape.c). KeepFace (rdPolyline_DrawFace): 1 if the face was kept for
+// that, not to be drawn now. One saber is drawn as ever.
+struct rdFace;
+struct rdMeshinfo;
+void iosSaberShape_BeginPovPair(void);
+void iosSaberShape_EndPovPair(void);
+int iosSaberShape_KeepFace(struct rdThing* pLine, struct rdFace* pFace, struct rdMeshinfo* pInfo);
+
 // rdPolyline_Draw, once the blade is laid out (camera space: the hilt's
 // matrix, the blade's tip and base, and (cos, sin) across it on screen): a
 // blade begun above drawn in its shape, FILM's (its side in slices along it

@@ -12,6 +12,7 @@
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSaber.h" // Added
 #include "Enhanced/iosSaberStaff.h" // Added
+#include "Enhanced/iosSaberShape.h" // Added
 #endif
 #include "World/sithWeapon.h" // Added
 #include "Gameplay/sithInventory.h" // Added
@@ -102,6 +103,10 @@ void jkSaber_Draw(rdMatrix34 *posRotMat)
 
         jkSaber_PolylineRand(&playerThings[playerThingIdx].polylineThing);
 #ifdef JK_ENHANCED
+        // Added: two sabers: each drawn whole, where they cross glowing through each other (iosSaberShape)
+        const int bPovPair = jkSaber_IsDual(playerThings[playerThingIdx].actorThing);
+        if (bPovPair)
+            iosSaberShape_BeginPovPair();
         // Added: STAFF and FOLD (iosSaberStaff): both blades where the saber is held, each fading near the eye
         if (!iosSaberStaff_DrawPovBlades(playerThings[playerThingIdx].actorThing, &playerThings[playerThingIdx].polylineThing,
                                          playerThings[playerThingIdx].povModel.model3, &playerThings[playerThingIdx].povModel.paJointMatrices[5], 0, 0))
@@ -157,6 +162,10 @@ void jkSaber_Draw(rdMatrix34 *posRotMat)
             iosSaber_EndBlade(&playerThings[playerThingIdx].polylineThing);
 #endif
         }
+#ifdef JK_ENHANCED
+        if (bPovPair)
+            iosSaberShape_EndPovPair(); // Added
+#endif
     }
 }
 
