@@ -662,12 +662,18 @@ static double s_tScene = 0.0, s_tDown = 0.0, s_tCheck = 0.0, s_tWave = 0.0, s_tR
 // some, or someone's been in sight); this long of them and the fight is over
 static double s_tEmpty = 0.0;
 #define AP_EMPTY_SECS 12.0
-// A duel (every enemy of the level a dark Jedi) is never left while one of
-// them lives -- their scripts take them out of reach a while (Jerec's trance
-// in his chamber above the arena) -- he's only placed near one again, after
-// this long with none in sight
+// A duel (every enemy of the level a dark Jedi) isn't over while one of them
+// lives -- their scripts take them out of reach a while (Jerec's trance in
+// his chamber above the arena, Maw's flights) -- but for its time limit
 static int s_bDuel = 0;
-#define AP_DUEL_EMPTY_SECS 60.0
+// A duel's time, at most, from its first fight (not from a placing again):
+// one the autopilot can't win -- Jerec healing in his trance -- isn't the
+// whole show; then another level (SHUFFLE ALL) or the level again (PICK ONE)
+static double s_tDuelStart = 0.0;
+#define AP_DUEL_SECS 240.0
+// Out of sight this long, a duel's dark Jedi: he's placed near him as he is now
+#define AP_DUEL_LOST_SECS 10.0
+static int s_bHadFight = 0; // (this level has had a fight)
 // No spot anywhere (PICK ONE stays): the next search not before this, each
 // failed one waiting longer
 static double s_tRetry = 0.0;
@@ -1053,6 +1059,7 @@ static void ap_wake(SithThing* t, SithThing* p)
 {
     SithAIControlBlock* a = t->actor;
     if (!a || (a->flags & SITHAI_MODE_DISABLED)) return;
+    if (t->actorParams.flags & SITH_AF_INVULNERABLE) return; // (held by its script: Jerec in his trance)
     a->flags &= ~(SITHAI_MODE_SLEEPING | SITHAI_MODE_SEARCHING);
     a->flags |= SITHAI_MODE_ACTIVE | SITHAI_MODE_TOUGHSKIN | SITHAI_MODE_HASDEST | SITHAI_MODE_ATTACKING;
     a->pDistractor = p;
@@ -1160,11 +1167,12 @@ static void ap_rally(SithThing* pl)
     int n = 0;
     for (int i = 0; i < s_numFoes; i++) {
         apFoe* f = &s_foes[i];
-        // (a duel's dark Jedi gone off -- Maw flown up out of sight -- is
-        // called back from wherever he is, unless his script holds him
-        // untouchable, Jerec in his trance)
-        const int bDuelist = s_bDuel && (f->thing->actorParams.flags & SITH_AF_BOSS) && !(f->thing->actorParams.flags & SITH_AF_INVULNERABLE);
-        if (!bDuelist && (ap_lenXY(ap_sub(f->pos, s_center)) > FT(AP_ALARM_FT * 1.3f) || fabsf(f->pos.z - s_center.z) > FT(30.0f))) continue;
+        // (never a duel's dark Jedi: his script moves him -- Maw's flights,
+        // Jerec's trance and flight, Gorc and Pic's vents -- and the show goes
+        // to him, never him to the show)
+        if (s_bDuel && (f->thing->actorParams.flags & SITH_AF_BOSS)) continue;
+        if (f->thing->actorParams.flags & SITH_AF_INVULNERABLE) continue;
+        if (ap_lenXY(ap_sub(f->pos, s_center)) > FT(AP_ALARM_FT * 1.3f) || fabsf(f->pos.z - s_center.z) > FT(30.0f)) continue;
         SithAIControlBlock* a = f->thing->actor;
         if (!a) continue;
         SithSector* fs;
@@ -1233,6 +1241,16 @@ static void ap_pickWeapon(int notThis)
     if (numHad == 0) {
         APLOG("the guns pulled away too often: the saber\n");
         aHad[numHad++] = AP_W_SABER;
+    }
+    // (a duel: the strong ones -- no fists or Bryar while others are had --
+    // and the saber three times as often)
+    if (s_bDuel && numHad > 1) {
+        int k = 0;
+        for (int i = 0; i < numHad; i++)
+            if (aHad[i] != AP_W_FISTS && aHad[i] != (ap_mots() ? 122 : 2)) aHad[k++] = aHad[i];
+        if (k > 0) numHad = k;
+        for (int i = 0, n = numHad; i < n; i++)
+            if (aHad[i] == AP_W_SABER && numHad + 2 <= (int)(sizeof(aHad) / sizeof(aHad[0]))) { aHad[numHad++] = AP_W_SABER; aHad[numHad++] = AP_W_SABER; }
     }
     int id = aHad[ap_randInt(numHad)];
     for (int k = 0; k < 8 && id == notThis && numHad > 1; k++) id = aHad[ap_randInt(numHad)];
@@ -1358,8 +1376,10 @@ static void ap_startScene(double now, int bAnother)
         }
 #endif
         if (bAnother == 2) return;
-        if (s_opt.levelRow < 0) ap_travel(now);
-        else { s_stage = ST_SCENE; ap_searchFailed(now); } // (PICK ONE with none left: he stays and looks about)
+        // (all down after a fight -- a level that only ends at a touch, Gorc
+        // and Pic's head: another level, or for PICK ONE the level again)
+        if (s_opt.levelRow < 0 || s_bHadFight) ap_travel(now);
+        else { s_stage = ST_SCENE; ap_searchFailed(now); } // (PICK ONE, none from the start: he stays and looks about)
         return;
     }
     static apGroup aGroups[AP_MAX_GROUPS];
@@ -1428,10 +1448,12 @@ static void ap_startScene(double now, int bAnother)
         s_center = g->center;
         ap_noteKin(g->center);
         ap_addCopies(g->center, spot.feet);
-        if (s_opt.bAlarm) {
+        if (s_opt.bAlarm && bAnother != 2) {
             ap_collectFoes();
             ap_alarm(g->center, pl);
         }
+        if (bDuel && s_tDuelStart <= 0.0) s_tDuelStart = now;
+        s_bHadFight = 1;
         s_stage = ST_SCENE;
         s_tScene = now;
         if (bAnother != 2) s_rearms = 0;
@@ -1778,6 +1800,12 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
         else if (bLull && now >= s_tSwitch) {
             ap_pickWeapon(s_weapon);
             s_tSwitch = now + ap_randRange(9.0f, 16.0f);
+        }
+        // (a duel: its dark Jedi seldom out of sight, so another weapon now
+        // and then mid-fight as well)
+        else if (s_bDuel && s_numRotation > 1 && now >= s_tSwitch) {
+            ap_pickWeapon(s_weapon);
+            s_tSwitch = now + ap_randRange(12.0f, 20.0f);
         }
     }
     if (curWeapon != s_weapon && now - s_tAsked > 0.9) {
@@ -2159,6 +2187,8 @@ void iosAutoplay_Tick(double now)
             s_center = ap_v3(0.0f, 0.0f, 0.0f);
             s_numKin = 0;
             s_bDuel = 0;
+            s_bHadFight = 0;
+            s_tDuelStart = 0.0;
             s_numFails = 0;
             s_tRetry = s_tEmpty = 0.0;
             ap_collectFoes();
@@ -2227,6 +2257,11 @@ void iosAutoplay_Tick(double now)
         s_tCheck = now + 0.25;
         const rdVector3 feet = pl->position;
         const int bDuelOn = s_bDuel && ap_bossLives();
+        if (bDuelOn && s_tDuelStart > 0.0 && now - s_tDuelStart >= AP_DUEL_SECS) {
+            APLOG("the duel's time is up at %.1f s\n", now - s_tStart);
+            ap_travel(now);
+            return;
+        }
         if (ap_lenXY(ap_sub(feet, s_farPos)) > FT(6.0f)) { s_farPos = feet; s_tMovedFar = now; }
         const int left = ap_foesAround(s_center, FT(AP_DOWN_FT)) + s_numSeen;
         if (left == 0) { if (s_tDown <= 0.0) s_tDown = now; }
@@ -2245,12 +2280,8 @@ void iosAutoplay_Tick(double now)
             if (n > 0 || ap_targetThing()) s_tEmpty = 0.0;
             else if (s_tEmpty <= 0.0) s_tEmpty = now;
             else if (bDuelOn) {
-                if (now - s_tEmpty >= AP_DUEL_EMPTY_SECS) {
-                    APLOG("the duel's dark Jedi out of sight a while: near him again at %.1f s\n", now - s_tStart);
-                    s_tEmpty = 0.0;
-                    ap_startScene(now, 2);
-                    return;
-                }
+                // (a duel: never over while its dark Jedi lives; out of
+                // sight, he's gone to -- below)
             }
             else if (now - s_tEmpty >= AP_EMPTY_SECS && (s_opt.levelRow < 0 || now >= s_tRetry)) {
                 APLOG("no one left to fight at %.1f s\n", now - s_tStart);
@@ -2272,6 +2303,17 @@ void iosAutoplay_Tick(double now)
         // Jerec back down from his chamber -- and is back where the fight
         // began soon after he's lost them, fallen from Maw's ledge)
         const int bNoOne = !ap_targetThing();
+        // (a duel: the dark Jedi out of sight a while -- flown off, fled, in
+        // his trance -- he's placed near him as he is now)
+        if (bDuelOn) {
+            if (bNoOne && now - s_tSeen >= AP_DUEL_LOST_SECS && now >= s_tReplace) {
+                APLOG("the duel's dark Jedi out of sight: near him again at %.1f s\n", now - s_tStart);
+                s_tReplace = now + 15.0;
+                ap_startScene(now, 2);
+                return;
+            }
+            return;
+        }
         const int bLost = (bNoOne && now - s_tSeen > 6.0 && ap_lenXY(ap_sub(feet, s_center)) > FT(100.0f))
                           || (s_center.z - feet.z > FT(24.0f) && bNoOne) || (s_center.z - feet.z > FT(8.0f) && bNoOne && now - s_tSeen > 3.0)
                           || (bNoOne && now - s_tMovedFar > 12.0);
