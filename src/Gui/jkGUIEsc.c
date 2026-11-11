@@ -75,6 +75,20 @@ void jkGuiEsc_Shutdown()
     jkGuiEsc_bInitialized = 0;
 }
 
+#ifdef JK_ENHANCED
+// Added: jkGuiEsc_ShowDirect's screen (1 Load, 2 Save; 0 none), and when it
+// was asked for: only the menu opened on the way from that is taken there
+static int jkGuiEsc_direct = 0;
+static uint32_t jkGuiEsc_directMs = 0;
+#define JKGUIESC_DIRECT_MS 2000
+
+void jkGuiEsc_ShowDirect(int bSave)
+{
+    jkGuiEsc_direct = bSave ? 2 : 1;
+    jkGuiEsc_directMs = stdPlatform_GetTimeMsec();
+}
+#endif
+
 void jkGuiEsc_Show()
 {
     int32_t v3; // eax
@@ -108,6 +122,30 @@ void jkGuiEsc_Show()
                 jkGuiEsc_aElements[JKGUIESC_ELMT_SAVE].bIsVisible = 0;
         }
     }
+
+#ifdef JK_ENHANCED
+    // Added: straight to the Save or Load screen (jkGuiEsc_ShowDirect), if the
+    // menu has it now, then back to the game, as the menu's own Save and Load
+    // do -- a save from another level loads that level; anything else (saved,
+    // cancelled, not offered) is Return to Game
+    if (jkGuiEsc_direct) {
+        const int bSave = jkGuiEsc_direct == 2;
+        const int bFresh = stdPlatform_GetTimeMsec() - jkGuiEsc_directMs <= JKGUIESC_DIRECT_MS;
+        jkGuiEsc_direct = 0;
+        if (bFresh) {
+            if (jkGuiEsc_aElements[bSave ? JKGUIESC_ELMT_SAVE : JKGUIESC_ELMT_LOAD].bIsVisible) {
+                v3 = jkGuiSaveLoad_Show(bSave);
+                if (!bSave && v3 == 34) {
+                    jkGuiRend_UpdateSurface();
+                    return;
+                }
+            }
+            jkMain_MissionReload();
+            jkGuiRend_UpdateSurface();
+            return;
+        }
+    }
+#endif
 
     while ( 1 )
     {

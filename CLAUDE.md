@@ -76,8 +76,8 @@ everything on a phone.
     another job may be editing.
 - **Touch controls standard** (shared with the owner's other ports; keep it the same):
   - Move stick where the left thumb lands; drag elsewhere to look.
-  - QUICK SAVE / QUICK LOAD: a 0.3 s hold with a ring. Sliding off cancels; QUICK
-    SAVE wins a tie.
+  - SAVE / LOAD: tap = the game's own Save or Load screen; a 0.3 s hold with a ring
+    = quick save / quick load. Sliding off cancels; SAVE wins a tie.
   - MENU: tap = game menu; hold 0.45 s = tray with SENS, GYRO, OPACITY, FPS,
     AUTOPLAY, keyboard.
   - OPACITY (tray): tap = a slider under the tray, 20% to 100% in 5% steps, live,

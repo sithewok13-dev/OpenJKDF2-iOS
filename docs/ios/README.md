@@ -55,7 +55,7 @@ can already be built for iOS. This build adds the parts you need to actually
 play it on a phone:
 
 - on-screen touch controls (move stick, look, buttons, a Force power wheel,
-  quick save and quick load), and optional tilt aiming
+  save and load, with quick save and quick load), and optional tilt aiming
 - a camera for photos and selfies, lightsaber colours and two sabers, and a
   cheat mode
 - a HUD that stays clear of rounded screen corners and the home bar
@@ -309,8 +309,9 @@ level's end. You can't move during one.
   fast, with its sounds off (the music goes on). So everything ends up as if
   you had watched it: the dark Jedi wakes, doors and music are where the scene
   leaves them, and the game saves as it normally does after the scene.
-- **MENU**, **QUICK SAVE** and **QUICK LOAD** still work during a scene. A tap
-  on any other button skips the scene and does nothing else (it doesn't fire).
+- **MENU** and holding **SAVE** or **LOAD** (quick save, quick load) still work
+  during a scene; a tap on SAVE or LOAD does nothing then. A tap on any other
+  button skips the scene and does nothing else (it doesn't fire).
   A finger still down when the fight starts works straight away (the stick,
   looking).
 - With a **game controller**, **A** (Cross on a PlayStation controller) skips
@@ -330,8 +331,8 @@ The layout looks roughly like this. Exact positions shift a little to fit your
 screen, the camera cutout and the HUD.
 
 ```
- NEXT   FORCE   LIGHT  IR  BACTA  CAMERA  SABER  CHEAT  VIEW  (FPS)  QUICK  QUICK  MENU
- WPN    WHEEL   (only items you have)                         SAVE   LOAD
+ NEXT   FORCE   LIGHT  IR  BACTA  CAMERA  SABER  CHEAT  VIEW  (FPS)  SAVE   LOAD   MENU
+ WPN    WHEEL   (only items you have)
       [GYRO] [RUN] [LOOK] [OPACITY] [FPS] [CAMERA] [AUTO PLAY] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
                   (MENU's tray, when held; LEVEL only while sithewok is on; in co-op, the host's)
                                 build 80 · Nov 9            (which build this is, under the tray)
@@ -382,12 +383,12 @@ never cover them, and long lines wrap between words.
 | **ACT** | up and left of FIRE | Activate: doors, switches, elevators, consoles. |
 | **JUMP** | above FIRE | Jumps. |
 | **ALT** | up and right of FIRE, just above the ammo gauge | Secondary fire (each weapon's second mode). |
-| **FORCE** | right of JUMP, or above it (a little to its left) on smaller screens with the camera cutout on the right. With Display Zoom, where there's no room there, it can sit further left, between DUCK and ACT. It always keeps a little space from the top row, so holding it can't set off QUICK SAVE or QUICK LOAD. | Uses your selected Force power, for as long as you hold it. Tap for a single use, hold for powers that charge up (Force Jump: see [Force Jump](#force-jump)) or keep going (Lightning). The button shows the power's name, and it's dimmed until you have a power. The **blue ring** around it is your Force meter: it shrinks as you use the Force, and glows and pulses when the meter is full. |
+| **FORCE** | right of JUMP, or above it (a little to its left) on smaller screens with the camera cutout on the right. With Display Zoom, where there's no room there, it can sit further left, between DUCK and ACT. It always keeps a little space from the top row, so holding it can't set off SAVE or LOAD. | Uses your selected Force power, for as long as you hold it. Tap for a single use, hold for powers that charge up (Force Jump: see [Force Jump](#force-jump)) or keep going (Lightning). The button shows the power's name, and it's dimmed until you have a power. The **blue ring** around it is your Force meter: it shrinks as you use the Force, and glows and pulses when the meter is full. |
 | **NEXT WPN** | top left | **Tap:** switches to your next weapon. **Slide** or **hold:** opens the weapon wheel to choose one: see [The weapon wheel](#the-weapon-wheel). |
 | **FORCE WHEEL** | top left | **Tap:** selects your next learned Force power (FORCE shows which). **Slide** or **hold:** opens the Force wheel to choose one: see [The Force wheel](#the-force-wheel). |
 | **LIGHT**, **IR**, **BACTA** | top left, after FORCE WHEEL | Field light, IR goggles and bacta tank. **Tap** LIGHT or IR to switch it on or off (yellow while on). **Hold BACTA** for about a third of a second (a ring fills) to use a bacta tank: one per press, and a tap or a brush past uses none. Each button only appears once you have that item, and always in the same spot. BACTA shows how many you have when it's more than one. |
-| **QUICK SAVE** | top right | **Hold** for about a third of a second: a ring fills, then the game quick saves. See [Saving and loading](#saving-and-loading). |
-| **QUICK LOAD** | top right | **Hold** for about a third of a second: a ring fills, then your quick save loads. To cancel, lift or slide off before the ring fills. |
+| **SAVE** | top right | **Tap:** opens the game's own Save screen. **Hold** for about a third of a second: a ring fills, then the game quick saves. See [Saving and loading](#saving-and-loading). |
+| **LOAD** | top right | **Tap:** opens the game's own Load screen. **Hold** for about a third of a second: a ring fills, then your quick save loads. To cancel, slide off before you lift. |
 | **MENU** | top right corner | **Tap** opens the game's menu (objectives, map, Jedi powers, save, load, setup and more). **Hold** opens a small tray just under it, see below. |
 | **CAMERA** (the camera symbol) | top, in the middle | **Hold still:** a selfie. **Tap:** a photo. **Slide sideways:** a burst. **Slide down:** Action Freeze. **Slide up:** the cinematic burst. See [The camera](#the-camera). |
 | **SABER** (your sabers) | top, right of CAMERA (once you have the lightsaber) | Opens the saber wheel: one saber or two, each hand's hilt, each blade's colour. With a FOLD in your hand, a **tap** flips it (with one in each hand: a tap the right one, a double tap both). See [The lightsaber: SABER](#the-lightsaber-saber). |
@@ -395,9 +396,10 @@ never cover them, and long lines wrap between words.
 | **VIEW** (1P or 3P) | top, right of CHEAT (once switched on in MENU's tray) | **Tap:** first person or third person, at once. |
 
 FIRE, ALT, DUCK, ACT, JUMP and FORCE act as soon as you touch them.
-LIGHT, IR, MENU, CAMERA and the tray buttons act when you **lift** your finger
-on them, so if you touch one by mistake, slide off before you lift (on CAMERA,
-a slide starts a burst or Action Freeze instead: see [The camera](#the-camera)).
+LIGHT, IR, MENU, SAVE, LOAD, CAMERA and the tray buttons act when you **lift**
+your finger on them (SAVE and LOAD, held, quick save and quick load instead),
+so if you touch one by mistake, slide off before you lift (on CAMERA, a slide
+starts a burst or Action Freeze instead: see [The camera](#the-camera)).
 BACTA and CHEAT need a hold, so a brush past does nothing. NEXT WPN and FORCE
 WHEEL act on a quick tap when you lift, or open their wheel when you slide or
 hold (see [Tap, slide or hold](#tap-slide-or-hold)). SABER opens its wheel
@@ -453,7 +455,7 @@ not a button. OpenMoTS shows its own the same way.
   tray itself, the rows under it, the Force, weapon and saber wheels (and
   the lit button that opened one) and the FPS counter always stay at full
   strength, and the lowest is 20%, so MENU never disappears.
-- **FPS:** shows or hides a frame-rate counter, to the left of QUICK SAVE. The FPS
+- **FPS:** shows or hides a frame-rate counter, to the left of SAVE. The FPS
   button is yellow while the counter is on.
 - **AUTO PLAY** (single player): opens the panel for a self-playing show, for
   screen recordings. Its **WEAPONS** start with only the LIGHTSABER picked.
@@ -852,7 +854,7 @@ hold GYRO in the tray until its ring fills, then tap **MODE** or **SENS**:
   while you walk, turning the phone always aims. To move the phone back to a
   comfortable position, lift both thumbs: the view stays exactly where it is,
   and when you touch again it carries on from there, like lifting a mouse off
-  the desk. The buttons along the top (NEXT WPN, FORCE WHEEL, QUICK SAVE, MENU
+  the desk. The buttons along the top (NEXT WPN, FORCE WHEEL, SAVE, MENU
   and the rest) don't count.
 - **GYRO ALWAYS:** turning the phone always aims, with or without a thumb down.
 
@@ -1123,7 +1125,7 @@ hand's colours and has its own **HILT** button.
     dots, two new ones. A saber that becomes a STAFF or FOLD from a one-blade
     hilt starts with joined dots, as with HILT (a STAFF with split dots that
     becomes a FOLD stays split).
-  - **Hold it** for 0.3 s (a gold ring fills round it, like QUICK SAVE's):
+  - **Hold it** for 0.3 s (a gold ring fills round it, like SAVE's):
     new colours only, the hilts stay. Let go sooner and it's a tap. Slide
     off it and nothing happens.
   - With **SAME HILT** on, both sabers get the same new hilt. With **SAME
@@ -1287,23 +1289,30 @@ hand's colours and has its own **HILT** button.
 
 ## Saving and loading
 
-- **QUICK SAVE** saves to the game's quick-save slot, the same one F9 uses on PC.
-  Hold it until the ring fills (about a third of a second). It saves once, while your
-  finger is still down. If you lift sooner, or slide off the button, it doesn't
-  save, even if you slide back on. It doesn't work while the cheat typing line
-  is open.
-- **QUICK LOAD** loads that quick save. Hold it until the ring fills (about a
-  third of a second), so a stray tap can't throw away your progress. It loads
-  once, while your finger is still down. If you lift sooner, or slide off the
-  button, it doesn't load, even if you slide back on. It doesn't work while the
-  cheat typing line is open. If the quick save is from another level, that
+- **Tap SAVE** to open the game's own Save screen, the one in the game's
+  menu: type a name (or keep the one it offers) and save, or cancel. Either
+  way you're back in the game straight after.
+- **Tap LOAD** to open the game's own Load screen and pick any of your saves
+  (a save from another level loads that level), or cancel to go back to the
+  game.
+- **Hold SAVE** until the ring fills (about a third of a second) to quick
+  save, to the game's quick-save slot, the same one F9 uses on PC. It saves
+  once, while your finger is still down.
+- **Hold LOAD** until the ring fills to load that quick save, once, while
+  your finger is still down. If the quick save is from another level, that
   level is loaded. If you haven't quick saved yet, it says *No quicksave yet*.
+- **Slide off** SAVE or LOAD before you lift and nothing happens, even if
+  you slide back on. Neither works while the cheat typing line is open.
 - **Holding with more than one finger** still saves or loads only once. To do
-  it again, touch and hold the button again. If you press QUICK SAVE and QUICK
-  LOAD together, only the one whose ring fills first goes off (if both fill in
-  the same frame, it saves).
-- **Normal saves:** tap MENU and use the game's own save and load screens, as
-  on PC.
+  it again, touch and hold the button again. If you hold SAVE and LOAD
+  together, only the one whose ring fills first goes off (if both fill in the
+  same frame, it saves).
+- **Where the game doesn't offer saving or loading**, a tap does nothing, as
+  before: in multiplayer and co-op, during one of a level's scenes (holding
+  still quick saves there), during AUTO PLAY's show, and SAVE while you're
+  dead. In Mysteries of the Sith, also while a cutscene plays or Mara can't
+  move, as in its own menu.
+- The game's menu (tap MENU) still has its Save and Load too, as on PC.
 - Your player profile and all saves are stored in *Files > On My iPhone >
   OpenJKDF2 > jk1 > player* (or in the `player` folder next to your game
   files, if they're somewhere else in the OpenJKDF2 folder). Copy that folder

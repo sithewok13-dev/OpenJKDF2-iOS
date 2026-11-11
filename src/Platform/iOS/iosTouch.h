@@ -42,15 +42,17 @@
 //     beside JUMP (tap or hold to use the power it shows; a ring round it is
 //     the force meter, glowing when full); dragging on any of these also
 //     looks. Top left: NEXT WPN, FORCE WHEEL, and a button for each usable
-//     item the player has (field light, IR goggles, bacta). Top right: quick
-//     save, quick load and menu.
-//   - QUICK SAVE and QUICK LOAD only go off when held: a ring round the
+//     item the player has (field light, IR goggles, bacta). Top right: SAVE,
+//     LOAD and MENU.
+//   - SAVE and LOAD: held, a quick save or quick load. A ring round the
 //     button fills while it is held (0.3 s), and once it is full the game
-//     saves or loads -- once, with the finger still down. Lifting sooner
-//     does nothing; so does sliding off first (even off and back on between
-//     two frames), or holding it while the typing line is open. Two fingers
-//     on it save or load once, and QUICK SAVE and QUICK LOAD held together
-//     do whichever fills first.
+//     saves or loads -- once, with the finger still down. Sliding off first
+//     (even off and back on between two frames), or holding it while the
+//     typing line is open, does nothing. Two fingers on it save or load
+//     once, and SAVE and LOAD held together do whichever fills first (SAVE
+//     if both at once). A tap (lifted on it sooner) opens the game's own
+//     Save or Load screen, as the game menu's do -- not where the game can't
+//     save or load then (multiplayer, a level's scene: nothing, as before).
 //   - FORCE WHEEL and NEXT WPN take three gestures each. A quick tap (lifted
 //     within 0.3 s, without sliding) is the next learned power (the game's
 //     own key for it, E: FORCE shows which) or the next weapon (G), as the
@@ -82,7 +84,7 @@
 //     a tray just under it, left to right: SENS and GYRO, gyro aiming's
 //     sensitivity (1.0x, 1.5x -- the default --, 2.0x, 3.0x) and mode
 //     (OFF -- the default --, TOUCH, ALWAYS), each tap going on to the next;
-//     FPS, which shows a frame rate readout left of QUICK SAVE; AUTOPLAY,
+//     FPS, which shows a frame rate readout left of SAVE; AUTOPLAY,
 //     the self-playing show's panel (single player: iosAutoplayPanel.h;
 //     while the show plays every touch is its double tap or long press,
 //     and the controls show only with its CONTROLS ON); and the
@@ -95,7 +97,7 @@
 // clicks like before. If SDL's window is recreated the overlay follows it.
 // During one of a level's own scenes (iosSceneSkip: the game's camera on a
 // dark Jedi before a duel, the player's controls taken away) a touch anywhere
-// but QUICK SAVE, QUICK LOAD, MENU and the tray is a tap to skip it, and
+// but SAVE, LOAD, MENU and the tray is a tap to skip it, and
 // nothing else; "Tap to skip" shows as each one starts, "Skipping..." while
 // the game runs it on unseen (both also over touch controls hidden for a game
 // controller, whose first tap then skips; the controller's A skips too,

@@ -25,6 +25,15 @@ int iosGame_QuickLoad(void);
 // ...and any save of the player's by its file name (AUTOPLAY's Before
 // AUTOPLAY save); bLoud: QUICK LOAD's messages. 1: loading (or loaded).
 int iosGame_LoadSave(const char* fname, int bLoud);
+// The game's own Save (bSave) or Load screen, as the game menu opens it, but
+// straight away: back to the game once it is done (saved, cancelled; a save
+// loaded). The touch overlay's SAVE and LOAD tapped. 1 if it is on its way;
+// 0 where the game menu wouldn't offer it now (multiplayer, no level being
+// played, dead for Save; Mysteries of the Sith's controls taken or a
+// cutscene), nor in one of the level's scenes, AUTOPLAY's show, or with the
+// typing line open.
+int iosGame_CanOpenSaveLoad(int bSave);
+int iosGame_OpenSaveLoad(int bSave);
 
 // Whether Mysteries of the Sith is running (it has its own force powers).
 int iosGame_IsMots(void);

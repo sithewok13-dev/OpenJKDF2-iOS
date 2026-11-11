@@ -21,6 +21,9 @@
 #include "World/jkPlayer.h"
 #include "World/sithWorld.h"
 #include "Engine/sithCamera.h"
+#include "Enhanced/iosSceneSkip.h"
+#include "Enhanced/iosAutoplay.h"
+#include "Gui/jkGUIEsc.h"
 #include "stdPlatform.h"
 #include "jk.h"
 
@@ -183,6 +186,37 @@ int iosGame_QuickLoad(void)
 int iosGame_LoadSave(const char* fname, int bLoud)
 {
     return iosGame_LoadSaveFile(fname, bLoud);
+}
+
+int iosGame_CanOpenSaveLoad(int bSave)
+{
+    SithThing* pPlayer = sithPlayer_g_pLocalPlayerThing;
+    // (single player, a level being played, not already on the way to a menu
+    // or another level; not in one of the level's scenes, nor AUTOPLAY's show)
+    if (sithNet_isMulti || !sithWorld_g_pCurrentWorld || !pPlayer || jkSmack_stopTick
+        || jkSmack_currentGuiState != JK_GAMEMODE_GAMEPLAY || jkHud_bChatOpen)
+        return 0;
+    if (iosSceneSkip_InScene() || iosSceneSkip_IsSkipping() || iosAutoplay_IsOn())
+        return 0;
+    // (what the game menu offers: Save not while dead; in Mysteries of the
+    // Sith, neither while the player's controls are taken, nor in its
+    // cutscenes, where Escape skips the cutscene instead -- jkGuiEsc_Show)
+    if (bSave && (pPlayer->flags & SITH_TF_DEAD))
+        return 0;
+    if (Main_bMotsCompat && ((pPlayer->actorParams.flags & SITH_AF_CONTROLSDISABLED) || jkGuiMultiplayer_mpcInfo.pCutsceneCog))
+        return 0;
+    return 1;
+}
+
+int iosGame_OpenSaveLoad(int bSave)
+{
+    if (!iosGame_CanOpenSaveLoad(bSave))
+        return 0;
+    // The game menu, as Escape opens it, told to go straight to the screen
+    // and back to the game after it
+    jkGuiEsc_ShowDirect(bSave);
+    jkMain_do_guistate6();
+    return 1;
 }
 
 int iosGame_IsMots(void)

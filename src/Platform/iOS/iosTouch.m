@@ -95,7 +95,7 @@ extern int jkHud_bChatOpen;
 // IOSTOUCH_WHEEL_OPEN_SLIDE from where it went down) presses the button's key:
 // the next learned power, the next weapon. Sliding that far opens the wheel
 // at once, to slide to a slice; held still for IOSTOUCH_WHEEL_HOLD (known as
-// the QUICK SAVE hold is) it opens to tap one.
+// the SAVE hold is) it opens to tap one.
 // Sliding to pick is measured from where the thumb went down on the button:
 // it points nowhere until IOSTOUCH_WHEEL_DEAD points away (keep this small:
 // the slices pointing up only have ~30pt of screen above the button), the
@@ -149,8 +149,10 @@ extern int jkHud_bChatOpen;
 // for that goes condensed (IOSTouch_FitRound)
 #define IOSTOUCH_LABEL_MIN 8.0
 #define IOSTOUCH_LABEL_MARGIN 1.5
-// QUICK SAVE and QUICK LOAD have to be held this long, so a stray tap can't
-// save over the quicksave or throw away progress
+// SAVE and LOAD have to be held this long to quick save or quick load, so a
+// stray tap can't save over the quicksave or throw away progress; a tap
+// (lifted on the button sooner, by the touch's own clock, never slid off)
+// opens the game's own Save or Load screen instead, as the game menu's do
 #define IOSTOUCH_QUICKSAVE_HOLD 0.3
 #define IOSTOUCH_QUICKLOAD_HOLD 0.3
 // MENU held this long opens its tray (gyro, FPS, keyboard); a tap opens the
@@ -187,7 +189,7 @@ extern int jkHud_bChatOpen;
 // Which photos a tap takes (IOSCAPTURE_* bits), set by holding the tray's
 // camera switch: CLEAN alone unless changed (remembered)
 #define IOSTOUCH_CAMKINDS_DEFAULTS_KEY @"iosTouchCameraKinds"
-// The SABER button (between CAMERA and QUICK SAVE): shown once the player
+// The SABER button (between CAMERA and SAVE): shown once the player
 // has the saber for real, or while sithewok is on (iosGame_IsSaberButtonShown,
 // read every frame), it opens the saber wheel (iosSaberWheel: a card for each
 // hand, its hilt and each blade's colour), its picture the sabers as they
@@ -282,7 +284,7 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 #define IOSTOUCH_SABER_CHIP_TOUCH 6.0
 #define IOSTOUCH_SABER_CHIP_DIM 0.4 // (a card's HILT with only its own hilt to go to)
 #define IOSTOUCH_SABER_CHIP_HELD 0.7 // (SABER THROW while sithewok holds it on: on, a little dim)
-// RANDOM held this long (as QUICK SAVE: 0.3 s, a ring filling round it, gold
+// RANDOM held this long (as SAVE: 0.3 s, a ring filling round it, gold
 // as the wheel's picks): new colours only, the hilts kept. Lifted sooner, the
 // tap; slid off it, nothing. Its dice this big, this far in from its left.
 #define IOSTOUCH_RANDOM_HOLD 0.3
@@ -298,7 +300,7 @@ enum { IOSTOUCH_CHIP_CARD_R = 0, IOSTOUCH_CHIP_CARD_L, // (the hand cards: a tap
 #define IOSTOUCH_FPS_LABEL_X 216.0     // (its middle, this far in from the right)
 #define IOSTOUCH_FPS_LABEL_HALF 27.0
 // One of the level's own scenes (a dark Jedi met before a duel: iosSceneSkip):
-// a tap skips it -- anywhere but QUICK SAVE, QUICK LOAD, MENU and the tray,
+// a tap skips it -- anywhere but SAVE, LOAD, MENU and the tray,
 // and nothing else (the game takes no controls then anyway) -- and a hint
 // says so as the scene starts, for this long (s), fading out over the last
 // part of it; while the skip runs (the game unseen, a black frame), a line
@@ -455,14 +457,14 @@ enum {
     ROLE_FREEZESHOT,  // Action Freeze: on CAMERA (a tap takes a photo)
     ROLE_FREEZECLOSE, // Action Freeze: on its X (a tap goes back to the game)
     ROLE_AUTOPLAY,    // AUTOPLAY's show: anywhere (its gestures: a double tap, a long press)
-    ROLE_SCENESKIP,   // one of the level's scenes: anywhere but QUICK SAVE, QUICK LOAD, MENU and the tray (a tap skips it)
+    ROLE_SCENESKIP,   // one of the level's scenes: anywhere but SAVE, LOAD, MENU and the tray (a tap skips it)
 };
 
 enum {
     KIND_KEY = 0,  // holds its key while touched
     KIND_MENU,     // Escape (via stdControl_bControllerEscapeKey) when the touch lifts on it; held, opens the tray
-    KIND_HOLDSAVE, // hold IOSTOUCH_QUICKSAVE_HOLD seconds for one press of its key (quick save)
-    KIND_HOLDLOAD, // hold IOSTOUCH_QUICKLOAD_HOLD seconds to quick load
+    KIND_HOLDSAVE, // SAVE: hold IOSTOUCH_QUICKSAVE_HOLD seconds for one press of its key (quick save); a tap, the Save screen
+    KIND_HOLDLOAD, // LOAD: hold IOSTOUCH_QUICKLOAD_HOLD seconds to quick load; a tap, the Load screen
     KIND_WHEEL,    // tap: one press of its key; slide or hold: opens its wheel (FORCE WHEEL: force, NEXT WPN: weapons; SABER, which has no key: a tap opens it too, to tap)
     KIND_ITEM,     // uses an inventory item when the touch lifts on it; only shown while the player has it
     KIND_CHAT,     // (MENU tray) opens or closes the typing line for cheats, when the touch lifts on it
@@ -513,10 +515,11 @@ typedef struct {
 // These all pass drags through to looking, so a thumb that lands on one while
 // aiming keeps aiming. Top left: next weapon, the FORCE WHEEL that picks the
 // power, and a button for each usable item while the player has it (field
-// light, IR goggles, bacta), each always in its own place. Top right: quick
-// save and quick load (short holds) and the menu. Holding MENU opens a tray
+// light, IR goggles, bacta), each always in its own place. Top right: SAVE
+// and LOAD (a tap, the game's Save or Load screen; a short hold, quick save
+// or quick load) and the menu. Holding MENU opens a tray
 // just under it: gyro aiming's sensitivity and mode, FPS, which shows or hides
-// a frame rate readout left of QUICK SAVE, the camera and saber switches
+// a frame rate readout left of SAVE, the camera and saber switches
 // (the CAMERA and SABER buttons along the top), and the keyboard, for the
 // typing line (cheats). ACT is the door/switch key. NEXT WPN and FORCE WHEEL:
 // a tap is the next weapon / learned power (G, E: the game's own keys for
@@ -528,7 +531,7 @@ enum {
     BTN_NEXTWPN, BTN_WHEEL, BTN_LIGHT, BTN_IR, BTN_BACTA,
     BTN_QUICKSAVE, BTN_QUICKLOAD, BTN_MENU,
     BTN_CAMERA, // the middle of the top row, while switched on in the tray
-    BTN_SABER,  // between CAMERA and QUICK SAVE, once the saber is had (or sithewok is on)
+    BTN_SABER,  // between CAMERA and SAVE, once the saber is had (or sithewok is on)
     BTN_CHEAT,  // ...right of SABER, in cheat mode (switched on in the tray)
     BTN_VIEW,   // ...right of CHEAT: first or third person (switched on in the tray)
     BTN_TRAYGYRO, BTN_TRAYRUN, BTN_TRAYLOOK, BTN_TRAYOPACITY, BTN_TRAYFPS, BTN_TRAYCAM, BTN_TRAYAUTO, BTN_TRAYCHEAT, BTN_TRAYLEVEL, BTN_TRAYVIEW, BTN_TRAYJUMP, BTN_TRAYCTRL, BTN_TRAYKEYS, // MENU's tray (left to right), hidden unless it is open (LEVEL only while sithewok is on; in multiplayer only for the co-op host)
@@ -554,8 +557,8 @@ static iosTouchButton iosTouch_aButtons[] = {
     [BTN_LIGHT]     = { "LIGHT",       KIND_ITEM,     SDL_SCANCODE_RETURN, 22.0f, 0, SITHBIN_FIELDLIGHT_IOS },
     [BTN_IR]        = { "IR",          KIND_ITEM,     SDL_SCANCODE_RETURN, 22.0f, 0, SITHBIN_IRGOGGLES_IOS },
     [BTN_BACTA]     = { "BACTA",       KIND_ITEM,     SDL_SCANCODE_RETURN, 22.0f, 0, SITHBIN_BACTATANK_IOS },
-    [BTN_QUICKSAVE] = { "QUICK\nSAVE", KIND_HOLDSAVE, SDL_SCANCODE_F9,     22.0f, 0 },
-    [BTN_QUICKLOAD] = { "QUICK\nLOAD", KIND_HOLDLOAD, -1,                  22.0f, 0 },
+    [BTN_QUICKSAVE] = { "SAVE",        KIND_HOLDSAVE, SDL_SCANCODE_F9,     22.0f, 0 },
+    [BTN_QUICKLOAD] = { "LOAD",        KIND_HOLDLOAD, -1,                  22.0f, 0 },
     [BTN_MENU]      = { "MENU",        KIND_MENU,     -1,                  22.0f, 0 },
     [BTN_CAMERA]    = { "",            KIND_CAMERA,   -1,                  22.0f, 0 },
     [BTN_SABER]     = { "",            KIND_WHEEL,    -1,                  22.0f, 0 },
@@ -607,7 +610,7 @@ static int iosTouch_IsOptButton(int button)
 }
 
 // (one of the level's scenes, iosSceneSkip: what still works as always --
-// QUICK SAVE, QUICK LOAD, MENU and the tray; a touch anywhere else skips it)
+// SAVE, LOAD, MENU and the tray; a touch anywhere else skips it)
 static int iosTouch_KeptInScene(int button)
 {
     return button == BTN_QUICKSAVE || button == BTN_QUICKLOAD || button == BTN_MENU || iosTouch_IsTrayButton(button) || iosTouch_IsOptButton(button);
@@ -830,7 +833,7 @@ typedef struct {
     CGPoint last;
     CFTimeInterval tDown; // when the touch began reaching us (CACurrentMediaTime, as -tick counts)...
     NSTimeInterval tDownTouch; // ...and when it began, by the touch's own clock (UITouch.timestamp)
-    int bFired;           // QUICK SAVE, QUICK LOAD: the hold is over (a save or load went off, from this finger or another one on either button; or it slid off, or typing). MENU: the hold is over (tray opened, or slid off)
+    int bFired;           // SAVE, LOAD: the hold is over (a save or load went off, from this finger or another one on either button; or it slid off, or typing). MENU: the hold is over (tray opened, or slid off)
     int bSeen;            // KIND_KEY: the game has read the key as held at least once
     int trayButton;       // MENU, after its tray opened: the tray button under the finger, or -1
     int wheelSlot;        // ROLE_WHEEL: the slice picked (index into the map), IOSTOUCH_WHEEL_CANCEL, or -1
@@ -1576,11 +1579,11 @@ typedef struct {
     int bRunLit;             // what runMarker shows (-1: not yet set)
     UISelectionFeedbackGenerator* runTick;
     UILabel* aButtonViews[IOSTOUCH_NUM_BUTTONS];
-    CAShapeLayer* saveRing; // QUICK SAVE's hold progress
+    CAShapeLayer* saveRing; // SAVE's hold progress
     CAShapeLayer* jumpRing; // JUMP's hold progress (sithewok's flight)
     CAShapeLayer* actRing;  // ACT's hold progress (sithewok's noclip)
     CAShapeLayer* levelRing; // the tray's LEVEL's hold progress (sithewok's level pick)
-    CAShapeLayer* loadRing; // QUICK LOAD's
+    CAShapeLayer* loadRing; // LOAD's
     CAShapeLayer* menuRing; // MENU's
     CAShapeLayer* wheelRing;  // FORCE WHEEL's (held still, it opens the wheel to tap)
     CAShapeLayer* weaponRing; // NEXT WPN's
@@ -2070,8 +2073,8 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
             [self addSubview:l];
         }
 
-        // Rings that fill while QUICK SAVE, QUICK LOAD and MENU are held. QUICK
-        // SAVE's and QUICK LOAD's look the same.
+        // Rings that fill while SAVE, LOAD and MENU are held. SAVE's and
+        // LOAD's look the same.
         saveRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_QUICKSAVE].radius);
         [aButtonViews[BTN_QUICKSAVE].layer addSublayer:saveRing];
         jumpRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_JUMP].radius);
@@ -2157,7 +2160,7 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         aButtonViews[BTN_VIEW].text = iosTouch_bThirdPerson ? @"3P" : @"1P";
 
         // Around FORCE: the force meter, a ring that empties as the meter does
-        // (QUICK LOAD's ring the other way round) and glows when full
+        // (LOAD's ring the other way round) and glows when full
         CGFloat fr = iosTouch_aButtons[BTN_FORCE].radius;
         forceRing = [CAShapeLayer layer];
         forceRing.frame = CGRectMake(0, 0, fr * 2, fr * 2);
@@ -2907,7 +2910,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     iosTouch_aButtons[BTN_LIGHT].x = left + 148;
     iosTouch_aButtons[BTN_IR].x = left + 204;
     iosTouch_aButtons[BTN_BACTA].x = left + 260;
-    // Top right: QUICK SAVE, QUICK LOAD, MENU in the corner, 66 pt apart (10 pt
+    // Top right: SAVE, LOAD, MENU in the corner, 66 pt apart (10 pt
     // between where each takes touches): with both quick holds 0.3 s, that is
     // what keeps a press meant for one off the other (and FORCE, below, keeps
     // at least as far from every top row button)
@@ -2918,8 +2921,8 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     // readout even on the narrowest iPhone, 667 pt)
     iosTouch_aButtons[BTN_CAMERA].x = W * 0.5;
     // SABER, CHEAT and VIEW (those switched on, in that order) between CAMERA
-    // and QUICK SAVE, evenly: between the burst's count (right of CAMERA) and
-    // the FPS readout (left of QUICK SAVE), where they leave room (one alone:
+    // and SAVE, evenly: between the burst's count (right of CAMERA) and
+    // the FPS readout (left of SAVE), where they leave room (one alone:
     // halfway, at least 4 pt each side; more: at least 8 pt apart). Where
     // they don't: with the burst's count under CAMERA; then with the FPS
     // readout at the bottom of the screen; then both; then with CAMERA
@@ -2977,9 +2980,9 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     // screens, ALT) takes that spot it goes higher, over JUMP; failing that,
     // the gaps shrink, and with the smallest it may go on round, over ACT.
     // Wherever it goes, it keeps clear of the top row and of MENU's tray:
-    // FORCE is held (Force Jump, Lightning) and QUICK SAVE and QUICK LOAD go
+    // FORCE is held (Force Jump, Lightning) and SAVE and LOAD go
     // off after a 0.3 s hold, so it is never nearer any top row button than
-    // QUICK SAVE is to QUICK LOAD (10 pt between where each takes touches),
+    // SAVE is to LOAD (10 pt between where each takes touches),
     // and never where MENU's open tray would have to cover it, or come nearer
     // the other buttons round FIRE than it could with FORCE elsewhere
     // (iosTouch_TrayKeysAt).
@@ -3136,7 +3139,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     // corner and any cutout)
     freezeClose.center = CGPointMake(right - IOSTOUCH_FREEZE_CLOSE_RADIUS - 4, top + IOSTOUCH_FREEZE_CLOSE_RADIUS + 4);
 
-    // The FPS readout where the keyboard button used to be, left of QUICK
+    // The FPS readout where the keyboard button used to be, left of
     // SAVE: the game draws its messages and typing line centred at the top
     fpsLabel.center = iosTouch_bFpsBottom ? CGPointMake(W * 0.5, bottom - 9.0)
                                           : CGPointMake(right - IOSTOUCH_FPS_LABEL_X, top + 26);
@@ -3876,7 +3879,7 @@ static CGRect IOSTouch_CardPartFrame(CGRect r, int part, int bLinked)
     return best;
 }
 
-// (a finger held on RANDOM still on it: as near as QUICK SAVE's held finger
+// (a finger held on RANDOM still on it: as near as SAVE's held finger
 // stays on its button, IOSTOUCH_TOUCH_SLOP round it, whatever is beside it)
 - (int)onRandom:(CGPoint)p
 {
@@ -5782,8 +5785,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 continue;
             }
         }
-        // One of the level's scenes (iosSceneSkip): a touch anywhere but QUICK
-        // SAVE, QUICK LOAD, MENU and the tray is a tap to skip it, and nothing
+        // One of the level's scenes (iosSceneSkip): a touch anywhere but
+        // SAVE, LOAD, MENU and the tray is a tap to skip it, and nothing
         // else -- no button, no look (the game takes no controls then anyway)
         if ((iosSceneSkip_CanSkip() || iosSceneSkip_IsSkipping()) && !iosTouch_KeptInScene(s->button)) {
             s->role = ROLE_SCENESKIP;
@@ -5832,7 +5835,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 continue;
             }
 
-            // QUICK SAVE, QUICK LOAD: a finger that leaves the button, even
+            // SAVE, LOAD: a finger that leaves the button, even
             // between two frames, doesn't save or load, even if it comes back
             // on -- so the places UIKit merged into this move count too (the
             // last of them is p). -tick checks as well, for a button laid out
@@ -5902,7 +5905,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             }
 
             // RANDOM slid off (at any of the places UIKit merged into this
-            // move, too): nothing, not even back on, as QUICK SAVE
+            // move, too): nothing, not even back on, as SAVE
             if (s->role == ROLE_WHEEL && s->randomHold == 1) {
                 int bOff = ![self onRandom:p];
                 for (UITouch* c in [event coalescedTouchesForTouch:t]) {
@@ -6154,6 +6157,22 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                         // A tap: Escape (the menu, or closing the typing line)
                         iosTouch_menuPulse = IOSTOUCH_MENU_PULSE_UPDATES;
                     }
+                    else if (iosTouch_IsQuickHold(s->button) && !s->bFired
+                             && t.timestamp - s->tDownTouch < (s->button == BTN_QUICKSAVE ? IOSTOUCH_QUICKSAVE_HOLD : IOSTOUCH_QUICKLOAD_HOLD)) {
+                        // SAVE, LOAD: a tap (lifted before the hold was up, by
+                        // the touch's own clock; not slid off, not after a save
+                        // or load went off): the game's own Save or Load screen,
+                        // as the game menu opens it. It ends every other hold
+                        // on either, as a quick save or load does. Where the
+                        // game can't save or load now (multiplayer, one of the
+                        // level's scenes, a Mysteries of the Sith cutscene,
+                        // dead for Save: iosGame_OpenSaveLoad), nothing, as before.
+                        for (int k = 0; k < IOSTOUCH_MAX_TOUCHES; k++) {
+                            iosTouchSlot* o = &iosTouch_aSlots[k];
+                            if (o->touch && o->role == ROLE_BUTTON && iosTouch_IsQuickHold(o->button)) o->bFired = 1;
+                        }
+                        iosGame_OpenSaveLoad(s->button == BTN_QUICKSAVE);
+                    }
                 }
                 // MENU held until its tray opened, then slid onto one of its buttons
                 if (!bCancelled && s->button == BTN_MENU && s->bFired && iosTouch_bTrayOpen) {
@@ -6222,7 +6241,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     }
 }
 
-// Once per frame while shown: the QUICK SAVE, QUICK LOAD, MENU, FORCE WHEEL
+// Once per frame while shown: the SAVE, LOAD, MENU, FORCE WHEEL
 // and NEXT WPN holds, the
 // FORCE label and its force meter ring, which item buttons show and what they
 // say, and the FPS readout
@@ -6313,8 +6332,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     // FORCE WHEEL and NEXT WPN held still (they haven't slid, or the wheel
     // would be open): known to be held IOSTOUCH_WHEEL_HOLD, the wheel opens to
     // tap a slice; until then the ring fills. The first to get there opens
-    // its wheel (which drops the other). This comes before the QUICK SAVE,
-    // QUICK LOAD and MENU holds: one that completes in the same tick (touched
+    // its wheel (which drops the other). This comes before the SAVE,
+    // LOAD and MENU holds: one that completes in the same tick (touched
     // with a wheel button at about the same time) is then dropped by the
     // wheel opening, which ignores every other touch, rather than saving or
     // loading under the wheel.
@@ -6516,7 +6535,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         [self refreshButtonLooks];
     }
 
-    // How far QUICK SAVE's and QUICK LOAD's rings have filled (the furthest
+    // How far SAVE's and LOAD's rings have filled (the furthest
     // along of each one's holds), and the one whose hold completed
     CGFloat saveProgress = 0.0, loadProgress = 0.0;
     int done = -1;
@@ -6536,9 +6555,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             }
             CFTimeInterval hold = (s->button == BTN_QUICKSAVE) ? IOSTOUCH_QUICKSAVE_HOLD : IOSTOUCH_QUICKLOAD_HOLD;
             if (known - s->tDown >= hold) {
-                // the ring is full, with the finger still on it. QUICK SAVE
-                // and QUICK LOAD both found done in the same tick (one long
-                // frame can cover both, whichever was touched first): QUICK
+                // the ring is full, with the finger still on it. SAVE
+                // and LOAD both found done in the same tick (one long
+                // frame can cover both, whichever was touched first):
                 // SAVE, as only a load throws away the game being played
                 if (done != BTN_QUICKSAVE) done = s->button;
             }
@@ -6639,7 +6658,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self tickBurst:now];
 
     if (done >= 0) {
-        // One save or load, once: it ends every hold on QUICK SAVE and QUICK
+        // One save or load, once: it ends every hold on SAVE and
         // LOAD, so two fingers on one button save or load once (a finger that
         // comes down after that starts a new hold), and the two buttons held
         // together do whichever completes first, never both (both would only

@@ -13,5 +13,11 @@
 void jkGuiEsc_Startup();
 void jkGuiEsc_Shutdown();
 void jkGuiEsc_Show();
+#ifdef JK_ENHANCED
+// Added: the next jkGuiEsc_Show (the game menu Escape opens, within a moment)
+// goes straight to the Save (bSave) or Load screen, and back to the game
+// after it, as if Return to Game were picked (iosGame_OpenSaveLoad)
+void jkGuiEsc_ShowDirect(int bSave);
+#endif
 
 #endif // _JKGUIESC_H
