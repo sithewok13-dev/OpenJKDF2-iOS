@@ -167,12 +167,17 @@ static const float iosSaberShape_aWhite[IOSSABERSHAPE_NUM_GAINS] = { IOSSABERSHA
 // made here too, opaque)
 // (and each FILM colour's glow, dimmed, IOSSABERSHAPE_DIM_LEVELS - 1 of them, made a few a frame as they are first
 // needed (IOSSABERSHAPE_DIM_PER_FRAME; the nearest made meanwhile), never from the last IOSSABERSHAPE_DIM_RESERVE slots:
-// those kept for glows as ever; once fewer than a quarter of those are left, the dimmed ones are all given up, the
-// next scene, before glows as ever could run short, and made again as they are needed)
+// those kept for glows as ever. The dimmed ones are all given up, the next scene, and made again as they are needed:
+// once a quarter of those slots or fewer are left, before glows as ever could run short; and when a colour can have
+// none of its own for want of room (at most every IOSSABERSHAPE_DIM_RENEW ms of the game's clock), so the colours in
+// use keep theirs)
 #ifndef IOSSABERSHAPE_MAX_GLOWS // (a test build may have fewer)
 #define IOSSABERSHAPE_MAX_GLOWS 512
-#define IOSSABERSHAPE_DIM_RESERVE 128
 #endif
+#ifndef IOSSABERSHAPE_DIM_RESERVE
+#define IOSSABERSHAPE_DIM_RESERVE (IOSSABERSHAPE_MAX_GLOWS / 4)
+#endif
+#define IOSSABERSHAPE_DIM_RENEW 3000
 #define IOSSABERSHAPE_DIM_PER_FRAME 2
 #define IOSSABERSHAPE_DIM_LEVELS 12
 typedef struct iosSaberShapeGlow {
@@ -1410,7 +1415,7 @@ static rdMaterial* iosSaberShape_DimMat(iosSaberShapeGlow* pBase, int level)
     if (level <= 0 || pBase->dim > 0) return &pBase->mat;
     if (level >= IOSSABERSHAPE_DIM_LEVELS) level = IOSSABERSHAPE_DIM_LEVELS - 1;
     if (!pBase->apDim[level]) {
-        // (not made yet: made now, if not too many have been this frame; else, or if it can't be, the nearest level
+        // (not made yet: made now, if not too many have been this frame; else, or if it can't be, a brighter level
         // made, or the glow as ever)
         static uint32_t frame = 0;
         static int made = 0;
@@ -1418,15 +1423,30 @@ static rdMaterial* iosSaberShape_DimMat(iosSaberShapeGlow* pBase, int level)
             frame = (uint32_t)rdroid_frameTrue;
             made = 0;
         }
+        int bRefused = 0;
         if (made < IOSSABERSHAPE_DIM_PER_FRAME) {
             made++;
             pBase->apDim[level] = iosSaberShape_GlowDim(pBase->rgb, pBase->gain, pBase->core, level);
+            bRefused = !pBase->apDim[level];
         }
         if (!pBase->apDim[level]) {
-            for (int k = 1; k < IOSSABERSHAPE_DIM_LEVELS; k++) {
-                if (level - k >= 1 && pBase->apDim[level - k]) return &pBase->apDim[level - k]->mat;
-                if (level + k < IOSSABERSHAPE_DIM_LEVELS && pBase->apDim[level + k]) return &pBase->apDim[level + k]->mat;
+            // (refused, and none of its own at all, for want of room: the dimmed ones given up, the next scene, if not
+            // lately, so the colours in use have theirs made again)
+            int bAny = 0;
+            for (int k = 1; k < IOSSABERSHAPE_DIM_LEVELS && !bAny; k++) bAny = pBase->apDim[k] != NULL;
+            if (bRefused && !bAny) {
+                static uint32_t lastMs = 0;
+                static int bLast = 0;
+                const uint32_t now = (uint32_t)sithTime_g_msecGameTime;
+                if (!bLast || now < lastMs || now - lastMs >= IOSSABERSHAPE_DIM_RENEW) {
+                    bLast = 1;
+                    lastMs = now;
+                    iosSaberShape_bGiveUpDims = 1;
+                }
             }
+            // (meanwhile the nearest brighter level made, or the glow as ever: never darker than it should be)
+            for (int k = level - 1; k >= 1; k--)
+                if (pBase->apDim[k]) return &pBase->apDim[k]->mat;
             return &pBase->mat;
         }
     }
