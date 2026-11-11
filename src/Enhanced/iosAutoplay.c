@@ -834,10 +834,12 @@ static void ap_restoreSaber(void)
 }
 
 // A new look for the fight: one saber or two, a random hilt each (of those
-// the saber wheel has), random colours (the wheel's RANDOM)
+// the saber wheel has), random colours (the wheel's RANDOM) -- none with the
+// look kept (WEAPONS' LIGHTSABER held: the one picked on the saber wheel, all
+// show long, and still the player's after it)
 static void ap_newSaberLook(void)
 {
-    if (!s_bSaber) return;
+    if (!s_bSaber || s_opt.bKeepLook) return;
     const int bTwo = iosSaber_StyleAvailable(IOSSABER_STYLE_DUAL) && ap_randInt(2);
     if (bTwo && iosSaberWheel_NumSabers() < 2) iosSaberWheel_AddSecond();
     else if (!bTwo && iosSaberWheel_NumSabers() > 1) iosSaberWheel_RemoveSecond();
@@ -935,8 +937,8 @@ int iosAutoplay_Start(const iosAutoplayOptions* pOptions)
     s_tSceneSeen = -100.0;
     iosSceneSkip_SetAuto(1); // (the level's scenes skipped from their start)
     s_stage = ST_SAVING;
-    APLOG("START (saved %d) row %d diff %d crowd %d alarm %d weapons %08x\n", s_bSaved, s_opt.levelRow, s_opt.difficulty,
-          s_opt.crowd, s_opt.bAlarm, s_opt.weapons);
+    APLOG("START (saved %d) row %d diff %d crowd %d alarm %d weapons %08x keep look %d\n", s_bSaved, s_opt.levelRow, s_opt.difficulty,
+          s_opt.crowd, s_opt.bAlarm, s_opt.weapons, s_opt.bKeepLook);
     return 1;
 }
 
@@ -1882,7 +1884,7 @@ void iosAutoplay_GetDisplay(iosAutoplayDisplay* pOut)
 
 #ifdef IOSAUTOPLAY_RIG
 // The Linux test rig: START from the environment (APTEST_START=seconds,
-// APTEST_ROW, APTEST_WEAPONS hex, APTEST_CROWD), double taps at
+// APTEST_ROW, APTEST_WEAPONS hex, APTEST_CROWD, APTEST_KEEPLOOK), double taps at
 // APTEST_NEXT=seconds,... and the long press at APTEST_STOP=seconds
 static void ap_rigTick(double now)
 {
@@ -1899,6 +1901,7 @@ static void ap_rigTick(double now)
         o.bAlarm = 1;
         o.weapons = getenv("APTEST_WEAPONS") ? (unsigned int)strtoul(getenv("APTEST_WEAPONS"), NULL, 16) : IOSAUTOPLAY_WEAPONS_ALL;
         o.bHud = getenv("APTEST_HUD") != NULL;
+        o.bKeepLook = getenv("APTEST_KEEPLOOK") != NULL;
         o.bControls = 0;
         bStarted = 1;
         APLOG("before: sithewok %d, difficulty %d, saber style %d hilts %d %d\n", jkDev_Custom_SithEwokIsOn(), jkPlayer_setDiff,

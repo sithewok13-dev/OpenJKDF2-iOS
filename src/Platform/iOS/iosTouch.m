@@ -943,6 +943,7 @@ static int iosTouch_bPadMasked = 0;
 static CAShapeLayer* iosTouch_pPadMask = nil;
 static int iosTouch_bPadWheel = 0;
 static int iosTouch_bKbmWheel = 0;
+static int iosTouch_bPanelWheel = 0; // (the saber wheel opened from AUTOPLAY's panel: iosTouch_OpenSaberWheelForPanel)
 static int iosTouch_padSlot = -1;
 static CGFloat iosTouch_padAim = 0.0;
 static CGFloat iosTouch_padRandomHold = 0.0; // (a pad's View or the keys' R held on the saber wheel: RANDOM's ring, iosTouch_PadSaberHold)
@@ -1788,6 +1789,15 @@ static CGFloat IOSTouch_FontSize(const char* label, CGFloat radius)
     return radius >= 40 ? 16 : (radius >= 25 ? 13 : 10);
 }
 
+// A hold ring's look: blue, 3 pt, empty until it fills (strokeEnd)
+static void IOSTouch_StyleHoldRing(CAShapeLayer* ring)
+{
+    ring.fillColor = [UIColor clearColor].CGColor;
+    ring.strokeColor = [UIColor colorWithRed:0.47 green:0.78 blue:1.0 alpha:0.95].CGColor;
+    ring.lineWidth = 3.0;
+    ring.strokeEnd = 0.0;
+}
+
 // A ring round a button of radius r that fills (strokeEnd) while it is held
 static CAShapeLayer* IOSTouch_MakeHoldRing(CGFloat r)
 {
@@ -1795,11 +1805,34 @@ static CAShapeLayer* IOSTouch_MakeHoldRing(CGFloat r)
     ring.frame = CGRectMake(0, 0, r * 2, r * 2);
     ring.path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(r, r) radius:r - 2.5
                                            startAngle:-M_PI_2 endAngle:3 * M_PI_2 clockwise:YES].CGPath;
-    ring.fillColor = [UIColor clearColor].CGColor;
-    ring.strokeColor = [UIColor colorWithRed:0.47 green:0.78 blue:1.0 alpha:0.95].CGColor;
-    ring.lineWidth = 3.0;
-    ring.strokeEnd = 0.0;
+    IOSTouch_StyleHoldRing(ring);
     return ring;
+}
+
+// The same ring round a rounded rectangle (iosTouch.h): 2.5 pt inside its
+// edge, as the round ones are, filling clockwise from the middle of its top
+void iosTouch_ShapeTileHoldRing(CAShapeLayer* ring, CGSize size, CGFloat corner)
+{
+    if (!ring) return;
+    const CGFloat in = 2.5, x0 = in, y0 = in, x1 = size.width - in, y1 = size.height - in;
+    const CGFloat cr = MAX(MIN(corner - in, MIN(x1 - x0, y1 - y0) * 0.5), 0.0);
+    UIBezierPath* p = [UIBezierPath bezierPath];
+    [p moveToPoint:CGPointMake(size.width * 0.5, y0)];
+    [p addLineToPoint:CGPointMake(x1 - cr, y0)];
+    [p addArcWithCenter:CGPointMake(x1 - cr, y0 + cr) radius:cr startAngle:-M_PI_2 endAngle:0.0 clockwise:YES];
+    [p addLineToPoint:CGPointMake(x1, y1 - cr)];
+    [p addArcWithCenter:CGPointMake(x1 - cr, y1 - cr) radius:cr startAngle:0.0 endAngle:M_PI_2 clockwise:YES];
+    [p addLineToPoint:CGPointMake(x0 + cr, y1)];
+    [p addArcWithCenter:CGPointMake(x0 + cr, y1 - cr) radius:cr startAngle:M_PI_2 endAngle:M_PI clockwise:YES];
+    [p addLineToPoint:CGPointMake(x0, y0 + cr)];
+    [p addArcWithCenter:CGPointMake(x0 + cr, y0 + cr) radius:cr startAngle:M_PI endAngle:3.0 * M_PI_2 clockwise:YES];
+    [p closePath];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    ring.bounds = CGRectMake(0, 0, size.width, size.height);
+    ring.path = p.CGPath;
+    IOSTouch_StyleHoldRing(ring);
+    [CATransaction commit];
 }
 
 // The SABER button's picture (hiltmock's icon.py): each saber on the
@@ -3694,6 +3727,11 @@ static int iosTouch_SaberChipUsable(int chip)
 {
     if (!iosTouch_SaberChipUsable(chip)) return 0;
     if (chip == IOSTOUCH_CHIP_EQUIP) {
+        // (opened from AUTOPLAY's panel: DONE, the wheel closed, back to the panel)
+        if (iosTouch_bPanelWheel) {
+            [self closeWheelSelecting:-1];
+            return 1;
+        }
         // the saber in hand, as set (colours, one or two): the wheel closes
         // with nothing else changed, and the game takes it once it runs again
         // (as NEXT WPN's wheel does); not had, nothing
@@ -4218,9 +4256,11 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
         l.frame = aFrame[i];
         switch (i) {
         case IOSTOUCH_CHIP_EQUIP:
+            // (opened from AUTOPLAY's panel: DONE, back to it, always lit)
+            l.text = iosTouch_bPanelWheel ? @"DONE" : @"EQUIP";
             l.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.4].CGColor;
             l.layer.borderWidth = 1.5;
-            l.alpha = [self canEquipSaber] ? 1.0 : 0.35;
+            l.alpha = (iosTouch_bPanelWheel || [self canEquipSaber]) ? 1.0 : 0.35;
             break;
         case IOSTOUCH_CHIP_LOOK:
             // at the top of the middle, over the colour's name: the look as it is now, a tap for the other
@@ -5536,6 +5576,7 @@ static void iosTouch_ReadWheelSlices(int kind)
     iosTouch_bWheelTapMode = 0;
     iosTouch_bPadWheel = 0;
     iosTouch_bKbmWheel = 0;
+    iosTouch_bPanelWheel = 0;
     iosTouch_padSlot = -1;
     iosGame_SetHold(0);
     wheelView.hidden = YES;
@@ -6734,6 +6775,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     }
     iosTouch_bPadWheel = 0;
     iosTouch_bKbmWheel = 0;
+    iosTouch_bPanelWheel = 0;
     iosTouch_padSlot = -1;
     [self endSelfie]; // (all put back: the overlay is going, a menu or the background)
     [self endFreeze];
@@ -7539,6 +7581,24 @@ int iosTouch_KbmWheelIsOpen(void)
 int iosTouch_IsWheelOpen(void)
 {
     return iosTouch_bWheelOpen;
+}
+
+int iosTouch_OpenSaberWheelForPanel(void)
+{
+    IOSTouchOverlay* o = iosTouch_pOverlay;
+    if (!o || o.hidden || iosTouch_bAutoplay) return 0;
+    if (iosTouch_bWheelOpen || iosTouch_bFreezing || iosTouch_bCinema || iosTouch_selfieStage != IOSTOUCH_SELFIE_NONE) return 0;
+    [o endBurst];
+    if (jkHud_bChatOpen) iosGame_ToggleChat(); // (its keyboard would cover the wheel)
+    // (worked by touch, not a pad's: the panel's own finger is the panel's, the
+    // wheel's taps the overlay's; whether or not the player has the saber yet --
+    // only its look is set, for AUTOPLAY's show and for when he has it)
+    iosTouch_bPadWheel = 0;
+    iosTouch_bKbmWheel = 0;
+    iosTouch_padSlot = -1;
+    iosTouch_bPanelWheel = 1;
+    [o openWheel:IOSTOUCH_WHEEL_SABER button:BTN_SABER tapMode:1]; // (its EQUIP laid out as DONE)
+    return 1;
 }
 
 int iosTouch_WantsPointer(void)

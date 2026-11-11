@@ -191,6 +191,22 @@ int iosTouch_WantsPointer(void);
 #define IOSTOUCH_CAM_FREEZE_END 3
 int iosTouch_KbmCamera(int action);
 
+// AUTOPLAY's panel (iosAutoplayPanel.m), WEAPONS' LIGHTSABER held: the saber
+// wheel, the one SABER opens, open to tap (its colours, hilts, two sabers),
+// over the game, which stays still. Its EQUIP says DONE and only closes it
+// (as a tap off the ring or the gap do). 0 if it can't open now. The panel
+// waits, hidden, until iosTouch_IsWheelOpen says it has closed.
+int iosTouch_OpenSaberWheelForPanel(void);
+
+#ifdef __OBJC__
+#import <QuartzCore/QuartzCore.h>
+// A hold ring (the overlay's: blue, 3 pt, filling clockwise as strokeEnd goes
+// from 0 to 1) round a rounded rectangle size across (its corners' radius
+// corner), starting from the middle of its top: ring made over to that size,
+// its position left as it is (AUTOPLAY's panel's LIGHTSABER tile)
+void iosTouch_ShapeTileHoldRing(CAShapeLayer* ring, CGSize size, CGFloat corner);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

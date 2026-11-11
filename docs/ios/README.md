@@ -319,8 +319,9 @@ level's end. You can't move during one.
   scene goes on, and a tap still skips it.
 - Not in multiplayer or co-op: there the scenes play as always.
 - **AUTO PLAY**'s show skips these scenes by itself, from their first moment,
-  and each fight's lightsaber look is already in Kyle's (Mara's) hands as the
-  level opens, so it doesn't change after a scene.
+  and each fight's lightsaber look (or the one you picked: see AUTO PLAY in
+  MENU's tray, below) is already in Kyle's (Mara's) hands as the level opens,
+  so it doesn't change after a scene.
 - In these scenes, Kyle (or Mara) holds your own lightsabers, as in play.
 
 ## Touch controls
@@ -455,7 +456,11 @@ not a button. OpenMoTS shows its own the same way.
 - **FPS:** shows or hides a frame-rate counter, to the left of QUICK SAVE. The FPS
   button is yellow while the counter is on.
 - **AUTO PLAY** (single player): opens the panel for a self-playing show, for
-  screen recordings.
+  screen recordings. Its **WEAPONS** start with only the LIGHTSABER picked.
+  There, **touch and hold LIGHTSABER** (a ring fills, half a second) to open
+  the saber wheel and pick its look: the show then keeps that look for every
+  fight (the tile says *YOUR LOOK*) instead of a new one each fight, and you
+  keep it afterwards. Tap LIGHTSABER off to go back to a new look each fight.
 - **CAMERA** (the camera symbol): a tap shows or hides the CAMERA button
   (yellow while it's shown). Touch and hold it until its ring fills for
   CAMERA's options, **PHOTO**, **SELFIES** and **FREEZE**: see

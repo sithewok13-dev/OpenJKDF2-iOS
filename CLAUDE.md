@@ -19,7 +19,9 @@ everything on a phone.
   tray's AUTOPLAY (single player) opens a panel (`iosAutoplayPanel.m`; seven
   remembered rows: LEVELS SHUFFLE ALL / PICK ONE from the cheat's level list,
   DIFFICULTY, CROWD, ALARM, WEAPONS with a picker of the weapon wheel's names and
-  colours, HUD, CONTROLS; START, an X, "Double tap: new fight · Hold: exit").
+  colours (default LIGHTSABER only; LIGHTSABER held 0.5 s opens the saber wheel,
+  and that look is kept, "YOUR LOOK"), HUD, CONTROLS; START, an X, "Double tap:
+  new fight · Hold: exit").
   The show is `src/Enhanced/iosAutoplay.c`: START saves ("Before AUTOPLAY",
   `autoplay.jks`), turns sithewok on silently (god mode, everything, ammo and
   Force full, falls caught), sets the difficulty and loads a level row straight
@@ -33,7 +35,8 @@ everything on a phone.
   spring turning with a reaction delay, settling aim, eased footwork, bursts,
   glances away from walls, weapon changes in lulls, detonators at bunches, saber
   melee and Saber Throw, Force powers now and then. Each fight a new saber look
-  (one or two, random hilts, the wheel's RANDOM colours). Double tap
+  (one or two, random hilts, the wheel's RANDOM colours), unless the look is kept
+  (`bKeepLook`). Double tap
   (`iosAutoplay_Next`) = new fight; a 0.5 s hold still (not at an edge) = exit:
   the cheat, difficulty and saber look put back and the save loaded. The overlay
   shows nothing, or with CONTROLS ON the stick and lit buttons (display only).

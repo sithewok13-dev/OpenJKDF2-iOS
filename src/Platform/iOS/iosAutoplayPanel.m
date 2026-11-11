@@ -12,6 +12,7 @@
 
 #include "Platform/iOS/iosAutoplayPanel.h"
 #include "Platform/iOS/iosGame.h"
+#include "Platform/iOS/iosTouch.h"
 #include "Enhanced/iosAutoplay.h"
 
 // The card: this wide at most, its rows this tall at most (less on a short
@@ -25,6 +26,8 @@
 #define IOSAP_TILE_H 44.0
 #define IOSAP_LIST_ROW 44.0
 #define IOSAP_CLOSE 30.0
+// The picker's LIGHTSABER held this long (its ring full): the saber wheel
+#define IOSAP_SABER_HOLD 0.5
 
 // The settings (the app's own; each app, Jedi Knight's and Mysteries of the Sith's, has its own)
 #define IOSAP_KEY_ROW @"iosAutoplayLevelRow"
@@ -32,6 +35,10 @@
 #define IOSAP_KEY_CROWD @"iosAutoplayCrowd"
 #define IOSAP_KEY_ALARM @"iosAutoplayAlarm"
 #define IOSAP_KEY_WEAPONS @"iosAutoplayWeapons"
+#define IOSAP_KEY_KEEPLOOK @"iosAutoplayKeepLook"
+// (set once WEAPONS' old default, ALL, kept from before -- or none kept -- has
+// been made the new one, LIGHTSABER only: once, so ALL picked since stays)
+#define IOSAP_KEY_SABERDEFAULT @"iosAutoplayWeaponsSaberDefault"
 #define IOSAP_KEY_HUD @"iosAutoplayHud"
 #define IOSAP_KEY_CONTROLS @"iosAutoplayControls"
 
@@ -63,6 +70,18 @@ static const iosApWeapon* iosAp_Weapons(int* pCount)
     }
     *pCount = (int)(sizeof(iosAp_aJkWeapons) / sizeof(iosAp_aJkWeapons[0]));
     return iosAp_aJkWeapons;
+}
+
+// The lightsaber's bin in this game (the weapon wheel's), and its bit
+static int iosAp_SaberBin(void)
+{
+    return iosGame_IsMots() ? 131 : 10;
+}
+
+static unsigned int iosAp_SaberBits(void)
+{
+    const int bit = iosAutoplay_WeaponBit(iosAp_SaberBin());
+    return bit >= 0 ? 1u << bit : 0u;
 }
 
 // Every weapon bit of this game (what ALL is made of, for counting)
@@ -128,17 +147,31 @@ static void iosAp_Load(void)
     iosAp_bLoaded = 1;
     NSUserDefaults* d = [NSUserDefaults standardUserDefaults];
     // (the defaults: every level shuffled, the hardest, twice the crowd, the
-    // alarm on, every weapon, no HUD, no controls)
+    // alarm on, the lightsaber only, a new look each fight, no HUD, no controls)
     iosAp_opt.levelRow = [d objectForKey:IOSAP_KEY_ROW] ? iosAp_Clamp([d integerForKey:IOSAP_KEY_ROW], -1, IOSAP_MAX_LEVELS - 1) : -1;
     iosAp_opt.difficulty = [d objectForKey:IOSAP_KEY_DIFF] ? iosAp_Clamp([d integerForKey:IOSAP_KEY_DIFF], 0, 2) : 2;
     iosAp_opt.crowd = [d objectForKey:IOSAP_KEY_CROWD] ? iosAp_Clamp([d integerForKey:IOSAP_KEY_CROWD], 1, 3) : 2;
     iosAp_opt.bAlarm = [d objectForKey:IOSAP_KEY_ALARM] ? ([d boolForKey:IOSAP_KEY_ALARM] ? 1 : 0) : 1;
-    iosAp_opt.weapons = IOSAUTOPLAY_WEAPONS_ALL;
-    if ([d objectForKey:IOSAP_KEY_WEAPONS]) {
-        const long long w = [[d objectForKey:IOSAP_KEY_WEAPONS] longLongValue];
-        iosAp_opt.weapons = (w < 0 || (unsigned int)w == IOSAUTOPLAY_WEAPONS_ALL) ? IOSAUTOPLAY_WEAPONS_ALL : ((unsigned int)w & iosAp_AllBits());
-        if (!iosAp_opt.weapons) iosAp_opt.weapons = IOSAUTOPLAY_WEAPONS_ALL;
+    const unsigned int saber = iosAp_SaberBits(), all = iosAp_AllBits();
+    NSNumber* pWeapons = [d objectForKey:IOSAP_KEY_WEAPONS];
+    if (![d boolForKey:IOSAP_KEY_SABERDEFAULT]) {
+        // once: ALL kept from before LIGHTSABER only was the default (or
+        // nothing kept) is made the new default; anything else picked stays
+        const long long w = pWeapons ? [pWeapons longLongValue] : -1LL;
+        if (!pWeapons || w < 0 || (unsigned int)w == IOSAUTOPLAY_WEAPONS_ALL || ((unsigned int)w & all) == all) {
+            [d setObject:[NSNumber numberWithLongLong:(long long)saber] forKey:IOSAP_KEY_WEAPONS];
+            pWeapons = nil;
+        }
+        [d setBool:YES forKey:IOSAP_KEY_SABERDEFAULT];
     }
+    iosAp_opt.weapons = saber;
+    if (pWeapons) {
+        const long long w = [pWeapons longLongValue];
+        iosAp_opt.weapons = (w < 0 || (unsigned int)w == IOSAUTOPLAY_WEAPONS_ALL) ? IOSAUTOPLAY_WEAPONS_ALL : ((unsigned int)w & all);
+        if (!iosAp_opt.weapons) iosAp_opt.weapons = saber;
+    }
+    // (the look kept only with the lightsaber among the weapons)
+    iosAp_opt.bKeepLook = [d boolForKey:IOSAP_KEY_KEEPLOOK] && (iosAp_opt.weapons & saber) ? 1 : 0;
     iosAp_opt.bHud = [d boolForKey:IOSAP_KEY_HUD] ? 1 : 0;
     iosAp_opt.bControls = [d boolForKey:IOSAP_KEY_CONTROLS] ? 1 : 0;
 }
@@ -152,6 +185,7 @@ static void iosAp_Save(void)
     [d setBool:(iosAp_opt.bAlarm ? YES : NO) forKey:IOSAP_KEY_ALARM];
     [d setObject:[NSNumber numberWithLongLong:(iosAp_opt.weapons == IOSAUTOPLAY_WEAPONS_ALL ? -1LL : (long long)iosAp_opt.weapons)]
           forKey:IOSAP_KEY_WEAPONS];
+    [d setBool:(iosAp_opt.bKeepLook ? YES : NO) forKey:IOSAP_KEY_KEEPLOOK];
     [d setBool:(iosAp_opt.bHud ? YES : NO) forKey:IOSAP_KEY_HUD];
     [d setBool:(iosAp_opt.bControls ? YES : NO) forKey:IOSAP_KEY_CONTROLS];
 }
@@ -188,7 +222,15 @@ static NSString* iosAp_LevelName(int row)
     UILabel* allTile;
     UILabel* doneTile;
     unsigned int picking;
+    int pickingKeep; // (the look kept, as the picker has it: LIGHTSABER held)
     int numWeapons;
+    // LIGHTSABER pressed (the picker): the finger (compared only, never
+    // kept), how it is going, when it went down (CACurrentMediaTime, the
+    // touch's own clock), and its ring
+    UITouch* saberTouch;
+    int saberPress;
+    double tSaberDown, tSaberDownTouch;
+    CAShapeLayer* saberRing;
     // the list of levels
     UIScrollView* list;
     UILabel* aListRow[IOSAP_MAX_LEVELS];
@@ -196,7 +238,17 @@ static NSString* iosAp_LevelName(int row)
     int numList;
 }
 - (void)refresh;
+- (void)endSaberPress;
+- (void)tickSaber:(double)now known:(double)known;
 @end
+
+// LIGHTSABER's press: none, held (its ring filling), slid off (nothing on
+// its lift), or held long enough (the wheel opened: nothing on its lift)
+enum { APPRESS_NONE = 0, APPRESS_HOLDING, APPRESS_OFF, APPRESS_HELD };
+
+// The saber wheel opened from LIGHTSABER: the panel hidden meanwhile, back
+// as it was once it closes (iosAutoplayPanel_Tick)
+static int iosAp_bWheel = 0;
 
 @implementation IOSAutoplayPanelView
 
@@ -281,6 +333,10 @@ static NSString* iosAp_LevelName(int row)
         aListLine[i].hidden = YES;
         [list addSubview:aListLine[i]];
     }
+    // (LIGHTSABER's hold ring, the overlay's: over the tiles, empty until held)
+    saberRing = [[CAShapeLayer alloc] init];
+    iosTouch_ShapeTileHoldRing(saberRing, CGSizeMake(IOSAP_TILE_H, IOSAP_TILE_H), 10.0);
+    [card.layer addSublayer:saberRing];
     page = APPAGE_MAIN;
     return self;
 }
@@ -419,8 +475,29 @@ static void iosAp_RowText(int row, NSString** pName, NSString** pValue)
         const int bit = iosAutoplay_WeaponBit(a[i].bin);
         const int bOn = bit >= 0 && (picking & (1u << bit));
         const char* pName = iosGame_GetWeaponName(a[i].bin);
-        aTile[i].text = pName ? [NSString stringWithUTF8String:pName] : @"?";
-        aTile[i].textColor = bOn ? [UIColor colorWithWhite:0.05 alpha:1.0] : iosAp_GroupColour(a[i].group, 0.55);
+        NSString* name = pName ? [NSString stringWithUTF8String:pName] : @"?";
+        UIColor* ink = bOn ? [UIColor colorWithWhite:0.05 alpha:1.0] : iosAp_GroupColour(a[i].group, 0.55);
+        if (bOn && pickingKeep && a[i].bin == iosAp_SaberBin()) {
+            // (its look kept: a small line under its name says so)
+            NSMutableAttributedString* t = [[NSMutableAttributedString alloc] initWithString:name
+                                                                                   attributes:@{ NSFontAttributeName: iosAp_Font(13.0), NSForegroundColorAttributeName: ink }];
+            NSAttributedString* line = [[NSAttributedString alloc] initWithString:@"\nYOUR LOOK"
+                                                                       attributes:@{ NSFontAttributeName: iosAp_Font(9.0),
+                                                                                     NSForegroundColorAttributeName: [UIColor colorWithWhite:0.05 alpha:0.7] }];
+            [t appendAttributedString:line];
+            aTile[i].attributedText = t;
+#if !__has_feature(objc_arc)
+            [line release];
+            [t release];
+#endif
+        }
+        else {
+            // (plain: as the tile was made, its lettering and colour set again
+            // after a kept look's line, which set them as its own)
+            aTile[i].font = iosAp_Font(13.0);
+            aTile[i].textColor = ink;
+            aTile[i].text = name;
+        }
         aTile[i].backgroundColor = bOn ? iosAp_GroupColour(a[i].group, 0.95) : [UIColor colorWithWhite:1.0 alpha:0.04];
         aTile[i].layer.borderColor = iosAp_GroupColour(a[i].group, bOn ? 1.0 : 0.35).CGColor;
     }
@@ -449,6 +526,9 @@ static void iosAp_RowText(int row, NSString** pName, NSString** pValue)
 
 - (void)setPage:(int)p
 {
+    // (LIGHTSABER held as the page goes: no hold, nor anything as it lifts)
+    if (saberPress == APPRESS_HOLDING) saberPress = APPRESS_OFF;
+    [self setSaberRing:0.0];
     page = p;
     if (p == APPAGE_LEVELS) {
         numList = MIN(iosAutoplay_LevelRows(), IOSAP_MAX_LEVELS);
@@ -476,6 +556,7 @@ static void iosAp_RowText(int row, NSString** pName, NSString** pValue)
     case APROW_ALARM: iosAp_opt.bAlarm = !iosAp_opt.bAlarm; break;
     case APROW_WEAPONS:
         picking = iosAp_opt.weapons == IOSAUTOPLAY_WEAPONS_ALL ? iosAp_AllBits() : iosAp_opt.weapons;
+        pickingKeep = iosAp_opt.bKeepLook;
         [self setPage:APPAGE_WEAPONS];
         return;
     case APROW_HUD: iosAp_opt.bHud = !iosAp_opt.bHud; break;
@@ -502,9 +583,134 @@ static int iosAp_Hit(UIView* v, CGPoint p)
     return !v.hidden && CGRectContainsPoint(CGRectInset(v.frame, -4.0, -4.0), p);
 }
 
+// The picker's LIGHTSABER tile (its index), or -1
+- (int)saberTile
+{
+    int n = 0;
+    const iosApWeapon* a = iosAp_Weapons(&n);
+    for (int i = 0; i < n && i < IOSAP_MAX_WEAPONS; i++)
+        if (a[i].bin == iosAp_SaberBin()) return i;
+    return -1;
+}
+
+- (void)setSaberRing:(CGFloat)progress
+{
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    saberRing.strokeEnd = progress;
+    [CATransaction commit];
+}
+
+// LIGHTSABER's press over (lifted, cancelled, the page or the panel gone)
+- (void)endSaberPress
+{
+    saberTouch = nil;
+    saberPress = APPRESS_NONE;
+    [self setSaberRing:0.0];
+}
+
+// A tile tapped: ticked or unticked (one at least stays ticked); LIGHTSABER
+// unticked, its look no longer kept (a new one each fight again)
+- (void)toggleTile:(int)i
+{
+    int n = 0;
+    const iosApWeapon* a = iosAp_Weapons(&n);
+    if (i < 0 || i >= n || i >= IOSAP_MAX_WEAPONS) return;
+    const int bit = iosAutoplay_WeaponBit(a[i].bin);
+    if (bit < 0) return;
+    const unsigned int next = picking ^ (1u << bit);
+    if (next & iosAp_AllBits()) picking = next;
+    if (!(picking & iosAp_SaberBits())) pickingKeep = 0;
+    [self refresh];
+}
+
+// LIGHTSABER held: ticked, its look kept, and the saber wheel (the game's
+// own, SABER's) opened over the game to pick that look, the panel hidden
+// until it closes. (The player needn't have the saber yet: the wheel only
+// sets how it looks; AUTOPLAY's show gives it, and so will the game.)
+- (void)saberHeld
+{
+    saberPress = APPRESS_HELD;
+    [self setSaberRing:0.0];
+    picking |= iosAp_SaberBits();
+    pickingKeep = 1;
+    [self refresh];
+    self.hidden = YES;
+    iosAp_bWheel = 1;
+    if (!iosTouch_OpenSaberWheelForPanel()) {
+        iosAp_bWheel = 0;
+        self.hidden = NO;
+    }
+}
+
+// Once a frame (iosAutoplayPanel_Tick): LIGHTSABER's ring filling; full,
+// with the finger still on it since a frame before (known: the last tick,
+// every lift made before it has been seen), the hold
+- (void)tickSaber:(double)now known:(double)known
+{
+    if (saberPress != APPRESS_HOLDING) return;
+    if (known - tSaberDown >= IOSAP_SABER_HOLD) [self saberHeld];
+    else [self setSaberRing:MIN((now - tSaberDown) / IOSAP_SABER_HOLD, 1.0)];
+}
+
+// A finger down: on the picker's LIGHTSABER, its press (a tap ticks it as
+// it lifts, a hold opens the saber wheel); everything else acts as it lifts
+- (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event
+{
+    // (one press at a time; one already over -- slid off, or its wheel opened
+    // with the finger still down -- gives way to a new one)
+    if (self.hidden || page != APPAGE_WEAPONS || saberPress == APPRESS_HOLDING) return;
+    const int k = [self saberTile];
+    if (k < 0) return;
+    for (UITouch* t in touches) {
+        if (!iosAp_Hit(aTile[k], [t locationInView:card])) continue;
+        saberTouch = t;
+        saberPress = APPRESS_HOLDING;
+        tSaberDown = CACurrentMediaTime();
+        tSaberDownTouch = t.timestamp;
+        iosTouch_ShapeTileHoldRing(saberRing, aTile[k].frame.size, aTile[k].layer.cornerRadius);
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        saberRing.position = CGPointMake(CGRectGetMidX(aTile[k].frame), CGRectGetMidY(aTile[k].frame));
+        [CATransaction commit];
+        return;
+    }
+}
+
+// LIGHTSABER slid off: no tap, no hold, even back on
+- (void)touchesMoved:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event
+{
+    if (!saberTouch || saberPress != APPRESS_HOLDING || ![touches containsObject:saberTouch]) return;
+    const int k = [self saberTile];
+    if (k < 0 || !iosAp_Hit(aTile[k], [saberTouch locationInView:card])) {
+        saberPress = APPRESS_OFF;
+        [self setSaberRing:0.0];
+    }
+}
+
+- (void)touchesCancelled:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event
+{
+    if (saberTouch && [touches containsObject:saberTouch]) [self endSaberPress];
+}
+
 // A finger lifted: on a row, START, a tile, the X; off the card, the panel closes
 - (void)touchesEnded:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event
 {
+    if (saberTouch && [touches containsObject:saberTouch]) {
+        // LIGHTSABER's press: lifted on it before the hold was up, a tap (held
+        // that long by the touch's own clock, a slow frame not having seen it
+        // yet, the hold); slid off, or the hold done, nothing
+        UITouch* t = saberTouch;
+        const int press = saberPress, k = [self saberTile];
+        const int bOn = k >= 0 && iosAp_Hit(aTile[k], [t locationInView:card]);
+        const double held = t.timestamp - tSaberDownTouch;
+        [self endSaberPress];
+        if (press != APPRESS_HOLDING || !bOn || self.hidden || page != APPAGE_WEAPONS) return;
+        if (held >= IOSAP_SABER_HOLD) [self saberHeld];
+        else [self toggleTile:k];
+        return;
+    }
+    if (self.hidden) return; // (a finger left down as the saber wheel opened)
     UITouch* t = [touches anyObject];
     if (!t) return;
     const CGPoint p = [t locationInView:card];
@@ -540,11 +746,7 @@ static int iosAp_Hit(UIView* v, CGPoint p)
         const iosApWeapon* a = iosAp_Weapons(&n);
         for (int i = 0; i < n && i < IOSAP_MAX_WEAPONS; i++) {
             if (!iosAp_Hit(aTile[i], p)) continue;
-            const int bit = iosAutoplay_WeaponBit(a[i].bin);
-            if (bit < 0) return;
-            const unsigned int next = picking ^ (1u << bit);
-            if (next & iosAp_AllBits()) picking = next; // (one at least stays ticked)
-            [self refresh];
+            [self toggleTile:i];
             return;
         }
         if (iosAp_Hit(allTile, p)) {
@@ -553,15 +755,12 @@ static int iosAp_Hit(UIView* v, CGPoint p)
         }
         else if (iosAp_Hit(doneTile, p)) {
             iosAp_opt.weapons = (picking & iosAp_AllBits()) == iosAp_AllBits() ? IOSAUTOPLAY_WEAPONS_ALL : (picking & iosAp_AllBits());
+            iosAp_opt.bKeepLook = pickingKeep && (picking & iosAp_SaberBits()) ? 1 : 0;
             iosAp_Save();
             [self setPage:APPAGE_MAIN];
         }
     }
 }
-
-- (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {}
-- (void)touchesMoved:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {}
-- (void)touchesCancelled:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {}
 
 @end
 
@@ -591,6 +790,7 @@ void iosAutoplayPanel_Open(void* pOverlay)
         }
         iosAp_pPanel.frame = host.bounds;
         [host bringSubviewToFront:iosAp_pPanel];
+        iosAp_bWheel = 0;
         iosAp_pPanel.hidden = NO;
         [iosAp_pPanel setPage:APPAGE_MAIN];
         iosGame_SetHoldReason(IOSGAME_HOLD_AUTOPLAY, 1); // (the game holds still while it is open)
@@ -599,7 +799,10 @@ void iosAutoplayPanel_Open(void* pOverlay)
 
 void iosAutoplayPanel_Close(void)
 {
-    if (!iosAp_pPanel || iosAp_pPanel.hidden) return;
+    // (also while it waits, hidden, for the saber wheel)
+    if (!iosAp_pPanel || (iosAp_pPanel.hidden && !iosAp_bWheel)) return;
+    iosAp_bWheel = 0;
+    [iosAp_pPanel endSaberPress];
     iosAp_pPanel.hidden = YES;
     iosGame_SetHoldReason(IOSGAME_HOLD_AUTOPLAY, 0);
 }
@@ -609,10 +812,23 @@ int iosAutoplayPanel_IsOpen(void)
     return iosAp_pPanel && !iosAp_pPanel.hidden;
 }
 
+static double iosAp_tTick = 0.0; // (the last tick, CACurrentMediaTime)
+
 void iosAutoplayPanel_Tick(void)
 {
+    const double now = CACurrentMediaTime(), known = iosAp_tTick;
+    iosAp_tTick = now;
+    if (iosAp_pPanel && iosAp_bWheel && !iosTouch_IsWheelOpen()) {
+        // the saber wheel LIGHTSABER opened closed: the panel back, as it was
+        // (the picker, LIGHTSABER ticked, its look kept; a finger still down
+        // since it held LIGHTSABER does nothing as it lifts)
+        iosAp_bWheel = 0;
+        iosAp_pPanel.hidden = NO;
+        [iosAp_pPanel refresh];
+    }
     if (!iosAutoplayPanel_IsOpen()) return;
     @autoreleasepool {
+        [iosAp_pPanel tickSaber:now known:known];
         if (iosGame_IsMultiplayer()) {
             iosAutoplayPanel_Close();
             return;

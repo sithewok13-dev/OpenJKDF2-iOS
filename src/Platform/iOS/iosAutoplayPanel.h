@@ -12,10 +12,19 @@
 //   DIFFICULTY  EASY / MEDIUM / HARD (the default)
 //   CROWD       1x / 2x (the default) / 3x
 //   ALARM       ON (the default) / OFF
-//   WEAPONS     ALL (the default), or "3 PICKED": a tap opens the picker, a
-//               tile for each weapon of the game in the weapon wheel's
-//               colours and names, tapped to tick or untick (one at least
-//               stays ticked), ALL and DONE (its X leaves it as it was)
+//   WEAPONS     "1 PICKED" (the default: the lightsaber only), "3 PICKED"
+//               or ALL: a tap opens the picker, a tile for each weapon of
+//               the game in the weapon wheel's colours and names, tapped to
+//               tick or untick (one at least stays ticked), ALL and DONE
+//               (its X leaves it as it was). LIGHTSABER held 0.5 s (a ring
+//               fills round it; sliding off cancels) is ticked and opens
+//               the saber wheel (the game's own, SABER's) over the game, the
+//               panel back as it was once it closes: that look is kept the
+//               whole show ("YOUR LOOK" under its name) instead of a new
+//               one each fight, and stays the player's after it. Tapping
+//               LIGHTSABER off lets it go. (Before LIGHTSABER only was the
+//               default, ALL was: a kept ALL, or nothing kept, is made
+//               LIGHTSABER only once.)
 //   HUD         OFF (the default) / ON
 //   CONTROLS    OFF (the default) / ON: the touch controls shown during the
 //               show as a player's thumbs would work them (display only)

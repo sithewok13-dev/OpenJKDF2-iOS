@@ -37,6 +37,8 @@ typedef struct iosAutoplayOptions {
     int crowd;             // CROWD: 1, 2 or 3 times the group
     int bAlarm;            // ALARM: everyone near woken
     unsigned int weapons;  // WEAPONS: IOSAUTOPLAY_WEAPONS_ALL, or the bits of those picked
+    int bKeepLook;         // WEAPONS' LIGHTSABER held (its look picked on the saber wheel): the
+                           // lightsaber's look as it is, all show long; else a new one each fight
     int bHud;              // HUD: the game's HUD shown during the show
     int bControls;         // CONTROLS: the touch controls shown as a player's thumbs would work them
 } iosAutoplayOptions;
