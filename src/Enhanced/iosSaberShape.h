@@ -88,6 +88,12 @@ void iosSaberShape_EndBlade(void);
 // (just before BeginBlade: with FILM, the next blade's glow softer, IOSSABERSHAPE_SOFT as strong (WHITE's);
 // BeginBlade takes it, once)
 void iosSaberShape_SetSoftGlow(int bSoft);
+// (just before BeginBlade: which of the thing's sabers the next blade is, 0 the right or the one, 1 the left, so
+// a crossguard's side blades light after its blade, each saber's own way, whichever hand draws it; BeginBlade
+// takes it, once; none: blade. And a thrown CROSS's (just before iosSaberShape_DrawThrownGlow, pThing the
+// thrower, saber which; after, NULL: put back): its side blades as that saber's were, lit or still lighting)
+void iosSaberShape_SetGuardKey(int saber);
+void iosSaberShape_SetGuardsFrom(struct SithThing* pThing, int saber);
 // (between them: the blade drawn a little ragged along its whole length, FOLD's, whatever the
 // shape; id: whose and which blade, each its own way; 0 not. A thrown FOLD's, its model: drawn
 // so over it, iosSaberShape_DrawThrownGlow; whether pLine is so now)

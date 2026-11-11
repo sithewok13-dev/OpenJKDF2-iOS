@@ -797,9 +797,12 @@ void iosSaber_EndThrownBlade(SithThing* pThing, int blade)
             const float tipShare = iosSaberShape_Get() != IOSSABERSHAPE_BEAM && w && w->baseRadius > 0 && w->tipRadius < w->baseRadius ? (float)(w->tipRadius / w->baseRadius) : 1.0f;
             // (WHITE's own with FILM: softer, as in hand)
             const int bSoft = rgb && id != IOSSABER_COLOUR_GAME && rgb == iosSaber_Row(iosSaber_look, id)->film;
+            // (a CROSS's side blades as its hand's were, lit or still lighting)
+            if (bCross) iosSaberShape_SetGuardsFrom(sithPlayer_g_pLocalPlayerThing, iosSaberThrow_ThrownHand(pThing));
             iosSaberShape_DrawThrownGlow(pThing, pBlade, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge,
                                          bCross ? IOSSABERSHAPE_FORM_CROSS : bFold ? IOSSABERSHAPE_FORM_FOLD : IOSSABERSHAPE_FORM_CHOSEN, pSideFace, pSideMat, tipShare,
                                          bSoft);
+            if (bCross) iosSaberShape_SetGuardsFrom(NULL, -1);
         }
     }
     if (!iosSaber_pThrownModel) return;
@@ -1027,6 +1030,7 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
     if (iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_CROSS)
         form = (iosSaber_HasSecondBlade(pThing) && iosSaber_HandHilt(pThing, !blade) == IOSSABER_HILT_CROSS) ? IOSSABERSHAPE_FORM_CROSS_PAIR : IOSSABERSHAPE_FORM_CROSS;
     iosSaberShape_SetSoftGlow(aMat && rgb != iosSaber_Row(iosSaber_look, id)->edge); // (WHITE's own with FILM: softer)
+    iosSaberShape_SetGuardKey(saber); // (a crossguard's side blades lighting after it, this saber's)
     iosSaberShape_BeginBlade(pThing, pLine, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge, aMat ? iosSaber_Row(iosSaber_look, id)->core : NULL,
                              form, blade);
     // (FOLD folded: its blades as far apart all along them, FILM's tips no wider; more so as it opens)
