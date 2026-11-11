@@ -1188,8 +1188,8 @@ hand's colours and has its own **HILT** button.
   a little past the end, while its white-hot middle keeps a steady width
   (only its rounded end moves with the tip), and now and then, at no set
   beat, a small spark in its own colour spits off it or a side blade and
-  fades close by; its two short blades are the same, narrowing to slightly
-  sharper points, their glow running into the blade's at the hilt. A
+  fades close by; its two short blades are the same, each narrowing to a
+  ragged point, their glow running into the blade's at the hilt. A
   thrown one looks the same. With FILM off it's the jagged blade above, as
   before. Only the look changes: the main blade hits as usual, and the
   vents and the short side blades don't hit anything.

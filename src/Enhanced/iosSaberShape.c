@@ -497,8 +497,11 @@ static int iosSaberShape_Metals(void)
     return 1;
 }
 
+static void iosSaberShape_ForgetGuards(void); // (below)
+
 void iosSaberShape_FreeWorld(void)
 {
+    iosSaberShape_ForgetGuards(); // (and CROSS's side blades' lighting: the things are gone)
     for (int i = 0; i < iosSaberShape_numGlows; i++)
         if (iosSaberShape_aGlow[i].loaded > 0) iosSaberShape_FreeGlow(&iosSaberShape_aGlow[i]);
     iosSaberShape_numGlows = 0;
@@ -877,22 +880,24 @@ static void iosSaberShape_Vert(int i, const rdVector3* c, flex_t ax, flex_t az, 
 // for each saber of each thing (iosSaberShape_SetGuardKey), from what its blade
 // does each time it is begun (its length: coming on, going in, out), whatever
 // its hilt, so a hilt changed to CROSS with the blade lit lights its side blades
-// after the gap too; a saber not seen for a while (or the game's clock gone
-// back, a load) is taken as it is: out in full, its side blades lit, so they
-// never stay dark. A thrown CROSS's keep on as its hand's were
-// (iosSaberShape_SetGuardsFrom).
+// after the gap too, as do a second saber's added to a lit one; a saber not
+// seen for a while (or the game's clock gone back, a load) is taken as it is:
+// out in full, its side blades lit, so they never stay dark. A blade suddenly
+// much shorter (put out and lit again unseen) is taken as lit again. A thrown
+// CROSS's keep on as its hand's were (iosSaberShape_SetGuardsFrom). Only the
+// player's look's sabers (iosSaberShape_SetGuardKey), forgotten with the level.
 // (also seen: none, the side blades growing with the blade; a gap of 300)
 #define IOSSABERSHAPE_GUARD_GAP 800
 #define IOSSABERSHAPE_GUARD_GROW 100
 #define IOSSABERSHAPE_GUARD_FLASH 150
 #define IOSSABERSHAPE_GUARD_FLASH_WIDTH 0.6f
 #define IOSSABERSHAPE_GUARD_OUT 80
-#define IOSSABERSHAPE_GUARD_STALE 400
+#define IOSSABERSHAPE_GUARD_STALE 800
 #define IOSSABERSHAPE_GUARD_SABERS 32
 enum { IOSSABERSHAPE_GUARDS_OUT = 0, IOSSABERSHAPE_GUARDS_ON, IOSSABERSHAPE_GUARDS_GOING };
 typedef struct {
     int bUsed, idx, saber, state, bCross, bLong; // (bLong: lit long since, as far as is known)
-    uint32_t sig, lastMs, startMs, goneMs;
+    uint32_t sig, lastMs, startMs, goneMs, bornMs; // (bornMs: when it was last taken afresh)
     flex_t lastLen, maxLen;
     float goneFrom;
 } iosSaberShapeGuards;
@@ -937,17 +942,34 @@ static float iosSaberShape_GuardsLit(const iosSaberShapeGuards* e, uint32_t now,
     return 0;
 }
 
+static void iosSaberShape_ForgetGuards(void)
+{
+    memset(iosSaberShape_aGuards, 0, sizeof(iosSaberShape_aGuards));
+}
+
+// (seen within IOSSABERSHAPE_GUARD_STALE of now, the clock not gone back since)
+static int iosSaberShape_GuardsLive(const iosSaberShapeGuards* e, uint32_t now)
+{
+    return e->bUsed && now >= e->lastMs && now - e->lastMs <= IOSSABERSHAPE_GUARD_STALE;
+}
+
+// (a saber's; none: NULL, or with bMake a slot for it: one not in use, else one not seen for a while, else the
+// one seen longest ago)
 static iosSaberShapeGuards* iosSaberShape_GuardsOf(const SithThing* pThing, int saber, int bMake)
 {
-    iosSaberShapeGuards* pOldest = NULL;
+    const uint32_t now = (uint32_t)sithTime_g_msecGameTime;
+    iosSaberShapeGuards *pFree = NULL, *pStale = NULL, *pOldest = NULL;
     for (int i = 0; i < IOSSABERSHAPE_GUARD_SABERS; i++) {
         iosSaberShapeGuards* e = &iosSaberShape_aGuards[i];
         if (e->bUsed && e->idx == pThing->idx && e->sig == pThing->signature && e->saber == saber) return e;
-        if (!pOldest || !e->bUsed || (pOldest->bUsed && e->lastMs < pOldest->lastMs)) pOldest = e;
+        if (!e->bUsed) { if (!pFree) pFree = e; }
+        else if (!iosSaberShape_GuardsLive(e, now)) { if (!pStale) pStale = e; }
+        else if (!pOldest || e->lastMs < pOldest->lastMs) pOldest = e;
     }
     if (!bMake) return NULL;
-    memset(pOldest, 0, sizeof(*pOldest));
-    return pOldest;
+    iosSaberShapeGuards* e = pFree ? pFree : (pStale ? pStale : pOldest);
+    memset(e, 0, sizeof(*e));
+    return e;
 }
 
 // (a blade begun: its saber's side blades moved on by its blade's length now, len; bCross: a crossguard's)
@@ -955,22 +977,32 @@ static void iosSaberShape_GuardsSeen(SithThing* pThing, int saber, flex_t len, i
 {
     const uint32_t now = (uint32_t)sithTime_g_msecGameTime;
     iosSaberShapeGuards* e = iosSaberShape_GuardsOf(pThing, saber, 1);
-    const int bFresh = !e->bUsed || now < e->lastMs || now - e->lastMs > IOSSABERSHAPE_GUARD_STALE;
+    const int bFresh = !iosSaberShape_GuardsLive(e, now);
     if (bFresh) {
-        // (not seen for a while: coming on from now, if it is and how far it goes is known; else lit long since)
+        // (not seen for a while: coming on from now, if it is and how far it goes is known; else lit long since --
+        // but a crossguard's added to a saber of the same thing lit before now (a second saber taken up lit), from now)
         const flex_t full = pThing->playerInfo ? pThing->playerInfo->length : 0;
+        int bAdded = 0;
+        for (int i = 0; bCross && len > 0 && i < IOSSABERSHAPE_GUARD_SABERS; i++) {
+            const iosSaberShapeGuards* o = &iosSaberShape_aGuards[i];
+            if (o != e && o->bUsed && o->idx == pThing->idx && o->sig == pThing->signature && o->saber != saber && iosSaberShape_GuardsLive(o, now)
+                && o->bornMs < now && o->state == IOSSABERSHAPE_GUARDS_ON)
+                bAdded = 1;
+        }
         e->bUsed = 1;
         e->idx = pThing->idx;
         e->sig = pThing->signature;
         e->saber = saber;
         e->state = len > 0 ? IOSSABERSHAPE_GUARDS_ON : IOSSABERSHAPE_GUARDS_OUT;
-        e->bLong = !(full > 0 && len < full);
+        e->bLong = !bAdded && !(full > 0 && len < full);
         e->startMs = now;
+        e->bornMs = now;
         e->maxLen = len;
     }
     else if (len <= 0) e->state = IOSSABERSHAPE_GUARDS_OUT;
-    else if (e->state == IOSSABERSHAPE_GUARDS_OUT || (e->state == IOSSABERSHAPE_GUARDS_GOING && len > e->lastLen)) {
-        // (coming on, or on again going in)
+    else if (e->state == IOSSABERSHAPE_GUARDS_OUT || (e->state == IOSSABERSHAPE_GUARDS_GOING && len > e->lastLen)
+             || (e->state == IOSSABERSHAPE_GUARDS_ON && len < e->lastLen * (flex_t)0.5)) {
+        // (coming on, or on again going in; or much shorter than it was: put out and lit again unseen)
         e->state = IOSSABERSHAPE_GUARDS_ON;
         e->bLong = 0;
         e->startMs = now;
@@ -1037,12 +1069,14 @@ void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned 
     iosSaberShape_bSoftNext = 0;
     iosSaberShape_pairHand = blade > 0 ? 1 : 0; // (two sabers in first person: whose, iosSaberShape_KeepFace)
     const int saber = iosSaberShape_guardKey >= 0 ? iosSaberShape_guardKey : (blade > 0 ? blade : 0); // (SetGuardKey: the next blade begun)
+    const int bGuardKey = iosSaberShape_guardKey >= 0;
     iosSaberShape_guardKey = -1;
     iosSaberShape_EndBlade(); // (begun twice with no end between: put back first)
     if (!pLine || !pLine->polyline) return;
-    // (every saber's blade followed, so a crossguard's side blades light after it: iosSaberShape_GuardsSeen)
+    // (every saber of the player's look followed, whatever its hilt, so a crossguard's side blades light after it:
+    // iosSaberShape_GuardsSeen)
     const int bCrossForm = form == IOSSABERSHAPE_FORM_CROSS || form == IOSSABERSHAPE_FORM_CROSS_PAIR;
-    if (pThing) {
+    if (pThing && bGuardKey) {
         iosSaberShape_GuardsSeen(pThing, saber, pLine->polyline->length, bCrossForm);
         if (bCrossForm) {
             // (its side blades as lit now, of their length with the blade as it is drawn: their full one, the
