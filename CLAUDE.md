@@ -45,9 +45,10 @@ everything on a phone.
   melee and Saber Throw, Force powers now and then. Each fight a new saber look
   (one or two, random hilts, the wheel's RANDOM colours), unless the look is kept
   (`bKeepLook`). A duel (every foe a boss) with no safe spot is fought where the
-  scene leaves Kyle; it is never left while a dark Jedi lives, bosses are never
-  steered (Kyle is placed near them instead), it lasts at most 4 min, and the
-  saber is used most of the time. A weapon pulled away is swapped for another
+  scene leaves Kyle; it is never left while a dark Jedi lives, Kyle is placed
+  near the bosses (one is called to him only when still, his script's move done,
+  and not invulnerable), it lasts at most 4 min of game time, and the saber is
+  used most of the time (a pulled saber is given back). A weapon pulled away is swapped for another
   allowed one (re-armed at most 3 times a fight). A level with no one left goes
   to the next (PICK ONE reloads its row); MotS's opening movies are skipped.
   Double tap
