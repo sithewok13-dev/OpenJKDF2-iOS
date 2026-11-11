@@ -523,13 +523,13 @@ static int ap_floorNear(const apGroup* g, float x, float y, float strictDrop, ap
     return ap_floorBelow(s, p, FT(4.0f) + strictDrop, pOut);
 }
 
-// Room around: the floor level and walkable a few steps every way
-static int ap_roomAround(rdVector3 feet, SithSector* sec)
+// Room around: the floor level and walkable a few steps (feet) every way
+static int ap_roomAround(rdVector3 feet, SithSector* sec, float steps)
 {
     for (int k = 0; k < 8; k++) {
         const float a = (float)k * AP_PI * 0.25f;
         apFloor end;
-        if (!ap_walk(feet, sec, feet.x + sinf(a) * FT(5.0f), feet.y + cosf(a) * FT(5.0f), FT(1.0f), FT(1.0f), &end)) return 0;
+        if (!ap_walk(feet, sec, feet.x + sinf(a) * FT(steps), feet.y + cosf(a) * FT(steps), FT(1.0f), FT(1.0f), &end)) return 0;
         if (fabsf(end.z - feet.z) > FT(1.0f) || !end.bWorld) return 0;
     }
     return 1;
@@ -537,13 +537,16 @@ static int ap_roomAround(rdVector3 feet, SithSector* sec)
 
 // Somewhere near the group, a straight walk from it, standing safe, facing
 // them with a clear view: of several of them (not of a whole crowd at once),
-// of the middle of the group, and open space in front
-static int ap_findSpot(const apGroup* g, apSpot* out)
+// of the middle of the group, and open space in front. bTight: a level of
+// narrow ways (a ship's corridors) -- less room round him, and nearer them
+static int ap_findSpot(const apGroup* g, apSpot* out, int bTight)
 {
     float bestScore = 1e9f;
-    static const float aR[] = { 12.0f, 16.0f, 20.0f, 25.0f, 30.0f, 36.0f, 44.0f };
+    static const float aWide[] = { 12.0f, 16.0f, 20.0f, 25.0f, 30.0f, 36.0f, 44.0f };
+    static const float aTight[] = { 7.0f, 9.0f, 12.0f, 16.0f, 20.0f, 25.0f, 30.0f };
+    const float* aR = bTight ? aTight : aWide;
     if (!g->sector) return 0;
-    for (int ri = 0; ri < (int)(sizeof(aR) / sizeof(aR[0])); ri++) {
+    for (int ri = 0; ri < 7; ri++) {
         const float r = FT(aR[ri]);
         for (int k = 0; k < 20; k++) {
             const float a = ((float)k + ap_rand01() * 0.6f) * (2.0f * AP_PI / 20.0f);
@@ -552,7 +555,7 @@ static int ap_findSpot(const apGroup* g, apSpot* out)
             if (!ap_floorNear(g, x, y, FT(10.0f), &fl) || !fl.bWorld || !fl.bSafe) continue;
             rdVector3 feet = ap_v3(x, y, fl.z);
             if (fabsf(feet.z - g->center.z) > FT(8.0f)) continue;
-            if (!ap_roomAround(feet, fl.sector)) continue;
+            if (!ap_roomAround(feet, fl.sector, bTight ? 2.5f : 5.0f)) continue;
             // (a straight walk to them, if with a jump or a drop: the same place, no wall between)
             if (!ap_walk(feet, fl.sector, g->anchor.x, g->anchor.y, FT(10.0f), FT(6.0f), NULL)) continue;
             rdVector3 eye = ap_v3(feet.x, feet.y, feet.z + FT(AP_EYE_FT));
@@ -568,7 +571,7 @@ static int ap_findSpot(const apGroup* g, apSpot* out)
                 seen++;
                 if (ap_lenXY(ap_sub(s_foes[i].pos, g->center)) < FT(40.0f)) inView++;
             }
-            if (nearest < FT(7.0f)) continue;
+            if (nearest < FT(bTight ? 5.0f : 7.0f)) continue;
             const float yaw = ap_headingTo(feet, g->center);
             const int open = ap_sees(eyeSec, eye, ap_add(eye, ap_v3(sinf(yaw) * FT(10.0f), cosf(yaw) * FT(10.0f), 0.0f)));
             const int middle = ap_sees(eyeSec, eye, ap_v3(g->center.x, g->center.y, g->center.z + FT(4.0f)));
@@ -1255,16 +1258,19 @@ static void ap_startScene(double now, int bAnother)
         }
         for (int i = 0; i < numHere; i++) order[k++] = here[i];
     }
-    // (a duel's: a dark Jedi with nowhere near him the finder likes -- a narrow
-    // walk, a ledge, steps -- is fought from where the level's own scene has
-    // just left Kyle, in the arena facing him, rather than the show going on
-    // to another level without the fight)
+    // (none with a spot the finder likes, rather than the show going on to
+    // another level without a fight: a duel's dark Jedi -- on a narrow walk,
+    // a ledge, steps -- is fought from where the level's own scene has just
+    // left Kyle, in the arena facing him; elsewhere, a level of narrow ways
+    // -- a ship's corridors -- each group again, with less room asked for)
     int bBoss = 0;
     for (int i = 0; i < s_numFoes; i++)
         if (s_foes[i].thing->actorParams.flags & SITH_AF_BOSS) bBoss = 1;
-    for (int oi = 0; oi < numOrder + (bBoss && numOrder > 0 ? 1 : 0); oi++) {
-        const int bHere = oi == numOrder;
-        const apGroup* g = &aGroups[order[bHere ? 0 : oi]];
+    const int numTries = numOrder > 0 ? numOrder + (bBoss ? 1 : numOrder) : 0;
+    for (int oi = 0; oi < numTries; oi++) {
+        const int bHere = bBoss && oi == numOrder;
+        const int bTight = !bBoss && oi >= numOrder;
+        const apGroup* g = &aGroups[order[bHere ? 0 : oi % numOrder]];
         apSpot spot;
         if (bHere) {
             // (the group nearest him; his feet where he stands)
@@ -1276,9 +1282,10 @@ static void ap_startScene(double now, int bAnother)
             if (ap_floorBelow(pl->sector, pl->position, FT(20.0f), &fl)) spot.feet.z = fl.z;
             spot.yaw = ap_headingTo(spot.feet, g->center);
         }
-        else if (!ap_findSpot(g, &spot)) continue;
+        else if (!ap_findSpot(g, &spot, bTight)) continue;
         APLOG("SCENE at %.1f s: group of %d at %.2f %.2f %.2f (rank %d), Kyle at %.2f %.2f %.2f%s\n", now - s_tStart, g->count,
-              g->center.x, g->center.y, g->center.z, bHere ? -1 : order[oi], spot.feet.x, spot.feet.y, spot.feet.z, bHere ? " (where he stands: a duel)" : "");
+              g->center.x, g->center.y, g->center.z, bHere ? -1 : order[oi % numOrder], spot.feet.x, spot.feet.y, spot.feet.z,
+              bHere ? " (where he stands: a duel)" : bTight ? " (a tight spot)" : "");
         if (!bHere) ap_place(pl, &spot);
         s_group = *g;
         s_center = g->center;
@@ -2081,7 +2088,7 @@ void iosAutoplay_Tick(double now)
         if (bLost && now >= s_tReplace) {
             s_tReplace = now + 8.0;
             apSpot spot;
-            if (ap_findSpot(&s_group, &spot)) {
+            if (ap_findSpot(&s_group, &spot, 0) || ap_findSpot(&s_group, &spot, 1)) {
                 APLOG("put back at %.1f s\n", now - s_tStart);
                 ap_place(pl, &spot);
                 ap_resetPilot(now, spot.feet);
