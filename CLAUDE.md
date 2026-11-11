@@ -95,6 +95,9 @@ everything on a phone.
   - FORCE WHEEL and NEXT WPN: tap = next; a 10 pt slide opens the wheel at once; a
     0.3 s hold opens it to tap. The gap at the bottom cancels. The game holds still
     while a wheel is open. A haptic tick per slice. 4 gold stars per power level.
+    This port's places: FORCE WHEEL small, by FORCE; NEXT WPN top left.
+  - LAST WPN (this port's, right of NEXT WPN): tap = the weapon held before; again
+    = back. Dimmed, doing nothing, with none to go back to (or it's gone or empty).
   - HUD and buttons stay clear of the corners, the notch or Dynamic Island, and the
     home bar.
 - **Testing:** a real-engine Linux rig with the real data (local only) and the real

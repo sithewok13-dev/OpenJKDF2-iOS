@@ -9,6 +9,7 @@
 #include "Enhanced/iosFreeze.h"
 #include "Enhanced/iosAutoplay.h"
 #include "Enhanced/iosSceneSkip.h"
+#include "Enhanced/iosGame.h"
 #include "Platform/platServices.h"
 #include "Enhanced/enhSettings.h"
 #include "SDL2_helper.h"
@@ -34,6 +35,7 @@ void enh_Tick(void)
     else if (iosFreeze_IsActive()) {
         iosFreeze_Frame();
     }
+    iosGame_WeaponTick(); // (LAST WPN: the weapon in hand, noted)
     iosSceneSkip_Frame(); // (a level's scene begun, for the overlay's hint; a skip that went elsewhere, over)
     iosAutoplay_Tick(now); // (AUTOPLAY's show: its autopilot's keys and turning for this frame)
     platServices_Tick();

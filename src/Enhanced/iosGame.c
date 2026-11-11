@@ -23,6 +23,7 @@
 #include "Engine/sithCamera.h"
 #include "Enhanced/iosSceneSkip.h"
 #include "Enhanced/iosAutoplay.h"
+#include "Enhanced/iosLastWeapon.h"
 #include "Gui/jkGUIEsc.h"
 #include "stdPlatform.h"
 #include "jk.h"
@@ -417,6 +418,32 @@ int iosGame_GetCurWeapon(void)
 void iosGame_CancelWeaponPick(void)
 {
     iosGame_pendingWeapon = -1;
+}
+
+// LAST WPN: the weapon in hand noted each frame (iosLastWeapon), afresh with
+// each level and player
+static SithThing* iosGame_pWeaponPlayer = NULL;
+static SithWorld* iosGame_pWeaponWorld = NULL;
+
+void iosGame_WeaponTick(void)
+{
+    SithThing* pPlayer = iosGame_GetPlayer();
+    if (pPlayer != iosGame_pWeaponPlayer || sithWorld_g_pCurrentWorld != iosGame_pWeaponWorld) {
+        iosGame_pWeaponPlayer = pPlayer;
+        iosGame_pWeaponWorld = sithWorld_g_pCurrentWorld;
+        iosLastWeapon_Reset();
+    }
+    if (!pPlayer || !pPlayer->actorParams.pPlayer) return;
+    const int held = pPlayer->actorParams.pPlayer->curWeaponID;
+    if (held >= 0 && held < SITHBIN_NUMBINS) iosLastWeapon_Note(held);
+}
+
+int iosGame_GetLastWeapon(void)
+{
+    int ammo = 0, bSelectable = 0;
+    const int bin = iosLastWeapon_Get();
+    if (bin < 0 || !iosGame_GetPlayer() || !iosGame_GetWeapon(bin, &ammo, &bSelectable) || !bSelectable) return -1;
+    return bin;
 }
 
 // Hands the waiting pick to the game once it would take the weapon's number

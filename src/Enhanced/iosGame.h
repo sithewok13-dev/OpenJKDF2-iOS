@@ -102,6 +102,12 @@ int iosGame_GetCurWeapon(void);
 // cog first, as the key does, and is remembered as that key's weapon.
 // Returns 1 if it was taken or is waiting.
 int iosGame_SelectWeapon(int bin);
+// LAST WPN: the weapon held before the one in hand (however the switch came
+// about), noted once a frame (iosGame_WeaponTick, from enh_Tick); its bin if
+// the player can switch to it now (had, with ammo), else -1. A new level
+// starts afresh.
+void iosGame_WeaponTick(void);
+int iosGame_GetLastWeapon(void);
 
 // Drops a pick still waiting (NEXT WPN tapped, the overlay reset, QUICK LOAD).
 void iosGame_CancelWeaponPick(void);
