@@ -1361,14 +1361,22 @@ static void ap_callDuelist(SithThing* pl, double now)
     }
 }
 
-// (from his feet, one of the enemies in sight or a straight walk away)
+// (from his feet, one of the enemies in sight or a straight walk away, and
+// in sight from there; never one right under or over him -- Maw below the
+// ledge he stands on -- whom he'd neither see nor reach from there)
 static int ap_reachesFoe(SithThing* pl, rdVector3 feet)
 {
     const rdVector3 eye = ap_v3(feet.x, feet.y, feet.z + FT(AP_EYE_FT));
     SithSector* eyeSec = ap_sectorAt(pl->sector, pl->position, eye);
     for (int i = 0; i < s_numFoes; i++) {
-        if (eyeSec && ap_sees(eyeSec, eye, s_foes[i].head)) return 1;
-        if (ap_walk(feet, pl->sector, s_foes[i].pos.x, s_foes[i].pos.y, FT(10.0f), FT(6.0f), NULL)) return 1;
+        const apFoe* f = &s_foes[i];
+        if (ap_lenXY(ap_sub(f->pos, feet)) < FT(4.0f) && fabsf(f->pos.z - feet.z) > FT(4.0f)) continue;
+        if (eyeSec && ap_sees(eyeSec, eye, f->head)) return 1;
+        apFloor end;
+        if (!ap_walk(feet, pl->sector, f->pos.x, f->pos.y, FT(10.0f), FT(6.0f), &end) || !end.sector) continue;
+        const rdVector3 there = ap_v3(f->pos.x, f->pos.y, end.z + FT(AP_EYE_FT));
+        SithSector* s2 = ap_sectorAt(end.sector, ap_v3(f->pos.x, f->pos.y, end.z + FT(1.0f)), there);
+        if (s2 && ap_lenXY(ap_sub(f->pos, feet)) >= FT(4.0f) && ap_sees(s2, there, f->head)) return 1;
     }
     return 0;
 }
@@ -1935,7 +1943,10 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
             }
         }
         const float d = ap_lenXY(ap_sub(goal, feet));
-        float toGoal = (d > FT(1.0f)) ? ap_headingTo(feet, goal) : yaw;
+        // (the one he's after right under or over him -- below the ledge he
+        // stands on, overhead -- out of view: he walks off a little for a look)
+        const int bStacked = d <= FT(10.0f) && fabsf(goal.z - feet.z) > FT(6.0f);
+        float toGoal = bStacked ? (d > FT(1.0f) ? ap_headingTo(goal, feet) : yaw) : (d > FT(1.0f)) ? ap_headingTo(feet, goal) : yaw;
         // (a wall that way: the way round it, the nearest open heading to it,
         // kept a moment so the view doesn't hunt about)
         if (now >= s_tSearch) {
@@ -1959,7 +1970,7 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
         yawWanted = toGoal + ((d > FT(10.0f)) ? s_glance * 0.3f : s_glance);
         pitchWanted = -0.04f + s_drift;
         quickness = 5.5f;
-        if (d > FT(10.0f) || s_searchOff != 0.0f) wantY = fabsf(ap_wrap(toGoal - yaw)) < 0.6f ? 1.0f : 0.3f;
+        if (d > FT(10.0f) || s_searchOff != 0.0f || bStacked) wantY = fabsf(ap_wrap(toGoal - yaw)) < 0.6f ? 1.0f : 0.3f;
     }
 
     // keep off ledges, pits and water, and out of walls; a way that's shut
