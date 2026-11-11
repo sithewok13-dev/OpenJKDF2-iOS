@@ -1104,8 +1104,9 @@ hand's colours and has its own **HILT** button.
   - **Depth in first person:** with FILM, the glow round your own blades in
     first person is softer the further off that part of the blade is, so a
     blade pointing away fades a little toward its tip and the further of two
-    sabers glows less. The white-hot middle stays bright white all the way
-    to the tip. Third person and everyone else's sabers look as before.
+    sabers glows less. The blade itself, its middle included, stays as it
+    is all the way to the tip. Third person and everyone else's sabers look
+    as before.
   - It's a setting for your own screen. It changes your blade, and in
     multiplayer the blades of players whose game sends their saber choice.
     Players on other builds keep the game's blade.
@@ -1248,11 +1249,12 @@ hand's colours and has its own **HILT** button.
   never the same as the last three, and any swing, block, weapon change,
   run, jump or Saber Throw takes over at once. A faint shimmer plays on each blade. Kyle has no new animations, so in his
   two-handed swings the blades come from nearly the same place.
-  With a STAFF (or an opened FOLD), which he holds across the view, and a
-  one-blade saber or a folded FOLD in the other hand, he holds the STAFF a
-  little further out and the other saber a little nearer while he stands,
-  so where the blades cross they look apart rather than tangled. The hands
-  ease back for a swing and out again after it, so swings look as before.
+  With a STAFF (or an opened FOLD), held across the view, in one hand and
+  a one-blade saber or a folded FOLD in the other, the STAFF is held a
+  little further out and the other saber a little nearer, except while you
+  swing, so where the blades cross they look apart rather than tangled.
+  The hands ease back for a swing and out again after it, so swings look
+  as before.
 - **Only the look changes,** and only in your own single-player game: the
   saber's damage, your saves and the levels are untouched. The colours show
   in first and third person, in selfies and in Action Freeze. The app

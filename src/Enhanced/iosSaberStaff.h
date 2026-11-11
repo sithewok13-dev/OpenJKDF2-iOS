@@ -101,7 +101,7 @@ int iosSaberStaff_DrawThrown(struct SithThing* pThing, int* pRet);
 // the left arm's grip on the staff, or let go
 void iosSaberStaff_PoseArms(struct rdThing* pRdThing);
 
-// Two sabers in first person, at rest (iosStance): how much further out each hand holds its saber (less than 0:
+// Two sabers in first person, but in a swing (iosStance): how much further out each hand holds its saber (less than 0:
 // nearer), so the one turned across the view lies behind the other where their blades cross
 void iosSaberStaff_PovDepths(struct SithThing* pThing, float* pRight, float* pLeft);
 // A swing begun (jkSaber_Enable): no spin for a while; FOLD's AUTO

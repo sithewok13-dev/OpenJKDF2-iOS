@@ -1485,7 +1485,7 @@ int iosSaberStaff_DrawPovBlades(SithThing* pActor, rdThing* pLine, const rdModel
     return 1;
 }
 
-// Two sabers in first person, at rest (iosStance): the one turned across the view (STAFF; FOLD as far as it is
+// Two sabers in first person, but in a swing (iosStance): the one turned across the view (STAFF; FOLD as far as it is
 // open) held IOSSABERSTAFF_POV_FURTHER further out, the other IOSSABERSTAFF_POV_NEARER nearer, so where their
 // blades cross they read as apart in depth; as much less as both are across, none with neither (two NORMALs) or
 // both (two STAFFs). (also seen: 0.024 and 0.008, clearer but the STAFF small; and the FOLD turned in the hand,

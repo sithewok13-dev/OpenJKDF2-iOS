@@ -384,7 +384,7 @@ static void iosStance_CutGesture(float now)
     iosStance_s.nextGesture = now + IOSSTANCE_GESTURE_CUT + iosStance_RandRange(IOSSTANCE_GESTURE_GAP_MIN, IOSSTANCE_GESTURE_GAP_MAX);
 }
 
-// (how much further out each hand holds its saber at rest, model units: iosSaberStaff_PovDepths)
+// (how much further out each hand holds its saber, but in a swing, model units: iosSaberStaff_PovDepths)
 static float iosStance_aDepth[2];
 
 void iosStance_Update(SithThing* pActor, int bBusy)
@@ -695,7 +695,7 @@ int iosStance_GetHand(int hand, const rdVector3* pPivot, rdMatrix34* pOut)
     r.scale.x = pPivot->x - rp.x + IOSSTANCE_SIDE * (w * p.side + (1.0f - w) * (p.side - base.side));
     r.scale.y = pPivot->y - rp.y + (w * p.fwd + (1.0f - w) * (p.fwd - base.fwd));
     r.scale.z = pPivot->z - rp.z - (w * p.lower + (1.0f - w) * (p.lower - base.lower));
-    // (two sabers held apart in depth, iosSaberStaff_PovDepths: at rest, eased in and out as a swing takes the arm)
+    // (two sabers held apart in depth, iosSaberStaff_PovDepths: as the stance is, eased out as a swing takes the arm)
     r.scale.y += iosStance_aDepth[hand] * (w * w * (3.0f - 2.0f * w));
     *pOut = r;
     return 1;

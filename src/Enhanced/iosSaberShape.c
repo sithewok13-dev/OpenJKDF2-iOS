@@ -165,8 +165,17 @@ static const float iosSaberShape_aWhite[IOSSABERSHAPE_NUM_GAINS] = { IOSSABERSHA
 // (room for every colour of both looks, the game's own blades' and the thrown
 // ones', at each strength and as FILM's core, on one level; FILM's cores are
 // made here too, opaque)
+// (and each FILM colour's glow, dimmed, IOSSABERSHAPE_DIM_LEVELS - 1 of them, made a few a frame as they are first
+// needed (IOSSABERSHAPE_DIM_PER_FRAME; the nearest made meanwhile), never from the last IOSSABERSHAPE_DIM_RESERVE slots:
+// those kept for glows as ever; once fewer than a quarter of those are left, the dimmed ones are all given up, the
+// next scene, before glows as ever could run short, and made again as they are needed)
+#ifndef IOSSABERSHAPE_MAX_GLOWS // (a test build may have fewer)
 #define IOSSABERSHAPE_MAX_GLOWS 512
-typedef struct {
+#define IOSSABERSHAPE_DIM_RESERVE 128
+#endif
+#define IOSSABERSHAPE_DIM_PER_FRAME 2
+#define IOSSABERSHAPE_DIM_LEVELS 12
+typedef struct iosSaberShapeGlow {
     unsigned char rgb[3];
     unsigned char core[3]; // (a core's middle)
     int gain;
@@ -174,6 +183,7 @@ typedef struct {
     rdMaterial mat;
     flex_t w, h;
     int dim; // (how much less it glows, further off: iosSaberShape_DimLevel; 0, as ever)
+    struct iosSaberShapeGlow* apDim[IOSSABERSHAPE_DIM_LEVELS]; // (one as ever: its dimmed ones made so far, by level)
 } iosSaberShapeGlow;
 static iosSaberShapeGlow iosSaberShape_aGlow[IOSSABERSHAPE_MAX_GLOWS];
 static int iosSaberShape_numGlows = 0;
@@ -188,12 +198,11 @@ static int iosSaberShape_numGlows = 0;
 // FILM's blades in first person: the further off each slice of a blade is, the less its glow (iosSaberShape_DimLevel),
 // so two sabers, or a blade going away, read as apart in depth: as ever up to IOSSABERSHAPE_DIM_NEAR from the eye,
 // IOSSABERSHAPE_DIM_GLOW less from IOSSABERSHAPE_DIM_FAR on, in IOSSABERSHAPE_DIM_LEVELS steps, each its own glow
-// textures. The white-hot middle stays as bright all along, to the tip.
+// textures. The blade itself (its core, its middle) stays as it is, all along to the tip.
 // (also seen: 0.3 less, subtler; the core dimmed too, and a little see-through, which turned far tips grey)
 #define IOSSABERSHAPE_DIM_NEAR 0.045f
 #define IOSSABERSHAPE_DIM_FAR 0.13f
 #define IOSSABERSHAPE_DIM_GLOW 0.6f
-#define IOSSABERSHAPE_DIM_LEVELS 12
 #ifdef IOSDEPTH_COMPARE
 #include <stdio.h>
 #endif
@@ -242,9 +251,7 @@ static void iosSaberShape_DimTexels(uint8_t* pOut, int w, int h, float k, int bG
         if (!bGlow) o[3] = (uint8_t)(o[3] * k + 0.5f);
     }
 }
-// (each level's glow (and with RIG_DEPTH_C_CORE, core and white middle) for the blade being drawn, found once;
-// forgotten with the level's glows)
-static iosSaberShapeGlow* iosSaberShape_apDim[3][IOSSABERSHAPE_DIM_LEVELS];
+static int iosSaberShape_bGiveUpDims = 0; // (the slots ran out: the dimmed glows given up, the next scene)
 static void iosSaberShape_MakeTexels(uint8_t* pOut, int w, int h, const unsigned char rgb[3], float gain, float white, int bFilm)
 {
     for (int y = 0; y < h; y++) {
@@ -408,12 +415,23 @@ static iosSaberShapeGlow* iosSaberShape_GlowDim(const unsigned char rgb[3], int 
         if (g->dim != dim) continue;
         if (g->gain == gain && !memcmp(g->rgb, rgb, 3) && !memcmp(g->core, core, 3)) return g->loaded > 0 ? g : NULL;
     }
-    // (a slot of its own; one that couldn't be made gives its slot up when they run out)
+    // (a slot of its own; one that couldn't be made, or a dimmed one given up, gives its slot up when they run out;
+    // a dimmed one never from the last IOSSABERSHAPE_DIM_RESERVE, and when even those run out, the dimmed ones given up)
+    int nFree = IOSSABERSHAPE_MAX_GLOWS - iosSaberShape_numGlows, nDims = 0;
+    for (int i = 0; i < iosSaberShape_numGlows; i++) {
+        if (iosSaberShape_aGlow[i].loaded < 0) nFree++;
+        else if (iosSaberShape_aGlow[i].dim > 0) nDims++;
+    }
+    if (dim > 0 && nFree <= IOSSABERSHAPE_DIM_RESERVE) return NULL;
+    if (!dim && nDims && nFree <= IOSSABERSHAPE_DIM_RESERVE / 4) iosSaberShape_bGiveUpDims = 1;
     iosSaberShapeGlow* g = NULL;
     if (iosSaberShape_numGlows < IOSSABERSHAPE_MAX_GLOWS) g = &iosSaberShape_aGlow[iosSaberShape_numGlows++];
     for (int i = 0; !g && i < iosSaberShape_numGlows; i++)
         if (iosSaberShape_aGlow[i].loaded < 0) g = &iosSaberShape_aGlow[i];
-    if (!g) return NULL;
+    if (!g) {
+        if (!dim) iosSaberShape_bGiveUpDims = 1;
+        return NULL;
+    }
     memset(g, 0, sizeof(*g));
     memcpy(g->rgb, rgb, 3);
     memcpy(g->core, core, 3);
@@ -575,7 +593,7 @@ void iosSaberShape_FreeWorld(void)
     for (int i = 0; i < iosSaberShape_numGlows; i++)
         if (iosSaberShape_aGlow[i].loaded > 0) iosSaberShape_FreeGlow(&iosSaberShape_aGlow[i]);
     iosSaberShape_numGlows = 0;
-    memset(iosSaberShape_apDim, 0, sizeof(iosSaberShape_apDim));
+    iosSaberShape_bGiveUpDims = 0;
     iosSaberShape_FreeMetals();
 }
 
@@ -659,6 +677,21 @@ static void iosSaberShape_Quad(rdThing* pLine, rdMaterial* pMat, rdTexMode_t tex
 void iosSaberShape_BeginScene(void)
 {
     iosSaberShape_numQueued = 0;
+    if (iosSaberShape_bGiveUpDims) {
+        // (the glow slots ran out: the dimmed ones given up, their slots free (their keys matching none), and no glow's
+        // dimmed ones remembered; here, as nothing drawn with them waits to be drawn)
+        iosSaberShape_bGiveUpDims = 0;
+        for (int i = 0; i < iosSaberShape_numGlows; i++) {
+            iosSaberShapeGlow* g = &iosSaberShape_aGlow[i];
+            if (g->dim > 0) {
+                if (g->loaded > 0) iosSaberShape_FreeGlow(g);
+                g->loaded = -1;
+                g->gain = -1;
+                g->dim = 0;
+            }
+            memset(g->apDim, 0, sizeof(g->apDim));
+        }
+    }
 }
 
 void iosSaberShape_FlushGlows(void)
@@ -1153,6 +1186,8 @@ static rdThing* iosSaberShape_pLine = NULL;
 static flex_t iosSaberShape_savedBase, iosSaberShape_savedTip, iosSaberShape_savedLength;
 static flex_t iosSaberShape_beamTip; // (FILM: its tip's radius, fitted; the game's round tip face, drawn at the template's tip radius, left out)
 static iosSaberShapeGlow* iosSaberShape_pGlow = NULL;
+static iosSaberShapeGlow* iosSaberShape_pGlowBase = NULL; // (FILM: its glow unshimmered, iosSaberShape_GlowAt)
+static int iosSaberShape_glowShift = 0; // (its shimmer as a level of that: -1 brighter, 1 dimmer)
 static iosSaberShapeGlow* iosSaberShape_pCore = NULL; // (FILM: its core)
 static int iosSaberShape_bCross = 0;
 static int iosSaberShape_bSoftNext = 0; // (iosSaberShape_SetSoftGlow: the next blade begun)
@@ -1231,6 +1266,15 @@ void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned 
     const int gain = sb > 0.35f ? (bSoft ? IOSSABERSHAPE_GAIN_SOFT_BRIGHT : IOSSABERSHAPE_GAIN_BLADE_BRIGHT)
                      : (sb < -0.35f ? (bSoft ? IOSSABERSHAPE_GAIN_SOFT_DIM : IOSSABERSHAPE_GAIN_BLADE_DIM) : (bSoft ? IOSSABERSHAPE_GAIN_SOFT : IOSSABERSHAPE_GAIN_BLADE));
     iosSaberShape_pGlow = rgb ? iosSaberShape_Glow(rgb, gain) : NULL;
+    {
+        // (its glow dimmed further off, first person only (iosSaberShape_GlowAt): from the unshimmered one's)
+        const int gainEven = bSoft ? IOSSABERSHAPE_GAIN_SOFT : IOSSABERSHAPE_GAIN_BLADE;
+        const int z = rdGetZBufferMethod();
+        const int bFirst = z != RD_ZBUFFER_READ_WRITE && z != RD_ZBUFFER_NOREAD_WRITE && iosSaberShape_DimStrength() > 0.0f;
+        iosSaberShape_pGlowBase = !bFirst || !iosSaberShape_pGlow || gain == gainEven ? iosSaberShape_pGlow : iosSaberShape_Glow(rgb, gainEven);
+        iosSaberShape_glowShift = (gain == IOSSABERSHAPE_GAIN_SOFT_BRIGHT || gain == IOSSABERSHAPE_GAIN_BLADE_BRIGHT) ? -1
+                                  : ((gain == IOSSABERSHAPE_GAIN_SOFT_DIM || gain == IOSSABERSHAPE_GAIN_BLADE_DIM) ? 1 : 0);
+    }
     iosSaberShape_pCore = rgb ? iosSaberShape_Glow2(rgb, IOSSABERSHAPE_GAIN_CORE, core) : NULL;
     // (two sabers in first person: its core's white middle alone, to draw again, iosSaberShape_SetMiddle)
     if (iosSaberShape_bPair && iosSaberShape_pCore) {
@@ -1307,6 +1351,7 @@ void iosSaberShape_EndBlade(void)
     }
     iosSaberShape_pLine = NULL;
     iosSaberShape_pGlow = NULL;
+    iosSaberShape_pGlowBase = NULL;
     iosSaberShape_pCore = NULL;
     iosSaberShape_pBladeMid = NULL;
     iosSaberShape_bCross = 0;
@@ -1359,14 +1404,41 @@ static int iosSaberShape_DimLevel(flex_t depth)
     t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
     return (int)(t * (IOSSABERSHAPE_DIM_LEVELS - 1) + 0.5f);
 }
-static rdMaterial* iosSaberShape_DimMat(int which, iosSaberShapeGlow* pBase, int level)
+static rdMaterial* iosSaberShape_DimMat(iosSaberShapeGlow* pBase, int level)
 {
     if (!pBase) return NULL;
-    if (level <= 0) return &pBase->mat;
-    iosSaberShapeGlow** pp = &iosSaberShape_apDim[which][level];
-    if (!*pp || memcmp((*pp)->rgb, pBase->rgb, 3) || (*pp)->gain != pBase->gain || memcmp((*pp)->core, pBase->core, 3) || (*pp)->dim != level)
-        *pp = iosSaberShape_GlowDim(pBase->rgb, pBase->gain, pBase->core, level);
-    return *pp ? &(*pp)->mat : &pBase->mat;
+    if (level <= 0 || pBase->dim > 0) return &pBase->mat;
+    if (level >= IOSSABERSHAPE_DIM_LEVELS) level = IOSSABERSHAPE_DIM_LEVELS - 1;
+    if (!pBase->apDim[level]) {
+        // (not made yet: made now, if not too many have been this frame; else, or if it can't be, the nearest level
+        // made, or the glow as ever)
+        static uint32_t frame = 0;
+        static int made = 0;
+        if (frame != (uint32_t)rdroid_frameTrue) {
+            frame = (uint32_t)rdroid_frameTrue;
+            made = 0;
+        }
+        if (made < IOSSABERSHAPE_DIM_PER_FRAME) {
+            made++;
+            pBase->apDim[level] = iosSaberShape_GlowDim(pBase->rgb, pBase->gain, pBase->core, level);
+        }
+        if (!pBase->apDim[level]) {
+            for (int k = 1; k < IOSSABERSHAPE_DIM_LEVELS; k++) {
+                if (level - k >= 1 && pBase->apDim[level - k]) return &pBase->apDim[level - k]->mat;
+                if (level + k < IOSSABERSHAPE_DIM_LEVELS && pBase->apDim[level + k]) return &pBase->apDim[level + k]->mat;
+            }
+            return &pBase->mat;
+        }
+    }
+    return &pBase->apDim[level]->mat;
+}
+// (the glow of the blade being drawn, at a level: its shimmer's own as ever, nearest; further off, dimmed from the
+// unshimmered glow's, its shimmer a level nearer or further)
+static rdMaterial* iosSaberShape_GlowAt(int level)
+{
+    if (level <= 0 || !iosSaberShape_pGlowBase) return &iosSaberShape_pGlow->mat;
+    level += iosSaberShape_glowShift;
+    return iosSaberShape_DimMat(iosSaberShape_pGlowBase, level < 0 ? 0 : level);
 }
 #define IOSSABERSHAPE_END_TIP 1
 #define IOSSABERSHAPE_END_BASE 2
@@ -1391,7 +1463,7 @@ static void iosSaberShape_GlowQuads(rdThing* pLine, const iosSaberShapeGlow* g, 
         iosSaberShape_Vert(2, &p1, -x1, -z1, 0, mid);
         iosSaberShape_Vert(3, &p1, x1, z1, w, mid);
         if (iosSaberShape_bDim && g == iosSaberShape_pGlow) {
-            iosSaberShape_Quad(pLine, iosSaberShape_DimMat(2, (iosSaberShapeGlow*)g, iosSaberShape_DimLevel((p0.y + p1.y) * (flex_t)0.5)), texMode);
+            iosSaberShape_Quad(pLine, iosSaberShape_GlowAt(iosSaberShape_DimLevel((p0.y + p1.y) * (flex_t)0.5)), texMode);
             continue;
         }
         iosSaberShape_Quad(pLine, pMat, texMode);
@@ -1402,7 +1474,7 @@ static void iosSaberShape_GlowQuads(rdThing* pLine, const iosSaberShapeGlow* g, 
         iosSaberShape_Vert(1, &tipOut, -tx, -tz, 0, 0);
         iosSaberShape_Vert(2, pTip, -tx, -tz, 0, mid);
         iosSaberShape_Vert(3, pTip, tx, tz, w, mid);
-        if (iosSaberShape_bDim && g == iosSaberShape_pGlow) pMat = iosSaberShape_DimMat(2, (iosSaberShapeGlow*)g, iosSaberShape_DimLevel(pTip->y));
+        if (iosSaberShape_bDim && g == iosSaberShape_pGlow) pMat = iosSaberShape_GlowAt(iosSaberShape_DimLevel(pTip->y));
         iosSaberShape_Quad(pLine, pMat, texMode);
     }
     // the hilt's end
@@ -1411,7 +1483,7 @@ static void iosSaberShape_GlowQuads(rdThing* pLine, const iosSaberShapeGlow* g, 
         iosSaberShape_Vert(1, pBase, -bx, -bz, 0, mid);
         iosSaberShape_Vert(2, &baseOut, -bx, -bz, 0, h);
         iosSaberShape_Vert(3, &baseOut, bx, bz, w, h);
-        if (iosSaberShape_bDim && g == iosSaberShape_pGlow) pMat = iosSaberShape_DimMat(2, (iosSaberShapeGlow*)g, iosSaberShape_DimLevel(pBase->y));
+        if (iosSaberShape_bDim && g == iosSaberShape_pGlow) pMat = iosSaberShape_GlowAt(iosSaberShape_DimLevel(pBase->y));
         iosSaberShape_Quad(pLine, pMat, texMode);
     }
 }
@@ -1585,8 +1657,8 @@ static void iosSaberShape_BeamSide(rdThing* pLine, rdFace* pFace, flex_t u0, fle
 #ifdef IOSDEPTH_COMPARE
         if (bDimCore) {
             const int lv = iosSaberShape_DimLevel(pTip->y + (pBase->y - pTip->y) * (s[0] + s[1]) * (flex_t)0.5);
-            pFace->material = iosSaberShape_DimMat(0, iosSaberShape_pCore, lv);
-            if (bDimMid) iosSaberShape_pMidMat = iosSaberShape_DimMat(1, iosSaberShape_pBladeMidGlow, lv);
+            pFace->material = iosSaberShape_DimMat(iosSaberShape_pCore, lv);
+            if (bDimMid) iosSaberShape_pMidMat = iosSaberShape_DimMat(iosSaberShape_pBladeMidGlow, lv);
         }
 #endif
         rdPolyline_DrawFace(pLine, pFace, iosSaberShape_aSideVerts, &info);
