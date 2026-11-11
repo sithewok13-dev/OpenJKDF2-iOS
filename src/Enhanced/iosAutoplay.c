@@ -669,7 +669,7 @@ static int s_bDuel = 0;
 // A duel's time, at most, from its first fight (not from a placing again):
 // one the autopilot can't win -- Jerec healing in his trance -- isn't the
 // whole show; then another level (SHUFFLE ALL) or the level again (PICK ONE)
-static double s_tDuelStart = 0.0;
+static double s_duelSecs = 0.0; // (the duel's time so far, while it's played: not paused, held or away)
 #define AP_DUEL_SECS 240.0
 // Out of sight this long, a duel's dark Jedi: he's placed near him as he is now
 #define AP_DUEL_LOST_SECS 10.0
@@ -1197,22 +1197,33 @@ static void ap_alarm(rdVector3 center, SithThing* pl)
     sithAIAwareness_CreateTransmittingEvent(pl->sector, &pl->position, 0, 3.0f, pl);
 }
 
-// A weapon he still has (a dark Jedi's Force Pull takes the gun in his hand
-// away, leaving the fists). The saber is never pulled, in either game, so it
-// is always his: thrown, out of the inventory a moment (Mysteries of the
-// Sith's throw) or held back (Jedi Knight's), it comes back.
-static int ap_hasWeapon(int bin)
-{
-    int ammo = 0, bSelectable = 0;
-    return bin == AP_W_SABER || iosGame_GetWeapon(bin, &ammo, &bSelectable);
-}
-
 // A saber out thrown: either game's own throw, or two sabers' (the fists in
 // hand meanwhile, the saber maybe out of the inventory)
 static int ap_saberOut(void)
 {
     SithThing* pl = ap_player();
     return iosSaberThrow_AnyOut() || (ap_mots() && pl && sithInventory_IsInventoryActivated(pl, 37));
+}
+
+// A weapon he still has (a dark Jedi's Force Pull takes what's in his hand
+// away, leaving the fists -- the saber too, caught mid-change: the pull
+// looks at the hand, then takes what's there a moment later). A saber out
+// thrown, out of the inventory a moment (Mysteries of the Sith's throw) or
+// held back (Jedi Knight's), is still his: it comes back.
+static int ap_hasWeapon(int bin)
+{
+    int ammo = 0, bSelectable = 0;
+    return iosGame_GetWeapon(bin, &ammo, &bSelectable) || (bin == AP_W_SABER && ap_saberOut());
+}
+
+// The saber pulled away: given back, as the cheat gives everything (the
+// show's own, never left without it)
+static void ap_saberBack(void)
+{
+    SithThing* pl = ap_player();
+    if (!pl || ap_hasWeapon(AP_W_SABER)) return;
+    sithInventory_SetInventory(pl, AP_W_SABER, 1.0f);
+    APLOG("the saber pulled away: given back\n");
 }
 
 // Guns given back in one fight, at most (each pulled away is left lying
@@ -1240,22 +1251,23 @@ static void ap_pickWeapon(int notThis)
     }
     if (numHad == 0) {
         APLOG("the guns pulled away too often: the saber\n");
+        ap_saberBack();
         aHad[numHad++] = AP_W_SABER;
     }
-    // (a duel: the strong ones -- no fists or Bryar while others are had; a
-    // dark Jedi turns blaster bolts aside with his saber, so the saber most
-    // of all, then what goes off where it lands: the rail detonator, the
-    // concussion rifle)
+    // (a duel: the strong ones -- no fists or pistols, the Bryar and the
+    // Blastech, while others are had; a dark Jedi turns blaster bolts aside
+    // with his saber, so the saber most of all, then what goes off where it
+    // lands: the rail detonators, the concussion rifle)
     int aWeight[sizeof(aHad) / sizeof(aHad[0])];
     for (int i = 0; i < numHad; i++) aWeight[i] = 1;
     if (s_bDuel && numHad > 1) {
         int k = 0;
         for (int i = 0; i < numHad; i++)
-            if (aHad[i] != AP_W_FISTS && aHad[i] != (ap_mots() ? 122 : 2)) aHad[k++] = aHad[i];
+            if (aHad[i] != AP_W_FISTS && !(ap_mots() ? (aHad[i] == 122 || aHad[i] == 132) : aHad[i] == 2)) aHad[k++] = aHad[i]; // (no pistols)
         if (k > 0) numHad = k;
         for (int i = 0; i < numHad; i++) {
             const int bin = aHad[i];
-            aWeight[i] = bin == AP_W_SABER ? 8 : (ap_mots() ? (bin == 129 || bin == 132) : (bin == 7 || bin == 9)) ? 2 : 1;
+            aWeight[i] = bin == AP_W_SABER ? 8 : (ap_mots() ? (bin == 127 || bin == 137 || bin == 129) : (bin == 7 || bin == 9)) ? 2 : 1;
         }
     }
     int total = 0;
@@ -1323,6 +1335,30 @@ static float ap_measureFt(SithThing* pl)
     float eye = FT(AP_EYE_FT);
     if (ap_floorBelow(pl->sector, pl->position, 2.0f, &f)) eye = pl->position.z + pl->actorParams.eyeOffset.z - f.z;
     return ap_clampf(eye / AP_EYE_FT, 0.003f, 0.2f);
+}
+
+// A duel's dark Jedi out of reach and still -- his script's moves done --
+// called to Kyle through the AI, as a level's script would, at most once in
+// a while; never one moving or untouchable (Jerec in his trance)
+static double s_tCalled = -100.0;
+static void ap_callDuelist(SithThing* pl, double now)
+{
+    if (now - s_tCalled < 30.0) return;
+    SithWorld* w = sithWorld_g_pCurrentWorld;
+    for (uint32_t i = 0; w && i < w->numThingsLoaded; i++) {
+        SithThing* t = &w->aThings[i];
+        if (t->type != SITH_THING_ACTOR || (t->flags & (SITH_TF_DEAD | SITH_TF_DESTROYED)) || t->actorParams.health <= 0.0f) continue;
+        if (!(t->actorParams.flags & SITH_AF_BOSS) || (t->actorParams.flags & SITH_AF_INVULNERABLE)) continue;
+        SithAIControlBlock* a = t->actor;
+        if (!a || !a->pClass || a->pClass->alignment >= 0.0f || (a->flags & (SITHAI_MODE_DISABLED | SITHAI_MODE_MOVING))) continue;
+        if (ap_len(t->physicsParams.vel) > FT(1.0f)) continue; // (still on his way somewhere)
+        s_tCalled = now;
+        ap_wake(t, pl);
+        rdVector3 dest = pl->position;
+        sithAI_SetMoveThing(a, &dest, 1.5f);
+        APLOG("the duel's dark Jedi called to the fight at %.1f s\n", now - s_tStart);
+        return;
+    }
 }
 
 // (from his feet, one of the enemies in sight or a straight walk away)
@@ -1467,7 +1503,6 @@ static void ap_startScene(double now, int bAnother)
             ap_collectFoes();
             ap_alarm(g->center, pl);
         }
-        if (bDuel && s_tDuelStart <= 0.0) s_tDuelStart = now;
         s_bHadFight = 1;
         s_stage = ST_SCENE;
         s_tScene = now;
@@ -1821,6 +1856,7 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
         // gun a short while between)
         else if (s_bDuel && s_numRotation > 1 && now >= s_tSwitch) {
             if (s_bSaber && s_weapon != AP_W_SABER) {
+                ap_saberBack();
                 ap_takeWeapon(AP_W_SABER);
                 s_tSwitch = now + ap_randRange(14.0f, 22.0f);
             }
@@ -1834,7 +1870,8 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
         // (the one it wants gone, pulled from his hand: another he has, at once)
         if (s_throws == 0 && !ap_saberOut() && !ap_hasWeapon(s_weapon)) {
             APLOG("weapon %d gone (in hand %d)\n", s_weapon, curWeapon);
-            ap_pickWeapon(s_weapon);
+            if (s_weapon == AP_W_SABER) ap_saberBack(); // (the saber: his again)
+            else ap_pickWeapon(s_weapon);
         }
         if (iosGame_SelectWeapon(s_weapon)) s_tShowSwitch = now + 0.3; // (as the weapon wheel picks it)
         s_tAsked = now;
@@ -2210,7 +2247,8 @@ void iosAutoplay_Tick(double now)
             s_numKin = 0;
             s_bDuel = 0;
             s_bHadFight = 0;
-            s_tDuelStart = 0.0;
+            s_duelSecs = 0.0;
+            s_tCalled = -100.0;
             s_numFails = 0;
             s_tRetry = s_tEmpty = 0.0;
             ap_collectFoes();
@@ -2257,6 +2295,7 @@ void iosAutoplay_Tick(double now)
         if (!s_group.sector) return;
     }
 
+    if (s_bDuel) s_duelSecs += dt; // (only while it's played)
     ap_autopilot(now, dt, pl);
     ap_input(now, dt);
 
@@ -2284,7 +2323,7 @@ void iosAutoplay_Tick(double now)
         s_tCheck = now + 0.25;
         const rdVector3 feet = pl->position;
         const int bDuelOn = s_bDuel && ap_bossLives();
-        if (bDuelOn && s_tDuelStart > 0.0 && now - s_tDuelStart >= AP_DUEL_SECS) {
+        if (bDuelOn && s_duelSecs >= AP_DUEL_SECS) {
             APLOG("the duel's time is up at %.1f s\n", now - s_tStart);
             ap_travel(now);
             return;
@@ -2335,9 +2374,13 @@ void iosAutoplay_Tick(double now)
         if (bDuelOn) {
             if (bNoOne && now - s_tSeen >= AP_DUEL_LOST_SECS && now >= s_tReplace) {
                 APLOG("the duel's dark Jedi out of sight: near him again at %.1f s\n", now - s_tStart);
-                s_tReplace = now + 15.0;
+                const double tScene = s_tScene;
                 ap_startScene(now, 2);
-                return;
+                s_tReplace = now + 15.0; // (after it: a placing sets its own)
+                // (nowhere near him -- Maw hovering where his script left him,
+                // its moves done: called to the fight once, as a level's
+                // script would, never mid-move or while untouchable)
+                if (s_tScene == tScene) ap_callDuelist(pl, now);
             }
             return;
         }
