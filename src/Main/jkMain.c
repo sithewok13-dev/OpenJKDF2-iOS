@@ -1675,6 +1675,11 @@ void jkMain_StartupCutscene(char *pCutsceneStr)
     char local_80 [128];
 
     jkPlayer_WriteConfSwap(playerThings + playerThingIdx, 1, pCutsceneStr);
+#ifdef JK_ENHANCED
+    // Added: AUTOPLAY's show: a level's opening movie (Mysteries of the Sith's) never on the way
+    if (iosAutoplay_IsOn())
+        return;
+#endif
     _sprintf(local_80,"video%c%s", '\\', pCutsceneStr);
 
     if (util_FileExists(local_80)) {
