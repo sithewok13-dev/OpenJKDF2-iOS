@@ -13,11 +13,14 @@ everything on a phone.
   Cheats are in `src/Main/jkDev.c`.
 - **Docs:** `docs/ios/README.md` (setup guide), `docs/ios/RELEASE_NOTES.md` (the
   release text). **CI:** `.github/workflows/ios.yml`.
-- **This port's own layout** (not part of the shared touch standard below): FORCE
-  WHEEL is a small button beside FORCE, 16 pt from it where that fits comfortably,
-  else 10 (a touch between them is FORCE's; only where FORCE lies under the open
-  wheel, as at 568x320, it goes further off, under MENU); LAST WPN sits right of NEXT WPN (tap = the weapon held before; again
-  = back; dimmed, doing nothing, with none to go back to, or it's gone or empty).
+- **This port's own controls** (not part of the shared touch standard below):
+  - FORCE WHEEL is a small button beside FORCE, 16 pt from it where that fits
+    comfortably, else 10 (a touch between them is FORCE's; on the smallest
+    screens, where FORCE lies under the open wheel, it goes under MENU instead).
+  - LAST WPN sits right of NEXT WPN: tap = the weapon held before; again = back;
+    dimmed, doing nothing, with none to go back to, or if it's gone or empty.
+  - QUICK SAVE / QUICK LOAD are labelled SAVE / LOAD, and a tap opens the game's
+    own Save or Load screen (iOS; Android's overlay is still hold only).
 - **Mysteries of the Sith** is a separate app, **OpenMoTS**
   (`packaging/ios/make_mots_app.sh`), with its own bundle id and Files folder.
 - **AUTOPLAY** (both apps), a self-playing show for screen recordings: MENU's
@@ -41,7 +44,13 @@ everything on a phone.
   glances away from walls, weapon changes in lulls, detonators at bunches, saber
   melee and Saber Throw, Force powers now and then. Each fight a new saber look
   (one or two, random hilts, the wheel's RANDOM colours), unless the look is kept
-  (`bKeepLook`). Double tap
+  (`bKeepLook`). A duel (every foe a boss) with no safe spot is fought where the
+  scene leaves Kyle; it is never left while a dark Jedi lives, bosses are never
+  steered (Kyle is placed near them instead), it lasts at most 4 min, and the
+  saber is used most of the time. A weapon pulled away is swapped for another
+  allowed one (re-armed at most 3 times a fight). A level with no one left goes
+  to the next (PICK ONE reloads its row); MotS's opening movies are skipped.
+  Double tap
   (`iosAutoplay_Next`) = new fight; a 0.5 s hold still (not at an edge) = exit:
   the cheat, difficulty and saber look put back and the save loaded. The overlay
   shows nothing, or with CONTROLS ON the stick and lit buttons (display only).
@@ -81,9 +90,8 @@ everything on a phone.
     another job may be editing.
 - **Touch controls standard** (shared with the owner's other ports; keep it the same):
   - Move stick where the left thumb lands; drag elsewhere to look.
-  - SAVE / LOAD: a 0.3 s hold with a ring = quick save / quick load. Sliding off
-    cancels; SAVE wins a tie. iOS for now: a tap = the game's own Save or Load
-    screen (Android's overlay is still QUICK SAVE / QUICK LOAD, hold only).
+  - QUICK SAVE / QUICK LOAD: a 0.3 s hold with a ring. Sliding off cancels; QUICK
+    SAVE wins a tie.
   - MENU: tap = game menu; hold 0.45 s = tray with SENS, GYRO, OPACITY, FPS,
     AUTOPLAY, keyboard.
   - OPACITY (tray): tap = a slider under the tray, 20% to 100% in 5% steps, live,
