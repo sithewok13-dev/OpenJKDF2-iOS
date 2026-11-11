@@ -6,7 +6,9 @@
 // icbacta16.bm: Jedi Knight's Res1hi.gob, Mysteries of the Sith's JKMsndLO.goo,
 // the same three), read from the player's own game files through the game's
 // file system -- never shipped with the app -- and made big and smooth for a
-// phone's screen once, when the overlay first wants them:
+// phone's screen once, when the overlay first wants them (off the game's
+// thread: iosItemIcons_ReadFiles there, iosItemIcons_PrepareFromSized
+// anywhere), at the screen's own pixels:
 //   - the item alone: its purple tile cut away, with a faint dark edge round
 //     it so it reads on a bright wall;
 //   - upscaled with Hyllian's xBR-lv2 (MIT licence: iosItemIcons.c), then an
@@ -34,18 +36,25 @@ enum {
     IOSITEMICON_NUM_STILL
 };
 
-// Reads the three icons from the game's files and makes the pictures, s
-// pixels for each of the originals' (4 or 5 for a phone's screen; 1..16):
-// 1 if done (then or before, at that s), 0 if any icon couldn't be read (the
-// text buttons stay). It takes a few milliseconds; again with another s,
-// they are made again.
+// The three icons' files read through the game's file system (on the game's
+// own thread: it is the game's), each into its aBuf: 1 if all three were
+#define IOSITEMICONS_FILE_MAX 4096
+int iosItemIcons_ReadFiles(unsigned char aBuf[3][IOSITEMICONS_FILE_MAX], int aLen[3]);
+// The pictures made from the three files' bytes, s pixels for each of the
+// originals' (1..16), then shrunk to outPx across (the screen's own pixels;
+// 0 or more than 24 s: 24 s): 1 if done (then or before, at that size), 0 if
+// any icon isn't one, or isn't the game's own as this was made for (a mod's:
+// the text buttons stay). It takes some tens of milliseconds and touches
+// nothing of the game's: it can run on another thread, while nothing else
+// here is used.
+int iosItemIcons_PrepareFromSized(const unsigned char* const aBm[3], const int aLen[3], int s, int outPx);
+int iosItemIcons_PrepareFrom(const unsigned char* const aBm[3], const int aLen[3], int s); // (outPx 24 s)
+// Both, at once (the Linux rig's)
 int iosItemIcons_Prepare(int s);
-// The same from the icons' file bytes (each a whole .bm file), for tests
-int iosItemIcons_PrepareFrom(const unsigned char* const aBm[3], const int aLen[3], int s);
 int iosItemIcons_IsReady(void);
 void iosItemIcons_Free(void);
 
-// The pictures' size in pixels (square: IOSITEMICONS_GRID * s), 0 if not ready
+// The pictures' size in pixels (square), 0 if not ready
 int iosItemIcons_Size(void);
 // One of LIGHT's or IR's pictures: premultiplied RGBA, Size x Size, rows top
 // down; NULL if not ready

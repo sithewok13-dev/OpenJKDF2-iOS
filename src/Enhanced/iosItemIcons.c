@@ -50,7 +50,6 @@
 #endif
 
 #define II_N 24
-#define II_BM_MAX 4096
 
 // ------------------------------------------------------------ the originals
 
@@ -64,6 +63,9 @@ static int ii_DecodeBm(const unsigned char* d, int len, unsigned char* pOut)
     const unsigned int key = II_U32(0x1C), is16 = II_U32(0x20), bpp = II_U32(0x24);
     const unsigned int rb = II_U32(0x28), gb = II_U32(0x2C), bb = II_U32(0x30), rs = II_U32(0x34), gs = II_U32(0x38), bs = II_U32(0x3C);
     if (is16 != 1 || bpp != 16 || II_U32(0x80) != II_N || II_U32(0x84) != II_N || !rb || !gb || !bb || rb > 8 || gb > 8 || bb > 8)
+        return 0;
+    // (each channel's bits inside the 16)
+    if (rs > 15 || gs > 15 || bs > 15 || rs + rb > 16 || gs + gb > 16 || bs + bb > 16)
         return 0;
     for (int i = 0; i < II_N * II_N; i++) {
         const unsigned int v = d[0x88 + i * 2] | (d[0x89 + i * 2] << 8);
@@ -176,6 +178,40 @@ static void ii_ItemAlone(int item, unsigned char* a)
             for (int x = 0; x < II_N; x++)
                 if (x == 0 || y == 0 || x == II_N - 1 || y == II_N - 1) a[(y * II_N + x) * 4 + 3] = 0;
     }
+}
+
+// Whether the three originals are the game's own as this was made for them
+// (a mod's own icons, another layout: no, and the text buttons stay): the
+// parts that light up found where they should be, each about its size, and
+// each item about as big once its tile is cut away
+static int ii_Count(const unsigned char* m)
+{
+    int n = 0;
+    for (int i = 0; i < II_N * II_N; i++) n += m[i] != 0;
+    return n;
+}
+
+static void ii_ItemAlone(int item, unsigned char* a); // (below)
+static int ii_LooksRight(unsigned char aOrig[3][II_N * II_N * 4])
+{
+    unsigned char near_[II_N * II_N], far_[II_N * II_N], core[II_N * II_N], a[II_N * II_N * 4];
+    memset(near_, 0, sizeof(near_));
+    memset(far_, 0, sizeof(far_));
+    ii_Flood(aOrig[1], 11, 16, 5, 12, 14, 19, ii_Dark, near_);
+    ii_Flood(aOrig[1], 20, 9, 18, 6, 21, 12, ii_Dark, far_);
+    for (int i = 0; i < II_N * II_N; i++) core[i] = aOrig[0][i * 4] + aOrig[0][i * 4 + 1] + aOrig[0][i * 4 + 2] >= 0xff + 0xa5 + 0xff - 4;
+    // (the originals': the lenses 44 and 23 pixels, the light's core 26; the items 484, 297, 250 pixels)
+    const int nNear = ii_Count(near_), nFar = ii_Count(far_), nCore = ii_Count(core);
+    if (nNear < 22 || nNear > 80 || nFar < 10 || nFar > 45 || nCore < 8 || nCore > 60) return 0;
+    static const int aMin[3] = { 330, 180, 150 }, aMax[3] = { 560, 420, 380 };
+    for (int k = 0; k < 3; k++) {
+        memcpy(a, aOrig[k], sizeof(a));
+        ii_ItemAlone(k, a);
+        int n = 0;
+        for (int i = 0; i < II_N * II_N; i++) n += a[i * 4 + 3] != 0;
+        if (n < aMin[k] || n > aMax[k]) return 0;
+    }
+    return 1;
 }
 
 // ------------------------------------------------------------ xBR-lv2 (see the top of the file)
@@ -530,7 +566,7 @@ static float ii_Screen(float base, float light)
 
 // ------------------------------------------------------------ the pictures
 
-static int ii_s = 0, ii_bReady = 0;
+static int ii_s = 0, ii_bReady = 0, ii_out = 0; // (ii_out: the pictures' pixels across, at most 24 s)
 static unsigned char* ii_apStill[IOSITEMICON_NUM_STILL];
 // BACTA's parts, for drawing it again as its liquid or glow changes: its
 // colour (straight), its alpha, the glass's mask, and the dark edge under it
@@ -697,6 +733,42 @@ static void ii_FreeAll(void)
     ii_pBactaEdge = NULL;
     ii_bReady = 0;
     ii_s = 0;
+    ii_out = 0;
+}
+
+// An n x n premultiplied RGBA picture made m x m (m <= n), each pixel the
+// average of what it covers (the screen's own pixels: none of the
+// shimmer of a picture shrunk as it is drawn)
+static void ii_Shrink(const unsigned char* src, int n, unsigned char* dst, int m)
+{
+    if (m == n) { memcpy(dst, src, (size_t)n * n * 4); return; }
+    float* tmp = (float*)malloc(sizeof(float) * n * m * 4);
+    if (!tmp) { memset(dst, 0, (size_t)m * m * 4); return; }
+    const float k = (float)n / m;
+    // (across, then down: each output pixel's span [o k, (o + 1) k) of the source's)
+    for (int y = 0; y < n; y++)
+        for (int o = 0; o < m; o++) {
+            const float a0 = o * k, a1 = (o + 1) * k;
+            float acc[4] = { 0, 0, 0, 0 };
+            for (int x = (int)a0; x < n && x < a1; x++) {
+                const float w = fminf(a1, x + 1.0f) - fmaxf(a0, (float)x);
+                if (w <= 0.0f) continue;
+                for (int c = 0; c < 4; c++) acc[c] += w * src[(y * n + x) * 4 + c];
+            }
+            for (int c = 0; c < 4; c++) tmp[(y * m + o) * 4 + c] = acc[c] / k;
+        }
+    for (int x = 0; x < m; x++)
+        for (int o = 0; o < m; o++) {
+            const float a0 = o * k, a1 = (o + 1) * k;
+            float acc[4] = { 0, 0, 0, 0 };
+            for (int y = (int)a0; y < n && y < a1; y++) {
+                const float w = fminf(a1, y + 1.0f) - fmaxf(a0, (float)y);
+                if (w <= 0.0f) continue;
+                for (int c = 0; c < 4; c++) acc[c] += w * tmp[(y * m + x) * 4 + c];
+            }
+            for (int c = 0; c < 4; c++) dst[(o * m + x) * 4 + c] = ii_U8(acc[c] / k);
+        }
+    free(tmp);
 }
 
 void iosItemIcons_Free(void)
@@ -706,26 +778,37 @@ void iosItemIcons_Free(void)
 
 int iosItemIcons_PrepareFrom(const unsigned char* const aBm[3], const int aLen[3], int s)
 {
+    return iosItemIcons_PrepareFromSized(aBm, aLen, s, 0);
+}
+
+int iosItemIcons_PrepareFromSized(const unsigned char* const aBm[3], const int aLen[3], int s, int outPx)
+{
     unsigned char aOrig[3][II_N * II_N * 4];
     if (s < 1 || s > 16) return 0;
-    if (ii_bReady && ii_s == s) return 1;
+    if (outPx <= 0 || outPx > II_N * s) outPx = II_N * s;
+    if (ii_bReady && ii_s == s && ii_out == outPx) return 1;
     ii_FreeAll();
     for (int k = 0; k < 3; k++)
         if (!aBm[k] || !ii_DecodeBm(aBm[k], aLen[k], aOrig[k])) return 0;
+    if (!ii_LooksRight(aOrig)) return 0;
     const int N = II_N * s, px = (int)(s * 0.6f);
     float* rgb = (float*)malloc(sizeof(float) * N * N * 3);
     float* al = (float*)malloc(sizeof(float) * N * N);
     unsigned char* edge = (unsigned char*)malloc(N * N * 4);
     int bOk = rgb && al && edge;
+    unsigned char* big = (unsigned char*)malloc(N * N * 4);
+    bOk = bOk && big;
     for (int i = 0; i < IOSITEMICON_NUM_STILL && bOk; i++) {
-        ii_apStill[i] = (unsigned char*)malloc(N * N * 4);
+        ii_apStill[i] = (unsigned char*)malloc(outPx * outPx * 4);
         if (!ii_apStill[i]) { bOk = 0; break; }
         if (i == IOSITEMICON_LIGHT_OFF || i == IOSITEMICON_LIGHT_ON) ii_Light(aOrig[0], i == IOSITEMICON_LIGHT_ON, s, rgb, al);
         else if (i == IOSITEMICON_IR_OFF) ii_Big(aOrig[1], IOSITEMICONS_IR, 1, s, rgb, al);
         else ii_IrOn(aOrig[1], s, rgb, al);
         ii_EdgeUnder(al, N, px, edge);
-        ii_Finish(rgb, al, edge, N, ii_apStill[i]);
+        ii_Finish(rgb, al, edge, N, big);
+        ii_Shrink(big, N, ii_apStill[i], outPx);
     }
+    free(big);
     if (bOk) {
         // BACTA: its parts kept, to draw it with its liquid (iosItemIcons_Bacta)
         unsigned char glass[II_N * II_N];
@@ -751,6 +834,7 @@ int iosItemIcons_PrepareFrom(const unsigned char* const aBm[3], const int aLen[3
     free(edge);
     if (!bOk) { ii_FreeAll(); return 0; }
     ii_s = s;
+    ii_out = outPx;
     ii_bReady = 1;
     return 1;
 }
@@ -762,7 +846,7 @@ int iosItemIcons_IsReady(void)
 
 int iosItemIcons_Size(void)
 {
-    return ii_bReady ? II_N * ii_s : 0;
+    return ii_bReady ? ii_out : 0;
 }
 
 const unsigned char* iosItemIcons_Still(int which)
@@ -776,7 +860,12 @@ int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut)
     if (!ii_bReady || !pOut) return 0;
     const int s = ii_s, N = II_N * s;
     float* rgb = (float*)malloc(sizeof(float) * N * N * 3);
-    if (!rgb) return 0;
+    unsigned char* big = ii_out == N ? pOut : (unsigned char*)malloc(N * N * 4);
+    if (!rgb || !big) {
+        free(rgb);
+        if (big != pOut) free(big);
+        return 0;
+    }
     memcpy(rgb, ii_pBactaRgb, sizeof(float) * N * N * 3);
     level = ii_Clamp01(level);
     glow = ii_Clamp01(glow);
@@ -819,7 +908,11 @@ int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut)
                 }
             }
     }
-    ii_Finish(rgb, ii_pBactaAl, ii_pBactaEdge, N, pOut);
+    ii_Finish(rgb, ii_pBactaAl, ii_pBactaEdge, N, big);
+    if (big != pOut) {
+        ii_Shrink(big, N, pOut, ii_out);
+        free(big);
+    }
     free(rgb);
     return 1;
 }
@@ -836,21 +929,26 @@ void iosItemIcons_Centre(int item, float* pX, float* pY)
 #ifndef IOSITEMICONS_STANDALONE
 // Reads the three icons through the game's own file system (its GOBs), as it
 // reads its other UI pictures
-int iosItemIcons_Prepare(int s)
+int iosItemIcons_ReadFiles(unsigned char aBuf[3][IOSITEMICONS_FILE_MAX], int aLen[3])
 {
     static const char* aPath[3] = { "ui\\bm\\icfield16.bm", "ui\\bm\\icirgog16.bm", "ui\\bm\\icbacta16.bm" };
-    static unsigned char aBuf[3][II_BM_MAX];
-    const unsigned char* aBm[3] = { NULL, NULL, NULL };
-    int aLen[3] = { 0, 0, 0 };
-    if (ii_bReady && ii_s == s) return 1;
-    if (!std_g_pHS || !std_g_pHS->fileOpen) return 0;
+    if (!aBuf || !aLen || !std_g_pHS || !std_g_pHS->fileOpen) return 0;
     for (int k = 0; k < 3; k++) {
         stdFile_t f = std_g_pHS->fileOpen(aPath[k], "rb");
         if (!f) return 0;
-        aLen[k] = (int)std_g_pHS->fileRead(f, aBuf[k], II_BM_MAX);
+        aLen[k] = (int)std_g_pHS->fileRead(f, aBuf[k], IOSITEMICONS_FILE_MAX);
         std_g_pHS->fileClose(f);
-        aBm[k] = aBuf[k];
     }
+    return 1;
+}
+
+int iosItemIcons_Prepare(int s)
+{
+    static unsigned char aBuf[3][IOSITEMICONS_FILE_MAX];
+    int aLen[3] = { 0, 0, 0 };
+    const unsigned char* aBm[3] = { aBuf[0], aBuf[1], aBuf[2] };
+    if (ii_bReady && ii_s == s && ii_out == II_N * s) return 1;
+    if (!iosItemIcons_ReadFiles(aBuf, aLen)) return 0;
     return iosItemIcons_PrepareFrom(aBm, aLen, s);
 }
 #endif

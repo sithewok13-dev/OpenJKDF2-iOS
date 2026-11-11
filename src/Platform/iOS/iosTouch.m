@@ -232,6 +232,12 @@ extern int jkHud_bChatOpen;
 #define IOSTOUCH_BADGE_R 6.4
 #define IOSTOUCH_BADGE_X 17.3 // (in the icon's pixels)
 #define IOSTOUCH_BADGE_Y 19.4
+// A tank BACTA asked for counts as used (a light tick) if the game takes it
+// within this long; the last one used, BACTA stays, empty, this long, then
+// fades out over IOSTOUCH_BACTA_FADE
+#define IOSTOUCH_BACTA_TAKEN 1.0
+#define IOSTOUCH_BACTA_EMPTY 1.0
+#define IOSTOUCH_BACTA_FADE 0.4
 // (the saber wheel's choices: "iosTouchSaber" + each name iosSaberWheel keeps, loadSaberChoices;
 // builds before kept iosTouchSaberStyle, iosTouchSaberHilt, iosTouchSaberColour.<style>.<blade>)
 #define IOSTOUCH_SABERLOOK_DEFAULTS_KEY @"iosTouchSaberLook" // (by its name: CLASSIC, REFORGED)
@@ -1626,14 +1632,21 @@ typedef struct {
     // LIGHT, IR and BACTA as the game's own icons (iosItemIcons): a picture
     // over each (the button then shows neither its round nor its name, nor
     // BACTA its ring) and BACTA's count in a round badge. itemPics: 1 in use;
-    // -1 not to be had (the text buttons, as before); 0 not tried yet. The
-    // stills (LIGHT, IR off and on) made once; BACTA drawn again as its
-    // tanks or its hold's glow change (in 20ths)
+    // 2 being made; -1 not to be had (the text buttons, as before); 0 not
+    // tried yet. The stills (LIGHT, IR off and on) made once; BACTA drawn
+    // again as its tanks or its hold's glow change (in 20ths). The last tank
+    // used: BACTA shown empty a moment, then faded out (bactaGoneAt: when)
     CALayer* aItemPic[3];
     UILabel* bactaBadge;
     CGImageRef aItemStill[IOSITEMICON_NUM_STILL];
     int itemPics, bactaPicTanks, bactaPicGlow, bactaPicCount;
     CGFloat bactaGlow;
+    CFTimeInterval bactaGoneAt;
+    // A tank asked for (BACTA held): the tanks then, and how long the game
+    // has to take one -- the tick only once it has (at full health the game
+    // uses none)
+    int bactaUseFrom;
+    CFTimeInterval bactaUseUntil;
     UILabel* aCheatSub[2];    // under JUMP and ACT while sithewok is on: FLY, NOCLIP
     CAShapeLayer* cheatEmblem; // CHEAT's Sith emblem (red, with its edge, while the cheat is on)
     // The saber's picture on SABER: each saber in its hilt's shape, each
@@ -3446,6 +3459,11 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         if (iosTouch_SaberWheelHides(i)) alpha = 0.0; // (the saber wheel open: its parts have the room, the top row stays)
         if (i == BTN_TRAYAUTO && iosGame_IsMultiplayer()) alpha *= 0.45; // (single player only)
         if (iosTouch_bAutoplay && (!iosTouch_bApShown || bTray)) alpha = 0.0; // (AUTOPLAY's show: nothing, or the controls as played)
+        if (i == BTN_BACTA && bactaGoneAt > 0.0) {
+            // (its last tank used: empty a moment, then fading out)
+            const CFTimeInterval t = CACurrentMediaTime() - bactaGoneAt - IOSTOUCH_BACTA_EMPTY;
+            if (t > 0.0) alpha *= MAX(0.0, 1.0 - t / IOSTOUCH_BACTA_FADE);
+        }
         if (!bTray && !bWheel) alpha *= iosTouch_opacity; // (OPACITY: the touch controls; the tray, its rows and an open wheel's button at full)
         aButtonViews[i].alpha = alpha;
         if (i != BTN_FIRE) {
@@ -4423,21 +4441,55 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     if (iosTouch_bPadMasked) [self applyPadMask]; // (the parts shown over the hidden touch controls)
 }
 
-// SABER's picture as the sabers are now (iosSaberWheel_GetIcon: each hand's
-// hilt, each blade's colour, a FOLD open or folded), in the look's swatches:
-// drawn again whenever one of them changes (each tick; at once on the wheel)
-// LIGHT's, IR's and BACTA's pictures made (once, at the first tick: the game's
-// files are there by then), for the screen's own pixels; not to be had (an
-// icon missing or not as expected), the text buttons stay, as before
+// LIGHT's, IR's and BACTA's pictures made: the three icons read here,
+// through the game's file system (its thread's), the pictures made from them
+// off the main thread (some tens of milliseconds: no hitch), then put up here
+// (-itemPicsMade:). The text buttons meanwhile, and for good if the icons are
+// missing or not the game's own (tried again as the overlay next shows: a
+// new level, say)
+typedef struct {
+    unsigned char aBuf[3][IOSITEMICONS_FILE_MAX];
+    int aLen[3], s, px, bOk;
+} iosTouchItemPicJob;
+
 - (void)prepareItemPics
 {
     CGFloat scale = [UIScreen mainScreen].scale;
     if (scale < 1.0) scale = 2.0;
-    const int s = MAX(2, MIN(6, (int)ceil(IOSTOUCH_ITEM_PT * scale - 0.01)));
+    iosTouchItemPicJob* job = (iosTouchItemPicJob*)calloc(1, sizeof(iosTouchItemPicJob));
     itemPics = -1;
-    if (!iosItemIcons_Prepare(s)) return;
+    if (!job) return;
+    // (made a little bigger, then shrunk to the screen's own pixels: 115 on a
+    // 3x screen, 77 on a 2x one)
+    job->s = MAX(2, MIN(6, (int)ceil(IOSTOUCH_ITEM_PT * scale - 0.01)));
+    job->px = (int)lround(IOSITEMICONS_GRID * IOSTOUCH_ITEM_PT * scale);
+    if (!iosItemIcons_ReadFiles(job->aBuf, job->aLen)) {
+        free(job);
+        return;
+    }
+    itemPics = 2;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        const unsigned char* aBm[3] = { job->aBuf[0], job->aBuf[1], job->aBuf[2] };
+        job->bOk = iosItemIcons_PrepareFromSized(aBm, job->aLen, job->s, job->px);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            const int bOk = job->bOk;
+            free(job);
+            [self itemPicsMade:bOk];
+        });
+    });
+}
+
+// ...made (bOk) or not: put up, the buttons then the items alone -- no
+// round, edge, name or ring, and nothing cut off at their round (BACTA's
+// badge, the shadows, LIGHT's glow); the touch areas as they were
+- (void)itemPicsMade:(int)bOk
+{
+    if (itemPics != 2) return;
+    itemPics = -1;
+    if (!bOk) return;
+    CGFloat scale = [UIScreen mainScreen].scale;
+    if (scale < 1.0) scale = 2.0;
     const int n = iosItemIcons_Size();
-    int bOk = 1;
     for (int i = 0; i < IOSITEMICON_NUM_STILL; i++) {
         aItemStill[i] = IOSTouch_ImageFromRGBA(iosItemIcons_Still(i), n);
         if (!aItemStill[i]) bOk = 0;
@@ -4455,12 +4507,20 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
         const int btn = k == IOSITEMICONS_LIGHT ? BTN_LIGHT : k == IOSITEMICONS_IR ? BTN_IR : BTN_BACTA;
         aButtonViews[btn].text = @"";
         aButtonViews[btn].layer.borderWidth = 0.0;
+        aButtonViews[btn].clipsToBounds = NO;
         aItemPic[k].hidden = NO;
         aItemPic[k].shouldRasterize = YES; // (its shadow drawn once, not each frame)
         aItemPic[k].rasterizationScale = scale;
     }
     bactaRing.hidden = YES;
     [self refreshItemPics];
+    [self refreshButtonLooks];
+}
+
+// (the icons not to be had: tried again as the overlay next shows)
+- (void)retryItemPics
+{
+    if (itemPics == -1) itemPics = 0;
 }
 
 // The pictures as the items are: LIGHT and IR off or on; BACTA's liquid
@@ -4500,6 +4560,9 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
     [CATransaction commit];
 }
 
+// SABER's picture as the sabers are now (iosSaberWheel_GetIcon: each hand's
+// hilt, each blade's colour, a FOLD open or folded), in the look's swatches:
+// drawn again whenever one of them changes (each tick; at once on the wheel)
 - (void)refreshSaberIcons
 {
     iosSaberWheelIcon ic;
@@ -6673,7 +6736,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         iosTouchSlot* s = &iosTouch_aSlots[i];
         if (!s->touch || s->role != ROLE_BUTTON || s->button != BTN_BACTA || s->bFlyDone) continue;
         iosTouchButton* b = &iosTouch_aButtons[BTN_BACTA];
-        if (![self isPoint:[s->touch locationInView:self] onButton:BTN_BACTA] || aButtonViews[BTN_BACTA].hidden || jkHud_bChatOpen
+        if (![self isPoint:[s->touch locationInView:self] onButton:BTN_BACTA] || aButtonViews[BTN_BACTA].hidden || aItemAmount[BTN_BACTA] <= 0 || jkHud_bChatOpen
             || iosTouch_bWheelOpen || iosTouch_bFreezing || iosTouch_bCinema || iosTouch_selfieStage != IOSTOUCH_SELFIE_NONE) {
             s->bFlyDone = 1; // (slid off, gone, typing, or a wheel or the photos took over)
             continue;
@@ -6686,7 +6749,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             s->bFlyDone = 1;
             iosGame_SelectItem(b->bin);
             iosTouch_QueuePress(b->scancode);
-            [cameraTap impactOccurred];
+            // (the tick once the game has used a tank: -tick's items, below)
+            bactaUseFrom = aItemAmount[BTN_BACTA];
+            bactaUseUntil = now + IOSTOUCH_BACTA_TAKEN;
             continue;
         }
         bactaProgress = MAX(bactaProgress, MIN((CGFloat)((now - s->tDown) / IOSTOUCH_BACTA_HOLD), 1.0));
@@ -6898,8 +6963,23 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         int amount = 0, bActive = 0;
         int bHave = iosGame_GetItem(iosTouch_aButtons[i].bin, &amount, &bActive);
         if (!bHave) { amount = 0; bActive = 0; }
-        if ((int)aButtonViews[i].hidden == bHave) {
-            aButtonViews[i].hidden = !bHave;
+        int bShow = bHave;
+        if (i == BTN_BACTA && itemPics == 1) {
+            // BACTA's last tank gone (shown, now none): empty a moment, then
+            // fading out; one picked up meanwhile, back at once
+            if (!bHave && !aButtonViews[i].hidden && aItemAmount[i] > 0) bactaGoneAt = now;
+            if (bHave && bactaGoneAt > 0.0) {
+                bactaGoneAt = 0.0;
+                bLooksChanged = 1; // (back at full at once)
+            }
+            if (bactaGoneAt > 0.0 && now - bactaGoneAt >= IOSTOUCH_BACTA_EMPTY + IOSTOUCH_BACTA_FADE) bactaGoneAt = 0.0;
+            if (bactaGoneAt > 0.0) {
+                bShow = 1;
+                if (now - bactaGoneAt >= IOSTOUCH_BACTA_EMPTY) bLooksChanged = 1; // (its fade, each frame: -refreshButtonLooks)
+            }
+        }
+        if ((int)aButtonViews[i].hidden == bShow) {
+            aButtonViews[i].hidden = !bShow;
             bLooksChanged = 1;
             bItemsChanged = 1;
         }
@@ -6914,6 +6994,14 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             aItemActive[i] = bActive;
             bLooksChanged = 1;
         }
+    }
+    // (a tank asked for and taken: the light tick; not taken in time, none)
+    if (bactaUseUntil > 0.0) {
+        if (aItemAmount[BTN_BACTA] < bactaUseFrom) {
+            [cameraTap impactOccurred];
+            bactaUseUntil = 0.0;
+        }
+        else if (now > bactaUseUntil) bactaUseUntil = 0.0;
     }
     [self refreshItemPics];
 
@@ -7030,6 +7118,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     iosTouch_levelToLoad = 0;
     iosTouch_levelRowToLoad = 0;
     iosTouch_bQuickLoadDue = 0;
+    bactaGoneAt = 0.0;
+    bactaUseUntil = 0.0;
     [self setRing:loadRing progress:0.0];
     [self setRing:menuRing progress:0.0];
     [self setRing:camOptRing progress:0.0];
@@ -7514,6 +7604,7 @@ static void iosTouch_UpdateInPool(void)
     if (bWant == iosTouch_pOverlay.hidden) {
         iosTouch_pOverlay.hidden = !bWant;
         [iosTouch_pOverlay resetAll]; // touches on a hidden view never end; start clean
+        if (!bWant) [iosTouch_pOverlay retryItemPics]; // (icons not to be had: tried again as it next shows)
     }
 
     // Photos asked for but not taken yet: dropped once the overlay goes (a
