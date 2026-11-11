@@ -303,6 +303,11 @@ void iosSaber_SetStyle(int style)
     if (iosSaber_StyleAvailable(style)) iosSaber_style = style;
 }
 
+void iosSaber_SecondTakenUp(void)
+{
+    if (sithWorld_g_pCurrentWorld && sithPlayer_g_pLocalPlayerThing) iosSaberShape_GuardsAdded(sithPlayer_g_pLocalPlayerThing, IOSSABER_HAND_LEFT);
+}
+
 // ------------------------------------------------------------ the hilts
 
 typedef struct {

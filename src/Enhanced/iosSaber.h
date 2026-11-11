@@ -77,6 +77,9 @@ int iosSaber_StyleNumBlades(int style);     // (its sabers, one per hand)
 int iosSaber_StyleByName(const char* name, int* pHilt);
 int iosSaber_GetStyle(void);
 void iosSaber_SetStyle(int style);
+// (the look given a second saber in play, lit as the first: the saber wheel's +, AUTOPLAY's new look; a CROSS's
+// side blades light after its blade, iosSaberShape_GuardsAdded)
+void iosSaber_SecondTakenUp(void);
 
 // ---- hilts: what each hand's saber is (the saber wheel's hand cards, each
 // with its own HILT; iosSaberWheel). Each blade's shape and the hilt's own

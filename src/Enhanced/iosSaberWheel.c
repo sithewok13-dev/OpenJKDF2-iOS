@@ -58,8 +58,10 @@ int iosSaberWheel_NumSabers(void)
 void iosSaberWheel_AddSecond(void)
 {
     if (!iosSaber_StyleAvailable(IOSSABER_STYLE_DUAL)) return;
+    const int bOne = iosSaberWheel_NumSabers() < 2;
     iosSaber_SetStyle(IOSSABER_STYLE_DUAL);
     iosSaberWheel_PickHand(IOSSABER_HAND_LEFT);
+    if (bOne && iosSaberWheel_NumSabers() > 1) iosSaber_SecondTakenUp(); // (CROSS's side blades: after the gap)
 }
 
 void iosSaberWheel_RemoveSecond(void)

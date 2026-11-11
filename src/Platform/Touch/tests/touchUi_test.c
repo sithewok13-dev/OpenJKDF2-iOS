@@ -258,6 +258,7 @@ void iosSaber_SetHilt(int h) { F_SaberSetHilt(h); }
 int iosSaber_NextHilt(int h) { for (int k = 1; k < 4; k++) if (F_SaberHiltAvailable((h + k) % 4)) return (h + k) % 4; return h; }
 int iosSaber_GetStyle(void) { return F_SaberGetStyle(); }
 void iosSaber_SetStyle(int st) { F_SaberSetStyle(st); }
+void iosSaber_SecondTakenUp(void) {}
 int iosSaber_GetColour(int st, int b) { return F_SaberGetColour(st, b); }
 void iosSaber_SetColour(int st, int b, int id) { F_SaberSetColour(st, b, id); }
 // (each hand's saber, as iosSaber.c keeps it; for iosSaberWheel)

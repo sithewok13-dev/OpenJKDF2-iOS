@@ -94,6 +94,9 @@ void iosSaberShape_SetSoftGlow(int bSoft);
 // thrower, saber which; after, NULL: put back): its side blades as that saber's were, lit or still lighting)
 void iosSaberShape_SetGuardKey(int saber);
 void iosSaberShape_SetGuardsFrom(struct SithThing* pThing, int saber);
+// (a second saber taken up, lit as the first, pThing's: saber which (1, the left); its crossguard's side blades
+// light after its blade, from when it is next drawn)
+void iosSaberShape_GuardsAdded(struct SithThing* pThing, int saber);
 // (between them: the blade drawn a little ragged along its whole length, FOLD's, whatever the
 // shape; id: whose and which blade, each its own way; 0 not. A thrown FOLD's, its model: drawn
 // so over it, iosSaberShape_DrawThrownGlow; whether pLine is so now)
