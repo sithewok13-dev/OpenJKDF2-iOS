@@ -4823,8 +4823,8 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
         }
         else {
             [self setShowCheat:1];
-            if (!iosGame_IsSithEwokOn()) iosGame_ToggleSithEwok();
-            iosCheatLaugh_Play(iosGame_SfxVolume()); // (the Emperor approves; also on CHEAT held, or typing it, to on)
+            // (the Emperor approves, when the cheat does go on; also on CHEAT held, or typing it, to on)
+            if (!iosGame_IsSithEwokOn() && iosGame_ToggleSithEwok() > 0) iosCheatLaugh_Play(iosGame_SfxVolume());
         }
     }
     else if (kind == KIND_VIEWSWITCH) {
@@ -6460,8 +6460,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     if (fjumpProgress <= 0.0) iosTouch_jumpTicked = 0;
     [self setRing:fjumpRing progress:fjumpProgress];
     // (typed on -- "sithewok" -- the Emperor's laugh, CHEAT shown or not, as the tray's
-    // switch and CHEAT's hold give; AUTOPLAY's cheat, put on for its show, says nothing.
-    // Read every frame, so one left from the show's time can't come later)
+    // switch and CHEAT's hold give; AUTOPLAY's cheat, put on for its show, says nothing:
+    // its own switching clears the mark, and the first frame after the show takes any left)
     const int bCheatTypedOn = iosGame_TakeSithEwokTypedOn();
     if (iosGame_IsSithEwokOn() != iosTouch_bCheatOn) {
         iosTouch_bCheatOn = iosGame_IsSithEwokOn();

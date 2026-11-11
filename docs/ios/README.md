@@ -1611,7 +1611,7 @@ If both have clips, the one straight in the OpenJKDF2 (or OpenMoTS) folder is
 used.
 
 Clips you add while the game is running count from the next time you switch
-it on. With neither folder holding any, cheat mode is silent.
+`sithewok` on. With neither folder holding any, cheat mode is silent.
 
 ### sithewok's catches in Jedi Knight
 
