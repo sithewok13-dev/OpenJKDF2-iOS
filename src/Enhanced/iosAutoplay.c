@@ -1242,18 +1242,33 @@ static void ap_pickWeapon(int notThis)
         APLOG("the guns pulled away too often: the saber\n");
         aHad[numHad++] = AP_W_SABER;
     }
-    // (a duel: the strong ones -- no fists or Bryar while others are had --
-    // and the saber three times as often)
+    // (a duel: the strong ones -- no fists or Bryar while others are had; a
+    // dark Jedi turns blaster bolts aside with his saber, so the saber most
+    // of all, then what goes off where it lands: the rail detonator, the
+    // concussion rifle)
+    int aWeight[sizeof(aHad) / sizeof(aHad[0])];
+    for (int i = 0; i < numHad; i++) aWeight[i] = 1;
     if (s_bDuel && numHad > 1) {
         int k = 0;
         for (int i = 0; i < numHad; i++)
             if (aHad[i] != AP_W_FISTS && aHad[i] != (ap_mots() ? 122 : 2)) aHad[k++] = aHad[i];
         if (k > 0) numHad = k;
-        for (int i = 0, n = numHad; i < n; i++)
-            if (aHad[i] == AP_W_SABER && numHad + 2 <= (int)(sizeof(aHad) / sizeof(aHad[0]))) { aHad[numHad++] = AP_W_SABER; aHad[numHad++] = AP_W_SABER; }
+        for (int i = 0; i < numHad; i++) {
+            const int bin = aHad[i];
+            aWeight[i] = bin == AP_W_SABER ? 8 : (ap_mots() ? (bin == 129 || bin == 132) : (bin == 7 || bin == 9)) ? 2 : 1;
+        }
     }
-    int id = aHad[ap_randInt(numHad)];
-    for (int k = 0; k < 8 && id == notThis && numHad > 1; k++) id = aHad[ap_randInt(numHad)];
+    int total = 0;
+    for (int i = 0; i < numHad; i++) if (aHad[i] != notThis || numHad == 1) total += aWeight[i];
+    int id = aHad[0];
+    if (total > 0) {
+        int r = ap_randInt(total);
+        for (int i = 0; i < numHad; i++) {
+            if (aHad[i] == notThis && numHad > 1) continue;
+            if (r < aWeight[i]) { id = aHad[i]; break; }
+            r -= aWeight[i];
+        }
+    }
     s_weapon = id;
     s_tAsked = 0.0;
 }
@@ -1802,10 +1817,17 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
             s_tSwitch = now + ap_randRange(9.0f, 16.0f);
         }
         // (a duel: its dark Jedi seldom out of sight, so another weapon now
-        // and then mid-fight as well)
+        // and then mid-fight as well -- the saber most of the time, a strong
+        // gun a short while between)
         else if (s_bDuel && s_numRotation > 1 && now >= s_tSwitch) {
-            ap_pickWeapon(s_weapon);
-            s_tSwitch = now + ap_randRange(12.0f, 20.0f);
+            if (s_bSaber && s_weapon != AP_W_SABER) {
+                ap_takeWeapon(AP_W_SABER);
+                s_tSwitch = now + ap_randRange(14.0f, 22.0f);
+            }
+            else {
+                ap_pickWeapon(s_weapon);
+                s_tSwitch = now + ap_randRange(s_weapon == AP_W_SABER ? 14.0f : 6.0f, s_weapon == AP_W_SABER ? 22.0f : 10.0f);
+            }
         }
     }
     if (curWeapon != s_weapon && now - s_tAsked > 0.9) {
@@ -2247,6 +2269,11 @@ void iosAutoplay_Tick(double now)
         APLOG("t %.1f target %d seen %d wpn %d/%d power %d fw %d x %.2f y %.2f yaw %.2f pitch %.2f dist %.1f ft open %.0f evade %d\n", now - s_tScene, t ? 1 : 0,
               s_numSeen, iosGame_GetCurWeapon(), s_weapon, s_power, s_footwork, s_axisX, s_axisY, ap_yawOf(pl), ap_pitchOf(pl),
               t ? ap_len(ap_sub(s_aim, pl->position)) / s_ft : -1.0f, ap_openFt(pl->sector, eye, ap_yawOf(pl), 32.0f), now < s_tEvade);
+        if (iosGame_GetCurWeapon() != s_weapon) {
+            int ammo = 0, bSel = 0;
+            const int bHad = iosGame_GetWeapon(s_weapon, &ammo, &bSel);
+            APLOG("want %d: inventory %.1f had %d selectable %d saber out %d\n", s_weapon, sithInventory_GetInventory(pl, s_weapon), bHad, bSel, ap_saberOut());
+        }
     }
 #endif
 
