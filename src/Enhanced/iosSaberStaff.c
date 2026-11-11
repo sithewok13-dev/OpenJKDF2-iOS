@@ -285,6 +285,20 @@ static void iosSaberStaff_FreeFrame(float f, flex_t L, flex_t R, const rdVector3
 // him); first person, across the view (square to the line of sight and the
 // blade, so both are as far from the eye), toward the middle of the view (the
 // right hand's to its left)
+#ifdef IOSDEPTH_COMPARE
+#include <stdio.h>
+// (a compare build only: RIG_DEPTH_A=<degrees>, FOLD turned in the hand round its held blade in first person, its
+// other half that far round from square to the line of sight, away from the eye)
+static float iosSaberStaff_DepthA(void)
+{
+    static float a = -1000.0f;
+    if (a == -1000.0f) {
+        const char* e = getenv("RIG_DEPTH_A");
+        a = e ? (float)atof(e) : 0.0f;
+    }
+    return a;
+}
+#endif
 static void iosSaberStaff_Side(int bPov, int hand, const rdMatrix34* pHeld, rdVector3* pS)
 {
     pS->x = (hand && !bPov) ? -1 : 1; pS->y = 0; pS->z = 0;
@@ -300,6 +314,17 @@ static void iosSaberStaff_Side(int bPov, int hand, const rdMatrix34* pHeld, rdVe
     if ((hand == 0) == (f.x > 0)) { f.x = -f.x; f.y = -f.y; f.z = -f.z; }
     rdVector3 l = { iosSaberStaff_Dot(&f, &toCam.rvec), 0, iosSaberStaff_Dot(&f, &toCam.uvec) };
     if (iosSaberStaff_Unit(&l)) *pS = l;
+#ifdef IOSDEPTH_COMPARE
+    const float aDeg = iosSaberStaff_DepthA();
+    if (aDeg != 0.0f) {
+        // (turned round the held blade (y) either way; the one taking the other half further from the eye: the
+        // depth along the held frame's x and z, toCam's y)
+        const float t = aDeg * (float)M_PI / 180.0f, c = cosf(t), sn = sinf(t);
+        const rdVector3 a = { pS->x * c - pS->z * sn, 0, pS->x * sn + pS->z * c }, b = { pS->x * c + pS->z * sn, 0, -pS->x * sn + pS->z * c };
+        const flex_t da = a.x * toCam.rvec.y + a.z * toCam.uvec.y, db = b.x * toCam.rvec.y + b.z * toCam.uvec.y;
+        *pS = da >= db ? a : b;
+    }
+#endif
 }
 
 // ------------------------------------------------------------ the parts
@@ -1343,6 +1368,15 @@ static void iosSaberStaff_PovBlade(SithThing* pActor, rdThing* pLine, const rdMa
         iosSaberStaff_aPovTip[tipSlot][2] = (float)d1;
         iosSaberStaff_aPovTip[tipSlot][3] = (float)d0;
         iosSaberStaff_aPovTipFrame[tipSlot] = (uint32_t)rdroid_frameTrue;
+#ifdef IOSDEPTH_COMPARE
+        if (getenv("RIG_TIPLOG") && rdCamera_g_pCurCamera->pfProject && d1 > (flex_t)0.0001 && d0 > (flex_t)0.0001) {
+            rdVector3 t = { tx, d1, tz }, b = toCam.scale, pt, pb;
+            rdCamera_g_pCurCamera->pfProject(&pt, &t);
+            rdCamera_g_pCurCamera->pfProject(&pb, &b);
+            fprintf(stderr, "RIG: povtip f %u slot %d tip %.1f %.1f depth %.4f base %.1f %.1f depth %.4f\n", (unsigned)rdroid_frameTrue, tipSlot, (double)pt.x, (double)pt.y, (double)d1,
+                    (double)pb.x, (double)pb.y, (double)d0);
+        }
+#endif
     }
     if (d0 >= IOSSABERSTAFF_FADE && d1 >= IOSSABERSTAFF_FADE) {
         rdThing_Draw(pLine, (rdMatrix34*)pFrame);

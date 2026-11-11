@@ -655,6 +655,23 @@ static void iosStance_AddLife(int hand, float t, iosStancePose* p)
     }
 }
 
+#ifdef IOSDEPTH_COMPARE
+#include <stdio.h>
+#include <stdlib.h>
+// (a compare build only: RIG_DEPTH_B="<right> <left>", each hand moved that much further from the eye (or nearer:
+// less than 0), of IOSSTANCE_U)
+static float iosStance_DepthB(int hand)
+{
+    static int bRead = 0;
+    static float a[2] = { 0.0f, 0.0f };
+    if (!bRead) {
+        bRead = 1;
+        const char* e = getenv("RIG_DEPTH_B");
+        if (e) sscanf(e, "%f %f", &a[0], &a[1]);
+    }
+    return a[hand ? 1 : 0];
+}
+#endif
 int iosStance_GetHand(int hand, const rdVector3* pPivot, rdMatrix34* pOut)
 {
     if (!iosStance_s.bStarted || hand < 0 || hand > 1) return 0;
@@ -690,6 +707,9 @@ int iosStance_GetHand(int hand, const rdVector3* pPivot, rdMatrix34* pOut)
     r.scale.x = pPivot->x - rp.x + IOSSTANCE_SIDE * (w * p.side + (1.0f - w) * (p.side - base.side));
     r.scale.y = pPivot->y - rp.y + (w * p.fwd + (1.0f - w) * (p.fwd - base.fwd));
     r.scale.z = pPivot->z - rp.z - (w * p.lower + (1.0f - w) * (p.lower - base.lower));
+#ifdef IOSDEPTH_COMPARE
+    r.scale.y += iosStance_DepthB(hand) * IOSSTANCE_U;
+#endif
     *pOut = r;
     return 1;
 }
