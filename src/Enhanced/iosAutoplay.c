@@ -1136,10 +1136,33 @@ static void ap_alarm(rdVector3 center, SithThing* pl)
     sithAIAwareness_CreateTransmittingEvent(pl->sector, &pl->position, 0, 3.0f, pl);
 }
 
+// A weapon he still has (a dark Jedi's Force Pull takes the gun in his hand
+// away, leaving the fists; a saber away thrown is still his)
+static int ap_hasWeapon(int bin)
+{
+    int ammo = 0, bSelectable = 0;
+    return iosGame_GetWeapon(bin, &ammo, &bSelectable);
+}
+
 static void ap_pickWeapon(int notThis)
 {
-    int id = s_aRotation[ap_randInt(s_numRotation)];
-    for (int k = 0; k < 8 && id == notThis && s_numRotation > 1; k++) id = s_aRotation[ap_randInt(s_numRotation)];
+    // (one of the show's he still has; none left -- pulled away one after
+    // another -- they're given back, as the cheat gives everything)
+    int aHad[sizeof(s_aRotation) / sizeof(s_aRotation[0])], numHad = 0;
+    for (int i = 0; i < s_numRotation; i++)
+        if (ap_hasWeapon(s_aRotation[i])) aHad[numHad++] = s_aRotation[i];
+    SithThing* pl = ap_player();
+    if (numHad == 0 && pl) {
+        for (int i = 0; i < s_numRotation; i++) {
+            const int bin = s_aRotation[i];
+            sithInventory_SetInventory(pl, bin, (ap_isThrown(bin) || ap_isMine(bin)) ? 100.0f : 1.0f);
+            aHad[numHad++] = bin;
+        }
+        APLOG("re-armed: %d weapons\n", numHad);
+    }
+    if (numHad == 0) aHad[numHad++] = s_aRotation[0];
+    int id = aHad[ap_randInt(numHad)];
+    for (int k = 0; k < 8 && id == notThis && numHad > 1; k++) id = aHad[ap_randInt(numHad)];
     s_weapon = id;
     s_tAsked = 0.0;
 }
@@ -1639,6 +1662,11 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
         }
     }
     if (curWeapon != s_weapon && now - s_tAsked > 0.9) {
+        // (the one it wants gone, pulled from his hand: another he has, at once)
+        if (s_throws == 0 && !ap_hasWeapon(s_weapon)) {
+            APLOG("weapon %d gone (in hand %d)\n", s_weapon, curWeapon);
+            ap_pickWeapon(s_weapon);
+        }
         if (iosGame_SelectWeapon(s_weapon)) s_tShowSwitch = now + 0.3; // (as the weapon wheel picks it)
         s_tAsked = now;
     }
