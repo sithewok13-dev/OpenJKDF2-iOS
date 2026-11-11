@@ -662,6 +662,16 @@ static double s_tScene = 0.0, s_tDown = 0.0, s_tCheck = 0.0, s_tWave = 0.0, s_tR
 // some, or someone's been in sight); this long of them and the fight is over
 static double s_tEmpty = 0.0;
 #define AP_EMPTY_SECS 12.0
+// A duel (every enemy of the level a dark Jedi) is never left while one of
+// them lives -- their scripts take them out of reach a while (Jerec's trance
+// in his chamber above the arena) -- he's only placed near one again, after
+// this long with none in sight
+static int s_bDuel = 0;
+#define AP_DUEL_EMPTY_SECS 60.0
+// No spot anywhere (PICK ONE stays): the next search not before this, each
+// failed one waiting longer
+static double s_tRetry = 0.0;
+static int s_numFails = 0;
 static rdVector3 s_farPos;
 static SithThing* s_aKin[32];
 static int s_numKin = 0;
@@ -759,6 +769,14 @@ static int ap_pickRow(void)
     const int count = iosAutoplay_LevelRows();
     if (count <= 0) return -1;
     if (s_opt.levelRow >= 0 && s_opt.levelRow < count) return s_opt.levelRow;
+#ifdef IOSAUTOPLAY_RIG
+    {
+        // (the rig: SHUFFLE ALL's first level, APTEST_FIRSTROW)
+        static int bFirst = 1;
+        const char* pFirst = getenv("APTEST_FIRSTROW");
+        if (bFirst && pFirst && atoi(pFirst) >= 0 && atoi(pFirst) < count) { bFirst = 0; return atoi(pFirst); }
+    }
+#endif
     for (int pass = 0; pass < 2; pass++) {
         if (s_numBag <= 0) {
             s_numBag = 0;
@@ -1285,6 +1303,29 @@ static int ap_reachesFoe(SithThing* pl, rdVector3 feet)
 // The show's fight: one of the level's best groups (by size and light),
 // picked at random among the top few so each show differs; Kyle placed
 // near it, its crowd, its alarm
+// (a dark Jedi of a duel still alive, out of reach or not)
+static int ap_bossLives(void)
+{
+    SithWorld* w = sithWorld_g_pCurrentWorld;
+    for (uint32_t i = 0; w && i < w->numThingsLoaded; i++) {
+        SithThing* t = &w->aThings[i];
+        if (t->type == SITH_THING_ACTOR && !(t->flags & (SITH_TF_DEAD | SITH_TF_DESTROYED)) && t->actorParams.health > 0.0f
+            && (t->actorParams.flags & SITH_AF_BOSS) && t->actor && t->actor->pClass && t->actor->pClass->alignment < 0.0f)
+            return 1;
+    }
+    return 0;
+}
+
+// (a search that found nowhere: PICK ONE waits longer before the next)
+static void ap_searchFailed(double now)
+{
+    if (s_numFails < 4) s_numFails++;
+    s_tRetry = now + 15.0 * (double)(1 << (s_numFails - 1)); // (15, 30, 60, 120 s)
+}
+
+// bAnother: 0 the level's first fight, 1 another (a new group), 2 the duel's
+// dark Jedi again (placed near him, the fight and its look kept; nothing
+// changed if there's nowhere)
 static void ap_startScene(double now, int bAnother)
 {
     SithThing* pl = ap_player();
@@ -1312,8 +1353,9 @@ static void ap_startScene(double now, int bAnother)
                   t->actor ? t->actor->flags : 0, t->actorParams.health);
         }
 #endif
+        if (bAnother == 2) return;
         if (s_opt.levelRow < 0) ap_travel(now);
-        else s_stage = ST_SCENE; // (PICK ONE with none left: he stays and looks about)
+        else { s_stage = ST_SCENE; ap_searchFailed(now); } // (PICK ONE with none left: he stays and looks about)
         return;
     }
     static apGroup aGroups[AP_MAX_GROUPS];
@@ -1335,7 +1377,7 @@ static void ap_startScene(double now, int bAnother)
     }
     for (int i = 4; i < numGroups; i++) order[numOrder++] = i;
     // (another fight in this level: the groups where this one is go last)
-    if (bAnother) {
+    if (bAnother == 1) {
         int here[AP_MAX_GROUPS], numHere = 0, k = 0;
         for (int i = 0; i < numOrder; i++) {
             const apGroup* g = &aGroups[order[i]];
@@ -1388,7 +1430,10 @@ static void ap_startScene(double now, int bAnother)
         }
         s_stage = ST_SCENE;
         s_tScene = now;
-        s_rearms = 0;
+        if (bAnother != 2) s_rearms = 0;
+        s_bDuel = bDuel;
+        s_numFails = 0;
+        s_tRetry = 0.0;
         s_tDown = s_tEmpty = 0.0;
         s_tCheck = now + 1.0;
         s_tWave = s_tReplace = now;
@@ -1397,7 +1442,7 @@ static void ap_startScene(double now, int bAnother)
         // (each fight a new look: the level's first one's was picked as it opened; none
         // for a fight just after one of the level's scenes, which showed the one held)
         if (s_bLookPicked) s_bLookPicked = 0;
-        else if (now - s_tSceneSeen >= AP_LOOK_AFTER_SCENE) ap_newSaberLook();
+        else if (bAnother != 2 && now - s_tSceneSeen >= AP_LOOK_AFTER_SCENE) ap_newSaberLook();
         ap_pickWeapon(-1);
         // (the saber, when it's one of them, more often than not to start)
         if (s_bSaber && !s_bSaberOnly && ap_randInt(3) == 0) s_weapon = AP_W_SABER;
@@ -1407,8 +1452,9 @@ static void ap_startScene(double now, int bAnother)
         return;
     }
     APLOG("nowhere to stand near any group\n");
+    if (bAnother == 2) return;
     if (s_opt.levelRow < 0) ap_travel(now);
-    else s_stage = ST_SCENE;
+    else { s_stage = ST_SCENE; ap_searchFailed(now); }
 }
 
 // ------------------------------------------------------------ the autopilot
@@ -2063,6 +2109,7 @@ static void ap_rigTick(double now)
 void iosAutoplay_Tick(double now)
 {
     const float dt = (float)ap_clampf((float)(now - s_tPrev), 0.0f, 0.1f);
+    if (now - s_tPrev > 0.5) s_tEmpty = 0.0; // (a pause, the app away: waves counted afresh)
     s_tPrev = now;
 #ifdef IOSAUTOPLAY_RIG
     ap_rigTick(now);
@@ -2103,6 +2150,13 @@ void iosAutoplay_Tick(double now)
             s_tStage = now;
             s_copies = 0;
             s_bWokeDisabled = 0;
+            // (no fight yet: the last level's group, its kinds, gone with it)
+            memset(&s_group, 0, sizeof(s_group));
+            s_center = ap_v3(0.0f, 0.0f, 0.0f);
+            s_numKin = 0;
+            s_bDuel = 0;
+            s_numFails = 0;
+            s_tRetry = s_tEmpty = 0.0;
             ap_collectFoes();
             ap_countKinds();
         }
@@ -2121,9 +2175,10 @@ void iosAutoplay_Tick(double now)
     }
     if (!pl || !ap_inPlay()) {
         ap_clearControls();
+        s_tEmpty = 0.0;
         return;
     }
-    if (iosGame_IsHolding()) return;
+    if (iosGame_IsHolding()) { s_tEmpty = 0.0; return; }
     if (!jkDev_Custom_SithEwokIsOn()) jkDev_Custom_CmdSithEwok(NULL, ""); // (a load or a level script took it)
     if (s_stage == ST_ARRIVE) {
         if (now - s_tStage >= 1.0) ap_startScene(now, 0);
@@ -2137,6 +2192,13 @@ void iosAutoplay_Tick(double now)
         if (s_opt.levelRow >= 0) ap_startScene(now, 1);
         else ap_travel(now);
         return;
+    }
+
+    // (no fight set up -- PICK ONE, nowhere to stand: he fights who comes;
+    // another search now and then, each failed one waiting longer)
+    if (!s_group.sector && now >= s_tRetry) {
+        ap_startScene(now, 0);
+        if (!s_group.sector) return;
     }
 
     ap_autopilot(now, dt, pl);
@@ -2157,9 +2219,10 @@ void iosAutoplay_Tick(double now)
     // no one left where the group was (for a moment), or no one in sight for
     // a while: more of their kinds come in, from out of sight; lost (fallen
     // somewhere, wandered far, stuck): put back near the group, quietly
-    if (now >= s_tCheck) {
+    if (s_group.sector && now >= s_tCheck) {
         s_tCheck = now + 0.25;
         const rdVector3 feet = pl->position;
+        const int bDuelOn = s_bDuel && ap_bossLives();
         if (ap_lenXY(ap_sub(feet, s_farPos)) > FT(6.0f)) { s_farPos = feet; s_tMovedFar = now; }
         const int left = ap_foesAround(s_center, FT(AP_DOWN_FT)) + s_numSeen;
         if (left == 0) { if (s_tDown <= 0.0) s_tDown = now; }
@@ -2177,7 +2240,15 @@ void iosAutoplay_Tick(double now)
             // duel's level to end itself first, its dark Jedi down)
             if (n > 0 || ap_targetThing()) s_tEmpty = 0.0;
             else if (s_tEmpty <= 0.0) s_tEmpty = now;
-            else if (now - s_tEmpty >= AP_EMPTY_SECS) {
+            else if (bDuelOn) {
+                if (now - s_tEmpty >= AP_DUEL_EMPTY_SECS) {
+                    APLOG("the duel's dark Jedi out of sight a while: near him again at %.1f s\n", now - s_tStart);
+                    s_tEmpty = 0.0;
+                    ap_startScene(now, 2);
+                    return;
+                }
+            }
+            else if (now - s_tEmpty >= AP_EMPTY_SECS && (s_opt.levelRow < 0 || now >= s_tRetry)) {
                 APLOG("no one left to fight at %.1f s\n", now - s_tStart);
                 s_tEmpty = 0.0;
                 if (s_opt.levelRow >= 0) ap_startScene(now, 1);
@@ -2193,9 +2264,13 @@ void iosAutoplay_Tick(double now)
             s_tRally = now + 2.0;
             ap_rally(pl);
         }
-        const int bLost = (!ap_targetThing() && now - s_tSeen > 6.0 && ap_lenXY(ap_sub(feet, s_center)) > FT(100.0f))
-                          || s_center.z - feet.z > FT(24.0f) || (s_center.z - feet.z > FT(8.0f) && !ap_targetThing() && now - s_tSeen > 3.0)
-                          || (!ap_targetThing() && now - s_tMovedFar > 12.0);
+        // (never while someone's in sight: he follows them, up or down --
+        // Jerec back down from his chamber -- and is back where the fight
+        // began soon after he's lost them, fallen from Maw's ledge)
+        const int bNoOne = !ap_targetThing();
+        const int bLost = (bNoOne && now - s_tSeen > 6.0 && ap_lenXY(ap_sub(feet, s_center)) > FT(100.0f))
+                          || (s_center.z - feet.z > FT(24.0f) && bNoOne) || (s_center.z - feet.z > FT(8.0f) && bNoOne && now - s_tSeen > 3.0)
+                          || (bNoOne && now - s_tMovedFar > 12.0);
         if (bLost && now >= s_tReplace) {
             s_tReplace = now + 8.0;
             apSpot spot;
