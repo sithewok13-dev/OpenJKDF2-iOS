@@ -523,6 +523,33 @@ static int ap_floorNear(const apGroup* g, float x, float y, float strictDrop, ap
     return ap_floorBelow(s, p, FT(4.0f) + strictDrop, pOut);
 }
 
+// Room around, in a narrow way: a wall within a few steps is fine, but no
+// drop (a catwalk's edge) nor water within 5 ft, and a few steps' room at
+// least half the ways round
+static int ap_roomAroundTight(rdVector3 feet, SithSector* sec)
+{
+    const float knee = FT(1.6f);
+    const rdVector3 from = ap_v3(feet.x, feet.y, feet.z + knee);
+    int roomy = 0;
+    for (int k = 0; k < 8; k++) {
+        const float a = (float)k * AP_PI * 0.25f;
+        float clear = 0.0f;
+        for (float d = 1.25f; d <= 5.0f; d += 1.25f) {
+            const rdVector3 to = ap_v3(feet.x + sinf(a) * FT(d), feet.y + cosf(a) * FT(d), feet.z + knee);
+            if (!ap_clear(sec, from, to, FT(0.6f), AP_WALK_FLAGS)) break; // (a wall)
+            SithSector* s = ap_sectorAt(sec, from, to);
+            if (!s) break;
+            apFloor f;
+            if (!ap_floorBelow(s, to, knee + FT(1.0f), &f)) return 0; // (a drop)
+            if (f.bWorld && !f.bSafe) return 0;
+            if (f.z > feet.z + FT(1.0f)) break; // (a step up: as a wall)
+            clear = d;
+        }
+        if (clear >= 2.5f) roomy++;
+    }
+    return roomy >= 4;
+}
+
 // Room around: the floor level and walkable a few steps (feet) every way
 static int ap_roomAround(rdVector3 feet, SithSector* sec, float steps)
 {
@@ -555,7 +582,7 @@ static int ap_findSpot(const apGroup* g, apSpot* out, int bTight)
             if (!ap_floorNear(g, x, y, FT(10.0f), &fl) || !fl.bWorld || !fl.bSafe) continue;
             rdVector3 feet = ap_v3(x, y, fl.z);
             if (fabsf(feet.z - g->center.z) > FT(8.0f)) continue;
-            if (!ap_roomAround(feet, fl.sector, bTight ? 2.5f : 5.0f)) continue;
+            if (bTight ? !ap_roomAroundTight(feet, fl.sector) : !ap_roomAround(feet, fl.sector, 5.0f)) continue;
             // (a straight walk to them, if with a jump or a drop: the same place, no wall between)
             if (!ap_walk(feet, fl.sector, g->anchor.x, g->anchor.y, FT(10.0f), FT(6.0f), NULL)) continue;
             rdVector3 eye = ap_v3(feet.x, feet.y, feet.z + FT(AP_EYE_FT));
@@ -631,6 +658,10 @@ static int s_saberStyle = 0, s_aHilt[2], s_aColour[2][2], s_aLinked[2], s_bSameC
 static apGroup s_group;
 static rdVector3 s_center;
 static double s_tScene = 0.0, s_tDown = 0.0, s_tCheck = 0.0, s_tWave = 0.0, s_tReplace = 0.0, s_tMovedFar = 0.0;
+// Waves that brought no one, one after another, since (0: the last brought
+// some, or someone's been in sight); this long of them and the fight is over
+static double s_tEmpty = 0.0;
+#define AP_EMPTY_SECS 12.0
 static rdVector3 s_farPos;
 static SithThing* s_aKin[32];
 static int s_numKin = 0;
@@ -1137,30 +1168,50 @@ static void ap_alarm(rdVector3 center, SithThing* pl)
 }
 
 // A weapon he still has (a dark Jedi's Force Pull takes the gun in his hand
-// away, leaving the fists; a saber away thrown is still his)
+// away, leaving the fists). The saber is never pulled, in either game, so it
+// is always his: thrown, out of the inventory a moment (Mysteries of the
+// Sith's throw) or held back (Jedi Knight's), it comes back.
 static int ap_hasWeapon(int bin)
 {
     int ammo = 0, bSelectable = 0;
-    return iosGame_GetWeapon(bin, &ammo, &bSelectable);
+    return bin == AP_W_SABER || iosGame_GetWeapon(bin, &ammo, &bSelectable);
 }
+
+// A saber out thrown: either game's own throw, or two sabers' (the fists in
+// hand meanwhile, the saber maybe out of the inventory)
+static int ap_saberOut(void)
+{
+    SithThing* pl = ap_player();
+    return iosSaberThrow_AnyOut() || (ap_mots() && pl && sithInventory_IsInventoryActivated(pl, 37));
+}
+
+// Guns given back in one fight, at most (each pulled away is left lying
+// there, a pickup): then the saber, which can't be pulled
+#define AP_MAX_REARMS 3
+static int s_rearms = 0;
 
 static void ap_pickWeapon(int notThis)
 {
     // (one of the show's he still has; none left -- pulled away one after
-    // another -- they're given back, as the cheat gives everything)
+    // another -- they're given back, as the cheat gives everything, a few
+    // times a fight; then the saber)
     int aHad[sizeof(s_aRotation) / sizeof(s_aRotation[0])], numHad = 0;
     for (int i = 0; i < s_numRotation; i++)
         if (ap_hasWeapon(s_aRotation[i])) aHad[numHad++] = s_aRotation[i];
     SithThing* pl = ap_player();
-    if (numHad == 0 && pl) {
+    if (numHad == 0 && pl && s_rearms < AP_MAX_REARMS) {
+        s_rearms++;
         for (int i = 0; i < s_numRotation; i++) {
             const int bin = s_aRotation[i];
             sithInventory_SetInventory(pl, bin, (ap_isThrown(bin) || ap_isMine(bin)) ? 100.0f : 1.0f);
             aHad[numHad++] = bin;
         }
-        APLOG("re-armed: %d weapons\n", numHad);
+        APLOG("re-armed: %d weapons (%d this fight)\n", numHad, s_rearms);
     }
-    if (numHad == 0) aHad[numHad++] = s_aRotation[0];
+    if (numHad == 0) {
+        APLOG("the guns pulled away too often: the saber\n");
+        aHad[numHad++] = AP_W_SABER;
+    }
     int id = aHad[ap_randInt(numHad)];
     for (int k = 0; k < 8 && id == notThis && numHad > 1; k++) id = aHad[ap_randInt(numHad)];
     s_weapon = id;
@@ -1217,6 +1268,18 @@ static float ap_measureFt(SithThing* pl)
     float eye = FT(AP_EYE_FT);
     if (ap_floorBelow(pl->sector, pl->position, 2.0f, &f)) eye = pl->position.z + pl->actorParams.eyeOffset.z - f.z;
     return ap_clampf(eye / AP_EYE_FT, 0.003f, 0.2f);
+}
+
+// (from his feet, one of the enemies in sight or a straight walk away)
+static int ap_reachesFoe(SithThing* pl, rdVector3 feet)
+{
+    const rdVector3 eye = ap_v3(feet.x, feet.y, feet.z + FT(AP_EYE_FT));
+    SithSector* eyeSec = ap_sectorAt(pl->sector, pl->position, eye);
+    for (int i = 0; i < s_numFoes; i++) {
+        if (eyeSec && ap_sees(eyeSec, eye, s_foes[i].head)) return 1;
+        if (ap_walk(feet, pl->sector, s_foes[i].pos.x, s_foes[i].pos.y, FT(10.0f), FT(6.0f), NULL)) return 1;
+    }
+    return 0;
 }
 
 // The show's fight: one of the level's best groups (by size and light),
@@ -1282,17 +1345,18 @@ static void ap_startScene(double now, int bAnother)
         for (int i = 0; i < numHere; i++) order[k++] = here[i];
     }
     // (none with a spot the finder likes, rather than the show going on to
-    // another level without a fight: a duel's dark Jedi -- on a narrow walk,
-    // a ledge, steps -- is fought from where the level's own scene has just
-    // left Kyle, in the arena facing him; elsewhere, a level of narrow ways
-    // -- a ship's corridors -- each group again, with less room asked for)
-    int bBoss = 0;
+    // another level without a fight: each group again with less room asked
+    // for -- a level of narrow ways, a ship's corridors; then a duel's dark
+    // Jedi -- every enemy there one, on a narrow walk, a ledge, steps -- is
+    // fought from where the level's own scene has just left Kyle, in the
+    // arena, if he sees him or can walk to him)
+    int bDuel = s_numFoes > 0;
     for (int i = 0; i < s_numFoes; i++)
-        if (s_foes[i].thing->actorParams.flags & SITH_AF_BOSS) bBoss = 1;
-    const int numTries = numOrder > 0 ? numOrder + (bBoss ? 1 : numOrder) : 0;
+        if (!(s_foes[i].thing->actorParams.flags & SITH_AF_BOSS)) bDuel = 0;
+    const int numTries = numOrder > 0 ? 2 * numOrder + (bDuel ? 1 : 0) : 0;
     for (int oi = 0; oi < numTries; oi++) {
-        const int bHere = bBoss && oi == numOrder;
-        const int bTight = !bBoss && oi >= numOrder;
+        const int bHere = oi == 2 * numOrder;
+        const int bTight = oi >= numOrder && !bHere;
         const apGroup* g = &aGroups[order[bHere ? 0 : oi % numOrder]];
         apSpot spot;
         if (bHere) {
@@ -1304,6 +1368,10 @@ static void ap_startScene(double now, int bAnother)
             spot.feet = pl->position;
             if (ap_floorBelow(pl->sector, pl->position, FT(20.0f), &fl)) spot.feet.z = fl.z;
             spot.yaw = ap_headingTo(spot.feet, g->center);
+            if (!ap_reachesFoe(pl, spot.feet)) {
+                APLOG("the duel's dark Jedi out of his sight and reach\n");
+                break;
+            }
         }
         else if (!ap_findSpot(g, &spot, bTight)) continue;
         APLOG("SCENE at %.1f s: group of %d at %.2f %.2f %.2f (rank %d), Kyle at %.2f %.2f %.2f%s\n", now - s_tStart, g->count,
@@ -1320,7 +1388,8 @@ static void ap_startScene(double now, int bAnother)
         }
         s_stage = ST_SCENE;
         s_tScene = now;
-        s_tDown = 0.0;
+        s_rearms = 0;
+        s_tDown = s_tEmpty = 0.0;
         s_tCheck = now + 1.0;
         s_tWave = s_tReplace = now;
         ap_resetPilot(now, spot.feet);
@@ -1663,7 +1732,7 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
     }
     if (curWeapon != s_weapon && now - s_tAsked > 0.9) {
         // (the one it wants gone, pulled from his hand: another he has, at once)
-        if (s_throws == 0 && !ap_hasWeapon(s_weapon)) {
+        if (s_throws == 0 && !ap_saberOut() && !ap_hasWeapon(s_weapon)) {
             APLOG("weapon %d gone (in hand %d)\n", s_weapon, curWeapon);
             ap_pickWeapon(s_weapon);
         }
@@ -1951,7 +2020,7 @@ static void ap_rigTick(double now)
     if (pStart && !bStarted && now - tFirst >= atof(pStart)) {
         iosAutoplayOptions o;
         o.levelRow = getenv("APTEST_ROW") ? atoi(getenv("APTEST_ROW")) : -1;
-        o.difficulty = 2;
+        o.difficulty = getenv("APTEST_DIFF") ? atoi(getenv("APTEST_DIFF")) : 2;
         o.crowd = getenv("APTEST_CROWD") ? atoi(getenv("APTEST_CROWD")) : 2;
         o.bAlarm = 1;
         o.weapons = getenv("APTEST_WEAPONS") ? (unsigned int)strtoul(getenv("APTEST_WEAPONS"), NULL, 16) : IOSAUTOPLAY_WEAPONS_ALL;
@@ -2096,11 +2165,25 @@ void iosAutoplay_Tick(double now)
         if (left == 0) { if (s_tDown <= 0.0) s_tDown = now; }
         else s_tDown = 0.0;
         const int bLull = !ap_targetThing() && now - s_tSeen > 4.0;
+        if (ap_targetThing()) s_tEmpty = 0.0;
         if (((s_tDown > 0.0 && now - s_tDown >= 1.5) || bLull) && now >= s_tWave) {
             const int n = ap_reinforce(pl);
             s_tWave = now + (n > 0 ? 8.0 : 2.0);
             s_tRally = now + 1.0;
             APLOG("wave at %.1f s: %d come in\n", now - s_tStart, n);
+            // (none to come, wave after wave, and no one in sight: the fight is
+            // over -- another group, or another level -- rather than him
+            // standing about until the level's own end; long enough for a
+            // duel's level to end itself first, its dark Jedi down)
+            if (n > 0 || ap_targetThing()) s_tEmpty = 0.0;
+            else if (s_tEmpty <= 0.0) s_tEmpty = now;
+            else if (now - s_tEmpty >= AP_EMPTY_SECS) {
+                APLOG("no one left to fight at %.1f s\n", now - s_tStart);
+                s_tEmpty = 0.0;
+                if (s_opt.levelRow >= 0) ap_startScene(now, 1);
+                else ap_travel(now);
+                return;
+            }
         }
         // (no one in sight for a moment: those about are called to him, as
         // the noise of a fight would -- straight to him where they can walk
