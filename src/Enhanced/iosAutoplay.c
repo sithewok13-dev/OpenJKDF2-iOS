@@ -2202,6 +2202,12 @@ void iosAutoplay_Tick(double now)
     const float dt = (float)ap_clampf((float)(now - s_tPrev), 0.0f, 0.1f);
     if (now - s_tPrev > 0.5) s_tEmpty = 0.0; // (a pause, the app away: waves counted afresh)
     s_tPrev = now;
+    // (the game's own time since the last tick: still while it's held, or the
+    // app away; a new level's clock starting again counts nothing)
+    static uint32_t s_lastGameMs = 0;
+    const uint32_t gameMs = sithTime_g_msecGameTime;
+    const double dGame = (gameMs >= s_lastGameMs && gameMs - s_lastGameMs < 1000) ? (gameMs - s_lastGameMs) * 0.001 : 0.0;
+    s_lastGameMs = gameMs;
 #ifdef IOSAUTOPLAY_RIG
     ap_rigTick(now);
 #endif
@@ -2295,7 +2301,7 @@ void iosAutoplay_Tick(double now)
         if (!s_group.sector) return;
     }
 
-    if (s_bDuel) s_duelSecs += dt; // (only while it's played)
+    if (s_bDuel) s_duelSecs += dGame; // (only while it's played)
     ap_autopilot(now, dt, pl);
     ap_input(now, dt);
 
