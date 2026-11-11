@@ -19,6 +19,8 @@ void iosLastWeapon_Reset(void);
 void iosLastWeapon_Note(int held);
 // The one held before it (a bin), or -1 (nothing different yet)
 int iosLastWeapon_Get(void);
+// The one in hand as last noted (a bin), or -1
+int iosLastWeapon_Held(void);
 
 #ifdef __cplusplus
 }

@@ -2077,6 +2077,7 @@ void jkDev_Custom_GameLoaded()
 {
 #ifdef JK_ENHANCED
     iosAutoplay_GameLoaded(); // (AUTOPLAY's show: over, if the player loaded a game)
+    iosGame_ForgetLastWeapon(); // (LAST WPN: nothing from before the load)
 #endif
     jkDev_Custom_SaberThrowForget();
 #ifdef JK_ENHANCED
@@ -2265,6 +2266,7 @@ void jkDev_Custom_LevelOpened()
 {
 #ifdef JK_ENHANCED
     iosAutoplay_LevelOpened(); // (AUTOPLAY's show: its level opened)
+    iosGame_ForgetLastWeapon(); // (LAST WPN: nothing from the last level)
 #endif
     jkDev_bCheatedThisLevel = 0; // (a new level: no cheat used in it yet)
 #ifdef PLATFORM_ENET

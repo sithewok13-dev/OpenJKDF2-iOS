@@ -13,6 +13,10 @@ everything on a phone.
   Cheats are in `src/Main/jkDev.c`.
 - **Docs:** `docs/ios/README.md` (setup guide), `docs/ios/RELEASE_NOTES.md` (the
   release text). **CI:** `.github/workflows/ios.yml`.
+- **This port's own layout** (not part of the shared touch standard below): FORCE
+  WHEEL is a small button beside FORCE, 10 pt from it (a touch between them is
+  FORCE's); LAST WPN sits right of NEXT WPN (tap = the weapon held before; again
+  = back; dimmed, doing nothing, with none to go back to, or it's gone or empty).
 - **Mysteries of the Sith** is a separate app, **OpenMoTS**
   (`packaging/ios/make_mots_app.sh`), with its own bundle id and Files folder.
 - **AUTOPLAY** (both apps), a self-playing show for screen recordings: MENU's
@@ -95,9 +99,6 @@ everything on a phone.
   - FORCE WHEEL and NEXT WPN: tap = next; a 10 pt slide opens the wheel at once; a
     0.3 s hold opens it to tap. The gap at the bottom cancels. The game holds still
     while a wheel is open. A haptic tick per slice. 4 gold stars per power level.
-    This port's places: FORCE WHEEL small, by FORCE; NEXT WPN top left.
-  - LAST WPN (this port's, right of NEXT WPN): tap = the weapon held before; again
-    = back. Dimmed, doing nothing, with none to go back to (or it's gone or empty).
   - HUD and buttons stay clear of the corners, the notch or Dynamic Island, and the
     home bar.
 - **Testing:** a real-engine Linux rig with the real data (local only) and the real

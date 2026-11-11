@@ -99,12 +99,13 @@ extern int jkHud_bChatOpen;
 // the SAVE hold is) it opens to tap one.
 // Sliding to pick is measured from where the thumb went down on the button:
 // it points nowhere until IOSTOUCH_WHEEL_DEAD points away (keep this small:
-// the slices pointing up only have ~30pt of screen above the button), the
-// point it is measured from trails at most IOSTOUCH_WHEEL_LEASH behind the
-// thumb (so turning back after a long slide is quick), and a slice stays
-// picked until the thumb points IOSTOUCH_WHEEL_HYST degrees past its edge. On
-// the wheel itself the slice under the thumb is picked. A lift that never
-// slid as far as IOSTOUCH_WHEEL_DEAD leaves the wheel open to tap a slice.
+// NEXT WPN, in the top row, has only ~30pt of screen above it for the slices
+// pointing up), the point it is measured from trails at most
+// IOSTOUCH_WHEEL_LEASH behind the thumb (so turning back after a long slide
+// is quick), and a slice stays picked until the thumb points
+// IOSTOUCH_WHEEL_HYST degrees past its edge. On the wheel itself the slice
+// under the thumb is picked. A lift that never slid as far as
+// IOSTOUCH_WHEEL_DEAD leaves the wheel open to tap a slice.
 #define IOSTOUCH_WHEEL_OPEN_SLIDE 10.0
 #define IOSTOUCH_WHEEL_HOLD 0.3
 #define IOSTOUCH_WHEEL_DEAD 14.0
@@ -171,6 +172,10 @@ extern int jkHud_bChatOpen;
 // keeps from FORCE and the other buttons round FIRE
 #define IOSTOUCH_WHEEL_BTN_R 20.0f
 #define IOSTOUCH_WHEEL_BTN_GAP 12.0
+// ...from FORCE itself (a touch in between is FORCE's: -buttonAt:), and how
+// much further out it still counts as beside FORCE
+#define IOSTOUCH_WHEEL_BTN_FORCE_GAP 10.0
+#define IOSTOUCH_WHEEL_BTN_NEAR 18
 #define IOSTOUCH_TRAY_CLEAR 8.0
 // The build stamp (iosTouch_VersionText), while the tray is open: small
 // dim text IOSTOUCH_VERSION_H tall, just under the tray (or the row open
@@ -994,6 +999,9 @@ static CGFloat iosTouch_aTrayRow[2][3];
 // FORCE WHEEL laid out where MENU's tray (or a row under it) opens: hidden
 // while the tray is open (small screens)
 static int iosTouch_bWheelBtnUnderTray = 0;
+// ...and the width it takes from the game's top message line (none, unless
+// nothing beside FORCE leaves the line as it was)
+static CGFloat iosTouch_wheelBtnTextLost = 0.0;
 static int iosTouch_menuPulse = 0;
 static int iosTouch_bShowFps = 0;
 static int iosTouch_maxFps = 60; // (the tray's FPS held: 60 or 120)
@@ -3275,18 +3283,25 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         const CGFloat cx = MAX(MIN(iosTouch_aButtons[BTN_TRAYOPACITY].x, right - w * 0.5), left + w * 0.5);
         opacityBack.frame = CGRectMake(round(cx - w * 0.5), round(trayLastY + 52 - h * 0.5), w, h);
     }
-    // FORCE WHEEL by FORCE, under the right thumb with it: just above FORCE
-    // if it fits, else round it, nearest the top first (up and towards the
-    // middle of the screen, then down that side), IOSTOUCH_WHEEL_BTN_GAP edge
-    // to edge from FORCE and from the other buttons round FIRE. On screen, on
+    // FORCE WHEEL by FORCE, under the right thumb with it. Every place round
+    // FORCE is weighed (rings out from it, from straight up round towards the
+    // middle of the screen and down that side, then round the other way):
+    // IOSTOUCH_WHEEL_BTN_FORCE_GAP edge to edge from FORCE at the nearest,
+    // IOSTOUCH_WHEEL_BTN_GAP from the other buttons round FIRE; on screen, on
     // the right thumb's half, clear of the top row (as far as FORCE is), the
     // gauge, the cutout and the open wheel (whose slices a thumb dragged onto
-    // them picks), and of MENU's tray and the rows and slider that open under
-    // it (as laid out: they don't move for FORCE WHEEL). Failing that, the
-    // same over the tray's place (then hidden while the tray is open); then
-    // the same further out (the smallest screens, where FORCE is under the
-    // wheel); as the last resort, just left of FORCE. (Swapped: worked out
-    // as if not, then mirrored, as the buttons round FIRE are.)
+    // them picks). Of those, the best is beside FORCE (no further out than
+    // IOSTOUCH_WHEEL_BTN_NEAR), then a little further, then anywhere; at the
+    // same reach, the one that costs the game's top message line the least
+    // width (the band under the top row, as the buttons round FIRE leave it:
+    // none, wherever there is such a place), then one clear of MENU's tray and
+    // the rows and slider that open under it (as laid out: they don't move for
+    // it; else it hides while the tray is open), then the nearest, then the
+    // first in that order.
+    // With none (the smallest screens, with Display Zoom), the same allowing
+    // the open wheel's place, then the left half; as the last resort, just
+    // left of FORCE. (Swapped: worked out as if not, then mirrored, as the
+    // buttons round FIRE are.)
     {
         iosTouchButton* w = &iosTouch_aButtons[BTN_WHEEL];
         iosTouchButton* f = &iosTouch_aButtons[BTN_FORCE];
@@ -3297,42 +3312,37 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         // (everything as seen unswapped: x mirrored when swapped)
 #define IOSTOUCH_UX(x) (iosTouch_bSwapped ? W - (x) : (x))
         const CGFloat fx = IOSTOUCH_UX(f->x), fy = f->y, wcx = IOSTOUCH_UX(wc.x);
-        CGPoint best = CGPointMake(fx - f->radius - R - IOSTOUCH_WHEEL_BTN_GAP, fy);
-        int bFound = 0;
-        iosTouch_bWheelBtnUnderTray = 1; // (the last resort)
-        for (int pass = 0; pass < 4 && !bFound; pass++) {
-            const int bOverTray = pass & 1;
-            for (int extra = pass < 2 ? 0 : 66; extra <= (pass < 2 ? 60 : 360) && !bFound; extra += 6) {
-                const CGFloat D = f->radius + R + IOSTOUCH_WHEEL_BTN_GAP + extra;
-                // (from straight up, round towards the middle of the screen and on
-                // down that side; then round the other way, towards the edge)
-                for (int k = 0; k <= 360 && !bFound; k += 3) {
+        // (the message line: how far either way from the middle the buttons
+        // round FIRE let it reach, in the band it may take under the top row)
+        const CGFloat textBand = top + 26 + iosTouch_aButtons[BTN_MENU].radius + IOSTOUCH_TOPTEXT_GAP + IOSTOUCH_TOPTEXT_DEPTH;
+        CGFloat textHalf = MIN(W * 0.5 - (left + IOSTOUCH_TOPTEXT_SIDE), (right - IOSTOUCH_TOPTEXT_SIDE) - W * 0.5);
+        for (int i = BTN_FIRE; i <= BTN_FORCE; i++) {
+            iosTouchButton* q = &iosTouch_aButtons[i];
+            if (q->y - q->radius - IOSTOUCH_TOUCH_SLOP <= textBand) textHalf = MIN(textHalf, fabs(q->x - W * 0.5) - q->radius - IOSTOUCH_TOUCH_SLOP);
+        }
+        CGPoint best = CGPointMake(fx - f->radius - R - IOSTOUCH_WHEEL_BTN_FORCE_GAP, fy);
+        CGFloat bestKey[4] = { 0 };
+        int bFound = 0, bestOverTray = 1;
+        iosTouch_wheelBtnTextLost = 0.0;
+        for (int relax = 0; relax < 3 && !bFound; relax++) { // (0: all; 1: over the open wheel; 2: the left half too)
+            for (int extra = 0; extra <= 360; extra += 6) {
+                const CGFloat D = f->radius + R + IOSTOUCH_WHEEL_BTN_FORCE_GAP + extra;
+                for (int k = 0; k <= 360; k += 3) {
                     const int deg = k <= 180 ? 90 + k : 90 - (k - 180);
                     const CGFloat rad = deg * (CGFloat)M_PI / 180.0;
                     const CGPoint p = CGPointMake(fx + D * cos(rad), fy - D * sin(rad));
                     if (p.x - R < left || p.x + R > W - 4 || p.y + R > bottom || p.y - R < top + 60) continue; // on screen, below the top row
-                    if (p.x < W * 0.5) continue;                                                       // the right thumb's half
-                    if (hypot(p.x - wcx, p.y - wc.y) < wheelR1 + IOSTOUCH_WHEEL_POP + 14.0 + R) continue; // the open wheel
+                    if (relax < 2 && p.x < W * 0.5) continue;                                          // the right thumb's half
+                    if (relax < 1 && hypot(p.x - wcx, p.y - wc.y) < wheelR1 + IOSTOUCH_WHEEL_POP + 14.0 + R) continue; // the open wheel
                     int bClear = 1;
                     for (int i = BTN_FIRE; i <= BTN_FORCE && bClear; i++) {                               // the buttons round FIRE
                         iosTouchButton* c = &iosTouch_aButtons[i];
-                        if (hypot(p.x - IOSTOUCH_UX(c->x), p.y - c->y) < R + c->radius + IOSTOUCH_WHEEL_BTN_GAP) bClear = 0;
+                        const CGFloat gap = i == BTN_FORCE ? IOSTOUCH_WHEEL_BTN_FORCE_GAP : IOSTOUCH_WHEEL_BTN_GAP;
+                        if (hypot(p.x - IOSTOUCH_UX(c->x), p.y - c->y) < R + c->radius + gap - 0.01) bClear = 0;
                     }
                     for (int t = 0; t < IOSTOUCH_COUNT(aTopRow) && bClear; t++) {                           // the top row
                         iosTouchButton* q = &iosTouch_aButtons[aTopRow[t]];
                         if (hypot(p.x - IOSTOUCH_UX(q->x), p.y - q->y) < R + q->radius + topGap) bClear = 0;
-                    }
-                    for (int r = 0; r < iosTouch_numTrayRows && bClear && !bOverTray; r++) {              // MENU's tray, as it will open
-                        const CGFloat* row = iosTouch_aTrayRow[r];
-                        const CGFloat x0 = IOSTOUCH_UX(row[0]), x1 = IOSTOUCH_UX(row[1]);
-                        if (iosTouch_DistToSegment(p, MIN(x0, x1), row[2], MAX(x0, x1), row[2]) < 26 + R + IOSTOUCH_TRAY_CLEAR) bClear = 0;
-                    }
-                    for (int u = 0; u < IOSTOUCH_COUNT(aUnderTray) && bClear && !bOverTray; u++) {        // ...the rows under it, OPACITY's slider
-                        const CGRect rb = aUnderTray[u].frame;
-                        const CGFloat x0 = MIN(IOSTOUCH_UX(CGRectGetMinX(rb)), IOSTOUCH_UX(CGRectGetMaxX(rb)));
-                        const CGFloat x1 = MAX(IOSTOUCH_UX(CGRectGetMinX(rb)), IOSTOUCH_UX(CGRectGetMaxX(rb)));
-                        const CGFloat qx = MIN(MAX(p.x, x0), x1), qy = MIN(MAX(p.y, CGRectGetMinY(rb)), CGRectGetMaxY(rb));
-                        if (hypot(p.x - qx, p.y - qy) < R + IOSTOUCH_TRAY_CLEAR) bClear = 0;
                     }
                     if (bClear && iosTouch_bLayoutGauge) {                                                 // the gauge
                         const CGFloat gx = MIN(MAX(p.x, g[0]), g[2]), gy = MIN(MAX(p.y, g[1]), g[3]);
@@ -3341,12 +3351,36 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
                     if (bClear && bCutout && iosTouch_DistToSegment(p, cutX, H * 0.5 - cutHalf, cutX, H * 0.5 + cutHalf) < R + cutR + 2)
                         bClear = 0;                                                                         // the cutout
                     if (!bClear) continue;
+                    int bOverTray = 0;
+                    for (int r = 0; r < iosTouch_numTrayRows && !bOverTray; r++) {                        // MENU's tray, as it will open
+                        const CGFloat* row = iosTouch_aTrayRow[r];
+                        const CGFloat x0 = IOSTOUCH_UX(row[0]), x1 = IOSTOUCH_UX(row[1]);
+                        if (iosTouch_DistToSegment(p, MIN(x0, x1), row[2], MAX(x0, x1), row[2]) < 26 + R + IOSTOUCH_TRAY_CLEAR) bOverTray = 1;
+                    }
+                    for (int u = 0; u < IOSTOUCH_COUNT(aUnderTray) && !bOverTray; u++) {                  // ...the rows under it, OPACITY's slider
+                        const CGRect rb = aUnderTray[u].frame;
+                        const CGFloat x0 = MIN(IOSTOUCH_UX(CGRectGetMinX(rb)), IOSTOUCH_UX(CGRectGetMaxX(rb)));
+                        const CGFloat x1 = MAX(IOSTOUCH_UX(CGRectGetMinX(rb)), IOSTOUCH_UX(CGRectGetMaxX(rb)));
+                        const CGFloat qx = MIN(MAX(p.x, x0), x1), qy = MIN(MAX(p.y, CGRectGetMinY(rb)), CGRectGetMaxY(rb));
+                        if (hypot(p.x - qx, p.y - qy) < R + IOSTOUCH_TRAY_CLEAR) bOverTray = 1;
+                    }
+                    const CGFloat lost = (p.y - R - IOSTOUCH_TOUCH_SLOP <= textBand) ? MAX(0.0, textHalf - (fabs(p.x - W * 0.5) - R - IOSTOUCH_TOUCH_SLOP)) : 0.0;
+                    const CGFloat key[4] = { extra <= IOSTOUCH_WHEEL_BTN_NEAR ? 0 : extra <= 60 ? 1 : 2, round(lost * 0.25), bOverTray, extra };
+                    int bBetter = !bFound;
+                    for (int j = 0; j < 4 && !bBetter; j++) {
+                        if (key[j] < bestKey[j]) bBetter = 1;
+                        if (key[j] != bestKey[j]) break;
+                    }
+                    if (!bBetter) continue;
+                    memcpy(bestKey, key, sizeof bestKey);
                     best = p;
+                    bestOverTray = bOverTray;
+                    iosTouch_wheelBtnTextLost = 2.0 * lost;
                     bFound = 1;
-                    iosTouch_bWheelBtnUnderTray = bOverTray;
                 }
             }
         }
+        iosTouch_bWheelBtnUnderTray = bFound ? bestOverTray : 1;
         w->x = IOSTOUCH_UX(best.x);
         w->y = best.y;
 #undef IOSTOUCH_UX
@@ -3493,6 +3527,18 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
             best = i;
             bestDist = d - b->radius;
         }
+    }
+    // FORCE WHEEL beside FORCE: a touch near both -- in the gap between them,
+    // or on FORCE WHEEL's edge facing FORCE (within the slop of it) -- is
+    // FORCE's, so a hurried press on FORCE never changes the power. FORCE
+    // WHEEL takes only touches clearly on it there; FORCE's own reach is as
+    // ever. (Further apart, as on the smallest screens, each its own.)
+    if (best == BTN_WHEEL && !aButtonViews[BTN_FORCE].hidden) {
+        iosTouchButton* f = &iosTouch_aButtons[BTN_FORCE];
+        iosTouchButton* w = &iosTouch_aButtons[BTN_WHEEL];
+        const CGFloat gap = hypot(f->x - w->x, f->y - w->y) - f->radius - w->radius;
+        const CGFloat dF = hypot(p.x - f->x, p.y - f->y) - f->radius;
+        if (gap <= IOSTOUCH_WHEEL_BTN_FORCE_GAP + IOSTOUCH_WHEEL_BTN_NEAR && dF <= MAX(gap, 0.0) + IOSTOUCH_TOUCH_SLOP) best = BTN_FORCE;
     }
     return best;
 }
@@ -4207,9 +4253,12 @@ static CGRect IOSTouch_CardPartFrame(CGRect r, int part, int bLinked)
 // screen, a ring and the buttons showing (kept till one of them changes).
 #define IOSTOUCH_THROW_REACH 300
 static struct { int bValid; CGFloat key[12]; BOOL bFound; CGPoint at; } iosTouch_throwSpot;
-// (a button that counts: showing, or only hidden for the saber wheel)
+// (a button that counts: showing, or only hidden for the saber wheel -- but
+// FORCE WHEEL, always hidden then, which THROW's place has never had to keep
+// clear of since it moved down by FORCE)
 - (int)buttonBesideWheel:(int)k
 {
+    if (k == BTN_WHEEL) return 0;
     UIView* v = aButtonViews[k];
     return !v.hidden && v.superview && (v.alpha >= 0.01 || iosTouch_SaberWheelHides(k));
 }
@@ -7064,7 +7113,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     }
     // LAST WPN dimmed while there's no weapon to go back to (none held
     // before this one yet, or it's gone, or out of ammo)
-    if ((iosGame_GetLastWeapon() >= 0) != bLastWpnOk) {
+    if ((iosGame_HasLastWeapon() ? 1 : 0) != bLastWpnOk) {
         bLastWpnOk = !bLastWpnOk;
         bLooksChanged = 1;
     }

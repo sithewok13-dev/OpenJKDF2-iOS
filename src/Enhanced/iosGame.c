@@ -2,8 +2,11 @@
 
 #include "Enhanced/iosGame.h"
 #include "Enhanced/iosSaberThrowJk.h"
+#include "Enhanced/iosSaberThrow.h"
 
 #ifdef JK_ENHANCED
+
+#include <string.h>
 
 #include "Dss/sithGamesave.h"
 #include "General/stdString.h"
@@ -421,9 +424,24 @@ void iosGame_CancelWeaponPick(void)
 }
 
 // LAST WPN: the weapon in hand noted each frame (iosLastWeapon), afresh with
-// each level and player
+// each level, player and game loaded. A saber thrown leaves the fists in
+// hand, or none, until it is back: no switch, so nothing is noted from the
+// throw until a weapon but the fists is in hand again (the saber, as a rule:
+// then nothing has changed). A throw is ours (iosSaberThrow, two sabers;
+// iosSaberThrowJk, Jedi Knight's), or the game's own (Mysteries of the Sith,
+// one saber): the saber in hand, then the fists or none, the saber gone from
+// the inventory
 static SithThing* iosGame_pWeaponPlayer = NULL;
 static SithWorld* iosGame_pWeaponWorld = NULL;
+static int iosGame_bThrowFists = 0;
+static int iosGame_bLastWeaponAsked = 0; // iosGame_HasLastWeapon's answer kept (below)
+
+void iosGame_ForgetLastWeapon(void)
+{
+    iosLastWeapon_Reset();
+    iosGame_bThrowFists = 0;
+    iosGame_bLastWeaponAsked = 0;
+}
 
 void iosGame_WeaponTick(void)
 {
@@ -431,11 +449,20 @@ void iosGame_WeaponTick(void)
     if (pPlayer != iosGame_pWeaponPlayer || sithWorld_g_pCurrentWorld != iosGame_pWeaponWorld) {
         iosGame_pWeaponPlayer = pPlayer;
         iosGame_pWeaponWorld = sithWorld_g_pCurrentWorld;
-        iosLastWeapon_Reset();
+        iosGame_ForgetLastWeapon();
     }
     if (!pPlayer || !pPlayer->actorParams.pPlayer) return;
     const int held = pPlayer->actorParams.pPlayer->curWeaponID;
-    if (held >= 0 && held < SITHBIN_NUMBINS) iosLastWeapon_Note(held);
+    const int fists = Main_bMotsCompat ? SITHBIN_MOTS_FISTS : SITHBIN_FISTS;
+    const int saber = Main_bMotsCompat ? SITHBIN_MOTS_LIGHTSABER : SITHBIN_LIGHTSABER;
+    const int bThrown = iosSaberThrow_AnyOut() || iosSaberThrowJk_OnFists()
+                     || ((held <= 0 || held == fists) && iosLastWeapon_Held() == saber && sithInventory_GetInventory(pPlayer, saber) <= 0.0);
+    if (bThrown) iosGame_bThrowFists = 1;
+    if (iosGame_bThrowFists) {
+        if (bThrown || held <= 0 || held == fists) return;
+        iosGame_bThrowFists = 0;
+    }
+    if (held > 0 && held < SITHBIN_NUMBINS) iosLastWeapon_Note(held); // (0: none in hand, as in a throw's switch)
 }
 
 int iosGame_GetLastWeapon(void)
@@ -444,6 +471,39 @@ int iosGame_GetLastWeapon(void)
     const int bin = iosLastWeapon_Get();
     if (bin < 0 || !iosGame_GetPlayer() || !iosGame_GetWeapon(bin, &ammo, &bSelectable) || !bSelectable) return -1;
     return bin;
+}
+
+// The question iosGame_GetLastWeapon asks the weapon's cog, asked again only
+// when what its answer hangs on changes -- the weapon in hand, the one
+// before, how many of it and of its ammo the player has, whether it is
+// available or held back by a throw -- or after IOSGAME_LASTWEAPON_RECHECK
+// of game time (anything else a level's cog might look at)
+#define IOSGAME_LASTWEAPON_RECHECK 0.5
+int iosGame_HasLastWeapon(void)
+{
+    static float aKey[6];
+    static flex_t secAsked = 0.0;
+    static int bHas = 0;
+    SithThing* pPlayer = iosGame_GetPlayer();
+    const int bin = iosLastWeapon_Get();
+    if (bin < 0 || !pPlayer || !pPlayer->actorParams.pPlayer || bin >= SITHBIN_NUMBINS) {
+        iosGame_bLastWeaponAsked = 0;
+        return 0;
+    }
+    const int ammoBin = iosGame_WeaponAmmoBin(bin);
+    const float key[6] = {
+        (float)pPlayer->actorParams.pPlayer->curWeaponID, (float)bin, (float)sithInventory_GetInventory(pPlayer, bin),
+        (ammoBin >= 0 && ammoBin < SITHBIN_NUMBINS) ? (float)sithInventory_GetInventory(pPlayer, ammoBin) : -1.0f,
+        (float)sithInventory_IsInventoryAvailable(pPlayer, bin), (float)iosSaberThrowJk_WeaponHeldBack(pPlayer, bin)
+    };
+    const flex_t now = sithTime_g_secGameTime;
+    if (iosGame_bLastWeaponAsked && !memcmp(key, aKey, sizeof aKey) && now >= secAsked && now - secAsked < IOSGAME_LASTWEAPON_RECHECK)
+        return bHas;
+    memcpy(aKey, key, sizeof aKey);
+    secAsked = now;
+    iosGame_bLastWeaponAsked = 1;
+    bHas = iosGame_GetLastWeapon() >= 0;
+    return bHas;
 }
 
 // Hands the waiting pick to the game once it would take the weapon's number

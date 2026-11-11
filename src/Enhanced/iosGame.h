@@ -104,10 +104,16 @@ int iosGame_GetCurWeapon(void);
 int iosGame_SelectWeapon(int bin);
 // LAST WPN: the weapon held before the one in hand (however the switch came
 // about), noted once a frame (iosGame_WeaponTick, from enh_Tick); its bin if
-// the player can switch to it now (had, with ammo), else -1. A new level
-// starts afresh.
+// the player can switch to it now (had, with ammo), else -1. A new level or
+// a game loaded starts afresh; a Saber Throw's fists in the meantime aren't
+// a switch.
 void iosGame_WeaponTick(void);
 int iosGame_GetLastWeapon(void);
+// ...whether it has one, for LAST WPN's look each frame (the weapon's cog
+// asked again only when what its answer hangs on changes)
+int iosGame_HasLastWeapon(void);
+// A game loaded or a level opened: nothing held before (jkDev)
+void iosGame_ForgetLastWeapon(void);
 
 // Drops a pick still waiting (NEXT WPN tapped, the overlay reset, QUICK LOAD).
 void iosGame_CancelWeaponPick(void);

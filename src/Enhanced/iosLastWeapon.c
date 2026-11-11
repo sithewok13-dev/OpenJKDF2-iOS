@@ -23,4 +23,9 @@ int iosLastWeapon_Get(void)
     return (iosLastWeapon_last >= 0 && iosLastWeapon_last != iosLastWeapon_held) ? iosLastWeapon_last : -1;
 }
 
+int iosLastWeapon_Held(void)
+{
+    return iosLastWeapon_held;
+}
+
 #endif // JK_ENHANCED
