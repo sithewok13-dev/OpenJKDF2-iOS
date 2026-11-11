@@ -1255,13 +1255,31 @@ static void ap_startScene(double now, int bAnother)
         }
         for (int i = 0; i < numHere; i++) order[k++] = here[i];
     }
-    for (int oi = 0; oi < numOrder; oi++) {
-        const apGroup* g = &aGroups[order[oi]];
+    // (a duel's: a dark Jedi with nowhere near him the finder likes -- a narrow
+    // walk, a ledge, steps -- is fought from where the level's own scene has
+    // just left Kyle, in the arena facing him, rather than the show going on
+    // to another level without the fight)
+    int bBoss = 0;
+    for (int i = 0; i < s_numFoes; i++)
+        if (s_foes[i].thing->actorParams.flags & SITH_AF_BOSS) bBoss = 1;
+    for (int oi = 0; oi < numOrder + (bBoss && numOrder > 0 ? 1 : 0); oi++) {
+        const int bHere = oi == numOrder;
+        const apGroup* g = &aGroups[order[bHere ? 0 : oi]];
         apSpot spot;
-        if (!ap_findSpot(g, &spot)) continue;
-        APLOG("SCENE at %.1f s: group of %d at %.2f %.2f %.2f (rank %d), Kyle at %.2f %.2f %.2f\n", now - s_tStart, g->count,
-              g->center.x, g->center.y, g->center.z, order[oi], spot.feet.x, spot.feet.y, spot.feet.z);
-        ap_place(pl, &spot);
+        if (bHere) {
+            // (the group nearest him; his feet where he stands)
+            for (int i = 1; i < numOrder; i++)
+                if (ap_lenXY(ap_sub(aGroups[order[i]].center, pl->position)) < ap_lenXY(ap_sub(g->center, pl->position))) g = &aGroups[order[i]];
+            apFloor fl;
+            spot.sector = pl->sector;
+            spot.feet = pl->position;
+            if (ap_floorBelow(pl->sector, pl->position, FT(20.0f), &fl)) spot.feet.z = fl.z;
+            spot.yaw = ap_headingTo(spot.feet, g->center);
+        }
+        else if (!ap_findSpot(g, &spot)) continue;
+        APLOG("SCENE at %.1f s: group of %d at %.2f %.2f %.2f (rank %d), Kyle at %.2f %.2f %.2f%s\n", now - s_tStart, g->count,
+              g->center.x, g->center.y, g->center.z, bHere ? -1 : order[oi], spot.feet.x, spot.feet.y, spot.feet.z, bHere ? " (where he stands: a duel)" : "");
+        if (!bHere) ap_place(pl, &spot);
         s_group = *g;
         s_center = g->center;
         ap_noteKin(g->center);
