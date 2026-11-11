@@ -175,6 +175,10 @@ extern int jkHud_bChatOpen;
 // ...from FORCE itself (a touch in between is FORCE's: -buttonAt:), and how
 // much further out it still counts as beside FORCE
 #define IOSTOUCH_WHEEL_BTN_FORCE_GAP 10.0
+// ...or this much where it fits as well, IOSTOUCH_WHEEL_BTN_EDGE_ROOM or more
+// from the screen's edges
+#define IOSTOUCH_WHEEL_BTN_FORCE_GAP_ROOMY 16.0
+#define IOSTOUCH_WHEEL_BTN_EDGE_ROOM 16.0
 #define IOSTOUCH_WHEEL_BTN_NEAR 18
 // ...and the width (each side) it may cost the game's top message line to keep
 // clear of MENU's tray rather than hide while it is open
@@ -3290,7 +3294,8 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
     // FORCE WHEEL by FORCE, under the right thumb with it. Every place round
     // FORCE is weighed (rings out from it, from straight up round towards the
     // middle of the screen and down that side, then round the other way):
-    // IOSTOUCH_WHEEL_BTN_FORCE_GAP edge to edge from FORCE at the nearest,
+    // IOSTOUCH_WHEEL_BTN_FORCE_GAP_ROOMY edge to edge from FORCE at the nearest
+    // where that fits comfortably, else IOSTOUCH_WHEEL_BTN_FORCE_GAP (below),
     // IOSTOUCH_WHEEL_BTN_GAP from the other buttons round FIRE; on screen, on
     // the right thumb's half, clear of the top row (as far as FORCE is), the
     // gauge, the cutout and the open wheel (whose slices a thumb dragged onto
@@ -3325,72 +3330,95 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
             iosTouchButton* q = &iosTouch_aButtons[i];
             if (q->y - q->radius - IOSTOUCH_TOUCH_SLOP <= textBand) textHalf = MIN(textHalf, fabs(q->x - W * 0.5) - q->radius - IOSTOUCH_TOUCH_SLOP);
         }
-        CGPoint best = CGPointMake(fx - f->radius - R - IOSTOUCH_WHEEL_BTN_FORCE_GAP, fy);
-        CGFloat bestKey[5] = { 0 };
-        int bFound = 0, bestOverTray = 1;
-        iosTouch_wheelBtnTextLost = 0.0;
-        int bDone = 0; // (a place that costs nothing, at the nearest reach there is one: none further on is better)
-        for (int relax = 0; relax < 3 && !bFound; relax++) { // (0: all; 1: over the open wheel; 2: the left half too)
-            for (int extra = 0; extra <= 360 && !bDone; extra += 6) {
-                const int reach = extra <= IOSTOUCH_WHEEL_BTN_NEAR ? 0 : extra <= 60 ? 1 : 2;
-                if (bFound && reach > bestKey[0]) break; // (further out than the best yet)
-                const CGFloat D = f->radius + R + IOSTOUCH_WHEEL_BTN_FORCE_GAP + extra;
-                for (int k = 0; k <= 360 && !bDone; k += 3) {
-                    const int deg = k <= 180 ? 90 + k : 90 - (k - 180);
-                    const CGFloat rad = deg * (CGFloat)M_PI / 180.0;
-                    const CGPoint p = CGPointMake(fx + D * cos(rad), fy - D * sin(rad));
-                    if (p.x - R < left || p.x + R > W - 4 || p.y + R > bottom || p.y - R < top + 60) continue; // on screen, below the top row
-                    if (relax < 2 && p.x < W * 0.5) continue;                                          // the right thumb's half
-                    if (relax < 1 && hypot(p.x - wcx, p.y - wc.y) < wheelR1 + IOSTOUCH_WHEEL_POP + 14.0 + R) continue; // the open wheel
-                    int bClear = 1;
-                    for (int i = BTN_FIRE; i <= BTN_FORCE && bClear; i++) {                               // the buttons round FIRE
-                        iosTouchButton* c = &iosTouch_aButtons[i];
-                        const CGFloat gap = i == BTN_FORCE ? IOSTOUCH_WHEEL_BTN_FORCE_GAP : IOSTOUCH_WHEEL_BTN_GAP;
-                        if (hypot(p.x - IOSTOUCH_UX(c->x), p.y - c->y) < R + c->radius + gap - 0.01) bClear = 0;
+        // (tried with IOSTOUCH_WHEEL_BTN_FORCE_GAP_ROOMY from FORCE, then with
+        // IOSTOUCH_WHEEL_BTN_FORCE_GAP: the roomier one kept where it costs
+        // nothing -- below)
+        struct { CGPoint at; CGFloat key0, lost; int bFound, bOverTray, relax; } aTry[2];
+        for (int n = 0; n < 2; n++) {
+            const CGFloat forceGap = n == 0 ? IOSTOUCH_WHEEL_BTN_FORCE_GAP_ROOMY : IOSTOUCH_WHEEL_BTN_FORCE_GAP;
+            CGPoint best = CGPointMake(fx - f->radius - R - forceGap, fy);
+            CGFloat bestKey[5] = { 0 };
+            int bFound = 0, bestOverTray = 1;
+            CGFloat bestLost = 0.0;
+            int bDone = 0; // (a place that costs nothing, at the nearest reach there is one: none further on is better)
+            int relax = 0;
+            for (relax = 0; relax < 3 && !bFound; relax++) { // (0: all; 1: over the open wheel; 2: the left half too)
+                for (int extra = 0; extra <= 360 && !bDone; extra += 6) {
+                    const int reach = extra <= IOSTOUCH_WHEEL_BTN_NEAR ? 0 : extra <= 60 ? 1 : 2;
+                    if (bFound && reach > bestKey[0]) break; // (further out than the best yet)
+                    const CGFloat D = f->radius + R + forceGap + extra;
+                    for (int k = 0; k <= 360 && !bDone; k += 3) {
+                        const int deg = k <= 180 ? 90 + k : 90 - (k - 180);
+                        const CGFloat rad = deg * (CGFloat)M_PI / 180.0;
+                        const CGPoint p = CGPointMake(fx + D * cos(rad), fy - D * sin(rad));
+                        if (p.x - R < left || p.x + R > W - 4 || p.y + R > bottom || p.y - R < top + 60) continue; // on screen, below the top row
+                        if (n == 0 && MIN(MIN(p.x - R, W - (p.x + R)), H - (p.y + R)) < IOSTOUCH_WHEEL_BTN_EDGE_ROOM) continue; // (roomier: off the edges)
+                        if (relax < 2 && p.x < W * 0.5) continue;                                          // the right thumb's half
+                        if (relax < 1 && hypot(p.x - wcx, p.y - wc.y) < wheelR1 + IOSTOUCH_WHEEL_POP + 14.0 + R) continue; // the open wheel
+                        int bClear = 1;
+                        for (int i = BTN_FIRE; i <= BTN_FORCE && bClear; i++) {                               // the buttons round FIRE
+                            iosTouchButton* c = &iosTouch_aButtons[i];
+                            const CGFloat gap = i == BTN_FORCE ? forceGap : IOSTOUCH_WHEEL_BTN_GAP;
+                            if (hypot(p.x - IOSTOUCH_UX(c->x), p.y - c->y) < R + c->radius + gap - 0.01) bClear = 0;
+                        }
+                        for (int t = 0; t < IOSTOUCH_COUNT(aTopRow) && bClear; t++) {                           // the top row
+                            iosTouchButton* q = &iosTouch_aButtons[aTopRow[t]];
+                            if (hypot(p.x - IOSTOUCH_UX(q->x), p.y - q->y) < R + q->radius + topGap) bClear = 0;
+                        }
+                        if (bClear && iosTouch_bLayoutGauge) {                                                 // the gauge
+                            const CGFloat gx = MIN(MAX(p.x, g[0]), g[2]), gy = MIN(MAX(p.y, g[1]), g[3]);
+                            if (hypot(p.x - gx, p.y - gy) < R + 4) bClear = 0;
+                        }
+                        if (bClear && bCutout && iosTouch_DistToSegment(p, cutX, H * 0.5 - cutHalf, cutX, H * 0.5 + cutHalf) < R + cutR + 2)
+                            bClear = 0;                                                                         // the cutout
+                        if (!bClear) continue;
+                        int bOverTray = 0;
+                        for (int r = 0; r < iosTouch_numTrayRows && !bOverTray; r++) {                        // MENU's tray, as it will open
+                            const CGFloat* row = iosTouch_aTrayRow[r];
+                            const CGFloat x0 = IOSTOUCH_UX(row[0]), x1 = IOSTOUCH_UX(row[1]);
+                            if (iosTouch_DistToSegment(p, MIN(x0, x1), row[2], MAX(x0, x1), row[2]) < 26 + R + IOSTOUCH_TRAY_CLEAR) bOverTray = 1;
+                        }
+                        for (int u = 0; u < IOSTOUCH_COUNT(aUnderTray) && !bOverTray; u++) {                  // ...the rows under it, OPACITY's slider
+                            const CGRect rb = aUnderTray[u].frame;
+                            const CGFloat x0 = MIN(IOSTOUCH_UX(CGRectGetMinX(rb)), IOSTOUCH_UX(CGRectGetMaxX(rb)));
+                            const CGFloat x1 = MAX(IOSTOUCH_UX(CGRectGetMinX(rb)), IOSTOUCH_UX(CGRectGetMaxX(rb)));
+                            const CGFloat qx = MIN(MAX(p.x, x0), x1), qy = MIN(MAX(p.y, CGRectGetMinY(rb)), CGRectGetMaxY(rb));
+                            if (hypot(p.x - qx, p.y - qy) < R + IOSTOUCH_TRAY_CLEAR) bOverTray = 1;
+                        }
+                        const CGFloat lost = (p.y - R - IOSTOUCH_TOUCH_SLOP <= textBand) ? MAX(0.0, textHalf - (fabs(p.x - W * 0.5) - R - IOSTOUCH_TOUCH_SLOP)) : 0.0;
+                        // (a loss of IOSTOUCH_WHEEL_BTN_SMALL_LOSS or less weighs less than the tray)
+                        const CGFloat key[5] = { reach, lost > IOSTOUCH_WHEEL_BTN_SMALL_LOSS ? round(lost * 0.25) : 0, bOverTray, lost, extra };
+                        int bBetter = !bFound;
+                        for (int j = 0; j < 5 && !bBetter; j++) {
+                            if (key[j] < bestKey[j]) bBetter = 1;
+                            if (key[j] != bestKey[j]) break;
+                        }
+                        if (!bBetter) continue;
+                        memcpy(bestKey, key, sizeof bestKey);
+                        best = p;
+                        bestOverTray = bOverTray;
+                        bestLost = lost;
+                        bFound = 1;
+                        bDone = !key[1] && !key[2] && !key[3];
                     }
-                    for (int t = 0; t < IOSTOUCH_COUNT(aTopRow) && bClear; t++) {                           // the top row
-                        iosTouchButton* q = &iosTouch_aButtons[aTopRow[t]];
-                        if (hypot(p.x - IOSTOUCH_UX(q->x), p.y - q->y) < R + q->radius + topGap) bClear = 0;
-                    }
-                    if (bClear && iosTouch_bLayoutGauge) {                                                 // the gauge
-                        const CGFloat gx = MIN(MAX(p.x, g[0]), g[2]), gy = MIN(MAX(p.y, g[1]), g[3]);
-                        if (hypot(p.x - gx, p.y - gy) < R + 4) bClear = 0;
-                    }
-                    if (bClear && bCutout && iosTouch_DistToSegment(p, cutX, H * 0.5 - cutHalf, cutX, H * 0.5 + cutHalf) < R + cutR + 2)
-                        bClear = 0;                                                                         // the cutout
-                    if (!bClear) continue;
-                    int bOverTray = 0;
-                    for (int r = 0; r < iosTouch_numTrayRows && !bOverTray; r++) {                        // MENU's tray, as it will open
-                        const CGFloat* row = iosTouch_aTrayRow[r];
-                        const CGFloat x0 = IOSTOUCH_UX(row[0]), x1 = IOSTOUCH_UX(row[1]);
-                        if (iosTouch_DistToSegment(p, MIN(x0, x1), row[2], MAX(x0, x1), row[2]) < 26 + R + IOSTOUCH_TRAY_CLEAR) bOverTray = 1;
-                    }
-                    for (int u = 0; u < IOSTOUCH_COUNT(aUnderTray) && !bOverTray; u++) {                  // ...the rows under it, OPACITY's slider
-                        const CGRect rb = aUnderTray[u].frame;
-                        const CGFloat x0 = MIN(IOSTOUCH_UX(CGRectGetMinX(rb)), IOSTOUCH_UX(CGRectGetMaxX(rb)));
-                        const CGFloat x1 = MAX(IOSTOUCH_UX(CGRectGetMinX(rb)), IOSTOUCH_UX(CGRectGetMaxX(rb)));
-                        const CGFloat qx = MIN(MAX(p.x, x0), x1), qy = MIN(MAX(p.y, CGRectGetMinY(rb)), CGRectGetMaxY(rb));
-                        if (hypot(p.x - qx, p.y - qy) < R + IOSTOUCH_TRAY_CLEAR) bOverTray = 1;
-                    }
-                    const CGFloat lost = (p.y - R - IOSTOUCH_TOUCH_SLOP <= textBand) ? MAX(0.0, textHalf - (fabs(p.x - W * 0.5) - R - IOSTOUCH_TOUCH_SLOP)) : 0.0;
-                    // (a loss of IOSTOUCH_WHEEL_BTN_SMALL_LOSS or less weighs less than the tray)
-                    const CGFloat key[5] = { reach, lost > IOSTOUCH_WHEEL_BTN_SMALL_LOSS ? round(lost * 0.25) : 0, bOverTray, lost, extra };
-                    int bBetter = !bFound;
-                    for (int j = 0; j < 5 && !bBetter; j++) {
-                        if (key[j] < bestKey[j]) bBetter = 1;
-                        if (key[j] != bestKey[j]) break;
-                    }
-                    if (!bBetter) continue;
-                    memcpy(bestKey, key, sizeof bestKey);
-                    best = p;
-                    bestOverTray = bOverTray;
-                    iosTouch_wheelBtnTextLost = 2.0 * lost;
-                    bFound = 1;
-                    bDone = !key[1] && !key[2] && !key[3];
                 }
             }
+            aTry[n].at = best;
+            aTry[n].key0 = bestKey[0];
+            aTry[n].lost = bestLost;
+            aTry[n].bFound = bFound;
+            aTry[n].bOverTray = bFound ? bestOverTray : 1;
+            aTry[n].relax = relax - 1;
         }
-        iosTouch_bWheelBtnUnderTray = bFound ? bestOverTray : 1;
+        // The roomier gap where it fits comfortably: beside FORCE with all the
+        // rules kept and IOSTOUCH_WHEEL_BTN_EDGE_ROOM or more from the screen's
+        // edges (searched so), the message line no narrower and the tray no
+        // more in the way than with the closer one; else the closer one
+        const int pick = (aTry[0].bFound && aTry[0].relax == 0 && aTry[0].key0 == 0 && aTry[1].bFound
+                          && aTry[0].lost <= aTry[1].lost + 0.01 && aTry[0].bOverTray <= aTry[1].bOverTray) ? 0 : 1;
+        const CGPoint best = aTry[pick].at;
+        iosTouch_wheelBtnTextLost = 2.0 * aTry[pick].lost;
+        iosTouch_bWheelBtnUnderTray = aTry[pick].bOverTray;
         w->x = IOSTOUCH_UX(best.x);
         w->y = best.y;
 #undef IOSTOUCH_UX
@@ -3538,17 +3566,22 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
             bestDist = d - b->radius;
         }
     }
-    // FORCE WHEEL beside FORCE: a touch near both -- in the gap between them,
-    // or on FORCE WHEEL's edge facing FORCE (within the slop of it) -- is
-    // FORCE's, so a hurried press on FORCE never changes the power. FORCE
-    // WHEEL takes only touches clearly on it there; FORCE's own reach is as
-    // ever. (Further apart, as on the smallest screens, each its own.)
-    if (best == BTN_WHEEL && !aButtonViews[BTN_FORCE].hidden) {
+    // FORCE WHEEL beside FORCE: a touch near both -- in the gap between them
+    // (wider than the two slops, with 16 pt), or on FORCE WHEEL's edge facing
+    // FORCE (within the slop of it) -- is FORCE's, so a hurried press on FORCE
+    // never changes the power. FORCE WHEEL takes only touches clearly on it
+    // there; FORCE's own reach is as ever. (Further apart, as on the smallest
+    // screens, each its own.)
+    if ((best == BTN_WHEEL || best < 0) && !aButtonViews[BTN_FORCE].hidden && !aButtonViews[BTN_WHEEL].hidden) {
         iosTouchButton* f = &iosTouch_aButtons[BTN_FORCE];
         iosTouchButton* w = &iosTouch_aButtons[BTN_WHEEL];
         const CGFloat gap = hypot(f->x - w->x, f->y - w->y) - f->radius - w->radius;
         const CGFloat dF = hypot(p.x - f->x, p.y - f->y) - f->radius;
-        if (gap <= IOSTOUCH_WHEEL_BTN_FORCE_GAP + IOSTOUCH_WHEEL_BTN_NEAR && dF <= MAX(gap, 0.0) + IOSTOUCH_TOUCH_SLOP) best = BTN_FORCE;
+        const CGFloat dW = hypot(p.x - w->x, p.y - w->y) - w->radius;
+        if (gap <= IOSTOUCH_WHEEL_BTN_FORCE_GAP_ROOMY + IOSTOUCH_WHEEL_BTN_NEAR
+            && (best == BTN_WHEEL ? dF <= MAX(gap, 0.0) + IOSTOUCH_TOUCH_SLOP                      // (FORCE WHEEL's near edge)
+                                  : dF + dW <= MAX(gap, 0.0) + 2.0 * IOSTOUCH_TOUCH_SLOP)) // (the gap, between their reaches)
+            best = BTN_FORCE;
     }
     return best;
 }
