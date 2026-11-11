@@ -633,11 +633,14 @@ void iosSaberShape_FlushGlows(void)
 #define IOSSABERSHAPE_PAIR_VERTS 8
 // (which saber is further off, where it matters: where their blades cross on screen, or come nearest, if within
 // IOSSABERSHAPE_PAIR_NEAR of each other (of the screen's own units, x and z over depth), each blade's depth there;
-// the order changing only when the other is further by more than IOSSABERSHAPE_PAIR_SWAP (units); else as it was.
-// Each hand's blades as rdPolyline_Draw lays them, up to IOSSABERSHAPE_PAIR_AXES, cut at IOSSABERSHAPE_PAIR_EYE
-// in front of the eye)
+// the order changing only when the other is further by more than IOSSABERSHAPE_PAIR_SWAP (units); else as it was,
+// as it is too where blades touching on screen (within IOSSABERSHAPE_PAIR_TIE) disagree (FOLD's two across
+// another, one in front of it and one behind). Each hand's blades as rdPolyline_Draw lays them, up to
+// IOSSABERSHAPE_PAIR_AXES, cut where they come nearer the eye than the camera shows (its near plane; at least
+// IOSSABERSHAPE_PAIR_EYE))
 #define IOSSABERSHAPE_PAIR_SWAP 0.0015
 #define IOSSABERSHAPE_PAIR_NEAR 0.3
+#define IOSSABERSHAPE_PAIR_TIE 0.01
 #define IOSSABERSHAPE_PAIR_AXES 8
 #define IOSSABERSHAPE_PAIR_EYE 0.005
 typedef struct {
@@ -692,23 +695,24 @@ static void iosSaberShape_PairAxis(const rdVector3* pTip, const rdVector3* pBase
 }
 
 // (where two blades (camera space: a0 to a1, b0 to b1) come nearest on screen, each one's depth there and how far
-// apart on screen they are; 0 if either is behind the eye; ortho cameras: none)
-static int iosSaberShape_PairNearest(const rdVector3* a0, const rdVector3* a1, const rdVector3* b0, const rdVector3* b1, double* pDa, double* pDb,
-                                     double* pGap)
+// apart on screen they are, each cut at eye (depth) in front of the eye; 0 if either is nearer than that all along;
+// ortho cameras: none)
+static int iosSaberShape_PairNearest(const rdVector3* a0, const rdVector3* a1, const rdVector3* b0, const rdVector3* b1, double eye, double* pDa,
+                                     double* pDb, double* pGap)
 {
     rdVector3 p[2][2] = { { *a0, *a1 }, { *b0, *b1 } };
     double sx[2][2], sz[2][2];
     for (int i = 0; i < 2; i++) {
-        // (cut where it passes the eye's plane)
-        if (p[i][0].y < IOSSABERSHAPE_PAIR_EYE && p[i][1].y < IOSSABERSHAPE_PAIR_EYE) return 0;
+        // (cut where it passes the plane eye in front of the eye)
+        if (p[i][0].y < eye && p[i][1].y < eye) return 0;
         for (int e = 0; e < 2; e++) {
             rdVector3* q = &p[i][e];
             const rdVector3* o = &p[i][!e];
-            if (q->y < IOSSABERSHAPE_PAIR_EYE) {
-                const double t = (IOSSABERSHAPE_PAIR_EYE - (double)o->y) / ((double)q->y - (double)o->y);
+            if (q->y < eye) {
+                const double t = (eye - (double)o->y) / ((double)q->y - (double)o->y);
                 q->x = (flex_t)((double)o->x + ((double)q->x - (double)o->x) * t);
                 q->z = (flex_t)((double)o->z + ((double)q->z - (double)o->z) * t);
-                q->y = (flex_t)IOSSABERSHAPE_PAIR_EYE;
+                q->y = (flex_t)eye;
             }
             sx[i][e] = (double)q->x / (double)q->y;
             sz[i][e] = (double)q->z / (double)q->y;
@@ -797,19 +801,25 @@ void iosSaberShape_EndPovPair(void)
     if (!iosSaberShape_numPair) return;
     // (which saber is further off, drawn first, so the nearer lies over it, the same all along: where their blades
     // cross on screen, or come nearest, each blade's depth there; kept as it was unless the other is clearly
-    // further there now, so two sabers about as far off don't swap from one frame to the next)
+    // further there now, so two sabers about as far off don't swap from one frame to the next; and as it was where
+    // blades touching on screen disagree; only what the camera shows, from its near plane on)
     if (rdCamera_g_pCurCamera && rdCamera_g_pCurCamera->projectType != rdCameraProjectType_Ortho) {
+        const rdClipFrustum* pClip = rdCamera_g_pCurCamera->pClipFrustum;
+        const double eye = pClip && (double)pClip->nearPlane > IOSSABERSHAPE_PAIR_EYE ? (double)pClip->nearPlane : IOSSABERSHAPE_PAIR_EYE;
         double best = 1e30, dFar = 0;
+        int aFar[2] = { 0, 0 }; // (blades touching on screen: one finding the right hand's clearly further, one the left's)
         for (int i = 0; i < iosSaberShape_aNumPairAxes[0]; i++)
             for (int j = 0; j < iosSaberShape_aNumPairAxes[1]; j++) {
                 double da, db, gap;
                 if (!iosSaberShape_PairNearest(&iosSaberShape_aPairAxis[0][i][0], &iosSaberShape_aPairAxis[0][i][1], &iosSaberShape_aPairAxis[1][j][0],
-                                               &iosSaberShape_aPairAxis[1][j][1], &da, &db, &gap) || gap >= best)
+                                               &iosSaberShape_aPairAxis[1][j][1], eye, &da, &db, &gap))
                     continue;
+                if (gap < IOSSABERSHAPE_PAIR_TIE && fabs(db - da) > IOSSABERSHAPE_PAIR_SWAP) aFar[db > da] = 1;
+                if (gap >= best) continue;
                 best = gap;
                 dFar = db - da; // (+: the left hand's further)
             }
-        if (best < IOSSABERSHAPE_PAIR_NEAR) {
+        if (best < IOSSABERSHAPE_PAIR_NEAR && !(aFar[0] && aFar[1])) {
             if (dFar > IOSSABERSHAPE_PAIR_SWAP) iosSaberShape_pairFar = 1;
             else if (dFar < -IOSSABERSHAPE_PAIR_SWAP) iosSaberShape_pairFar = 0;
         }
