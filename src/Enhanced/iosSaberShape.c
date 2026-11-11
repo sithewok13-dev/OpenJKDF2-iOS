@@ -628,8 +628,15 @@ void iosSaberShape_FlushGlows(void)
 // STAFF's and FOLD's two blades too) is drawn as ever.
 #define IOSSABERSHAPE_PAIR_MAX 2048
 #define IOSSABERSHAPE_PAIR_VERTS 8
-// (how much further off (units) the other saber must be, on the mean, for the order to change)
-#define IOSSABERSHAPE_PAIR_SWAP 0.003
+// (which saber is further off, where it matters: where their blades cross on screen, or come nearest, if within
+// IOSSABERSHAPE_PAIR_NEAR of each other (of the screen's own units, x and z over depth), each blade's depth there;
+// the order changing only when the other is further by more than IOSSABERSHAPE_PAIR_SWAP (units); else as it was.
+// Each hand's blades as rdPolyline_Draw lays them, up to IOSSABERSHAPE_PAIR_AXES, cut at IOSSABERSHAPE_PAIR_EYE
+// in front of the eye)
+#define IOSSABERSHAPE_PAIR_SWAP 0.0015
+#define IOSSABERSHAPE_PAIR_NEAR 0.3
+#define IOSSABERSHAPE_PAIR_AXES 8
+#define IOSSABERSHAPE_PAIR_EYE 0.005
 typedef struct {
     rdFace face;
     rdVector3 aVerts[IOSSABERSHAPE_PAIR_VERTS];
@@ -647,12 +654,17 @@ static int iosSaberShape_numPair = 0;
 static int iosSaberShape_bPair = 0;
 static int iosSaberShape_pairHand = 0; // (the hand whose blade is being drawn, iosSaberShape_BeginBlade)
 static rdMaterial* iosSaberShape_pMidMat = NULL; // (the core face being drawn's white middle's, iosSaberShape_SetMiddle)
+static rdMaterial* iosSaberShape_pBladeMid = NULL; // (the blade being drawn's, iosSaberShape_BeginBlade)
+static rdVector3 iosSaberShape_aPairAxis[2][IOSSABERSHAPE_PAIR_AXES][2]; // (each hand's blades: tip, base; camera space)
+static int iosSaberShape_aNumPairAxes[2];
+static int iosSaberShape_pairFar = 0; // (the hand drawn first, kept from frame to frame)
 static int iosSaberShape_aPairIdx[IOSSABERSHAPE_PAIR_VERTS] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
 void iosSaberShape_BeginPovPair(void)
 {
     iosSaberShape_numPair = 0;
     iosSaberShape_pairHand = 0;
+    iosSaberShape_aNumPairAxes[0] = iosSaberShape_aNumPairAxes[1] = 0;
     // (only where nothing writes depth, as the first person blades are drawn with the hand's depth: elsewhere as ever)
     iosSaberShape_bPair = rdGetZBufferMethod() == RD_ZBUFFER_READ_NOWRITE;
 }
@@ -662,10 +674,69 @@ void iosSaberShape_BeginPovPair(void)
 static iosSaberShapeGlow* iosSaberShape_pCore; // (FILM: its core, below)
 static void iosSaberShape_SetMiddle(int bOn, const rdFace* pFace)
 {
-    iosSaberShape_pMidMat = NULL;
-    if (!bOn || !iosSaberShape_bPair || !iosSaberShape_pCore || !pFace || pFace->material != &iosSaberShape_pCore->mat) return;
-    iosSaberShapeGlow* g = iosSaberShape_Glow2(iosSaberShape_pCore->rgb, IOSSABERSHAPE_GAIN_CORE_MID, iosSaberShape_pCore->core);
-    iosSaberShape_pMidMat = g ? &g->mat : NULL;
+    iosSaberShape_pMidMat = bOn && iosSaberShape_bPair && iosSaberShape_pCore && pFace && pFace->material == &iosSaberShape_pCore->mat
+                                ? iosSaberShape_pBladeMid : NULL;
+}
+
+// (a blade laid out while two sabers are drawn, rdPolyline_Draw: kept for which is further off, its hand's)
+static void iosSaberShape_PairAxis(const rdVector3* pTip, const rdVector3* pBase)
+{
+    const int h = iosSaberShape_pairHand ? 1 : 0;
+    if (!iosSaberShape_bPair || !pTip || !pBase || iosSaberShape_aNumPairAxes[h] >= IOSSABERSHAPE_PAIR_AXES) return;
+    rdVector3* a = iosSaberShape_aPairAxis[h][iosSaberShape_aNumPairAxes[h]++];
+    a[0] = *pTip;
+    a[1] = *pBase;
+}
+
+// (where two blades (camera space: a0 to a1, b0 to b1) come nearest on screen, each one's depth there and how far
+// apart on screen they are; 0 if either is behind the eye; ortho cameras: none)
+static int iosSaberShape_PairNearest(const rdVector3* a0, const rdVector3* a1, const rdVector3* b0, const rdVector3* b1, double* pDa, double* pDb,
+                                     double* pGap)
+{
+    rdVector3 p[2][2] = { { *a0, *a1 }, { *b0, *b1 } };
+    double sx[2][2], sz[2][2];
+    for (int i = 0; i < 2; i++) {
+        // (cut where it passes the eye's plane)
+        if (p[i][0].y < IOSSABERSHAPE_PAIR_EYE && p[i][1].y < IOSSABERSHAPE_PAIR_EYE) return 0;
+        for (int e = 0; e < 2; e++) {
+            rdVector3* q = &p[i][e];
+            const rdVector3* o = &p[i][!e];
+            if (q->y < IOSSABERSHAPE_PAIR_EYE) {
+                const double t = (IOSSABERSHAPE_PAIR_EYE - (double)o->y) / ((double)q->y - (double)o->y);
+                q->x = (flex_t)((double)o->x + ((double)q->x - (double)o->x) * t);
+                q->z = (flex_t)((double)o->z + ((double)q->z - (double)o->z) * t);
+                q->y = (flex_t)IOSSABERSHAPE_PAIR_EYE;
+            }
+            sx[i][e] = (double)q->x / (double)q->y;
+            sz[i][e] = (double)q->z / (double)q->y;
+        }
+    }
+    // (the nearest points of the two segments on screen: s along a, t along b)
+    const double ux = sx[0][1] - sx[0][0], uz = sz[0][1] - sz[0][0], vx = sx[1][1] - sx[1][0], vz = sz[1][1] - sz[1][0];
+    const double wx = sx[0][0] - sx[1][0], wz = sz[0][0] - sz[1][0];
+    const double A = ux * ux + uz * uz, B = ux * vx + uz * vz, C = vx * vx + vz * vz, D = ux * wx + uz * wz, E = vx * wx + vz * wz;
+    const double den = A * C - B * B;
+    double s = 0, t = 0;
+    if (A <= 1e-12 && C <= 1e-12) s = t = 0;
+    else if (A <= 1e-12) t = E / C;
+    else if (C <= 1e-12) s = -D / A;
+    else {
+        s = den > 1e-12 ? (B * E - C * D) / den : 0;
+        s = s < 0 ? 0 : (s > 1 ? 1 : s);
+        t = (B * s + E) / C;
+        if (t < 0 || t > 1) {
+            t = t < 0 ? 0 : 1;
+            s = (B * t - D) / A;
+        }
+    }
+    s = s < 0 ? 0 : (s > 1 ? 1 : s);
+    t = t < 0 ? 0 : (t > 1 ? 1 : t);
+    const double dx = (sx[0][0] + ux * s) - (sx[1][0] + vx * t), dz = (sz[0][0] + uz * s) - (sz[1][0] + vz * t);
+    *pGap = sqrt(dx * dx + dz * dz);
+    // (depth there: its inverse runs evenly along the blade on screen)
+    *pDa = 1.0 / ((1 - s) / (double)p[0][0].y + s / (double)p[0][1].y);
+    *pDb = 1.0 / ((1 - t) / (double)p[1][0].y + t / (double)p[1][1].y);
+    return 1;
 }
 
 int iosSaberShape_KeepFace(rdThing* pLine, rdFace* pFace, rdMeshinfo* pInfo)
@@ -721,23 +792,26 @@ void iosSaberShape_EndPovPair(void)
     iosSaberShape_bPair = 0;
     iosSaberShape_pMidMat = NULL;
     if (!iosSaberShape_numPair) return;
-    // (which saber is further off: by the mean depth of its faces' corners, drawn first, so where they
-    // cross the nearer is over it, the same all along, not slice by slice)
-    double aSum[2] = { 0, 0 };
-    int aNum[2] = { 0, 0 };
-    for (int i = 0; i < iosSaberShape_numPair; i++) {
-        const iosSaberShapePairFace* k = &iosSaberShape_aPair[i];
-        for (uint32_t j = 0; j < k->face.numVertices; j++) aSum[k->hand] += (double)k->aVerts[j].y;
-        aNum[k->hand] += (int)k->face.numVertices;
+    // (which saber is further off, drawn first, so the nearer lies over it, the same all along: where their blades
+    // cross on screen, or come nearest, each blade's depth there; kept as it was unless the other is clearly
+    // further there now, so two sabers about as far off don't swap from one frame to the next)
+    if (rdCamera_g_pCurCamera && rdCamera_g_pCurCamera->projectType != rdCameraProjectType_Ortho) {
+        double best = 1e30, dFar = 0;
+        for (int i = 0; i < iosSaberShape_aNumPairAxes[0]; i++)
+            for (int j = 0; j < iosSaberShape_aNumPairAxes[1]; j++) {
+                double da, db, gap;
+                if (!iosSaberShape_PairNearest(&iosSaberShape_aPairAxis[0][i][0], &iosSaberShape_aPairAxis[0][i][1], &iosSaberShape_aPairAxis[1][j][0],
+                                               &iosSaberShape_aPairAxis[1][j][1], &da, &db, &gap) || gap >= best)
+                    continue;
+                best = gap;
+                dFar = db - da; // (+: the left hand's further)
+            }
+        if (best < IOSSABERSHAPE_PAIR_NEAR) {
+            if (dFar > IOSSABERSHAPE_PAIR_SWAP) iosSaberShape_pairFar = 1;
+            else if (dFar < -IOSSABERSHAPE_PAIR_SWAP) iosSaberShape_pairFar = 0;
+        }
     }
-    // (kept as it was unless the other is clearly further now, so two sabers about as far off don't swap
-    // from one frame to the next)
-    static int farHand = 0;
-    if (aNum[0] && aNum[1]) {
-        const double d = aSum[1] / aNum[1] - aSum[0] / aNum[0];
-        if (d > IOSSABERSHAPE_PAIR_SWAP) farHand = 1;
-        else if (d < -IOSSABERSHAPE_PAIR_SWAP) farHand = 0;
-    }
+    const int farHand = iosSaberShape_pairFar;
     // each saber, the further first (each sorted by depth among its own, as ever), then their white middles,
     // the same way (what was drawn at once, if any, first)
     rdCache_Flush();
@@ -1020,6 +1094,11 @@ void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned 
                      : (sb < -0.35f ? (bSoft ? IOSSABERSHAPE_GAIN_SOFT_DIM : IOSSABERSHAPE_GAIN_BLADE_DIM) : (bSoft ? IOSSABERSHAPE_GAIN_SOFT : IOSSABERSHAPE_GAIN_BLADE));
     iosSaberShape_pGlow = rgb ? iosSaberShape_Glow(rgb, gain) : NULL;
     iosSaberShape_pCore = rgb ? iosSaberShape_Glow2(rgb, IOSSABERSHAPE_GAIN_CORE, core) : NULL;
+    // (two sabers in first person: its core's white middle alone, to draw again, iosSaberShape_SetMiddle)
+    if (iosSaberShape_bPair && iosSaberShape_pCore) {
+        iosSaberShapeGlow* m = iosSaberShape_Glow2(rgb, IOSSABERSHAPE_GAIN_CORE_MID, core);
+        iosSaberShape_pBladeMid = m ? &m->mat : NULL;
+    }
 }
 
 // (how much of that widening the blade being drawn takes: all of it, but a FOLD's as far as it is
@@ -1088,6 +1167,7 @@ void iosSaberShape_EndBlade(void)
     iosSaberShape_pLine = NULL;
     iosSaberShape_pGlow = NULL;
     iosSaberShape_pCore = NULL;
+    iosSaberShape_pBladeMid = NULL;
     iosSaberShape_bCross = 0;
 }
 
@@ -2182,6 +2262,7 @@ void iosSaberShape_DrawVents(rdThing* pLine, const rdMatrix34* pOrient)
 
 int iosSaberShape_DrawBlade(rdThing* pLine, const rdMatrix34* pToCam, const rdVector3* pTip, const rdVector3* pBase, float angCos, float angSin)
 {
+    iosSaberShape_PairAxis(pTip, pBase); // (two sabers in first person: which is further off, iosSaberShape_EndPovPair)
     // (FOLD's with SPIKE, ragged: as the game lays it, in slices)
     if (pLine && pLine == iosSaberShape_pJagLine && pLine != iosSaberShape_pLine && pLine->polyline) return iosSaberShape_DrawJagged(pLine, pTip, pBase, angCos, angSin);
     if (!pLine || pLine != iosSaberShape_pLine || !pLine->polyline) return 0;
