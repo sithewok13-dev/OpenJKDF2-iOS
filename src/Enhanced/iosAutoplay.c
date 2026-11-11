@@ -1160,7 +1160,11 @@ static void ap_rally(SithThing* pl)
     int n = 0;
     for (int i = 0; i < s_numFoes; i++) {
         apFoe* f = &s_foes[i];
-        if (ap_lenXY(ap_sub(f->pos, s_center)) > FT(AP_ALARM_FT * 1.3f) || fabsf(f->pos.z - s_center.z) > FT(30.0f)) continue;
+        // (a duel's dark Jedi gone off -- Maw flown up out of sight -- is
+        // called back from wherever he is, unless his script holds him
+        // untouchable, Jerec in his trance)
+        const int bDuelist = s_bDuel && (f->thing->actorParams.flags & SITH_AF_BOSS) && !(f->thing->actorParams.flags & SITH_AF_INVULNERABLE);
+        if (!bDuelist && (ap_lenXY(ap_sub(f->pos, s_center)) > FT(AP_ALARM_FT * 1.3f) || fabsf(f->pos.z - s_center.z) > FT(30.0f))) continue;
         SithAIControlBlock* a = f->thing->actor;
         if (!a) continue;
         SithSector* fs;
