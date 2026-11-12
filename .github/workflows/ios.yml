@@ -63,6 +63,13 @@ on:
           at the commit being built. Leave empty to update ios-latest as usual.
         required: false
         default: ''
+      release_name:
+        description: >-
+          Optional, with release: a name for the release title, shown in quotes
+          after the tag (Yun gives: OpenJKDF2 for iOS v0.9-beta2 "Yun"). Leave
+          empty for the plain title. Only the title changes, not the tag.
+        required: false
+        default: ''
 
 concurrency:
   # One run at a time per branch or tag. A new push to a branch cancels that
@@ -317,7 +324,10 @@ jobs:
           # A manual run creates the tag at the commit it built
           tag_name: ${{ env.RELEASE_TAG }}
           target_commitish: ${{ github.sha }}
-          name: OpenJKDF2 for iOS ${{ env.RELEASE_TAG }}
+          # (a manual run's release_name, if given, in quotes after the tag;
+          # a pushed tag always gets the plain title)
+          name: >-
+            ${{ github.event_name == 'workflow_dispatch' && inputs.release_name != '' && format('OpenJKDF2 for iOS {0} "{1}"', env.RELEASE_TAG, inputs.release_name) || format('OpenJKDF2 for iOS {0}', env.RELEASE_TAG) }}
           body_path: ${{ runner.temp }}/release-body.md
           prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
           make_latest: ${{ !contains(env.RELEASE_TAG, '-') }}
