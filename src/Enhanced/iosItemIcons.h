@@ -82,6 +82,17 @@ void iosItemIcons_Centre(int item, float* pX, float* pY);
 #define IOSITEMICONS_BIN_FIELDLIGHT 42 // (SITHBIN_FIELDLIGHT)
 void iosItemIcons_SetHudStandIn(int bOn);
 int iosItemIcons_HudLeavesOut(int bin); // (1: jkHudInv draws no tile for this bin)
+// CAMERA's HUD photo is the game's frame alone (iosCapture): LIGHT and IR,
+// standing in, are drawn into it as the overlay shows them, so it matches
+// the screen. The overlay says, each frame, where each picture is
+// (IOSITEMICONS_LIGHT or _IR: its top left and side, in the overlay's
+// points, the overlay this size) and how strong (OPACITY); side 0 while
+// that one isn't standing in (off, the text buttons, the overlay hidden)
+void iosItemIcons_SetStandInPlace(int item, float x, float y, float side, float alpha, float viewW, float viewH);
+// ...and iosCapture_AfterHud draws them, lit, into the frame read back
+// (w x h RGBA, rows top down), without their soft shadow; nothing if none
+// stands in
+void iosItemIcons_DrawStandIns(unsigned char* pRgba, int w, int h);
 
 #ifdef __cplusplus
 }

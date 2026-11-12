@@ -265,6 +265,9 @@ extern int jkHud_bChatOpen;
 #define IOSTOUCH_BACTA_NUM_FONT 18.0
 #define IOSTOUCH_BACTA_NUM_EDGE 1.5
 #define IOSTOUCH_BACTA_NUM_ROOM 19.0
+// (its colours, 0xRRGGBB, here alone: the figures, and their edge)
+#define IOSTOUCH_BACTA_NUM_FILL_RGB 0xFFFFFF
+#define IOSTOUCH_BACTA_NUM_EDGE_RGB 0x31005A
 // A tank BACTA asked for counts as used (a light tick) if the game takes it
 // within this long; the last one used, BACTA stays, empty, this long, then
 // fades out over IOSTOUCH_BACTA_FADE
@@ -1821,6 +1824,7 @@ typedef struct {
 - (int)standsIn:(int)i;
 - (void)keepStandIns;
 - (int)itemPicsUp;
+- (void)tellStandInPlaces:(int)bShown;
 - (void)applyPadMask;
 - (void)padHudChanged;
 - (void)openWheel:(int)kind button:(int)button tapMode:(int)bTapMode;
@@ -4754,6 +4758,12 @@ typedef struct {
     if (itemPics == -1) itemPics = 0;
 }
 
+// A colour from 0xRRGGBB
+static UIColor* IOSTouch_RGB(unsigned int rgb)
+{
+    return [UIColor colorWithRed:((rgb >> 16) & 0xFF) / 255.0 green:((rgb >> 8) & 0xFF) / 255.0 blue:(rgb & 0xFF) / 255.0 alpha:1.0];
+}
+
 // The system's rounded font (SF Pro Rounded) at this size and weight
 static UIFont* IOSTouch_RoundedFont(CGFloat size, UIFontWeight weight)
 {
@@ -4775,11 +4785,11 @@ static UIFont* IOSTouch_RoundedFont(CGFloat size, UIFontWeight weight)
     if (w + 2.0 * IOSTOUCH_BACTA_NUM_EDGE > IOSTOUCH_BACTA_NUM_ROOM)
         size = floor(size * (IOSTOUCH_BACTA_NUM_ROOM - 2.0 * IOSTOUCH_BACTA_NUM_EDGE) / w * 4.0) / 4.0;
     UIFont* f = IOSTouch_RoundedFont(size, UIFontWeightHeavy);
-    UIColor* edge = [UIColor colorWithRed:0x31 / 255.0 green:0x00 blue:0x5a / 255.0 alpha:1.0];
+    UIColor* edge = IOSTouch_RGB(IOSTOUCH_BACTA_NUM_EDGE_RGB), *fill = IOSTouch_RGB(IOSTOUCH_BACTA_NUM_FILL_RGB);
     // (the stroke's width in hundredths of the size; negative: filled and stroked)
     NSDictionary* aEdge = @{ NSFontAttributeName: f, NSForegroundColorAttributeName: edge, NSStrokeColorAttributeName: edge,
                              NSStrokeWidthAttributeName: @(-200.0 * IOSTOUCH_BACTA_NUM_EDGE / size) };
-    NSDictionary* aFill = @{ NSFontAttributeName: f, NSForegroundColorAttributeName: [UIColor whiteColor] };
+    NSDictionary* aFill = @{ NSFontAttributeName: f, NSForegroundColorAttributeName: fill };
     aBactaNum[0].attributedText = IOSTOUCH_AUTORELEASE([[NSAttributedString alloc] initWithString:t attributes:aEdge]);
     aBactaNum[1].attributedText = IOSTOUCH_AUTORELEASE([[NSAttributedString alloc] initWithString:t attributes:aFill]);
 }
@@ -6866,6 +6876,23 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     return itemPics == 1;
 }
 
+// Where LIGHT and IR, standing in, are on the screen and how strong, for
+// CAMERA's HUD photo (iosItemIcons_DrawStandIns): their pictures' places
+- (void)tellStandInPlaces:(int)bShown
+{
+    const CGSize sz = self.bounds.size;
+    for (int k = 0; k < 2; k++) {
+        const int b = k ? BTN_IR : BTN_LIGHT, item = k ? IOSITEMICONS_IR : IOSITEMICONS_LIGHT;
+        if (!bShown || ![self standsIn:b]) {
+            iosItemIcons_SetStandInPlace(item, 0.0f, 0.0f, 0.0f, 0.0f, (float)sz.width, (float)sz.height);
+            continue;
+        }
+        const CGRect bf = aButtonViews[b].frame, pf = aItemPic[item].frame;
+        iosItemIcons_SetStandInPlace(item, (float)(bf.origin.x + pf.origin.x), (float)(bf.origin.y + pf.origin.y), (float)pf.size.width,
+                                     (float)aButtonViews[b].alpha, (float)sz.width, (float)sz.height);
+    }
+}
+
 // Once per frame while shown: the SAVE, LOAD, MENU, FORCE WHEEL,
 // NEXT WPN and LAST WPN holds, the
 // FORCE label and its force meter ring, which item buttons show and what they
@@ -7456,6 +7483,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self setRing:cameraRing progress:0.0];
     [self setRing:wheelRing progress:0.0];
     [self setRing:weaponRing progress:0.0];
+    [self setRing:lastRing progress:0.0];
     [self setRing:saberRing progress:0.0];
     iosTouch_RecomputeKeys();
     stdControl_bControllerEscapeKey = 0;
@@ -7685,8 +7713,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         }
     }
     if (!fpsLabel.hidden) [p appendPath:[UIBezierPath bezierPathWithRect:fpsLabel.frame]];
-    for (int k = 0; k < 2; k++) {
+    for (int k = 0; k < 2 && !iosTouch_bWheelOpen; k++) {
         // LIGHT and IR, on, standing in for the game's own tiles (-standsIn:): the picture, its shadow and glow
+        // (not while a wheel is open: the dim behind it would show round them, a dark square)
         const int b = k ? BTN_IR : BTN_LIGHT;
         if (![self standsIn:b]) continue;
         const CGRect bf = aButtonViews[b].frame, pf = aItemPic[k ? IOSITEMICONS_IR : IOSITEMICONS_LIGHT].frame;
@@ -7939,6 +7968,7 @@ static void iosTouch_UpdateInPool(void)
     // LIGHT and IR while their pictures are up (-standsIn:); the text
     // buttons, or the overlay hidden, the game's own
     iosItemIcons_SetHudStandIn(bWant && [iosTouch_pOverlay itemPicsUp]);
+    [iosTouch_pOverlay tellStandInPlaces:bWant];
 
     // Photos asked for but not taken yet: dropped once the overlay goes (a
     // menu, a cutscene), or if no frame took them in time

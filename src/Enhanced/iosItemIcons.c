@@ -929,10 +929,60 @@ int iosItemIcons_HudLeavesOut(int bin)
     return ii_bHudStandIn && (bin == IOSITEMICONS_BIN_IRGOGGLES || bin == IOSITEMICONS_BIN_FIELDLIGHT);
 }
 
+static struct { float x, y, side, alpha, viewW, viewH; } ii_aPlace[2];
+
+void iosItemIcons_SetStandInPlace(int item, float x, float y, float side, float alpha, float viewW, float viewH)
+{
+    if (item != IOSITEMICONS_LIGHT && item != IOSITEMICONS_IR) return;
+    ii_aPlace[item].x = x;
+    ii_aPlace[item].y = y;
+    ii_aPlace[item].side = side;
+    ii_aPlace[item].alpha = alpha < 0.0f ? 0.0f : (alpha > 1.0f ? 1.0f : alpha);
+    ii_aPlace[item].viewW = viewW;
+    ii_aPlace[item].viewH = viewH;
+}
+
+void iosItemIcons_DrawStandIns(unsigned char* pRgba, int w, int h)
+{
+    if (!ii_bHudStandIn || !ii_bReady || !pRgba || w <= 0 || h <= 0) return;
+    const int n = ii_out;
+    for (int k = IOSITEMICONS_LIGHT; k <= IOSITEMICONS_IR; k++) {
+        const float side = ii_aPlace[k].side, a0 = ii_aPlace[k].alpha;
+        if (side <= 0.0f || a0 <= 0.0f || ii_aPlace[k].viewW <= 0.0f || ii_aPlace[k].viewH <= 0.0f) continue;
+        const unsigned char* src = iosItemIcons_Still(k == IOSITEMICONS_LIGHT ? IOSITEMICON_LIGHT_ON : IOSITEMICON_IR_ON);
+        if (!src) continue;
+        // (the overlay's points in the frame's pixels: the same scale as the
+        // screen's, at which the pictures were made, so pixel for pixel)
+        const float sx = w / ii_aPlace[k].viewW, sy = h / ii_aPlace[k].viewH;
+        const float x0 = ii_aPlace[k].x * sx, y0 = ii_aPlace[k].y * sy, sw = side * sx, sh = side * sy;
+        const int xa = x0 < 0.0f ? 0 : (int)x0, ya = y0 < 0.0f ? 0 : (int)y0;
+        const int xb = (int)ceilf(x0 + sw) > w ? w : (int)ceilf(x0 + sw), yb = (int)ceilf(y0 + sh) > h ? h : (int)ceilf(y0 + sh);
+        for (int y = ya; y < yb; y++) {
+            const int v = (int)((y + 0.5f - y0) / sh * n);
+            if (v < 0 || v >= n) continue;
+            for (int x = xa; x < xb; x++) {
+                const int u = (int)((x + 0.5f - x0) / sw * n);
+                if (u < 0 || u >= n) continue;
+                const unsigned char* s = src + ((size_t)v * n + u) * 4; // (premultiplied)
+                const float a = s[3] / 255.0f * a0;
+                if (a <= 0.0f) continue;
+                unsigned char* d = pRgba + ((size_t)y * w + x) * 4;
+                for (int c = 0; c < 3; c++) {
+                    const float o = s[c] * a0 + d[c] * (1.0f - a);
+                    d[c] = (unsigned char)(o > 255.0f ? 255.0f : o + 0.5f);
+                }
+            }
+        }
+    }
+}
+
 void iosItemIcons_Centre(int item, float* pX, float* pY)
 {
-    // (the mock-ups': the lamp's head a little above the middle, the tank left of it for its count)
-    static const float a[3][2] = { { 12.0f, 12.6f }, { 11.9f, 11.9f }, { 10.5f, 12.0f } };
+    // (the mock-ups', but the lamp: its head (and its glow, lit) level with
+    // the goggles' and the tank's middles -- it was 4 to 5 pt above them --
+    // so its stand reaches a little lower; 5 pt lower than the mock-ups'
+    // 12.6, at the overlay's 1.6 pt a pixel; the tank left of the middle)
+    static const float a[3][2] = { { 12.0f, 9.475f }, { 11.9f, 11.9f }, { 10.5f, 12.0f } };
     if (item < 0 || item > 2) item = 0;
     if (pX) *pX = a[item][0];
     if (pY) *pY = a[item][1];

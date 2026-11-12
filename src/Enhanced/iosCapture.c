@@ -12,6 +12,7 @@
 #include "Enhanced/iosGame.h"
 #include "Platform/platServices.h"
 #include "Enhanced/enhTick.h"
+#include "Enhanced/iosItemIcons.h"
 
 extern GLint std3D_windowFbo;
 
@@ -185,6 +186,10 @@ void iosCapture_AfterHud(void)
         iosGame_ShowMessage("Couldn't take the photos");
         return;
     }
+    // (the field light's and IR goggles' tiles the HUD left to the touch
+    // overlay's LIGHT and IR: those drawn in, as on the screen, for the HUD
+    // photo -- HUD+BTNS has the overlay itself drawn over this frame)
+    if (iosCapture_wanted & IOSCAPTURE_HUD) iosItemIcons_DrawStandIns(pHud, iosCapture_w, iosCapture_h);
     iosCapture_Hand(pHud);
 }
 
