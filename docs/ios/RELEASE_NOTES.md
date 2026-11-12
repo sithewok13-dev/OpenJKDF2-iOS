@@ -13,7 +13,9 @@
   into a visible one.
 -->
 
-**OpenJKDF2 for iOS v0.9-beta1**: an unofficial iPhone and iPad build of [OpenJKDF2](https://github.com/shinyquagsire23/OpenJKDF2), the open-source Jedi Knight: Dark Forces II engine, with on-screen touch controls. **New in this release: build your own lightsaber.** A new saber wheel gives each hand its own hilt (the game's own, Kylo Ren's crossguard, a double-bladed staff or a folding double saber) and each blade its own colour. Also new: a **FILM** look like the films' blades, a **RANDOM** button, **Saber Throw for Kyle** in Jedi Knight, and installing and updating both apps from **SideStore or AltStore**. Most of it has been played on an iPhone in test builds, but not all of it, and not on an iPad (see *Known limitations*). Coming from v0.8-beta1? You also get **joining games hosted by the original 1997 Jedi Knight** and easier-to-read multiplayer menus (v0.8-beta2). From v0.7? Also **multiplayer and co-op** for up to four players, **game controllers**, and **keyboard and mouse** (v0.8-beta1), in both apps. From v0.6? Also **Force Jump by how long you hold** and **endless ammo** with `sithewok` (v0.7). From v0.5 or older? Also **lightsaber colours and two sabers**, **cheat mode** and **Action Freeze** (v0.6), the **selfie camera**, and **Mysteries of the Sith** in its own app, **OpenMoTS**. It's still **experimental**, so expect bugs.
+**OpenJKDF2 for iOS v0.9-beta2 "Yun"**: an unofficial iPhone and iPad build of [OpenJKDF2](https://github.com/shinyquagsire23/OpenJKDF2), the open-source Jedi Knight: Dark Forces II engine, with on-screen touch controls. This beta is named after Yun, the first dark Jedi you duel.
+
+**New in this release:** **AUTO PLAY**, a self-playing show for screen recordings; a tap to **skip a level's own scenes** before a duel; **SAVE** and **LOAD**, which open the game's own Save and Load screens on a tap (a hold still quick saves and loads); **LAST WPN**, back to the weapon you had before; **POWERS**, the Force wheel button, now beside FORCE; LIGHT, IR and BACTA as the game's own pictures of them; **RUN**, **LOOK** and **OPACITY** in MENU's tray; and a sharper FILM CROSS whose side blades light after the blade. Much of it hasn't been played on an iPhone yet, and none of it on an iPad (see *Known limitations*). Coming from v0.8-beta2? You also get **build your own lightsaber** (a hilt for each hand and a colour for each blade), **FILM**, **RANDOM**, **Saber Throw for Kyle** and installing from **SideStore or AltStore** (v0.9-beta1). From v0.8-beta1? Also **joining games hosted by the original 1997 Jedi Knight** and easier-to-read multiplayer menus (v0.8-beta2). From v0.7? Also **multiplayer and co-op** for up to four players, **game controllers**, and **keyboard and mouse** (v0.8-beta1), in both apps. From v0.6? Also **Force Jump by how long you hold** and **endless ammo** with `sithewok` (v0.7). From v0.5 or older? Also **lightsaber colours and two sabers**, **cheat mode** and **Action Freeze** (v0.6), the **selfie camera**, and **Mysteries of the Sith** in its own app, **OpenMoTS**. It's still **experimental**, so expect bugs.
 
 **You need your own copy of the game; no game files are included.** OpenJKDF2 needs Star Wars Jedi Knight: Dark Forces II, and OpenMoTS needs Star Wars Jedi Knight: Mysteries of the Sith (GOG and Steam sell both).
 
@@ -23,9 +25,30 @@
 
 **New here?** *Known limitations*, *Requirements* and *Install* are near the bottom of this page, just above the download.
 
-### What's in v0.9-beta1
+### What's in v0.9-beta2
 
-New since v0.8-beta2:
+New since v0.9-beta1:
+
+- **AUTO PLAY, a self-playing show** (single player, both apps), for screen recordings: hold MENU and tap **AUTO PLAY** in the tray. Pick the levels (all of them, shuffled, or one), the difficulty, how big the crowds are, whether the enemies are alerted, the weapons, and whether the HUD and the touch controls show, then tap **START**. It saves your game first (*Before AUTOPLAY*), quietly switches `sithewok` on and plays by itself through the game's own controls, with a new lightsaber look each fight. **Double-tap** for a new fight. **Touch and hold still** for half a second, away from the screen's edges, to stop: your game, the cheat, the difficulty and your sabers are put back as they were.
+- **AUTO PLAY fights with the lightsaber** unless you pick other weapons: its WEAPONS start with only the LIGHTSABER. **Touch and hold LIGHTSABER** there to pick a look on the saber wheel, and the show keeps it for every fight (*YOUR LOOK*); you keep it afterwards too. Boss duels (Yun, Gorc and Pic, Maw, Sariss, Boc, Jerec) are fought to the end, for 4 minutes at most, and Kyle steers clear of ledges and drops (if he falls in a duel, he's put back).
+- **Tap to skip a level's own scenes:** the short scenes the game plays before a duel (Yun, Gorc and Pic, Maw, Sariss, Boc, Jerec; in Mysteries of the Sith the rancor, Abron and the last level) and at some levels' ends. *Tap to skip* shows as one starts: tap anywhere and the fight starts a moment later. The game plays the rest of the scene unseen and fast, so everything ends up as if you had watched it. Not in multiplayer or co-op. In these scenes Kyle (or Mara) now holds your own lightsabers.
+- **SAVE and LOAD** (were QUICK SAVE and QUICK LOAD): a **tap** opens the game's own Save or Load screen, and you're back in the game straight after. A **hold** (a third of a second, with a ring) still quick saves or quick loads, as before.
+- **LAST WPN** (top left, where FORCE WHEEL was): a tap goes back to the weapon you held before, and a second tap swaps back. Slide or hold it for the weapon wheel, as with NEXT WPN.
+- **POWERS** (was FORCE WHEEL) is now a small button beside FORCE, so picking a power and using it are both under your right thumb. It works as before: tap for the next power, slide or hold for the Force wheel. A touch between the two counts as FORCE, so a hurried press never changes your power.
+- **FORCE shows just the power's name**, as big as it fits (two-word names such as DEADLY SIGHT on two lines). With no power yet it says FORCE, dimmed, as before.
+- **LIGHT, IR and BACTA look like the items themselves:** the game's own pictures of the field light, IR goggles and bacta tank, made bigger and smoother from your game files. The lamp glows and the goggles' eyes light up red while they're on, and a lit one takes the place of the game's own small square at the top right. The tank's liquid shows how many tanks you carry, with the number on the tank, and glows brighter as you hold it. If the pictures can't be read from your files, the buttons show their names as before.
+- **New in MENU's tray:** **RUN** switches the game's *Always Run* on or off, **LOOK** sets how fast dragging turns the view (0.5x to 3x), **OPACITY** sets how see-through the touch controls are (20% to 100%), and **AUTO PLAY** opens the show. **Hold FPS** to switch between 60 frames a second (the default) and 120, on screens that can show 120. Under the tray, small text says which build you have (for example *build 80 · Nov 9*), the same number as at the top of this page.
+- **LEVEL in cheat mode opens a list:** tap it for every level by name, read from your own game files: Jedi Knight's levels 15 and 16 in both their light and dark side versions, and in Mysteries of the Sith the secret level once it's set up. Holding LEVEL still counts to a level, as before. In co-op, the host picks for everyone.
+- **The Emperor greets you however you switch `sithewok` on:** with CHEAT in the tray, by holding the CHEAT button, or by typing it. He stays quiet when you switch it off, and only speaks if you've added clips of your own (see *Your own Emperor*). An `Emperor` folder in your game files' folder (`jk1` or `mots`) works too.
+- **CROSS with FILM:** a finer, rougher crackle and a sharper, ragged tip, and its side blades now light after the main blade, as in the films: about 0.8 seconds after it, both sparking on together. In first person a CROSS also stands more upright, so its tip no longer sits lower than the other blades'.
+- **Two sabers in first person:** where the blades cross, the nearer one is drawn over the other and their glows show through each other, instead of one blade looking cut or notched. A STAFF or an open FOLD held across the view sits a little further out than the other saber, so the two look apart rather than tangled, and with FILM a blade's glow is a little softer further from your eye.
+- **WHITE with FILM** has a softer, silver-blue glow, in your hand and thrown.
+- **Enemy Jedi's sabers get FILM's look too** (with FILM on): Yun, Gorc, Pic, Maw, Sariss, Boc and Jerec, and in Mysteries of the Sith the Sith statues and dark visions, each in its own colour.
+- **The game's sound takes over from other apps' audio:** music or a podcast playing in another app stops when the game's sound starts, instead of playing on underneath. The game still plays with the silent switch on.
+- **Co-op follows the story more closely:** everyone's weapons and Force follow the story as in single player (in Jedi Knight, no Force in levels 1 to 3, and the lightsaber from level 4), each level's stars come to everyone to spend on the Force powers screen, secrets count for the whole team, and killing innocents counts for whoever did it. Guests go straight to the level the host picks. The guide's new *The Force in co-op* section has the details: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#the-force-in-co-op
+- **Fixes:** with a gun in hand in first person, the game could read past the end of the hand model's data (seen in co-op), which could crash it. It no longer does.
+
+Added in v0.9-beta1 (if you're coming from v0.8-beta2):
 
 - **A saber wheel with a card for each hand:** each card has its own **HILT** button and a dot for each blade: tap a card (or a dot), then a colour. **+ 2ND SABER** adds a saber in your left hand. **SAME COLOUR** and **SAME HILT** set both sabers at once. A controller or keyboard can do it all too. See *The lightsaber: SABER* below.
 - **Four hilts, one per hand:** **NORMAL** (the game's own), **CROSS** (Kylo Ren's crossguard saber, with a crackling hum), **STAFF** (Darth Maul's double-bladed saber) and **FOLD** (Dark Rey's folding double saber). Mix them, for example CROSS in one hand and STAFF in the other. Only the look and the sound change: hits and damage are the game's own, and a second blade doesn't hit anything.
@@ -119,13 +142,17 @@ Still here from v0.1: the floating move stick with its run marker, drag to look,
 The touch controls appear once you're playing a level, and hide in menus and cutscenes (there you just tap, like clicking with a mouse). The game runs in landscape, either way round. **Both apps have the same controls.** What's different in Mysteries of the Sith (its wheels and cheats) is in *Mysteries of the Sith: the OpenMoTS app* below.
 
 ```
- NEXT   FORCE   LIGHT  IR  BACTA  CAMERA  SABER  CHEAT  VIEW  (FPS)  QUICK  QUICK  MENU
- WPN    WHEEL   (only items you have)                         SAVE   LOAD
-                  [GYRO] [FPS] [CAMERA] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
+ NEXT   LAST    LIGHT  IR  BACTA  CAMERA  SABER  CHEAT  VIEW  (FPS)  SAVE   LOAD   MENU
+ WPN    WPN     (the items' own pictures,
+                 only items you have)
+      [GYRO] [RUN] [LOOK] [OPACITY] [FPS] [CAMERA] [AUTO PLAY] [CHEAT] ([LEVEL]) [VIEW] [JUMP] [CONTROLS] [keyboard]
                   (MENU's tray, when held; LEVEL only while sithewok is on)
+                                build 80 · Nov 9            (which build this is, under the tray)
                              [MODE] [SENS]             (GYRO held in the tray)
                              [PHOTO] [SELFIES] [FREEZE] (CAMERA held in the tray)
-
+                             [====o=========]          (OPACITY tapped in the tray)
+                                                       POWERS
+                                                       (small)
       (^^)  run marker                              JUMP   FORCE
        |                                     ACT
      ( o )  move stick: appears                            ALT
@@ -200,11 +227,11 @@ With **FREEZE** switched off (in CAMERA's options, below), a slide in any direct
 - **Move:** put your left thumb down anywhere on the left side of the screen (a bit less than half of it). The stick appears right under your thumb and disappears when you lift it. It walks at the same speed however far you push it.
 - **Run:** a small circle with **^^** in it sits above the stick, joined to it by a line. Push your thumb up past the stick's ring onto that circle to **run straight ahead**. It lights up blue and you feel a light tap. It doesn't lock: slide back down and you walk again, lift and you stop.
   - If your thumb lands near the top of the screen, the circle sits closer to the stick, and if there's no room at all, there's no circle that time.
-- **Always Run:** to run all the time, in every direction, turn on the game's own **Always Run** option: tap **MENU**, then *Setup > Controls > Options*. While it's on, the **^^** circle goes away (you're always running anyway), and there's no way to walk slowly until you turn it off again. Turn it off and the circle comes back.
+- **Always Run:** to run all the time, in every direction, turn on the game's own **Always Run** option: tap **RUN** in MENU's tray (or tap **MENU**, then *Setup > Controls > Options*). While it's on, the **^^** circle goes away (you're always running anyway), and there's no way to walk slowly until you turn it off again. Turn it off and the circle comes back.
 
 #### Looking and aiming
 
-- **Drag to look:** drag anywhere else on the screen, which mostly means the right side.
+- **Drag to look:** drag anywhere else on the screen, which mostly means the right side. **LOOK** in MENU's tray sets how fast it turns.
 - **Dragging on FIRE, ALT, DUCK, ACT, JUMP or FORCE also turns the view**, so if your thumb lands on one while you're aiming, just keep dragging. You can hold FIRE and aim with the same thumb.
 - You can also aim by turning the phone: see *Tilt aiming* below.
 
@@ -217,43 +244,63 @@ With **FREEZE** switched off (in CAMERA's options, below), a slide in any direct
 | **ACT** | up and left of FIRE | Activate: doors, switches, elevators, consoles. |
 | **JUMP** | above FIRE | Jumps. |
 | **ALT** | up and right of FIRE, above the ammo gauge | Secondary fire (each weapon's second mode). |
-| **FORCE** | right of JUMP (or above it on smaller screens) | Uses your selected Force power. See *The FORCE button and the Force meter* below. |
-| **NEXT WPN** | top left | Tap: next weapon. Swipe or long-press: the weapon wheel. |
-| **FORCE WHEEL** | top left | Tap: next learned Force power. Swipe or long-press: the Force wheel. |
-| **LIGHT**, **IR**, **BACTA** | top left, after FORCE WHEEL | Tap LIGHT or IR to switch the field light or IR goggles on or off (yellow while on). **Hold BACTA** for a third of a second (a ring fills) to use a bacta tank: one per press, and a tap or a brush past uses none. Each button only appears once you have that item, always in the same spot. BACTA shows how many you have when it's more than one. |
-| **QUICK SAVE** | top right | Hold for about a third of a second. See *Quick save and quick load* below. |
-| **QUICK LOAD** | top right | Hold for about a third of a second. |
+| **FORCE** | right of JUMP (or above it on smaller screens) | Uses your selected Force power, and shows just its name (FORCE, dimmed, until you have one). See *The FORCE button and the Force meter* below. |
+| **NEXT WPN** | top left | Tap: next weapon. Slide or hold: the weapon wheel. |
+| **LAST WPN** | top left, right of NEXT WPN | Tap: back to the weapon you held just before; tap again to swap back. Dimmed until you've changed weapon once (or while that weapon is gone or out of ammo). Slide or hold: the weapon wheel, as with NEXT WPN. A Saber Throw doesn't count as a change, and loading a game or starting a level starts it afresh. |
+| **POWERS** (the Force wheel button) | small, beside FORCE (above it or next to it, wherever it fits; under MENU on the smallest iPhones) | Tap: next learned Force power. Slide or hold: the Force wheel. A touch in the gap between it and FORCE counts as FORCE, so a hurried press on FORCE never changes your power. |
+| **LIGHT**, **IR**, **BACTA** | top left, after LAST WPN | The game's own pictures of the field light, IR goggles and bacta tank, made from your game files. **Tap LIGHT or IR** to switch it on or off: the lamp glows, the goggles' eyes light up red, and they're dimmed while off. A lit one takes the place of the game's own small square at the top right. **Hold BACTA** for about a third of a second to use a tank: the liquid glows brighter from the bottom up as you hold, then drops a step with a light tick (at full health nothing is used). One per press, and a tap or a brush past uses none. The liquid and the number on the tank show how many you carry; after your last one, the empty tank fades away. Each button only appears once you have that item, always in the same spot. If the pictures can't be read from your game files, the buttons show their names instead (yellow while on, and BACTA with a ring as you hold). |
+| **SAVE** | top right | Tap: the game's own Save screen. Hold for about a third of a second (a ring fills): quick save. See *SAVE and LOAD* below. |
+| **LOAD** | top right | Tap: the game's own Load screen. Hold for about a third of a second: quick load. |
 | **MENU** | top right corner | Tap: the game's menu (objectives, map, Jedi powers, save, load, setup). Hold: the hidden tray. |
 | **CAMERA** (the camera symbol) | top, in the middle | Hold still: a selfie. Tap: a photo. Slide sideways: a burst. Slide down: Action Freeze. Slide up: the cinematic burst. See *The camera* above. |
 | **SABER** (your sabers) | top, right of CAMERA (once you have the lightsaber) | The saber wheel: one saber or two, each hand's hilt, each blade's colour. With a FOLD in your hand, a **tap** flips it instead (one in each hand: a tap flips the right one, a double tap both). See *The lightsaber: SABER* below. |
 | **CHEAT** (the Sith emblem) | top, right of SABER (cheat mode only) | Hold for half a second: `sithewok` off or on. Red while it's on. See *Cheats* below. |
 | **VIEW** (1P or 3P) | top, right of CHEAT (once switched on in MENU's tray) | **Tap:** first person or third person, at once. |
 
-FIRE, ALT, DUCK, ACT, JUMP and FORCE act as soon as you touch them. LIGHT, IR, MENU, CAMERA and the tray buttons act when you **lift** your finger, so if you touch one by mistake, slide off before you lift (on CAMERA, a slide starts a burst or Action Freeze instead: see *The camera* above). BACTA and CHEAT need a hold, so a brush past does nothing. SABER opens its wheel however you touch it, but with a FOLD in your hand a quick tap flips the FOLD (slide or hold to open the wheel). While `sithewok` is on, JUMP and ACT show a small red second line (FLY, NOCLIP) for their cheat holds: see *Cheats* below.
+FIRE, ALT, DUCK, ACT, JUMP and FORCE act as soon as you touch them. LIGHT, IR, MENU, SAVE, LOAD, CAMERA and the tray buttons act when you **lift** your finger (SAVE and LOAD, held, quick save and quick load instead), so if you touch one by mistake, slide off before you lift (on CAMERA, a slide starts a burst or Action Freeze instead: see *The camera* above). BACTA and CHEAT need a hold, so a brush past does nothing. NEXT WPN, LAST WPN and POWERS act on a quick tap when you lift, or open their wheel when you slide or hold. SABER opens its wheel however you touch it, but with a FOLD in your hand a quick tap flips the FOLD (slide or hold to open the wheel). While `sithewok` is on, JUMP and ACT show a small red second line (FLY, NOCLIP) for their cheat holds: see *Cheats* below.
 
 #### MENU's hidden tray
 
-**Tap MENU** for the game's menu, as before. **Hold MENU** until its ring fills (about half a second) and a small tray opens just under it with these buttons, from left to right (LEVEL only while `sithewok` is on):
+**Tap MENU** for the game's menu, as before. **Hold MENU** until its ring fills (about half a second) and a small tray opens just under it with these buttons, from left to right (LEVEL only while `sithewok` is on; in co-op, only for the host). Just under the tray, small dim text shows which build you have (for example *build 80 · Nov 9*), the same number as at the top of the release page.
 
 | Tray button | What it does |
 | --- | --- |
 | **GYRO** | **Tap:** tilt aiming on or off (it comes back on in the mode you last used: TOUCH the first time). Lit yellow while it's on. **Touch and hold** until its ring fills: a row under the tray with **MODE** (**TOUCH** or **ALWAYS**) and **SENS** (**1.0x**, **1.5x**, the default, **2.0x** or **3.0x**). See *Tilt aiming* below. |
-| **FPS** | Shows or hides a frame-rate counter, to the left of QUICK SAVE. Yellow while the counter is on. |
+| **RUN** (the run marker, `^^`) | **Tap:** the game's own **Always Run** option on or off (the same as in its control options). Lit yellow while it's on: then the stick always runs and has no run marker. |
+| **LOOK** | How fast dragging turns the view, shown on the button (**LOOK 1x**). Each tap goes up a step: 0.5x, 0.75x, 1x (the default), 1.25x, 1.5x, 2x, 2.5x, 3x, then round to 0.5x; the tray stays open. **Touch and hold** until its ring fills: back to 1x. |
+| **OPACITY** | How see-through the touch controls are (**OPACITY 100%**, the default). **Tap:** a slider opens under the tray, from 20% to 100% in 5% steps, and the controls change as you slide; it's kept when you lift. Tap OPACITY again, or touch anywhere else, to close it. **Touch and hold:** back to 100%. The tray, the wheels and the FPS counter always stay at full strength. |
+| **FPS** | **Tap:** shows or hides a frame-rate counter, to the left of SAVE (yellow while it's on). **Touch and hold** until its ring fills: **60** frames a second (the default) or **120**, on screens that can show 120. The button shows which (**FPS 60**). |
 | **CAMERA** (the camera symbol) | **Tap:** shows or hides the CAMERA button (yellow while it's shown). **Touch and hold** until its ring fills: CAMERA's options, **PHOTO**, **SELFIES** and **FREEZE**. See *The camera* above. |
+| **AUTO PLAY** (single player) | Opens the panel for AUTO PLAY, a self-playing show: see *AUTO PLAY* below. |
 | **CHEAT** | Cheat mode on or off. On: the CHEAT button appears and `sithewok` goes on. Off: `sithewok` goes off and the button goes away. Yellow while cheat mode is on. See *Cheats* below. |
-| **LEVEL** (only while `sithewok` is on) | **Hold** it to pick a level: after half a second it shows **LEVEL 1**, then counts up one every 0.4 seconds, with a tick each and *Level 7 of 21* on the message line, going round to 1 again after the last level. **Lift** to go to that level (the tray closes). **Slide off**, or close the tray, to cancel. A quick tap only says *Hold LEVEL to count levels*. In multiplayer only the host can pick (with cheats allowed); for everyone else LEVEL is dimmed and says *No level to pick here*. See *Cheats* below. |
+| **LEVEL** (only while `sithewok` is on; in co-op, only for the host) | **Tap:** a list of the game's levels, numbered in order, each with its name and file (read from your own game files). Jedi Knight's levels 15 and 16 have a light and a dark side version, and both are listed: the one you tap goes on along its own path. In Mysteries of the Sith, the last row is **Bonus**, the secret level, once it's set up. Tap a level to go there, or tap the X or anywhere off the list to close it. **Hold** to count instead: after half a second it shows **LEVEL 1**, then counts up one every 0.4 seconds, with a tick each and *Level 7 of 21* on the message line; **lift** to go to that level, slide off to cancel. See *Cheats* below. |
 | **VIEW** | Shows or hides the **VIEW** button on the top row (yellow while it's shown). **Tap VIEW** to switch between first person (**1P**) and third person (**3P**) at once. The app remembers both; hiding the button keeps the view you picked. The game's own idle camera still swings round to show you after 30 seconds without a touch, and goes back to your view when you play on. |
 | **JUMP** | How Force Jump works: **STEPS** (the default), **SMOOTH** or **CLASSIC**. Each tap goes on to the next, and the tray stays open. See *Force Jump* below. |
 | **CONTROLS** | **NORMAL** (the default): the move stick on the left, FIRE and its buttons on the right. **SWAPPED:** the other way round, the move stick where your right thumb lands and FIRE, ALT, DUCK, ACT, JUMP and FORCE mirrored to the left. Takes effect at once, the tray stays open, and the app remembers it. The top row stays as it is. |
 | **Keyboard** (the keyboard symbol) | Opens the game's typing line with the iPhone keyboard, for cheats. Tap it again to close the line. |
 
-- GYRO, JUMP and CONTROLS show their setting on the button (for example *GYRO OFF*, *JUMP STEPS*), and MODE and SENS show theirs.
+- GYRO, LOOK, OPACITY, FPS, JUMP and CONTROLS show their setting on the button (for example *GYRO OFF*, *OPACITY 60%*), and MODE and SENS show theirs.
 - Either keep your thumb down, slide it onto a tray button and lift, or lift first and then tap one. Anywhere on the tray's dark backing counts as the nearest button.
-- Each tap on **JUMP**, **MODE** or **SENS** goes on to the next setting, and the tray (or row) stays open so you can tap again. The tray closes after **FPS**, **CAMERA**, **CHEAT** or the keyboard, after **LEVEL** takes you to a level, or when you touch anywhere else. That touch still counts: touching FIRE closes the tray and fires. Touching MENU again only closes it.
+- Each tap on **LOOK**, **JUMP**, **CONTROLS**, **MODE** or **SENS** goes on to the next setting, and the tray (or row) stays open so you can tap again. The tray closes after **FPS**, **CAMERA**, **AUTO PLAY**, **CHEAT**, **VIEW** or the keyboard, after **LEVEL** takes you to a level, or when you touch anywhere else. That touch still counts: touching FIRE closes the tray and fires. Touching MENU again only closes it.
 - If you slide off MENU while holding it, nothing happens.
 - While the tray is open, the game's messages (such as LEVEL's count) show just under it, clear of the buttons.
-- The app **remembers GYRO, SENS, FPS, CAMERA and its options, CHEAT and JUMP** next time you open it. The `sithewok` cheat itself always starts off when you open the app: hold the CHEAT button to switch it on.
+- The app **remembers GYRO, SENS, LOOK, OPACITY, FPS (the counter and the 60 or 120), CAMERA and its options, CHEAT, VIEW, JUMP and CONTROLS** next time you open it (RUN is the game's own setting, saved with it). The `sithewok` cheat itself always starts off when you open the app: hold the CHEAT button to switch it on.
 - On smaller screens (camera cutout on the right, Display Zoom, a large HUD Scale) the tray sits further left, so it stays clear of FORCE and the buttons around FIRE.
+
+#### AUTO PLAY: a self-playing show
+
+New in this release, single player, both apps. **Hold MENU** and tap **AUTO PLAY** in the tray: a panel opens with seven rows, all remembered:
+
+- **LEVELS:** **SHUFFLE ALL** (every level once in a shuffled order, then again) or **PICK ONE** from the list of levels.
+- **DIFFICULTY**, **CROWD** (1x, 2x or 3x: copies of the enemies near the fight, of kinds the level has at least two of, up to a limit) and **ALARM** (everyone near woken at once).
+- **WEAPONS:** the weapon wheel's weapons, in their colours. It starts with only the **LIGHTSABER**. **Touch and hold LIGHTSABER** (a ring fills, half a second) to pick its look on the saber wheel: the show then keeps that look for every fight (the tile says *YOUR LOOK*), and you keep it afterwards. Tap LIGHTSABER once to go back to a new look each fight.
+- **HUD** (the game's HUD shown or not) and **CONTROLS** (the move stick and lit buttons drawn as they're used, just to see, or nothing).
+
+Tap **START**. The game is saved first (*Before AUTOPLAY*), `sithewok` goes on quietly for the show (and the Emperor stays quiet), and a level loads straight in. One of its groups of enemies is picked, Kyle (or Mara) is put nearby with a clear view, and he fights by himself, through the game's own controls: turning, aiming, moving, firing in bursts, changing weapons in the lulls, throwing detonators at groups, saber swings and Saber Throw, and Force powers now and then. Each fight has a new lightsaber look (unless you picked *YOUR LOOK*). When a group is down, more come from out of sight. A finished level goes on to the show's next one, never a cutscene, and a level's own scenes are skipped. Boss duels are fought to the end, for 4 minutes at most.
+
+- **Double-tap** anywhere: a new fight.
+- **Touch and hold still** for half a second, away from the screen's edges: stop. Your saved game loads, and the cheat, the difficulty and your sabers are as they were before.
+
 
 #### Tilt aiming (gyro)
 
@@ -273,9 +320,9 @@ Good to know:
 
 #### Tap, swipe or long-press
 
-**FORCE WHEEL** and **NEXT WPN** each have three gestures (the setup guide calls them tap, slide and hold):
+**POWERS**, **NEXT WPN** and **LAST WPN** each have three gestures (the setup guide calls them tap, slide and hold). NEXT WPN and LAST WPN open the same weapon wheel:
 
-- **Quick tap:** lift within about a third of a second, without sliding. FORCE WHEEL selects your **next learned Force power**, skipping ones you haven't learned (the FORCE button shows which you have now). NEXT WPN switches to your **next weapon**. No wheel opens.
+- **Quick tap:** lift within about a third of a second, without sliding. POWERS selects your **next learned Force power**, skipping ones you haven't learned (the FORCE button shows which you have now). NEXT WPN switches to your **next weapon**, and LAST WPN **back to the one before** (dimmed, a tap does nothing). No wheel opens.
 - **Swipe** (the quickest way to pick): touch the button and slide your thumb away. The wheel opens **at once**. Keep sliding towards a slot: a short slide in the right direction is enough. The slot pops out, its name shows in the middle, and you feel a light tap. **Lift to select it.**
 - **Long press:** touch and hold still for about a third of a second. A ring fills round the button, then the wheel opens and **stays open**. Lift, then **tap** a slot to select it. (Or, without lifting, slide out from the button to pick by sliding after all.)
 
@@ -283,10 +330,12 @@ Then:
 
 - **The middle of the wheel tells you what lifting will do**, for example *lift to select*, *not learned yet*, *no ammo* or *lift to cancel*.
 - **To cancel** while sliding: lift in the **gap at the bottom** of the wheel (marked *cancel*), in the middle of the wheel, or back where you started. Lifting on a power you haven't learned or a weapon you can't pick also cancels. A slide too short to point at anything leaves the wheel open for tapping.
-- **To cancel** a wheel that's open for tapping: tap anywhere that isn't a slot (the middle, the gap, outside the wheel, or either button at the top left). Tapping a power you haven't learned, or a weapon you can't switch to, does nothing and leaves the wheel open.
+- **To cancel** a wheel that's open for tapping: tap anywhere that isn't a slot (the middle, the gap, outside the wheel, or the buttons at the top left). Tapping a power you haven't learned, or a weapon you can't switch to, does nothing and leaves the wheel open.
 - **The game pauses while a wheel is open**, so take your time.
 
 #### The Force wheel
+
+**POWERS**, the small button by FORCE, opens the Force wheel (see *Tap, swipe or long-press* above).
 
 In Jedi Knight, every Force power always has the same slot, whether you've learned it yet or not (powers you haven't learned are grey):
 
@@ -302,7 +351,7 @@ Once you've picked a power, use it with **FORCE**.
 
 #### The weapon wheel
 
-Added in v0.2. In Jedi Knight, every weapon always has the same slot, whether you've found it yet or not, in the order of the PC number keys, clockwise from the bottom left: Fists, Bryar Pistol, Stormtrooper Rifle, Thermal Detonator, Bowcaster, Repeater, Rail Detonator, Sequencer Charge, Concussion Rifle, Lightsaber. The gap at the bottom means *cancel*.
+**NEXT WPN** and **LAST WPN** open it when you slide or hold them (added in v0.2). In Jedi Knight, every weapon always has the same slot, whether you've found it yet or not, in the order of the PC number keys, clockwise from the bottom left: Fists, Bryar Pistol, Stormtrooper Rifle, Thermal Detonator, Bowcaster, Repeater, Rail Detonator, Sequencer Charge, Concussion Rifle, Lightsaber. The gap at the bottom means *cancel*.
 
 - **Colours show the kind of ammo:** gold for the fists and the lightsaber (no ammo), blue for energy cells, green for power cells, red for explosives.
 - **Ammo counts:** under each weapon you have, its ammo shows, the same number the HUD shows with that weapon in hand. Weapons that share ammo show the same number. The fists and the lightsaber show no count.
@@ -367,10 +416,10 @@ New in v0.6, and rebuilt in this release. Once you have the lightsaber (or while
 #### The FORCE button and the Force meter
 
 - **FORCE** uses your selected Force power for as long as you hold it: tap for a single use, hold for powers that charge up (Force Jump) or keep going (Lightning).
-- **The button shows the name of the power** it will use, under the word FORCE (for example SPEED). Long names are drawn a little smaller, so they fit inside the ring. It's dimmed until you have a power.
+- **The button shows just the name of the power** it will use (for example SPEED), as big as it fits inside the ring, two-word names such as DEADLY SIGHT on two lines. Until you have a power it says FORCE, dimmed.
 - **The blue ring around FORCE is your Force meter.** It follows the game's meter live: it shrinks as you use the Force, disappears when the meter is empty, and grows back as the meter refills. When the meter is full, the ring **glows and gently pulses**.
 - **The ring and the HUD's Force bar** (in the gauge at the bottom right, next to the ammo count) show the same meter, but on different scales. The ring is full at your current maximum, which rises with your Jedi rank. The HUD bar is only full at the top rank. So early on, the ring can be full and glowing while the HUD bar isn't. Before your first Jedi rank there's no ring.
-- Pick a power with FORCE WHEEL (tap for the next one, or open the wheel).
+- Pick a power with **POWERS**, the small button beside FORCE (tap for the next one, or open the wheel).
 
 #### Force Jump
 
@@ -382,18 +431,20 @@ Force Jump jumps when you **lift** your finger off FORCE, and how long you held 
 
 In every style the jump costs the same Force and needs you on the ground (or on water), and the other Force powers work as before.
 
-#### Quick save and quick load: why the short hold
+#### SAVE and LOAD
 
-**QUICK SAVE** saves to the game's quick-save slot (the same one F9 uses on PC), and **QUICK LOAD** loads it. Both need you to **hold** the button for about a **third of a second**: a ring fills around it, and when it's full the game saves or loads, once, with your finger still down.
+**Tap SAVE** to open the game's own Save screen, the one in the game's menu: type a name (or keep the one it offers) and save, or cancel. **Tap LOAD** to open its Load screen and pick any of your saves (a save from another level loads that level), or cancel. Either way you're back in the game straight after.
 
-**Why the delay?** So a stray touch can't save over your quick save or throw away your progress by loading an old one. These buttons sit at the top of the screen next to MENU, and a quick brush past them does nothing.
+**Hold SAVE** for about a **third of a second** to quick save, to the game's quick-save slot (the same one F9 uses on PC), and **hold LOAD** to load that quick save. A ring fills around the button, and when it's full the game saves or loads, once, with your finger still down.
 
-- **To cancel**, lift or slide off before the ring fills. It won't go off even if you slide back on.
+**Why the hold?** So a stray touch can't save over your quick save or throw away your progress by loading an old one. These buttons sit at the top of the screen next to MENU.
+
+- **To cancel**, slide off before you lift (a tap) or before the ring fills (a hold). It won't go off even if you slide back on.
 - **Even with two fingers on one button**, it saves or loads only once. To do it again, touch and hold again.
-- **QUICK SAVE and QUICK LOAD pressed together:** only the one whose ring fills first goes off (if both fill at the same moment, it saves).
+- **SAVE and LOAD held together:** only the one whose ring fills first goes off (if both fill at the same moment, it saves).
 - Neither works while the cheat typing line is open.
 - After a quick load the game shows *Quick-loaded*. If the quick save is from another level, that level is loaded. If you haven't quick saved yet, it says *No quicksave yet*.
-- **Normal saves:** tap MENU and use the game's own save and load screens, as on PC.
+- **Where the game doesn't offer saving or loading**, a tap does nothing: in multiplayer and co-op, during one of a level's scenes (holding still quick saves there), during AUTO PLAY's show, and SAVE while you're dead. In Mysteries of the Sith, also while a cutscene plays or Mara can't move.
 
 #### Cheats
 
@@ -401,7 +452,7 @@ In every style the jump costs the same Force and needs you on the ground (or on 
 2. A typing line opens at the top of the screen with the iPhone keyboard. Type the cheat (autocorrect is off here) and tap **return**.
 3. To close the line without sending anything, tap **MENU** (or the keyboard button in the tray again). While the line is open, MENU and the keyboard button are lit yellow.
 
-While you're typing, most touch buttons don't work. A swipe or long press on FORCE WHEEL or NEXT WPN closes the line and opens its wheel (a quick tap does nothing while you type). Cheats only work in single player. A few favourites in Jedi Knight: `sithewok` (everything at once, see below), `red5` (all weapons and ammo), `bactame` (full health and shields), `yodajammies` (full Force meter), `jediwannabe on` (invincibility). The full list is in the guide: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#cheats
+While you're typing, most touch buttons don't work. A swipe or long press on POWERS, NEXT WPN or LAST WPN closes the line and opens its wheel (a quick tap does nothing while you type). Cheats only work in single player. A few favourites in Jedi Knight: `sithewok` (everything at once, see below), `red5` (all weapons and ammo), `bactame` (full health and shields), `yodajammies` (full Force meter), `jediwannabe on` (invincibility). The full list is in the guide: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#cheats
 
 **`sithewok`** is this iOS build's own cheat (the original game doesn't have it). It gives you everything at once: all weapons and ammo, all items, every Force power at 4 stars with the top Jedi rank, full health, shields and Force meter, and invincibility. While it's on:
 
@@ -414,12 +465,12 @@ While you're typing, most touch buttons don't work. A swipe or long press on FOR
 - **JUMP and ACT get new holds** (each shows its name in small red letters under the button while the cheat is on), and **LEVEL** in MENU's tray picks a level:
   - **Hold JUMP** still for half a second (a ring fills): **fly**. You float, forward goes where you look, hold JUMP to rise and DUCK to sink. Hold JUMP again for half a second, or **double-tap JUMP**, to land. Walls still stop you.
   - **Hold ACT** still for half a second: **noclip**, flying straight through walls. Hold it again to switch it off.
-  - **Hold LEVEL** in MENU's tray (hold MENU; LEVEL is right of CHEAT while the cheat is on): **pick a level**. After half a second it shows **LEVEL 1**, then counts up one every 0.4 seconds (with a tick each, and *Level 7 of 21* on the message line), going round to 1 again after the last level. Lift your finger to go to that level. Slide off, or close the tray, to cancel.
+  - **LEVEL** in MENU's tray (hold MENU; LEVEL is right of CHEAT while the cheat is on): **pick a level**. Tap it for a list of the levels by name, or hold it to count to one (after half a second **LEVEL 1**, then up one every 0.4 seconds), and lift to go there.
   - A quick press of JUMP or ACT does what it always does. **DUCK only ever crouches** (before v0.8-beta2, holding it picked a level).
 
 **Typing `sithewok` again switches it off** (so does the CHEAT button, below): no more invincibility, endless Force, safe falls, flying or noclip. You keep the weapons, items and Force powers it gave you, except a lightsaber you only had from the cheat. Type `sithewok` once more to switch it back on and fill everything back up. It also goes off when you close the app (swipe it away).
 
-**Cheat mode: the CHEAT button.** Hold **MENU** and tap **CHEAT** in the tray. A **CHEAT** button with the **red Sith emblem** appears on the top row and `sithewok` goes on. If you've added sound clips of your own (see *Your own Emperor* below), the Emperor greets you with one of them. Then:
+**Cheat mode: the CHEAT button.** Hold **MENU** and tap **CHEAT** in the tray. A **CHEAT** button with the **red Sith emblem** appears on the top row and `sithewok` goes on. If you've added sound clips of your own (see *Your own Emperor* below), the Emperor greets you with one of them, and he does whenever `sithewok` goes on: with CHEAT in the tray, by holding the CHEAT button, or by typing it. He stays quiet when it goes off. Then:
 
 - **Hold CHEAT** for half a second (a ring fills) to switch `sithewok` off (the emblem goes grey) or on again (red). A tap does nothing, so you can't switch it by accident.
 - **Typing works too:** typing `sithewok` while it's off switches it on and brings the CHEAT button back. Typing `sithewok` while it's on switches it off and the button goes away. Holding the button instead leaves it on screen, grey.
@@ -427,19 +478,19 @@ While you're typing, most touch buttons don't work. A swipe or long press on FOR
 - The app remembers cheat mode, but `sithewok` itself starts off each time you open the app: hold CHEAT to switch it on.
 - The Emperor plays at the game's sound effects volume, so turn that down if you'd rather not hear him.
 
-**Your own Emperor** (new in this release): the app doesn't come with any sound clips. To hear one when cheat mode goes on, add your own:
+**Your own Emperor** (new in v0.9-beta1): the app doesn't come with any sound clips. To hear one when cheat mode goes on, add your own:
 
 1. In the Files app, go to *On My iPhone (or On My iPad) > OpenJKDF2* (*OpenMoTS* for Mysteries of the Sith).
 2. Make a folder there called **`Emperor`** (touch and hold an empty spot, then *New Folder*).
 3. Put your clips in it: mp3, m4a, aac, wav, caf or aif files, with any names, up to 16 MB each. The app picks one at random each time (never the same one twice in a row), from the first 16 by name.
 
-Clips you add while you play count from the next time cheat mode goes on. With the folder empty or missing, cheat mode is silent.
+An `Emperor` folder in your game files' folder works too: next to `Episode` and `Resource`, in `jk1` (`mots` for OpenMoTS). If both have clips, the one straight in the OpenJKDF2 (or OpenMoTS) folder is used. Clips you add while you play count from the next time `sithewok` goes on. With neither folder holding any, cheat mode is silent.
 
 Catches, in Jedi Knight (Mysteries of the Sith's are in its section below):
 
 - **It can change the story.** With every light and dark power at 4 stars, the two sides cancel out, so when the game picks your path (after level 14) you get the light side unless you've killed more than about one in five of the civilians. Switching it off doesn't undo this, because you keep the stars. If you care which side you end up on, keep a save from before you first use `sithewok`, or wait to use it until your path has been set after level 14.
 - On the Force screen after level 14, where your path is set, the game takes the other side's stars away one at a time, which takes about 16 seconds if you've used `sithewok`. Wait until it stops before you tap OK, or your path isn't fully set until a later Force screen.
-- **Picking a level** with LEVEL jumps straight there, skipping the story in between, and goes to the level itself rather than the cutscene before it. Where a level number has a light and a dark side version, you get the first one. Keep a normal save of your real progress.
+- **Picking a level** with LEVEL jumps straight there, skipping the story in between, and goes to the level itself rather than the cutscene before it. Where a level number has a light and a dark side version, both are in the list: the one you pick goes on along its own path. Keep a normal save of your real progress.
 - Pits that a level's own script uses to end you (rather than an ordinary fall) can still kill you.
 
 #### Game controllers
@@ -543,7 +594,8 @@ New in v0.8-beta1. A keyboard and a mouse or trackpad (an iPad's Magic Keyboard,
 
 - **Messages and mission text** appear just below the top row of buttons, so the buttons never cover them, and long lines wrap.
 - **The HUD fits rounded, notched screens:** the health and ammo gauges sit above the home bar, the rounded corners never cut into the dials, and the health and shield numbers are drawn bigger so they're easy to read. The HUD Scale is 2.5 by default (*Setup > Display*).
-- **Cutscenes:** tap the screen to skip. **Menus:** tap them as you'd click.
+- **Cutscenes:** tap the screen to skip. **A level's own scenes** (before a duel, or at a level's end) can be skipped too: tap anywhere, and the game plays the rest unseen and fast, so everything ends up as if you had watched it (not in multiplayer or co-op). **Menus:** tap them as you'd click.
+- **The game's sound takes over** from other apps' audio while you play (music from another app stops), and it plays with the silent switch on.
 - **If the game feels slow:** in *Setup > Display*, try an *SSAA Multiplier* below 1 (for example `0.75` or `0.5`), and turn on the FPS counter in MENU's tray to see the difference.
 - **Playing by touch? Leave the keyboard bindings at their defaults** (*Setup > Controls > Keyboard*). The touch buttons press the game's default keys, so if you rebind an action, its touch button stops working.
 
@@ -605,7 +657,7 @@ The setup guide has more, including co-op saves and opening a port on your route
 - **Expansions & Mods** in OpenMoTS has no entry for Jedi Knight: open the OpenJKDF2 app instead.
 - The setup guide has the steps, with a picture of the folders: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#mysteries-of-the-sith
 
-**The same as in Jedi Knight:** the move stick and its run marker, drag to look, every button, MENU's hidden tray, the camera (selfies, photos, bursts, Action Freeze and the cinematic burst), SABER and its saber wheel (the hilts, colours, FILM and RANDOM, for Mara's sabers), cheat mode and the CHEAT button, VIEW and CONTROLS, multiplayer and co-op (Mara is the host's character), game controllers, keyboard and mouse, tilt aiming, QUICK SAVE and QUICK LOAD, the LIGHT, IR and BACTA item buttons, the FORCE button with its Force meter ring, tap, swipe or long-press on the wheel buttons, the stars on the Force wheel, and the HUD that fits your screen.
+**The same as in Jedi Knight:** the move stick and its run marker, drag to look, every button, MENU's hidden tray, the camera (selfies, photos, bursts, Action Freeze and the cinematic burst), SABER and its saber wheel (the hilts, colours, FILM and RANDOM, for Mara's sabers), cheat mode and the CHEAT button, VIEW and CONTROLS, multiplayer and co-op (Mara is the host's character), game controllers, keyboard and mouse, tilt aiming, SAVE and LOAD, LAST WPN and POWERS, the LIGHT, IR and BACTA item buttons, AUTO PLAY, skipping a level's own scenes, the FORCE button with its Force meter ring, tap, swipe or long-press on the wheel buttons, the stars on the Force wheel, and the HUD that fits your screen.
 
 **Different in Mysteries of the Sith:**
 
@@ -627,7 +679,10 @@ The setup guide has more, including co-op saves and opening a port on your route
 
 ### Known limitations
 
-- **What's new in this release has been tested on a computer**, with the real game engine and simulated touches: the saber wheel's cards, the four hilts, FOLD and its sounds, FILM, RANDOM, Saber Throw in Jedi Knight and the new third-person carry. Most of it has also been played on an iPhone in test builds, but not all of it, and not on an iPad. The newest changes (FOLD's sounds and FILM CROSS's sparks) have only been checked on a computer so far. If something looks, sounds or works wrong, please report it (a screenshot or a screen recording helps; see *Found a bug?*).
+- **Most of what's new in this release hasn't been played on a real iPhone yet.** It has been tested on a computer, with the real game engine and simulated touches: AUTO PLAY and its duels, skipping a level's scenes, SAVE and LOAD's taps, LAST WPN, POWERS beside FORCE, FORCE's name, the LIGHT, IR and BACTA pictures, RUN, LOOK, OPACITY, the 60 or 120 frames a second, the sharper FILM CROSS and its side blades, the two-saber changes, enemy FILM blades and the co-op changes. Some of the earlier changes have been played on an iPhone in test builds, but most of this release's new controls and AUTO PLAY's latest changes haven't, and nothing in it has been tried on an iPad. If something looks, sounds or works wrong, please report it (a screenshot or a screen recording helps; see *Found a bug?*).
+- **AUTO PLAY can't win Jerec's second fight.** In it Jerec can't be hurt until switches in the arena are thrown, which the show doesn't do, so that duel ends at its 4-minute limit and the show goes on to another level (or starts the level again, with PICK ONE).
+- **AUTO PLAY's fights are different every time:** they're made by the game's own AI and random numbers, so now and then Kyle (or Mara) may still stand about, fall or get stuck. Double-tap for a new fight.
+- **What was new in v0.9-beta1** (the saber wheel's cards, the four hilts, FOLD and its sounds, FILM, RANDOM, Saber Throw in Jedi Knight and the third-person carry) was mostly played on an iPhone in test builds, but not all of it, and not on an iPad.
 - **A STAFF or an open FOLD can still pass through Kyle now and then** in third person: in some swings (the game's swings are made for a one-bladed saber), and sometimes when he walks backwards, turns or crouches holding two. It's only the look: the second blade doesn't hit anything.
 - **A saber's glow doesn't light up what's round it.** The glow of FILM and CROSS blades is drawn round the blade itself: walls, floors and people near you don't take its colour (a FILM CROSS doesn't light up a dark room red, for example).
 - **Installing from the source in SideStore or AltStore is new.** If it doesn't work for you, download the `.ipa` files below and install them as before.
@@ -646,9 +701,8 @@ The setup guide has more, including co-op saves and opening a port on your route
 - **Finding the files outside `jk1` and `mots` is new in v0.4**, and has mostly been tested on a computer. If an app doesn't find your files, put them in `jk1` (or `mots`) as the guide shows.
 - **In OpenJKDF2, please ignore *Install Mysteries of the Sith*** under *Expansions & Mods*: Mysteries of the Sith plays in OpenMoTS. If you tapped it, close the app and open it again.
 - **The touch buttons only know the default key bindings** (see above).
-- **No previous-weapon or previous-power button:** use the wheels. There's no button for the in-game map overlay (MENU > Map shows the map instead), and no button for items other than the field light, IR goggles and bacta.
-- **The run circle only runs straight ahead.** Turn on *Always Run* to run in every direction.
-- **No separate touch look-sensitivity setting** for dragging. The game's mouse *Sensitivity* (*Setup > Controls > Mouse*) should change it, but that hasn't been tested yet. Tilt aiming has SENS.
+- **No previous-power button:** use POWERS's wheel. There's no button for the in-game map overlay (MENU > Map shows the map instead), and no button for items other than the field light, IR goggles and bacta.
+- **The run circle only runs straight ahead.** Switch on *Always Run* (RUN in MENU's tray) to run in every direction.
 - **Free Apple ID signing expires every 7 days**: refresh the apps in AltStore or SideStore, or install them again with the same tool and Apple ID. Your files and saves are kept.
 - OpenJKDF2 has been played on an iPhone in earlier versions, but both apps have had only limited testing so far.
 
@@ -680,7 +734,7 @@ The setup guide covers each step, including Developer Mode and "Untrusted Develo
 
 **Download:** under *Assets* below (not the *Source code* files): `OpenJKDF2-iOS-unsigned.ipa` is Jedi Knight (OpenJKDF2), and `OpenJKDF2-MotS-iOS-unsigned.ipa` is Mysteries of the Sith (OpenMoTS). The *iOS latest build* prerelease, also on the Releases page, is rebuilt automatically after every code change and may be broken: use this release.
 
-**Found a bug?** Please report it here, not to the upstream OpenJKDF2 project, and say you're on **v0.9-beta1** and which app, OpenJKDF2 or OpenMoTS (AltStore and Settings show 0.9.9 for both: that's the engine's version): https://github.com/sithewok13-dev/OpenJKDF2-iOS/issues
+**Found a bug?** Please report it here, not to the upstream OpenJKDF2 project, and say you're on **v0.9-beta2** and which app, OpenJKDF2 or OpenMoTS (AltStore and Settings show 0.9.9 for both: that's the engine's version): https://github.com/sithewok13-dev/OpenJKDF2-iOS/issues
 
 ---
 
