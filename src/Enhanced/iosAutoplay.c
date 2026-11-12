@@ -1493,9 +1493,13 @@ static void ap_startScene(double now, int bAnother)
             spot.feet = pl->position;
             if (ap_floorBelow(pl->sector, pl->position, FT(20.0f), &fl)) spot.feet.z = fl.z;
             spot.yaw = ap_headingTo(spot.feet, g->center);
+            // (out of his sight and reach from there: a duel's first fight is
+            // still begun -- its dark Jedi comes, or he's gone to a moment
+            // later, below -- rather than the show leaving the duel; placing
+            // him near one again finds nothing, and the caller sees to it)
             if (!ap_reachesFoe(pl, spot.feet)) {
                 APLOG("the duel's dark Jedi out of his sight and reach\n");
-                break;
+                if (bAnother == 2) break;
             }
         }
         else if (!ap_findSpot(g, &spot, bTight)) continue;
