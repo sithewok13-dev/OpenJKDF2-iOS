@@ -2213,11 +2213,23 @@ static void ap_edgeGuard(SithThing* pl)
     const float vx = speed > FT(1.0f) ? pl->physicsParams.vel.x / speed : 0.0f, vy = speed > FT(1.0f) ? pl->physicsParams.vel.y / speed : 0.0f;
     // (forward is (sin, cos) of the heading; right is (cos, -sin))
     const float fx = s_ctl.strafe, fy = s_ctl.forward;
+    const float probe = ap_maxf(FT(6.0f), speed * 0.45f);
     if (fabsf(fx) + fabsf(fy) > 0.05f) {
         const float dx = sy * fy + cy * fx, dy = cy * fy - sy * fx, l = sqrtf(dx * dx + dy * dy);
-        if (l > 1e-3f && ap_dropAhead(feet, sec, dx / l, dy / l, ap_maxf(FT(6.0f), speed * 0.45f))) {
-            s_ctl.strafe = s_ctl.forward = 0.0f;
-            s_axisX = s_axisY = 0.0f;
+        if (l > 1e-3f && ap_dropAhead(feet, sec, dx / l, dy / l, probe)) {
+            // (along the edge instead, either way, as far as it's safe; else still)
+            const float mag = ap_minf(1.0f, l), px = -dy / l, py = dx / l;
+            float sx = 0.0f, sf = 0.0f;
+            for (int k = 0; k < 2; k++) {
+                const float sgn = (k == 0) == (s_footDir >= 0.0f) ? 1.0f : -1.0f, ax = px * sgn, ay = py * sgn;
+                if (!ap_dropAhead(feet, sec, ax, ay, probe)) {
+                    sf = (ax * sy + ay * cy) * mag;
+                    sx = (ax * cy - ay * sy) * mag;
+                    break;
+                }
+            }
+            s_ctl.strafe = s_axisX = sx;
+            s_ctl.forward = s_axisY = sf;
             s_bEdgeNear = 1;
         }
     }
