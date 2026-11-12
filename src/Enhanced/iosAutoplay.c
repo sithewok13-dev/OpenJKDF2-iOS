@@ -2513,8 +2513,19 @@ void iosAutoplay_Tick(double now)
                 s_tReplace = now + 15.0; // (after it: a placing sets its own)
                 // (nowhere near him -- Maw hovering where his script left him,
                 // its moves done: called to the fight once, as a level's
-                // script would, never mid-move or while untouchable)
-                if (s_tScene == tScene) ap_callDuelist(pl, now);
+                // script would, never mid-move or while untouchable; and
+                // fallen off the ledge or gone far meanwhile, he's put back
+                // where the fight was, rather than left below it)
+                if (s_tScene == tScene) {
+                    apSpot spot;
+                    if ((s_center.z - feet.z > FT(8.0f) || ap_lenXY(ap_sub(feet, s_center)) > FT(60.0f))
+                        && (ap_findSpot(&s_group, &spot, 0) || ap_findSpot(&s_group, &spot, 1))) {
+                        APLOG("put back at %.1f s (a duel)\n", now - s_tStart);
+                        ap_place(pl, &spot);
+                        ap_resetPilot(now, spot.feet);
+                    }
+                    ap_callDuelist(pl, now);
+                }
             }
             return;
         }
