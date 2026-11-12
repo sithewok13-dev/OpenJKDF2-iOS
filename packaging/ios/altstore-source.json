@@ -36,6 +36,17 @@
       "versions": [
         {
           "version": "0.9.9",
+          "buildVersion": "139",
+          "marketingVersion": "v0.9-beta2",
+          "date": "2026-11-12T05:38:26Z",
+          "localizedDescription": "New since v0.9-beta1:\n- AUTO PLAY, a self-playing show\n- AUTO PLAY fights with the lightsaber\n- Tap to skip a level's own scenes\n- SAVE and LOAD\n- LAST WPN\n- POWERS\n- FORCE shows just the power's name\n- LIGHT, IR and BACTA look like the items themselves\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta2",
+          "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta2/OpenJKDF2-iOS-unsigned.ipa",
+          "size": 5492765,
+          "sha256": "c39627c7c3135d7dd558feccbab9e08b128cef5c0cbf1cadc8ea7ce785ff6596",
+          "minOSVersion": "18.0"
+        },
+        {
+          "version": "0.9.9",
           "buildVersion": "120",
           "marketingVersion": "v0.9-beta1",
           "date": "2026-10-21T15:37:32Z",
@@ -66,10 +77,10 @@
         }
       },
       "version": "0.9.9",
-      "versionDate": "2026-10-21T15:37:32Z",
-      "versionDescription": "New since v0.8-beta2:\n- A saber wheel with a card for each hand\n- Four hilts, one per hand\n- FOLD folds and opens\n- A FILM look\n- A RANDOM button\n- Saber Throw for Kyle\n- Install and update from SideStore or AltStore\n- The Emperor's voice clips no longer come with the app.\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta1",
-      "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta1/OpenJKDF2-iOS-unsigned.ipa",
-      "size": 5373262
+      "versionDate": "2026-11-12T05:38:26Z",
+      "versionDescription": "New since v0.9-beta1:\n- AUTO PLAY, a self-playing show\n- AUTO PLAY fights with the lightsaber\n- Tap to skip a level's own scenes\n- SAVE and LOAD\n- LAST WPN\n- POWERS\n- FORCE shows just the power's name\n- LIGHT, IR and BACTA look like the items themselves\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta2",
+      "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta2/OpenJKDF2-iOS-unsigned.ipa",
+      "size": 5492765
     },
     {
       "name": "OpenMoTS",
@@ -93,6 +104,17 @@
         }
       ],
       "versions": [
+        {
+          "version": "0.9.9",
+          "buildVersion": "139",
+          "marketingVersion": "v0.9-beta2",
+          "date": "2026-11-12T05:38:26Z",
+          "localizedDescription": "New since v0.9-beta1:\n- AUTO PLAY, a self-playing show\n- AUTO PLAY fights with the lightsaber\n- Tap to skip a level's own scenes\n- SAVE and LOAD\n- LAST WPN\n- POWERS\n- FORCE shows just the power's name\n- LIGHT, IR and BACTA look like the items themselves\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta2",
+          "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta2/OpenJKDF2-MotS-iOS-unsigned.ipa",
+          "size": 5479498,
+          "sha256": "5903d3c362ce4825f836322d6a61c9d3e9ee6ed8cb97d856bf1d7d9e65055b93",
+          "minOSVersion": "18.0"
+        },
         {
           "version": "0.9.9",
           "buildVersion": "120",
@@ -125,10 +147,10 @@
         }
       },
       "version": "0.9.9",
-      "versionDate": "2026-10-21T15:37:32Z",
-      "versionDescription": "New since v0.8-beta2:\n- A saber wheel with a card for each hand\n- Four hilts, one per hand\n- FOLD folds and opens\n- A FILM look\n- A RANDOM button\n- Saber Throw for Kyle\n- Install and update from SideStore or AltStore\n- The Emperor's voice clips no longer come with the app.\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta1",
-      "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta1/OpenJKDF2-MotS-iOS-unsigned.ipa",
-      "size": 5360105
+      "versionDate": "2026-11-12T05:38:26Z",
+      "versionDescription": "New since v0.9-beta1:\n- AUTO PLAY, a self-playing show\n- AUTO PLAY fights with the lightsaber\n- Tap to skip a level's own scenes\n- SAVE and LOAD\n- LAST WPN\n- POWERS\n- FORCE shows just the power's name\n- LIGHT, IR and BACTA look like the items themselves\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta2",
+      "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta2/OpenJKDF2-MotS-iOS-unsigned.ipa",
+      "size": 5479498
     }
   ],
   "news": []
