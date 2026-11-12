@@ -1572,7 +1572,8 @@ static void ap_scan(rdVector3 eye, SithSector* eyeSec, double now)
     for (int i = 0; i < s_numFoes; i++) {
         const apFoe* f = &s_foes[i];
         float d = ap_len(ap_sub(f->pos, eye));
-        if (d > FT(100.0f)) continue;
+        // (a duel's dark Jedi seen further off: Maw hovering out over the drop)
+        if (d > FT(s_bDuel && (f->thing->actorParams.flags & SITH_AF_BOSS) ? 220.0f : 100.0f)) continue;
         if (!ap_sees(eyeSec, eye, f->pos) && !ap_sees(eyeSec, eye, f->head)) continue;
         s_aSeen[s_numSeen++] = i;
         if (bMelee && !ap_reachable(eye, f->pos)) d += FT(60.0f);
@@ -1615,13 +1616,46 @@ static void ap_scan(rdVector3 eye, SithSector* eyeSec, double now)
     }
 }
 
-// Whether he can go that way (dir, flat) for a little: no wall, ledge, pit or water
-static int ap_canGo(rdVector3 feet, SithSector* sec, float dx, float dy)
+// Whether he can go that way (dir, flat) for so far: no wall, ledge (a drop
+// deeper than a jump climbs back), pit or water
+static int ap_canGoFar(rdVector3 feet, SithSector* sec, float dx, float dy, float dist)
 {
     apFloor end;
-    if (!ap_walk(feet, sec, feet.x + dx * FT(6.0f), feet.y + dy * FT(6.0f), FT(4.0f), FT(2.5f), &end)) return 0;
+    if (!ap_walk(feet, sec, feet.x + dx * dist, feet.y + dy * dist, FT(4.0f), FT(2.5f), &end)) return 0;
     return !end.bWorld || end.bSafe;
 }
+
+// ...for a little
+static int ap_canGo(rdVector3 feet, SithSector* sec, float dx, float dy)
+{
+    return ap_canGoFar(feet, sec, dx, dy, FT(6.0f));
+}
+
+// A drop that way within dist (ft): deeper than a jump climbs back, a pit or
+// water -- before any wall, which he'd only bump into
+static int ap_dropAhead(rdVector3 feet, SithSector* sec, float dx, float dy, float dist)
+{
+    const rdVector3 from = ap_v3(feet.x, feet.y, feet.z + FT(1.6f));
+    float z = feet.z;
+    for (float d = FT(1.5f); d <= dist + FT(0.01f); d += FT(1.5f)) {
+        const float x = feet.x + dx * d, y = feet.y + dy * d;
+        if (!ap_clear(sec, from, ap_v3(x, y, z + FT(1.6f)), FT(0.6f), AP_WALK_FLAGS)) return 0; // (a wall first)
+        const rdVector3 p = ap_v3(x, y, z + FT(3.5f));
+        SithSector* s = ap_sectorAt(sec, from, p);
+        if (!s) return 0;
+        apFloor f;
+        if (!ap_floorBelow(s, p, FT(3.5f) + FT(4.0f), &f)) return 1; // (no floor within a jump's height below)
+        if (f.bWorld && !f.bSafe) return 1;
+        if (f.z > z + FT(2.5f)) return 0; // (a step up: a wall)
+        z = f.z;
+    }
+    return 0;
+}
+
+// A drop near, the way he's going (no jump, no leap or burst of speed from
+// the Force meanwhile): ap_edgeGuard's, each tick
+static int s_bEdgeNear = 0;
+static double s_tFarPick = 0.0; // (a duel: a gun for a dark Jedi out of reach, asked for no sooner)
 
 // How far he can see along a heading from the eyes (up to maxFt feet): a
 // glance or a turn away is never at a wall in his face
@@ -1724,8 +1758,8 @@ static void ap_ease(float* axis, float wanted, float dt)
 static int ap_powerFits(int bin, float d, int bSeen, int bMelee)
 {
     switch (bin) {
-        case 21: return !bSeen || ap_randInt(3) == 0;                 // jump: on the move, or a leap in a fight
-        case 22: return !bSeen || d > FT(30.0f);                      // speed: to close the distance
+        case 21: return !s_bEdgeNear && (!bSeen || ap_randInt(3) == 0); // jump: on the move, or a leap in a fight
+        case 22: return !s_bEdgeNear && (!bSeen || d > FT(30.0f));      // speed: to close the distance
         case 24: return bSeen && d > FT(8.0f) && d < FT(45.0f) && !bMelee; // pull: a gun out of a hand
         case 27: return bSeen && d < FT(40.0f) && s_numSeen >= 2;     // blinding: several of them
         case 30: return bSeen && d < FT(35.0f);                       // throw
@@ -1862,8 +1896,16 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
         // (a duel: its dark Jedi seldom out of sight, so another weapon now
         // and then mid-fight as well -- the saber most of the time, a strong
         // gun a short while between)
+        // (a duel's dark Jedi in sight but out of the saber's reach -- Maw
+        // hovering over the drop -- a gun at once; the saber when he's near)
+        else if (s_bDuel && s_numRotation > 1 && tgt && ap_isMelee(s_weapon) && now >= s_tFarPick
+                 && (targetD > FT(45.0f) || !ap_reachable(eye, s_aim))) {
+            ap_pickWeapon(s_weapon);
+            s_tSwitch = now + ap_randRange(8.0f, 12.0f);
+            s_tFarPick = now + 3.0; // (none but melee ones to pick: not asked again at once)
+        }
         else if (s_bDuel && s_numRotation > 1 && now >= s_tSwitch) {
-            if (s_bSaber && s_weapon != AP_W_SABER) {
+            if (s_bSaber && s_weapon != AP_W_SABER && !(tgt && (targetD > FT(45.0f) || !ap_reachable(eye, s_aim)))) {
                 ap_saberBack();
                 ap_takeWeapon(AP_W_SABER);
                 s_tSwitch = now + ap_randRange(14.0f, 22.0f);
@@ -2080,7 +2122,7 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
                 if (fire && s_bBurstAlt) { fire = 0; alt = 1; }
             }
         }
-        else if (dxy < FT(90.0f) && (bSettled || (now < s_tBurst && err < tol * 2.5f))) {
+        else if (dxy < FT(s_bDuel ? 200.0f : 90.0f) && (bSettled || (now < s_tBurst && err < tol * 2.5f))) {
             if (now >= s_tPause) {
                 s_tBurst = now + ap_randRange(0.35f, 2.0f);
                 s_tPause = s_tBurst + ap_randRange(0.15f, 0.6f);
@@ -2130,6 +2172,44 @@ static void ap_input(double now, float dt)
     s_ctl.lookY -= (float)dy;
     Window_lastXRel += dx;
     Window_lastYRel += dy;
+}
+
+// The last word on his feet, after the autopilot's, in every level: never a
+// step, a run carrying on, or a jump off a drop. The stick as it now is (it
+// eases, so it lags what the autopilot last wanted) and the way he's moving
+// whatever the stick says (a run's momentum, a shove) are looked along as far
+// as his speed takes him before he can stop; a drop there stops the stick,
+// or turns it against the run; a jump needs room to land the way he goes.
+// Walls are left to the autopilot (a bump is no fall).
+static void ap_edgeGuard(SithThing* pl)
+{
+    s_bEdgeNear = 0;
+    SithSector* sec = pl->sector;
+    if (!sec || !(pl->attach_flags & (SITH_ATTACH_SURFACE | SITH_ATTACH_THINGFACE))) return; // (in the air: too late, or a jump)
+    apFloor fl;
+    if (!ap_floorBelow(sec, pl->position, FT(8.0f), &fl)) return;
+    const rdVector3 feet = ap_v3(pl->position.x, pl->position.y, fl.z);
+    const float yaw = ap_yawOf(pl), sy = sinf(yaw), cy = cosf(yaw);
+    const float speed = ap_lenXY(pl->physicsParams.vel);
+    const float vx = speed > FT(1.0f) ? pl->physicsParams.vel.x / speed : 0.0f, vy = speed > FT(1.0f) ? pl->physicsParams.vel.y / speed : 0.0f;
+    // (forward is (sin, cos) of the heading; right is (cos, -sin))
+    const float fx = s_ctl.strafe, fy = s_ctl.forward;
+    if (fabsf(fx) + fabsf(fy) > 0.05f) {
+        const float dx = sy * fy + cy * fx, dy = cy * fy - sy * fx, l = sqrtf(dx * dx + dy * dy);
+        if (l > 1e-3f && ap_dropAhead(feet, sec, dx / l, dy / l, ap_maxf(FT(6.0f), speed * 0.45f))) {
+            s_ctl.strafe = s_ctl.forward = 0.0f;
+            s_axisX = s_axisY = 0.0f;
+            s_bEdgeNear = 1;
+        }
+    }
+    if (speed > FT(3.0f) && ap_dropAhead(feet, sec, vx, vy, ap_maxf(FT(4.0f), speed * 0.5f))) {
+        s_ctl.forward = s_axisY = -ap_clampf(vx * sy + vy * cy, -1.0f, 1.0f);
+        s_ctl.strafe = s_axisX = -ap_clampf(vx * cy - vy * sy, -1.0f, 1.0f);
+        s_bEdgeNear = 1;
+    }
+    // (a jump: the footwork's, a hop when stuck -- room to land, the way he goes or faces)
+    if (!s_bEdgeNear && ap_dropAhead(feet, sec, speed > FT(1.0f) ? vx : sy, speed > FT(1.0f) ? vy : cy, FT(14.0f))) s_bEdgeNear = 1;
+    if (s_bEdgeNear) s_ctl.jump = 0;
 }
 
 void iosAutoplay_GetDisplay(iosAutoplayDisplay* pOut)
@@ -2350,6 +2430,7 @@ void iosAutoplay_Tick(double now)
     }
 #endif
     ap_autopilot(now, dt, pl);
+    ap_edgeGuard(pl);
     ap_input(now, dt);
 
 #ifdef IOSAUTOPLAY_RIG
