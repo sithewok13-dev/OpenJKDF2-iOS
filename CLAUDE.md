@@ -14,11 +14,19 @@ everything on a phone.
 - **Docs:** `docs/ios/README.md` (setup guide), `docs/ios/RELEASE_NOTES.md` (the
   release text). **CI:** `.github/workflows/ios.yml`.
 - **This port's own controls** (not part of the shared touch standard below):
-  - FORCE WHEEL is a small button beside FORCE, 16 pt from it where that fits
-    comfortably, else 10 (a touch between them is FORCE's; on the smallest
-    screens, where FORCE lies under the open wheel, it goes under MENU instead).
+  - FORCE WHEEL is a small button beside FORCE, labelled POWERS, 16 pt from it
+    where that fits comfortably, else 10 (a touch between them is FORCE's; on
+    the smallest screens, where FORCE lies under the open wheel, it goes under
+    MENU instead).
   - LAST WPN sits right of NEXT WPN: tap = the weapon held before; again = back;
-    dimmed, doing nothing, with none to go back to, or if it's gone or empty.
+    dimmed, a tap doing nothing, with none to go back to, or if it's gone or
+    empty. A slide or hold opens NEXT WPN's weapon wheel, dimmed or not.
+  - LIGHT and IR, as pictures, replace the game's own top-right item tiles
+    (`jkHudInv` leaves those two out: `iosItemIcons_SetHudStandIn`): lit
+    wherever the game would show one; with the touch controls hidden (a
+    controller, keyboard and mouse) or in AUTOPLAY with HUD ON, the lit picture
+    alone, display only. The text-button fallback keeps the game's tiles.
+    BACTA's count is on its glass, from 1 up.
   - QUICK SAVE / QUICK LOAD are labelled SAVE / LOAD, and a tap opens the game's
     own Save or Load screen (iOS; Android's overlay is still hold only).
 - **Mysteries of the Sith** is a separate app, **OpenMoTS**

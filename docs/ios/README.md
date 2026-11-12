@@ -387,9 +387,9 @@ never cover them, and long lines wrap between words.
 | **ALT** | up and right of FIRE, just above the ammo gauge | Secondary fire (each weapon's second mode). |
 | **FORCE** | right of JUMP, or above it (a little to its left) on smaller screens with the camera cutout on the right. With Display Zoom, where there's no room there, it can sit further left, between DUCK and ACT. It always keeps a little space from the top row, so holding it can't set off SAVE or LOAD. | Uses your selected Force power, for as long as you hold it. Tap for a single use, hold for powers that charge up (Force Jump: see [Force Jump](#force-jump)) or keep going (Lightning). The button shows just the power's name, as big as fits (two-word names, such as DEADLY SIGHT, on two lines). Until you have a power it says FORCE, dimmed. The **blue ring** around it is your Force meter: it shrinks as you use the Force, and glows and pulses when the meter is full. |
 | **NEXT WPN** | top left | **Tap:** switches to your next weapon. **Slide** or **hold:** opens the weapon wheel to choose one: see [The weapon wheel](#the-weapon-wheel). |
-| **LAST WPN** | top left, right of NEXT WPN | **Tap:** back to the weapon you held just before this one. **Tap again** to swap back. It keeps up with every change, however it happened: the weapon wheel, NEXT WPN, a key or a controller, or the game switching by itself (a new weapon picked up, or one out of ammo). A Saber Throw doesn't count (your fists while the saber flies aren't a change), and loading a game or starting a level starts it afresh. Dimmed, and a tap does nothing, until you've changed weapon once, or while the one before is gone or out of ammo. A hold or a slide does nothing more than a tap. |
-| **FORCE WHEEL** | small, beside FORCE (above it or next to it, wherever it fits best), with a 16 pt gap, or 10 pt where there's less room (as on the iPhone 15 and 16). On most iPhones it leaves the game's messages at the top their full width; on the iPhone 12 to 14, the XS, 11 Pro and minis, and the SE it narrows them a little. A touch in that gap, or on FORCE WHEEL's edge next to FORCE, counts as FORCE, so a hurried press on FORCE never changes your power. On the smallest iPhones it sits under MENU instead. Where MENU's tray opens over its place, it hides while the tray is open. | **Tap:** selects your next learned Force power (FORCE shows which). **Slide** or **hold:** opens the Force wheel to choose one: see [The Force wheel](#the-force-wheel). |
-| **LIGHT**, **IR**, **BACTA** | top left, after LAST WPN | Field light, IR goggles and bacta tank, shown as the game's own pictures of them, made bigger and smoother from your game files (just the item, with a soft dark edge). **Tap** LIGHT or IR to switch it on or off: the lamp lights up with a glow, and the goggles' two eyes light up red. While off they're dimmed. **Hold BACTA** for about a third of a second to use a bacta tank: the liquid in the tank glows brighter from the bottom up as you hold. The game only uses a tank when you're hurt; when it does, you feel a light tick and the liquid drops a step. At full health nothing is used. One per press; a tap or a brush past uses none. The liquid shows how many tanks you carry (full with five, a fifth with one), and a round badge shows the number when it's more than one. When you use your last tank, the empty tank stays for about a second, then fades away; pick up another and it's back at once. Each button only appears once you have that item, and always in the same spot. Until the pictures are ready (a moment after you first start playing), or if they can't be read from your game files (or a mod changed those icons), the buttons show their names instead (LIGHT, IR, BACTA: yellow while on, and BACTA's ring fills as you hold it). |
+| **LAST WPN** | top left, right of NEXT WPN | **Tap:** back to the weapon you held just before this one. **Tap again** to swap back. It keeps up with every change, however it happened: the weapon wheel, NEXT WPN, a key or a controller, or the game switching by itself (a new weapon picked up, or one out of ammo). A Saber Throw doesn't count (your fists while the saber flies aren't a change), and loading a game or starting a level starts it afresh. Dimmed, and a tap does nothing, until you've changed weapon once, or while the one before is gone or out of ammo. **Slide** or **hold:** opens the weapon wheel, the same one as NEXT WPN, even while LAST WPN is dimmed: see [The weapon wheel](#the-weapon-wheel). |
+| **POWERS** (the Force wheel button) | small, beside FORCE (above it or next to it, wherever it fits best), with a 16 pt gap, or 10 pt where there's less room (as on the iPhone 15 and 16). On most iPhones it leaves the game's messages at the top their full width; on the iPhone 12 to 14, the XS, 11 Pro and minis, and the SE it narrows them a little. A touch in that gap, or on the edge of POWERS next to FORCE, counts as FORCE, so a hurried press on FORCE never changes your power. On the smallest iPhones it sits under MENU instead. Where MENU's tray opens over its place, it hides while the tray is open. | **Tap:** selects your next learned Force power (FORCE shows which). **Slide** or **hold:** opens the Force wheel to choose one: see [The Force wheel](#the-force-wheel). |
+| **LIGHT**, **IR**, **BACTA** | top left, after LAST WPN | Field light, IR goggles and bacta tank, shown as the game's own pictures of them, made bigger and smoother from your game files (just the item, with a soft dark edge). **Tap** LIGHT or IR to switch it on or off: the lamp lights up with a glow, and the goggles' two eyes light up red. While off they're dimmed. They take the place of the game's own small light and goggles squares at the top right, which no longer show: wherever the game would show one, the lit LIGHT or IR shows instead. With a controller or a keyboard (the touch buttons hidden) a lit LIGHT or IR still shows on its own in its place, just to see (gone when off). In AUTOPLAY they show the same way when its HUD row is ON, and not with HUD OFF. **Hold BACTA** for about a third of a second to use a bacta tank: the liquid in the tank glows brighter from the bottom up as you hold. The game only uses a tank when you're hurt; when it does, you feel a light tick and the liquid drops a step. At full health nothing is used. One per press; a tap or a brush past uses none. The liquid shows how many tanks you carry (full with five, a fifth with one), and the number is on the tank itself, big and white with a dark purple edge, from 1 up. When you use your last tank, the empty tank stays for about a second, then fades away; pick up another and it's back at once. Each button only appears once you have that item, and always in the same spot. Until the pictures are ready (a moment after you first start playing), or if they can't be read from your game files (or a mod changed those icons), the buttons show their names instead (LIGHT, IR, BACTA: yellow while on, and BACTA's ring fills as you hold it), and the game's own squares at the top right stay. |
 | **SAVE** | top right | **Tap:** opens the game's own Save screen. **Hold** for about a third of a second: a ring fills, then the game quick saves. See [Saving and loading](#saving-and-loading). |
 | **LOAD** | top right | **Tap:** opens the game's own Load screen. **Hold** for about a third of a second: a ring fills, then your quick save loads. To cancel, slide off before you lift. |
 | **MENU** | top right corner | **Tap** opens the game's menu (objectives, map, Jedi powers, save, load, setup and more). **Hold** opens a small tray just under it, see below. |
@@ -399,13 +399,13 @@ never cover them, and long lines wrap between words.
 | **VIEW** (1P or 3P) | top, right of CHEAT (once switched on in MENU's tray) | **Tap:** first person or third person, at once. |
 
 FIRE, ALT, DUCK, ACT, JUMP and FORCE act as soon as you touch them.
-LIGHT, IR, LAST WPN, MENU, SAVE, LOAD, CAMERA and the tray buttons act when you **lift**
+LIGHT, IR, MENU, SAVE, LOAD, CAMERA and the tray buttons act when you **lift**
 your finger on them (SAVE and LOAD, held, quick save and quick load instead),
 so if you touch one by mistake, slide off before you lift (on CAMERA, a slide
 starts a burst or Action Freeze instead: see [The camera](#the-camera)).
-BACTA and CHEAT need a hold, so a brush past does nothing. NEXT WPN and FORCE
-WHEEL act on a quick tap when you lift, or open their wheel when you slide or
-hold (see [Tap, slide or hold](#tap-slide-or-hold)). SABER opens its wheel
+BACTA and CHEAT need a hold, so a brush past does nothing. NEXT WPN, LAST WPN
+and POWERS act on a quick tap when you lift, or open their wheel when you slide
+or hold (see [Tap, slide or hold](#tap-slide-or-hold)). SABER opens its wheel
 however you touch it, but with a FOLD in your hand a quick tap flips the FOLD
 (with one in each hand, a tap flips the right one and a double tap both;
 slide or hold to open the wheel). While
@@ -859,7 +859,7 @@ hold GYRO in the tray until its ring fills, then tap **MODE** or **SENS**:
   comfortable position, lift both thumbs: the view stays exactly where it is,
   and when you touch again it carries on from there, like lifting a mouse off
   the desk. The buttons along the top (NEXT WPN, LAST WPN, SAVE, MENU
-  and the rest) and FORCE WHEEL don't count.
+  and the rest) and POWERS don't count.
 - **GYRO ALWAYS:** turning the phone always aims, with or without a thumb down.
 
 **SENS** sets how far the view turns: 1.0x, 1.5x (the default), 2.0x or 3.0x.
@@ -906,8 +906,8 @@ on water), and the other Force powers work as before.
 
 ## The Force wheel
 
-**FORCE WHEEL** opens the Force wheel (see [Tap, slide or hold](#tap-slide-or-hold)
-for the three ways to use the button). **The game pauses while the wheel is
+**POWERS**, the small button by FORCE, opens the Force wheel (see
+[Tap, slide or hold](#tap-slide-or-hold) for the three ways to use the button). **The game pauses while the wheel is
 open.** Every Force power always has the same slot, whether you've learned it
 yet or not (powers you haven't learned are dark):
 
@@ -931,12 +931,14 @@ Once you've picked a power, use it with **FORCE**.
 
 ### Tap, slide or hold
 
-FORCE WHEEL and NEXT WPN work the same way. Each has three gestures:
+POWERS, NEXT WPN and LAST WPN work the same way (NEXT WPN and LAST WPN open
+the same weapon wheel). Each has three gestures:
 
 - **Quick tap** (lift within about a third of a second, without sliding):
-  FORCE WHEEL selects your **next learned Force power**, skipping the ones you
+  POWERS selects your **next learned Force power**, skipping the ones you
   haven't learned (the FORCE button shows which one you have now). NEXT WPN
-  switches to your **next weapon**. No wheel opens.
+  switches to your **next weapon**, LAST WPN **back to the one before** (if
+  there is one: dimmed, a tap does nothing). No wheel opens.
 - **Touch and slide (quickest):** as soon as your thumb slides away from the
   button, the wheel opens. Keep sliding towards a slot. A short slide in the
   right direction is enough, but you can also slide all the way onto it. The
@@ -951,13 +953,13 @@ FORCE WHEEL and NEXT WPN work the same way. Each has three gestures:
 
 With the wheel open for tapping: tap a slot to select it. Tapping a power you
 haven't learned, or a weapon you can't switch to, does nothing. Tapping
-anywhere else (the middle, the gap, outside the wheel, or either button at the
+anywhere else (the middle, the gap, outside the wheel, or the buttons at the
 top left) closes the wheel without changing anything.
 
 ## The weapon wheel
 
-**NEXT WPN** opens the weapon wheel when you slide or hold it (a quick tap
-switches to the next weapon, as before). It works like the Force wheel (see
+**NEXT WPN** and **LAST WPN** open the weapon wheel when you slide or hold
+them (a quick tap switches to the next weapon, or back to the one before). It works like the Force wheel (see
 [Tap, slide or hold](#tap-slide-or-hold)), and **the game pauses while it is
 open** too.
 
@@ -1542,8 +1544,8 @@ Cheats go into the game's typing line (on PC, that's where chat goes):
 
 While the typing line is open, most other touch buttons don't work. The
 exceptions: **MENU** (and the tray's keyboard button) close the line, and
-**FORCE WHEEL** and **NEXT WPN** close it and open their wheel when you
-slide or hold them (a quick tap does nothing while you type). Cheats only work in single
+**POWERS**, **NEXT WPN** and **LAST WPN** close it and open their wheel when
+you slide or hold them (a quick tap does nothing while you type). Cheats only work in single
 player. Some cheats need `on` or `off` after them.
 
 | Type this | What it does |
@@ -1933,7 +1935,7 @@ If something doesn't work in OpenMoTS, please say so in your bug report
   folder (`jk1`, or `mots` for OpenMoTS) with the Files app (or Finder /
   Apple Devices).
 - **Not every PC key has a touch button.** There is no previous-power
-  button: use the Force wheel (FORCE WHEEL). For weapons, LAST WPN goes back
+  button: use the Force wheel (POWERS). For weapons, LAST WPN goes back
   to the one you held before. There is no button for the
   in-game map overlay (MENU > Map shows the map instead), and no button for
   inventory items other than field light, IR goggles and bacta.
