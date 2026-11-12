@@ -288,7 +288,10 @@ static int ap_floorBelow(SithSector* sec, rdVector3 p, float maxDrop, apFloor* p
             bFound = 1;
             break;
         }
-        if ((c->type & SITHCOLLISION_THING) && c->pThingCollided && (c->pThingCollided->flags & SITH_TF_STANDABLE)) {
+        // (a thing to stand on -- a crate, a lift; never a creature, Maw's back
+        // among them, which moves off from under him)
+        if ((c->type & SITHCOLLISION_THING) && c->pThingCollided && (c->pThingCollided->flags & SITH_TF_STANDABLE)
+            && c->pThingCollided->type != SITH_THING_ACTOR && c->pThingCollided->type != SITH_THING_PLAYER) {
             pOut->z = p.z - c->distance;
             pOut->sector = c->pThingCollided->sector;
             pOut->bWorld = 0;
@@ -1660,6 +1663,7 @@ static int ap_dropAhead(rdVector3 feet, SithSector* sec, float dx, float dy, flo
 // the Force meanwhile): ap_edgeGuard's, each tick
 static int s_bEdgeNear = 0;
 static double s_tFarPick = 0.0; // (a duel: a gun for a dark Jedi out of reach, asked for no sooner)
+static double s_tInReach = 0.0; // (...when he was last in the saber's reach)
 
 // How far he can see along a heading from the eyes (up to maxFt feet): a
 // glance or a turn away is never at a wall in his face
@@ -1885,6 +1889,9 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
     // is asked for again, as a thumb would
     const float targetD = tgt ? ap_len(ap_sub(s_aim, eye)) : 1e9f;
     const int bLull = !tgt && now - s_tSeen > 0.8;
+    // (a duel's dark Jedi in the saber's reach -- not far, not up or down a
+    // ledge -- lately: a leap of his doesn't count, a few seconds out of it do)
+    if (!tgt || (targetD <= FT(45.0f) && ap_reachable(eye, s_aim))) s_tInReach = now;
     if (s_throws == 0 && s_forceStage == FP_NONE) {
         if (s_bDets && s_bBunchSeen && now >= s_tDetsNext && !ap_isMelee(s_weapon)) {
             s_before = s_weapon;
@@ -1902,14 +1909,13 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
         // gun a short while between)
         // (a duel's dark Jedi in sight but out of the saber's reach -- Maw
         // hovering over the drop -- a gun at once; the saber when he's near)
-        else if (s_bDuel && s_numRotation > 1 && tgt && ap_isMelee(s_weapon) && now >= s_tFarPick
-                 && (targetD > FT(45.0f) || !ap_reachable(eye, s_aim))) {
+        else if (s_bDuel && s_numRotation > 1 && tgt && ap_isMelee(s_weapon) && now >= s_tFarPick && now - s_tInReach >= 3.0) {
             ap_pickWeapon(s_weapon);
             s_tSwitch = now + ap_randRange(8.0f, 12.0f);
             s_tFarPick = now + 3.0; // (none but melee ones to pick: not asked again at once)
         }
         else if (s_bDuel && s_numRotation > 1 && now >= s_tSwitch) {
-            if (s_bSaber && s_weapon != AP_W_SABER && !(tgt && (targetD > FT(45.0f) || !ap_reachable(eye, s_aim)))) {
+            if (s_bSaber && s_weapon != AP_W_SABER && !(tgt && now - s_tInReach >= 3.0)) {
                 ap_saberBack();
                 ap_takeWeapon(AP_W_SABER);
                 s_tSwitch = now + ap_randRange(14.0f, 22.0f);
@@ -2191,7 +2197,16 @@ static void ap_edgeGuard(SithThing* pl)
     SithSector* sec = pl->sector;
     if (!sec || !(pl->attach_flags & (SITH_ATTACH_SURFACE | SITH_ATTACH_THINGFACE))) return; // (in the air: too late, or a jump)
     apFloor fl;
-    if (!ap_floorBelow(sec, pl->position, FT(8.0f), &fl)) return;
+    if (!ap_floorBelow(sec, pl->position, FT(8.0f), &fl)) {
+        if (!(pl->attach_flags & SITH_ATTACH_THINGFACE)) return; // (a steep floor: nothing to go by)
+        // (stood on a thing with nothing under it -- Maw's back over the
+        // drop: held still, no jump, till he's back over the ledge)
+        s_ctl.strafe = s_ctl.forward = 0.0f;
+        s_axisX = s_axisY = 0.0f;
+        s_ctl.jump = 0;
+        s_bEdgeNear = 1;
+        return;
+    }
     const rdVector3 feet = ap_v3(pl->position.x, pl->position.y, fl.z);
     const float yaw = ap_yawOf(pl), sy = sinf(yaw), cy = cosf(yaw);
     const float speed = ap_lenXY(pl->physicsParams.vel);
