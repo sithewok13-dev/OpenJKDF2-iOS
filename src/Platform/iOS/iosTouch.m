@@ -36,6 +36,13 @@
 #include "Enhanced/iosSceneSkip.h"
 #include "Enhanced/iosItemIcons.h"
 
+// (what is made here and handed on: let go of once used, with ARC or without)
+#if __has_feature(objc_arc)
+#define IOSTOUCH_AUTORELEASE(x) (x)
+#else
+#define IOSTOUCH_AUTORELEASE(x) [(x) autorelease]
+#endif
+
 extern SDL_Window* displayWindow;
 extern int stdControl_bControlsActive;
 extern int stdControl_bControllerEscapeKey;
@@ -91,16 +98,18 @@ extern int jkHud_bChatOpen;
 #define IOSTOUCH_WHEEL_R1_MAX 168.0
 #define IOSTOUCH_WHEEL_R0_FRAC 0.37
 #define IOSTOUCH_WHEEL_POP 10.0
-// FORCE WHEEL and NEXT WPN each take three gestures. A quick tap (lifted
-// sooner than IOSTOUCH_WHEEL_HOLD by the touch's own clock, never
+// FORCE WHEEL, NEXT WPN and LAST WPN each take three gestures. A quick tap
+// (lifted sooner than IOSTOUCH_WHEEL_HOLD by the touch's own clock, never
 // IOSTOUCH_WHEEL_OPEN_SLIDE from where it went down) presses the button's key:
-// the next learned power, the next weapon. Sliding that far opens the wheel
+// the next learned power, the next weapon (LAST WPN: back to the weapon held
+// before, if there is one). Sliding that far opens the wheel (LAST WPN's:
+// the weapon wheel, NEXT WPN's)
 // at once, to slide to a slice; held still for IOSTOUCH_WHEEL_HOLD (known as
 // the SAVE hold is) it opens to tap one.
 // Sliding to pick is measured from where the thumb went down on the button:
 // it points nowhere until IOSTOUCH_WHEEL_DEAD points away (keep this small:
 // NEXT WPN, in the top row, has only ~30pt of screen above it for the slices
-// pointing up), the point it is measured from trails at most
+// pointing up; LAST WPN too), the point it is measured from trails at most
 // IOSTOUCH_WHEEL_LEASH behind the thumb (so turning back after a long slide
 // is quick), and a slice stays picked until the thumb points
 // IOSTOUCH_WHEEL_HYST degrees past its edge. On the wheel itself the slice
@@ -242,12 +251,20 @@ extern int jkHud_bChatOpen;
 // LIGHT, IR and BACTA as the game's own icons (iosItemIcons), the item alone
 // over its button: 1.6 pt for each of the icon's 24 pixels (made for the
 // screen's own pixels), each item's middle at the button's (iosItemIcons_Centre),
-// a soft shadow under it; BACTA's count, more than one, in a round badge
-// IOSTOUCH_BADGE_R round at the tank's lower right
+// a soft shadow under it. BACTA's count (1 and up) straight on its glass, its
+// middle at IOSTOUCH_BACTA_GLASS_X, _Y (the glass between the caps: the
+// icon's pixels 5-15 across, 7-17 down) in the system's rounded font, heavy,
+// IOSTOUCH_BACTA_NUM_FONT pt (a figure some 12.7 pt tall, two thirds of the
+// glass), white with a dark purple edge (the game's own tile purple)
+// IOSTOUCH_BACTA_NUM_EDGE pt wide round each figure and a soft shadow, so it
+// reads over the liquid, its glow and any wall; a count too wide for that
+// across IOSTOUCH_BACTA_NUM_ROOM (edges and all: two figures, a mod's) smaller
 #define IOSTOUCH_ITEM_PT 1.6
-#define IOSTOUCH_BADGE_R 6.4
-#define IOSTOUCH_BADGE_X 17.3 // (in the icon's pixels)
-#define IOSTOUCH_BADGE_Y 19.4
+#define IOSTOUCH_BACTA_GLASS_X 10.5 // (in the icon's pixels)
+#define IOSTOUCH_BACTA_GLASS_Y 12.5
+#define IOSTOUCH_BACTA_NUM_FONT 18.0
+#define IOSTOUCH_BACTA_NUM_EDGE 1.5
+#define IOSTOUCH_BACTA_NUM_ROOM 19.0
 // A tank BACTA asked for counts as used (a light tick) if the game takes it
 // within this long; the last one used, BACTA stays, empty, this long, then
 // fades out over IOSTOUCH_BACTA_FADE
@@ -488,7 +505,7 @@ enum {
     ROLE_LOOK,
     ROLE_BUTTON,
     ROLE_WHEEL,   // a touch on the open wheel (force or weapons)
-    ROLE_IGNORED, // was down when the wheel opened, or only closed the MENU tray, or a second finger on FORCE WHEEL / NEXT WPN; ignored until it lifts
+    ROLE_IGNORED, // was down when the wheel opened, or only closed the MENU tray, or a second finger on FORCE WHEEL / NEXT WPN / LAST WPN; ignored until it lifts
     ROLE_FREEZE,      // Action Freeze: moving the camera (one finger turns it, two move and zoom it)
     ROLE_FREEZESHOT,  // Action Freeze: on CAMERA (a tap takes a photo)
     ROLE_FREEZECLOSE, // Action Freeze: on its X (a tap goes back to the game)
@@ -501,7 +518,7 @@ enum {
     KIND_MENU,     // Escape (via stdControl_bControllerEscapeKey) when the touch lifts on it; held, opens the tray
     KIND_HOLDSAVE, // SAVE: hold IOSTOUCH_QUICKSAVE_HOLD seconds for one press of its key (quick save); a tap, the Save screen
     KIND_HOLDLOAD, // LOAD: hold IOSTOUCH_QUICKLOAD_HOLD seconds to quick load; a tap, the Load screen
-    KIND_WHEEL,    // tap: one press of its key; slide or hold: opens its wheel (FORCE WHEEL: force, NEXT WPN: weapons; SABER, which has no key: a tap opens it too, to tap)
+    KIND_WHEEL,    // tap: one press of its key; slide or hold: opens its wheel (FORCE WHEEL: force, NEXT WPN: weapons; LAST WPN, which has no key: a tap goes back to the weapon held before (iosGame_GetLastWeapon), with none nothing, and its wheel is the weapons'; SABER, which has no key: a tap opens it too, to tap)
     KIND_ITEM,     // uses an inventory item when the touch lifts on it; only shown while the player has it
     KIND_CHAT,     // (MENU tray) opens or closes the typing line for cheats, when the touch lifts on it
     KIND_FPS,      // (MENU tray) shows or hides the FPS readout, when the touch lifts on it; held, 60 or 120 frames a second
@@ -525,7 +542,6 @@ enum {
     KIND_FREEZEOPT, // (camera options) Action Freeze on CAMERA's slide down, on or off
     KIND_CAMKIND,  // (photo kinds, under the camera options) ticks or unticks one kind of photo (bin: its IOSCAPTURE_* bit)
     KIND_AUTOPLAY, // (MENU tray) opens AUTOPLAY's panel (iosAutoplayPanel), when the touch lifts on it; single player only
-    KIND_LASTWPN,  // tap (on lift): the weapon held before the one in hand (iosGame_GetLastWeapon); dimmed with none to go back to
 };
 
 // Keys are the game's default keyboard bindings (sithControl_RegisterKeyboardBindings).
@@ -562,7 +578,8 @@ typedef struct {
 // (the CAMERA and SABER buttons along the top), and the keyboard, for the
 // typing line (cheats). ACT is the door/switch key. NEXT WPN and FORCE WHEEL:
 // a tap is the next weapon / learned power (G, E: the game's own keys for
-// them), a slide or a hold opens the weapon / force wheel. SABER: a tap or a
+// them), a slide or a hold opens the weapon / force wheel; LAST WPN the
+// same, a tap back to the weapon held before. SABER: a tap or a
 // hold opens the saber wheel to tap a colour, a slide to slide to one (with
 // a FOLD lit in hand, a tap flips it).
 enum {
@@ -594,8 +611,8 @@ static iosTouchButton iosTouch_aButtons[] = {
     [BTN_JUMP]      = { "JUMP",        KIND_KEY,      SDL_SCANCODE_X,      31.0f, 1 },
     [BTN_FORCE]     = { "FORCE",       KIND_KEY,      SDL_SCANCODE_F,      30.0f, 1 },
     [BTN_NEXTWPN]   = { "NEXT\nWPN",   KIND_WHEEL,    SDL_SCANCODE_G,      22.0f, 0 },
-    [BTN_LASTWPN]   = { "LAST\nWPN",   KIND_LASTWPN,  -1,                  22.0f, 0 },
-    [BTN_WHEEL]     = { "FORCE\nWHEEL", KIND_WHEEL,   SDL_SCANCODE_E,      IOSTOUCH_WHEEL_BTN_R, 0 },
+    [BTN_LASTWPN]   = { "LAST\nWPN",   KIND_WHEEL,    -1,                  22.0f, 0 },
+    [BTN_WHEEL]     = { "POWERS",      KIND_WHEEL,    SDL_SCANCODE_E,      IOSTOUCH_WHEEL_BTN_R, 0 }, // (FORCE WHEEL, the control's name)
     [BTN_LIGHT]     = { "LIGHT",       KIND_ITEM,     SDL_SCANCODE_RETURN, 22.0f, 0, SITHBIN_FIELDLIGHT_IOS },
     [BTN_IR]        = { "IR",          KIND_ITEM,     SDL_SCANCODE_RETURN, 22.0f, 0, SITHBIN_IRGOGGLES_IOS },
     [BTN_BACTA]     = { "BACTA",       KIND_ITEM,     SDL_SCANCODE_RETURN, 22.0f, 0, SITHBIN_BACTATANK_IOS },
@@ -879,7 +896,7 @@ typedef struct {
     int bSeen;            // KIND_KEY: the game has read the key as held at least once
     int trayButton;       // MENU, after its tray opened: the tray button under the finger, or -1
     int wheelSlot;        // ROLE_WHEEL: the slice picked (index into the map), IOSTOUCH_WHEEL_CANCEL, or -1
-    int bWheelOpener;     // ROLE_WHEEL: the touch on FORCE WHEEL / NEXT WPN that opened it...
+    int bWheelOpener;     // ROLE_WHEEL: the touch on FORCE WHEEL / NEXT WPN / LAST WPN that opened it...
     int bWheelHeld;       // ...by holding still: the wheel is open to tap, until it slides IOSTOUCH_WHEEL_DEAD
     int bArmed;           // ...has slid out of the dead zone
     CGPoint wheelOrigin;  // ...where its slide is measured from
@@ -1111,12 +1128,10 @@ static const char* iosTouch_WheelSlotName(int bin)
     return (iosTouch_wheelKind == IOSTOUCH_WHEEL_WEAPONS) ? iosGame_GetWeaponName(bin) : iosGame_GetPowerName(bin);
 }
 
-// A press on FORCE WHEEL or NEXT WPN still waiting to see which gesture it
-// is: a tap, a slide or a hold
-// The wheel a KIND_WHEEL button opens
+// The wheel a KIND_WHEEL button opens (LAST WPN: NEXT WPN's, the weapons)
 static int iosTouch_WheelKindOf(int button)
 {
-    if (button == BTN_NEXTWPN) return IOSTOUCH_WHEEL_WEAPONS;
+    if (button == BTN_NEXTWPN || button == BTN_LASTWPN) return IOSTOUCH_WHEEL_WEAPONS;
     if (button == BTN_SABER) return IOSTOUCH_WHEEL_SABER;
     return IOSTOUCH_WHEEL_FORCE;
 }
@@ -1130,6 +1145,8 @@ static int iosTouch_SaberWheelHides(int button)
     return iosTouch_bWheelOpen && iosTouch_wheelKind == IOSTOUCH_WHEEL_SABER && ((button >= BTN_FIRE && button <= BTN_FORCE) || button == BTN_WHEEL);
 }
 
+// A press on FORCE WHEEL, NEXT WPN, LAST WPN or SABER still waiting to see
+// which gesture it is: a tap, a slide or a hold
 static int iosTouch_IsWheelPress(const iosTouchSlot* s)
 {
     return s->touch && s->role == ROLE_BUTTON && iosTouch_aButtons[s->button].kind == KIND_WHEEL;
@@ -1663,19 +1680,24 @@ typedef struct {
     CAShapeLayer* menuRing; // MENU's
     CAShapeLayer* wheelRing;  // FORCE WHEEL's (held still, it opens the wheel to tap)
     CAShapeLayer* weaponRing; // NEXT WPN's
+    CAShapeLayer* lastRing;   // LAST WPN's
     CAShapeLayer* saberRing;  // SABER's
     CAShapeLayer* cheatRing;  // CHEAT's hold progress
     CAShapeLayer* fjumpRing;  // inside FORCE: how high Force Jump will go (SMOOTH, STEPS)
     CAShapeLayer* bactaRing;  // BACTA's
     // LIGHT, IR and BACTA as the game's own icons (iosItemIcons): a picture
     // over each (the button then shows neither its round nor its name, nor
-    // BACTA its ring) and BACTA's count in a round badge. itemPics: 1 in use;
+    // BACTA its ring) and BACTA's count on its glass (aBactaNum: [0] its dark
+    // edge and shadow, [1] the white figures over it). itemPics: 1 in use;
     // 2 being made; -1 not to be had (the text buttons, as before); 0 not
     // tried yet. The stills (LIGHT, IR off and on) made once; BACTA drawn
     // again as its tanks or its hold's glow change (in 20ths). The last tank
     // used: BACTA shown empty a moment, then faded out (bactaGoneAt: when)
     CALayer* aItemPic[3];
-    UILabel* bactaBadge;
+    UILabel* aBactaNum[2];
+    // LIGHT and IR standing in for the game's own tiles for them (-standsIn:),
+    // as last laid into the pad mask: 1 LIGHT, 2 IR
+    int standInMask;
     CGImageRef aItemStill[IOSITEMICON_NUM_STILL];
     int itemPics, bactaPicTanks, bactaPicGlow, bactaPicCount;
     CGFloat bactaGlow;
@@ -1749,7 +1771,7 @@ typedef struct {
     CFTimeInterval fpsBaseTime;
     const char* forceLabelName;
     int bForceLabelSet;
-    int bLastWpnOk; // LAST WPN: a weapon to go back to (else dimmed, and a tap does nothing)
+    int bLastWpnOk; // LAST WPN: a weapon to go back to (else dimmed, and a tap does nothing; a slide or a hold still opens the weapon wheel)
     int aItemAmount[IOSTOUCH_NUM_BUTTONS]; // KIND_ITEM: what the label shows (-1: not yet set)
     int aItemActive[IOSTOUCH_NUM_BUTTONS];
     UIView* wheelView;                     // dims the game; holds the wheel
@@ -1796,6 +1818,9 @@ typedef struct {
 - (void)startCinema;
 - (void)endCinema;
 - (void)refreshButtonLooks;
+- (int)standsIn:(int)i;
+- (void)keepStandIns;
+- (int)itemPicsUp;
 - (void)applyPadMask;
 - (void)padHudChanged;
 - (void)openWheel:(int)kind button:(int)button tapMode:(int)bTapMode;
@@ -2194,6 +2219,11 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
             aButtonViews[i] = l;
             [self addSubview:l];
         }
+        // FORCE WHEEL says POWERS (FORCE, by it, shows the power it uses):
+        // one word, as big as fits its small round, inside its border, up to
+        // the size of the other one-line labels
+        IOSTouch_FitRound(aButtonViews[BTN_WHEEL], IOSTouch_FontSize("POWERS", IOSTOUCH_WHEEL_BTN_R),
+                          IOSTOUCH_WHEEL_BTN_R - 1.5 - IOSTOUCH_LABEL_MARGIN, 0);
 
         // Rings that fill while SAVE, LOAD and MENU are held. SAVE's and
         // LOAD's look the same.
@@ -2207,11 +2237,13 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
         [aButtonViews[BTN_QUICKLOAD].layer addSublayer:loadRing];
         menuRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_MENU].radius);
         [aButtonViews[BTN_MENU].layer addSublayer:menuRing];
-        // ...and FORCE WHEEL and NEXT WPN, held to open their wheels to tap
+        // ...and FORCE WHEEL, NEXT WPN and LAST WPN, held to open their wheels to tap
         wheelRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_WHEEL].radius);
         [aButtonViews[BTN_WHEEL].layer addSublayer:wheelRing];
         weaponRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_NEXTWPN].radius);
         [aButtonViews[BTN_NEXTWPN].layer addSublayer:weaponRing];
+        lastRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_LASTWPN].radius);
+        [aButtonViews[BTN_LASTWPN].layer addSublayer:lastRing];
         saberRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_SABER].radius);
         [aButtonViews[BTN_SABER].layer addSublayer:saberRing];
 
@@ -2257,25 +2289,29 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
             [aButtonViews[btn].layer addSublayer:pic];
         }
         {
+            // (a box round the glass's middle big enough for two figures and
+            // their edges: a label's text is only drawn inside its own bounds)
             const CGFloat r = iosTouch_aButtons[BTN_BACTA].radius;
             float cx = 12.0f, cy = 12.0f;
             iosItemIcons_Centre(IOSITEMICONS_BACTA, &cx, &cy);
-            bactaBadge = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 2.0 * IOSTOUCH_BADGE_R, 2.0 * IOSTOUCH_BADGE_R)];
-            bactaBadge.center = CGPointMake(r + (IOSTOUCH_BADGE_X - cx) * IOSTOUCH_ITEM_PT, r + (IOSTOUCH_BADGE_Y - cy) * IOSTOUCH_ITEM_PT);
-            bactaBadge.textAlignment = NSTextAlignmentCenter;
-            bactaBadge.font = [UIFont systemFontOfSize:10.5 weight:UIFontWeightHeavy];
-            bactaBadge.textColor = [UIColor colorWithRed:0x31 / 255.0 green:0x00 blue:0x5a / 255.0 alpha:1.0];
-            bactaBadge.backgroundColor = [UIColor colorWithRed:1.0 green:0xa5 / 255.0 blue:1.0 alpha:1.0];
-            bactaBadge.layer.cornerRadius = IOSTOUCH_BADGE_R;
-            bactaBadge.layer.borderWidth = 1.3;
-            bactaBadge.layer.borderColor = [UIColor colorWithRed:0x31 / 255.0 green:0x00 blue:0x5a / 255.0 alpha:1.0].CGColor;
-            bactaBadge.layer.shadowColor = [UIColor blackColor].CGColor;
-            bactaBadge.layer.shadowOpacity = 0.5;
-            bactaBadge.layer.shadowOffset = CGSizeMake(0.0, 0.8);
-            bactaBadge.layer.shadowRadius = 1.6;
-            bactaBadge.clipsToBounds = NO;
-            bactaBadge.hidden = YES;
-            [aButtonViews[BTN_BACTA] addSubview:bactaBadge];
+            for (int k = 0; k < 2; k++) {
+                UILabel* l = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 2.0 * r, 2.0 * r)];
+                l.center = CGPointMake(r + (IOSTOUCH_BACTA_GLASS_X - cx) * IOSTOUCH_ITEM_PT, r + (IOSTOUCH_BACTA_GLASS_Y - cy) * IOSTOUCH_ITEM_PT);
+                l.textAlignment = NSTextAlignmentCenter;
+                l.numberOfLines = 1;
+                l.backgroundColor = [UIColor clearColor];
+                l.clipsToBounds = NO;
+                l.userInteractionEnabled = NO;
+                if (k == 0) {
+                    l.layer.shadowColor = [UIColor blackColor].CGColor;
+                    l.layer.shadowOpacity = 0.55;
+                    l.layer.shadowOffset = CGSizeMake(0.0, 0.6);
+                    l.layer.shadowRadius = 1.2;
+                }
+                l.hidden = YES;
+                aBactaNum[k] = l;
+                [aButtonViews[BTN_BACTA] addSubview:l];
+            }
         }
         bactaPicTanks = bactaPicGlow = bactaPicCount = -1;
         // sithewok's own uses of JUMP and ACT (held), named small under
@@ -3611,7 +3647,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         }
         // (AUTOPLAY's CONTROLS ON: the buttons the autopilot uses, lit)
         if (iosTouch_bAutoplay && i < 32 && (iosTouch_apLit & (1u << i))) bHeld = 1;
-        // FORCE WHEEL / NEXT WPN stays lit above the dimmed screen while its wheel is open
+        // FORCE WHEEL / NEXT WPN / LAST WPN stays lit above the dimmed screen while its wheel is open
         int bWheel = i == iosTouch_wheelButton && iosTouch_bWheelOpen;
         aButtonViews[i].backgroundColor = bWheel ? [UIColor colorWithRed:0.47 green:0.78 blue:1.0 alpha:0.55]
                                                  : [UIColor colorWithWhite:(bHeld ? 1.0 : 0.0) alpha:(bHeld ? 0.30 : 0.22)];
@@ -3639,7 +3675,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         int bTray = iosTouch_IsTrayButton(i) || iosTouch_IsOptButton(i); // only there while open
         CGFloat alpha = (bHeld || bOn || bWheel || bTray || bPic) ? 1.0 : IOSTOUCH_IDLE_ALPHA;
         if (i == BTN_FORCE && bForceLabelSet && !forceLabelName) alpha *= 0.45; // no power to use yet
-        if (i == BTN_LASTWPN && !bLastWpnOk) alpha *= 0.45;                    // no weapon to go back to
+        if (i == BTN_LASTWPN && !bLastWpnOk && !bHeld && !bWheel) alpha *= 0.45; // no weapon to go back to (lit under a thumb, as its hold opens the wheel)
         if (i == BTN_TRAYGYRO && !bGyro) alpha *= 0.45;                           // no gyro here
         if (i == BTN_TRAYLEVEL && iosGame_NumPickableLevels() <= 0) alpha *= 0.45; // no level can be picked now (multiplayer, not the host)
         if ((i == BTN_GYROOPT_MODE || i == BTN_GYROOPT_SENS) && (!bGyro || iosTouch_gyroMode == IOSTOUCH_GYRO_OFF))
@@ -3649,6 +3685,7 @@ static int iosTouch_LayoutGaugeRect(CGFloat W, float g[4])
         if (iosTouch_SaberWheelHides(i)) alpha = 0.0; // (the saber wheel open: its parts have the room, the top row stays)
         if (i == BTN_TRAYAUTO && iosGame_IsMultiplayer()) alpha *= 0.45; // (single player only)
         if (iosTouch_bAutoplay && (!iosTouch_bApShown || bTray)) alpha = 0.0; // (AUTOPLAY's show: nothing, or the controls as played)
+        if (alpha == 0.0 && iosTouch_bAutoplay && [self standsIn:i]) alpha = 1.0; // (...but LIGHT and IR, on, where the game's HUD shows: -standsIn:)
         if (i == BTN_BACTA && bactaGoneAt > 0.0) {
             // (its last tank used: empty a moment, then fading out)
             const CFTimeInterval t = CACurrentMediaTime() - bactaGoneAt - IOSTOUCH_BACTA_EMPTY;
@@ -4717,9 +4754,39 @@ typedef struct {
     if (itemPics == -1) itemPics = 0;
 }
 
+// The system's rounded font (SF Pro Rounded) at this size and weight
+static UIFont* IOSTouch_RoundedFont(CGFloat size, UIFontWeight weight)
+{
+    UIFont* f = [UIFont systemFontOfSize:size weight:weight];
+    UIFontDescriptor* d = [f.fontDescriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
+    return d ? [UIFont fontWithDescriptor:d size:size] : f;
+}
+
+// BACTA's count on its glass (-refreshItemPics): the figures white over
+// their dark purple edge, a stroke as wide as two edges round each (half of
+// it under the white), at full size or as big as fits its room
+- (void)setBactaCount:(int)count
+{
+    for (int k = 0; k < 2; k++) aBactaNum[k].hidden = count <= 0;
+    if (count <= 0) return;
+    NSString* t = [NSString stringWithFormat:@"%d", count];
+    CGFloat size = IOSTOUCH_BACTA_NUM_FONT;
+    const CGFloat w = [t sizeWithAttributes:@{ NSFontAttributeName: IOSTouch_RoundedFont(size, UIFontWeightHeavy) }].width;
+    if (w + 2.0 * IOSTOUCH_BACTA_NUM_EDGE > IOSTOUCH_BACTA_NUM_ROOM)
+        size = floor(size * (IOSTOUCH_BACTA_NUM_ROOM - 2.0 * IOSTOUCH_BACTA_NUM_EDGE) / w * 4.0) / 4.0;
+    UIFont* f = IOSTouch_RoundedFont(size, UIFontWeightHeavy);
+    UIColor* edge = [UIColor colorWithRed:0x31 / 255.0 green:0x00 blue:0x5a / 255.0 alpha:1.0];
+    // (the stroke's width in hundredths of the size; negative: filled and stroked)
+    NSDictionary* aEdge = @{ NSFontAttributeName: f, NSForegroundColorAttributeName: edge, NSStrokeColorAttributeName: edge,
+                             NSStrokeWidthAttributeName: @(-200.0 * IOSTOUCH_BACTA_NUM_EDGE / size) };
+    NSDictionary* aFill = @{ NSFontAttributeName: f, NSForegroundColorAttributeName: [UIColor whiteColor] };
+    aBactaNum[0].attributedText = IOSTOUCH_AUTORELEASE([[NSAttributedString alloc] initWithString:t attributes:aEdge]);
+    aBactaNum[1].attributedText = IOSTOUCH_AUTORELEASE([[NSAttributedString alloc] initWithString:t attributes:aFill]);
+}
+
 // The pictures as the items are: LIGHT and IR off or on; BACTA's liquid
 // for the tanks carried (a fifth each, five full) glowing up from the bottom
-// while held (bactaGlow), its count in the badge with more than one
+// while held (bactaGlow), its count on its glass (1 and up)
 - (void)refreshItemPics
 {
     if (itemPics != 1) return;
@@ -4748,8 +4815,7 @@ typedef struct {
     const int count = aItemAmount[BTN_BACTA];
     if (count != bactaPicCount) {
         bactaPicCount = count;
-        bactaBadge.hidden = count <= 1;
-        if (count > 1) bactaBadge.text = [NSString stringWithFormat:@"%d", count];
+        [self setBactaCount:count];
     }
     [CATransaction commit];
 }
@@ -4780,6 +4846,7 @@ typedef struct {
 - (CAShapeLayer*)wheelRingOf:(int)button
 {
     if (button == BTN_NEXTWPN) return weaponRing;
+    if (button == BTN_LASTWPN) return lastRing;
     if (button == BTN_SABER) return saberRing;
     return wheelRing;
 }
@@ -5940,6 +6007,7 @@ static void iosTouch_ReadWheelSlices(int kind)
     }
     [self setRing:wheelRing progress:0.0];
     [self setRing:weaponRing progress:0.0];
+    [self setRing:lastRing progress:0.0];
     [self setRing:saberRing progress:0.0];
     // A tap on either wheel button the game hasn't read yet (a slow frame:
     // it is only read by a gameplay update, which the hold now skips) would
@@ -5963,7 +6031,7 @@ static void iosTouch_ReadWheelSlices(int kind)
     [self applyPadMask];
 }
 
-// FORCE WHEEL or NEXT WPN (the press s, still waiting to see which gesture
+// FORCE WHEEL, NEXT WPN or LAST WPN (the press s, still waiting to see which gesture
 // it is) opens its wheel: slid (to slide to a slice, measured from where it
 // went down) or held still (to tap one). It goes on as the wheel's opener.
 // The typing line closes first: its keyboard would cover the lower half of
@@ -6076,7 +6144,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
 - (void)takeTouch:(iosTouchSlot*)s at:(CGPoint)p
 {
     if (s->button >= 0 && iosTouch_aButtons[s->button].kind == KIND_WHEEL) {
-        // FORCE WHEEL, NEXT WPN: nothing yet -- a tap, a slide or a hold
+        // FORCE WHEEL, NEXT WPN, LAST WPN: nothing yet -- a tap, a slide or a hold
         // (touchesMoved, -tick, endTouches). A second finger on the same
         // button is ignored.
         int bOther = 0;
@@ -6291,7 +6359,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 if (![self isPoint:p onButton:s->button]) s->bFired = 1;
             }
 
-            // FORCE WHEEL, NEXT WPN: slid IOSTOUCH_WHEEL_OPEN_SLIDE from where
+            // FORCE WHEEL, NEXT WPN, LAST WPN: slid IOSTOUCH_WHEEL_OPEN_SLIDE from where
             // it went down (at any of the places UIKit merged into this move,
             // too), the wheel opens at once, to slide to a slice
             // CAMERA: slid IOSTOUCH_WHEEL_OPEN_SLIDE (anywhere), before its hold
@@ -6490,7 +6558,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 }
             }
             else if (iosTouch_IsWheelPress(s)) {
-                // FORCE WHEEL, NEXT WPN lifted before its wheel opened
+                // FORCE WHEEL, NEXT WPN, LAST WPN lifted before its wheel opened
                 iosTouchButton* b = &iosTouch_aButtons[s->button];
                 if (iosTouch_aButtonHeld[s->button] > 0) iosTouch_aButtonHeld[s->button]--;
                 [self setRing:[self wheelRingOf:s->button] progress:0.0];
@@ -6526,7 +6594,15 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                     // power (E) or weapon (G) -- the newer choice over a weapon
                     // picked on the wheel still waiting. Not while typing: the
                     // game isn't reading the controls.
-                    if (!jkHud_bChatOpen) {
+                    if (!jkHud_bChatOpen && s->button == BTN_LASTWPN) {
+                        // LAST WPN: back to the weapon held before (through the
+                        // game's own pick, as the weapon wheel's: the saber drawn
+                        // and put away as ever); none to go back to (dimmed),
+                        // nothing
+                        const int bin = iosGame_GetLastWeapon();
+                        if (bin >= 0) iosGame_SelectWeapon(bin);
+                    }
+                    else if (!jkHud_bChatOpen) {
                         if (s->button == BTN_NEXTWPN) iosGame_CancelWeaponPick();
                         iosTouch_QueuePress(b->scancode);
                     }
@@ -6596,13 +6672,6 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                     }
                     else if (b->kind == KIND_VIEW && !aButtonViews[s->button].hidden) {
                         [self setThirdPerson:!iosTouch_bThirdPerson];
-                    }
-                    else if (b->kind == KIND_LASTWPN && !aButtonViews[s->button].hidden) {
-                        // back to the weapon held before (through the game's own
-                        // pick, as the weapon wheel's: the saber drawn and put
-                        // away as ever); none to go back to, nothing
-                        const int bin = iosGame_GetLastWeapon();
-                        if (bin >= 0) iosGame_SelectWeapon(bin);
                     }
                     else if (b->kind == KIND_MENU && !s->bFired) {
                         // A tap: Escape (the menu, or closing the typing line)
@@ -6706,8 +6775,99 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     }
 }
 
-// Once per frame while shown: the SAVE, LOAD, MENU, FORCE WHEEL
-// and NEXT WPN holds, the
+// Once per frame (while shown, and through AUTOPLAY's show): which item
+// buttons show, what they say, LIGHT and IR on or off, BACTA's tanks. 1 if
+// one came or went; *pLooks set if the buttons' looks need refreshing.
+- (int)tickItems:(CFTimeInterval)now looks:(int*)pLooks
+{
+    // An item button shows while the player has some of it; bacta says how many
+    // (the game's own icons for them, once: made now, the first time)
+    if (!itemPics) [self prepareItemPics];
+    int bItemsChanged = 0;
+    for (int i = 0; i < IOSTOUCH_NUM_BUTTONS; i++) {
+        if (iosTouch_aButtons[i].kind != KIND_ITEM) continue;
+        int amount = 0, bActive = 0;
+        int bHave = iosGame_GetItem(iosTouch_aButtons[i].bin, &amount, &bActive);
+        if (!bHave) { amount = 0; bActive = 0; }
+        int bShow = bHave;
+        if (i == BTN_BACTA && itemPics == 1) {
+            // BACTA's last tank gone (shown, now none): empty a moment, then
+            // fading out; one picked up meanwhile, back at once
+            if (!bHave && !aButtonViews[i].hidden && aItemAmount[i] > 0) bactaGoneAt = now;
+            if (bHave && bactaGoneAt > 0.0) {
+                bactaGoneAt = 0.0;
+                *pLooks = 1; // (back at full at once)
+            }
+            if (bactaGoneAt > 0.0 && now - bactaGoneAt >= IOSTOUCH_BACTA_EMPTY + IOSTOUCH_BACTA_FADE) bactaGoneAt = 0.0;
+            if (bactaGoneAt > 0.0) {
+                bShow = 1;
+                if (now - bactaGoneAt >= IOSTOUCH_BACTA_EMPTY) *pLooks = 1; // (its fade, each frame: -refreshButtonLooks)
+            }
+        }
+        if ((int)aButtonViews[i].hidden == bShow) {
+            aButtonViews[i].hidden = !bShow;
+            *pLooks = 1;
+            bItemsChanged = 1;
+        }
+        if (amount != aItemAmount[i]) {
+            aItemAmount[i] = amount;
+            if (i == BTN_BACTA && itemPics != 1) {
+                aButtonViews[i].text = amount > 1 ? [NSString stringWithFormat:@"BACTA\n%d", amount] : @"BACTA";
+                aButtonViews[i].font = [UIFont boldSystemFontOfSize:(amount > 1 ? 9 : 10)];
+            }
+        }
+        if (bActive != aItemActive[i]) {
+            aItemActive[i] = bActive;
+            *pLooks = 1;
+        }
+    }
+    // (a tank asked for and taken: the light tick; not taken in time, none)
+    if (bactaUseUntil > 0.0) {
+        if (aItemAmount[BTN_BACTA] < bactaUseFrom) {
+            [cameraTap impactOccurred];
+            bactaUseUntil = 0.0;
+        }
+        else if (now > bactaUseUntil) bactaUseUntil = 0.0;
+    }
+    [self refreshItemPics];
+    return bItemsChanged;
+}
+
+// LIGHT or IR (button i) standing in for the game's own tile for the item,
+// down the HUD's top right (iosItemIcons_SetHudStandIn): its picture up, the
+// item switched on, and the game's HUD up (not AUTOPLAY's HUD OFF; a selfie,
+// Action Freeze and the cinematic burst show neither). With the touch
+// controls shown it is the button as ever; with them hidden for a game
+// controller (or the keyboard and mouse) the picture alone shows through the
+// pad mask (-applyPadMask), and in AUTOPLAY's show with its controls hidden
+// on its own (-refreshButtonLooks): lit, to see, at OPACITY's strength; off,
+// gone, as the game's tile would be. A touch on it is the pad mask's or the
+// show's, as anywhere else.
+- (int)standsIn:(int)i
+{
+    return itemPics == 1 && (i == BTN_LIGHT || i == BTN_IR) && aItemActive[i] && !aButtonViews[i].hidden
+           && !(iosTouch_bAutoplay && iosAutoplay_HidesHud())
+           && iosTouch_selfieStage == IOSTOUCH_SELFIE_NONE && !iosTouch_bFreezing && !iosTouch_bCinema;
+}
+
+// ...as they are now: laid into the pad mask afresh as one comes or goes
+- (void)keepStandIns
+{
+    const int m = ([self standsIn:BTN_LIGHT] ? 1 : 0) | ([self standsIn:BTN_IR] ? 2 : 0);
+    if (m == standInMask) return;
+    standInMask = m;
+    if (iosTouch_bPadMasked) [self applyPadMask];
+    if (iosTouch_bAutoplay) [self refreshButtonLooks];
+}
+
+// Whether LIGHT's, IR's and BACTA's pictures are up (else the text buttons)
+- (int)itemPicsUp
+{
+    return itemPics == 1;
+}
+
+// Once per frame while shown: the SAVE, LOAD, MENU, FORCE WHEEL,
+// NEXT WPN and LAST WPN holds, the
 // FORCE label and its force meter ring, which item buttons show and what they
 // say, and the FPS readout
 - (void)tick
@@ -6725,6 +6885,12 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     [self tickScene:now];
     if (iosTouch_bAutoplay) {
         [self tickAutoplay:now];
+        // (the items as they are, through the show: LIGHT and IR, on, stand
+        // in for the game's own tiles; with CONTROLS ON, all as played)
+        int bItemLooks = 0;
+        if ([self tickItems:now looks:&bItemLooks] && iosTouch_bShowView) [self setNeedsLayout];
+        [self keepStandIns];
+        if (bItemLooks) [self refreshButtonLooks];
         return;
     }
     iosAutoplayPanel_Tick();
@@ -6794,7 +6960,7 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         else [self tickFreeze:now - known];
         return;
     }
-    // FORCE WHEEL and NEXT WPN held still (they haven't slid, or the wheel
+    // FORCE WHEEL, NEXT WPN and LAST WPN held still (they haven't slid, or the wheel
     // would be open): known to be held IOSTOUCH_WHEEL_HOLD, the wheel opens to
     // tap a slice; until then the ring fills. The first to get there opens
     // its wheel (which drops the other). This comes before the SAVE,
@@ -6802,23 +6968,25 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     // with a wheel button at about the same time) is then dropped by the
     // wheel opening, which ignores every other touch, rather than saving or
     // loading under the wheel.
-    CGFloat wheelProgress = 0.0, weaponProgress = 0.0, saberProgress = 0.0;
+    CGFloat wheelProgress = 0.0, weaponProgress = 0.0, lastProgress = 0.0, saberProgress = 0.0;
     for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
         iosTouchSlot* s = &iosTouch_aSlots[i];
         if (!iosTouch_IsWheelPress(s)) continue;
         if (known - s->tDown >= IOSTOUCH_WHEEL_HOLD) {
             [self openWheelFrom:s held:1];
-            wheelProgress = weaponProgress = saberProgress = 0.0;
+            wheelProgress = weaponProgress = lastProgress = saberProgress = 0.0;
             break; // (every other touch is ignored now)
         }
         CGFloat progress = MIN((CGFloat)((now - s->tDown) / IOSTOUCH_WHEEL_HOLD), 1.0);
         if (s->button == BTN_NEXTWPN) weaponProgress = progress;
+        else if (s->button == BTN_LASTWPN) lastProgress = progress;
         else if (s->button == BTN_SABER) saberProgress = progress;
         else wheelProgress = progress;
     }
     if (!iosTouch_bWheelOpen) {
         [self setRing:wheelRing progress:wheelProgress];
         [self setRing:weaponRing progress:weaponProgress];
+        [self setRing:lastRing progress:lastProgress];
         [self setRing:saberRing progress:saberProgress];
     }
     // RANDOM on the saber wheel held still (not slid off): known to be held
@@ -7161,56 +7329,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         bLooksChanged = 1;
     }
 
-    // An item button shows while the player has some of it; bacta says how many
-    // (the game's own icons for them, once: made now, the first time)
-    if (!itemPics) [self prepareItemPics];
-    int bItemsChanged = 0;
-    for (int i = 0; i < IOSTOUCH_NUM_BUTTONS; i++) {
-        if (iosTouch_aButtons[i].kind != KIND_ITEM) continue;
-        int amount = 0, bActive = 0;
-        int bHave = iosGame_GetItem(iosTouch_aButtons[i].bin, &amount, &bActive);
-        if (!bHave) { amount = 0; bActive = 0; }
-        int bShow = bHave;
-        if (i == BTN_BACTA && itemPics == 1) {
-            // BACTA's last tank gone (shown, now none): empty a moment, then
-            // fading out; one picked up meanwhile, back at once
-            if (!bHave && !aButtonViews[i].hidden && aItemAmount[i] > 0) bactaGoneAt = now;
-            if (bHave && bactaGoneAt > 0.0) {
-                bactaGoneAt = 0.0;
-                bLooksChanged = 1; // (back at full at once)
-            }
-            if (bactaGoneAt > 0.0 && now - bactaGoneAt >= IOSTOUCH_BACTA_EMPTY + IOSTOUCH_BACTA_FADE) bactaGoneAt = 0.0;
-            if (bactaGoneAt > 0.0) {
-                bShow = 1;
-                if (now - bactaGoneAt >= IOSTOUCH_BACTA_EMPTY) bLooksChanged = 1; // (its fade, each frame: -refreshButtonLooks)
-            }
-        }
-        if ((int)aButtonViews[i].hidden == bShow) {
-            aButtonViews[i].hidden = !bShow;
-            bLooksChanged = 1;
-            bItemsChanged = 1;
-        }
-        if (amount != aItemAmount[i]) {
-            aItemAmount[i] = amount;
-            if (i == BTN_BACTA && itemPics != 1) {
-                aButtonViews[i].text = amount > 1 ? [NSString stringWithFormat:@"BACTA\n%d", amount] : @"BACTA";
-                aButtonViews[i].font = [UIFont boldSystemFontOfSize:(amount > 1 ? 9 : 10)];
-            }
-        }
-        if (bActive != aItemActive[i]) {
-            aItemActive[i] = bActive;
-            bLooksChanged = 1;
-        }
-    }
-    // (a tank asked for and taken: the light tick; not taken in time, none)
-    if (bactaUseUntil > 0.0) {
-        if (aItemAmount[BTN_BACTA] < bactaUseFrom) {
-            [cameraTap impactOccurred];
-            bactaUseUntil = 0.0;
-        }
-        else if (now > bactaUseUntil) bactaUseUntil = 0.0;
-    }
-    [self refreshItemPics];
+    int bItemsChanged = [self tickItems:now looks:&bLooksChanged];
+    [self keepStandIns];
 
     // The game's Always Run option can change (in its options menu): the
     // stick has its run marker only while it is off. The marker also moves
@@ -7541,8 +7661,9 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
 // The touch controls hidden for a game controller (iosTouch_bPadHud), as far
 // as they can be: not while a selfie, Action Freeze or the cinematic burst is
 // up. Hidden, the overlay is masked down to the open wheel (and the saber
-// wheel's choices) and the FPS readout; it still takes touches, the first
-// of which brings the rest back (touchesBegan).
+// wheel's choices), the FPS readout and LIGHT and IR while they stand in for
+// the game's own tiles (-standsIn:); it still takes touches, the first of
+// which brings the rest back (touchesBegan).
 - (void)applyPadMask
 {
     const int bMask = iosTouch_bPadHud && iosTouch_selfieStage == IOSTOUCH_SELFIE_NONE && !iosTouch_bFreezing && !iosTouch_bCinema;
@@ -7564,6 +7685,14 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
         }
     }
     if (!fpsLabel.hidden) [p appendPath:[UIBezierPath bezierPathWithRect:fpsLabel.frame]];
+    for (int k = 0; k < 2; k++) {
+        // LIGHT and IR, on, standing in for the game's own tiles (-standsIn:): the picture, its shadow and glow
+        const int b = k ? BTN_IR : BTN_LIGHT;
+        if (![self standsIn:b]) continue;
+        const CGRect bf = aButtonViews[b].frame, pf = aItemPic[k ? IOSITEMICONS_IR : IOSITEMICONS_LIGHT].frame;
+        [p appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(bf.origin.x + pf.origin.x - 4.0, bf.origin.y + pf.origin.y - 4.0,
+                                                                  pf.size.width + 8.0, pf.size.height + 8.0)]];
+    }
     if (!sceneHint.hidden) [p appendPath:[UIBezierPath bezierPathWithRect:sceneHint.frame]];         // (one of the level's scenes:
     if (!sceneSkipping.hidden) [p appendPath:[UIBezierPath bezierPathWithRect:sceneSkipping.frame]]; // its hint, "Skipping...")
     [CATransaction begin];
@@ -7587,13 +7716,6 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
 }
 
 // ------------------------------------------------------------ the level list
-
-// (what is made here and handed on: let go of once used, with ARC or without)
-#if __has_feature(objc_arc)
-#define IOSTOUCH_AUTORELEASE(x) (x)
-#else
-#define IOSTOUCH_AUTORELEASE(x) [(x) autorelease]
-#endif
 
 // The port's gold (the tray's lit edges, the saber cards, the Force stars)
 static UIColor* IOSTouch_Gold(CGFloat a)
@@ -7813,6 +7935,10 @@ static void iosTouch_UpdateInPool(void)
         [iosTouch_pOverlay resetAll]; // touches on a hidden view never end; start clean
         if (!bWant) [iosTouch_pOverlay retryItemPics]; // (icons not to be had: tried again as it next shows)
     }
+    // The game's own tiles for the field light and the IR goggles left to
+    // LIGHT and IR while their pictures are up (-standsIn:); the text
+    // buttons, or the overlay hidden, the game's own
+    iosItemIcons_SetHudStandIn(bWant && [iosTouch_pOverlay itemPicsUp]);
 
     // Photos asked for but not taken yet: dropped once the overlay goes (a
     // menu, a cutscene), or if no frame took them in time

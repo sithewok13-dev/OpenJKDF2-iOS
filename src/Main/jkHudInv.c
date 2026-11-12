@@ -15,6 +15,7 @@
 #include "jk.h"
 #ifdef JK_ENHANCED
 #include "Enhanced/iosSaberThrowJk.h" // Added
+#include "Enhanced/iosItemIcons.h" // Added
 #endif
 
 #if defined(TARGET_IOS) || defined(TOUCHUI_ENABLED)
@@ -203,6 +204,9 @@ void jkHudInv_Draw()
         v6 = sithInventory_GetType(j);
         if (v6->flags & ITEMINFO_ITEM)
         {
+#ifdef JK_ENHANCED
+            if (iosItemIcons_HudLeavesOut(j)) continue; // Added: the field light's and IR goggles' tiles left to the touch overlay's LIGHT and IR, lit
+#endif
             if ( sithInventory_IsInventoryActivated(player, j) )
             {
                 v7 = v6->hudBitmap;
@@ -507,6 +511,9 @@ void jkHudInv_DrawGPU()
         v6 = sithInventory_GetType(j);
         if (v6->flags & ITEMINFO_ITEM)
         {
+#ifdef JK_ENHANCED
+            if (iosItemIcons_HudLeavesOut(j)) continue; // Added: the field light's and IR goggles' tiles left to the touch overlay's LIGHT and IR, lit
+#endif
             if ( sithInventory_IsInventoryActivated(player, j) )
             {
                 v7 = v6->hudBitmap;

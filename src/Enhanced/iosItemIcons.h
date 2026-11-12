@@ -69,6 +69,20 @@ int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut);
 enum { IOSITEMICONS_LIGHT = 0, IOSITEMICONS_IR, IOSITEMICONS_BACTA };
 void iosItemIcons_Centre(int item, float* pX, float* pY);
 
+// The game's HUD shows a small tile for each item switched on, down its top
+// right corner (jkHudInv): the field light's and the IR goggles' among them.
+// While the touch overlay has these pictures up it says so here (on, each
+// frame it is shown), and its LIGHT and IR, lit, stand in for those two
+// tiles wherever the HUD would show them (iosTouch: as buttons, or with the
+// touch controls hidden as pictures alone, to see); the HUD then leaves just
+// those two out (the rest of its column as ever: Force powers, keys). Off --
+// the overlay's text buttons, no overlay, any other platform -- the game's
+// own tiles.
+#define IOSITEMICONS_BIN_IRGOGGLES 41  // (SITHBIN_IRGOGGLES, in both games)
+#define IOSITEMICONS_BIN_FIELDLIGHT 42 // (SITHBIN_FIELDLIGHT)
+void iosItemIcons_SetHudStandIn(int bOn);
+int iosItemIcons_HudLeavesOut(int bin); // (1: jkHudInv draws no tile for this bin)
+
 #ifdef __cplusplus
 }
 #endif

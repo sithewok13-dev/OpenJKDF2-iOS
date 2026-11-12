@@ -42,11 +42,16 @@
 //     beside JUMP (tap or hold to use the power it shows, by its name alone,
 //     a two-word name on two lines; a ring round it is the force meter,
 //     glowing when full); dragging on any of these also looks. FORCE WHEEL,
-//     smaller, by FORCE (just above it where it fits). Top left: NEXT WPN,
-//     LAST WPN (a tap: the weapon held before, iosGame_GetLastWeapon), and a
-//     button for each usable item the player has (field light, IR goggles,
-//     bacta: the game's own icons of them, iosItemIcons; their names if
-//     those can't be read). Top right: SAVE, LOAD and MENU.
+//     labelled POWERS, smaller, by FORCE (just above it where it fits). Top
+//     left: NEXT WPN, LAST WPN (a tap: the weapon held before,
+//     iosGame_GetLastWeapon), and a button for each usable item the player
+//     has (field light, IR goggles, bacta: the game's own icons of them,
+//     iosItemIcons, bacta's count on its glass; their names if those can't
+//     be read). With the icons up, LIGHT and IR, switched on, take the place
+//     of the game's own tiles for them down the HUD's top right
+//     (iosItemIcons_SetHudStandIn): with the touch controls hidden for a
+//     game controller, or in AUTOPLAY's show with its HUD on, the lit icon
+//     shows on its own, to see. Top right: SAVE, LOAD and MENU.
 //   - SAVE and LOAD: held, a quick save or quick load. A ring round the
 //     button fills while it is held (0.3 s), and once it is full the game
 //     saves or loads -- once, with the finger still down. Sliding off first
@@ -56,10 +61,11 @@
 //     if both at once). A tap (lifted on it sooner) opens the game's own
 //     Save or Load screen, as the game menu's do -- not where the game can't
 //     save or load then (multiplayer, a level's scene: nothing, as before).
-//   - FORCE WHEEL and NEXT WPN take three gestures each. A quick tap (lifted
-//     within 0.3 s, without sliding) is the next learned power (the game's
-//     own key for it, E: FORCE shows which) or the next weapon (G), as the
-//     game's own keys do. Touching and sliding opens the wheel straight away,
+//   - FORCE WHEEL, NEXT WPN and LAST WPN take three gestures each. A quick
+//     tap (lifted within 0.3 s, without sliding) is the next learned power
+//     (the game's own key for it, E: FORCE shows which), the next weapon (G),
+//     as the game's own keys do, or the weapon held before (none: nothing).
+//     LAST WPN's wheel is NEXT WPN's. Touching and sliding opens the wheel straight away,
 //     to slide to a slice; touching and holding still for 0.3 s (a ring
 //     fills round the button) opens it to tap one -- and sliding the held
 //     thumb out from there picks by sliding again. Either wheel holds the

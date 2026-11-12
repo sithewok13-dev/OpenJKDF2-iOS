@@ -917,6 +917,18 @@ int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut)
     return 1;
 }
 
+static int ii_bHudStandIn = 0;
+
+void iosItemIcons_SetHudStandIn(int bOn)
+{
+    ii_bHudStandIn = bOn != 0;
+}
+
+int iosItemIcons_HudLeavesOut(int bin)
+{
+    return ii_bHudStandIn && (bin == IOSITEMICONS_BIN_IRGOGGLES || bin == IOSITEMICONS_BIN_FIELDLIGHT);
+}
+
 void iosItemIcons_Centre(int item, float* pX, float* pY)
 {
     // (the mock-ups': the lamp's head a little above the middle, the tank left of it for its count)
