@@ -340,8 +340,7 @@ screen, the camera cutout and the HUD.
                              [MODE] [SENS]             (GYRO held in the tray)
                              [PHOTO] [SELFIES] [FREEZE] (CAMERA held in the tray)
                              [====o=========]          (OPACITY tapped in the tray)
-                                                       FORCE
-                                                       WHEEL (small)
+                                                       POWERS (small)
       (^^)  run marker                              JUMP   FORCE
        |                                     ACT
      ( o )  move stick: appears                            ALT
@@ -1006,8 +1005,8 @@ hand, a tap flips the right one and a quick second tap the left one too, so
 a double tap flips both. A slide, or a short hold until its ring fills,
 still opens the wheel.
 
-While the saber wheel is open, JUMP, ACT, ALT, FIRE, DUCK, FORCE and FORCE
-WHEEL are hidden to make room (they can't be used while a wheel is open anyway), and they come
+While the saber wheel is open, JUMP, ACT, ALT, FIRE, DUCK, FORCE and POWERS
+are hidden to make room (they can't be used while a wheel is open anyway), and they come
 back when it closes. The buttons along the top stay. A tap on an empty spot
 closes the wheel and changes nothing.
 

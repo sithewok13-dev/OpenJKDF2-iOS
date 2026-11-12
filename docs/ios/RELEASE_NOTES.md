@@ -46,7 +46,7 @@ New since v0.9-beta1:
 - **Enemy Jedi's sabers get FILM's look too** (with FILM on): Yun, Gorc, Pic, Maw, Sariss, Boc and Jerec, and in Mysteries of the Sith the Sith statues and dark visions, each in its own colour.
 - **The game's sound takes over from other apps' audio:** music or a podcast playing in another app stops when the game's sound starts, instead of playing on underneath. The game still plays with the silent switch on.
 - **Co-op follows the story more closely:** everyone's weapons and Force follow the story as in single player (in Jedi Knight, no Force in levels 1 to 3, and the lightsaber from level 4), each level's stars come to everyone to spend on the Force powers screen, secrets count for the whole team, and killing innocents counts for whoever did it. Guests go straight to the level the host picks. The guide's new *The Force in co-op* section has the details: https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#the-force-in-co-op
-- **Fixes:** with a gun in hand in first person, the game could read past the end of the hand model's data (seen in co-op), which could crash it. It no longer does.
+- **Fixes:** with a gun in hand in first person, quick weapon switches right after drawing the saber could make the game read past the end of the gun's hand model (seen in co-op). It no longer does.
 
 Added in v0.9-beta1 (if you're coming from v0.8-beta2):
 
