@@ -1,29 +1,48 @@
-# OpenJKDF2 for iOS (unofficial)
+# Jedi Knight: Dark Forces II for iPhone and iPad (OpenJKDF2)
 
-**Star Wars Jedi Knight: Dark Forces II** and **Mysteries of the Sith** on iPhone and iPad: an unofficial fan port of [OpenJKDF2](https://github.com/shinyquagsire23/OpenJKDF2), with touch controls, game controllers, keyboard and mouse, and multiplayer.
+Play **Star Wars Jedi Knight: Dark Forces II** (1997) and its expansion, **Mysteries of the Sith**, on iPhone and iPad, with touch controls. It's an unofficial port of [OpenJKDF2](https://github.com/shinyquagsire23/OpenJKDF2), the open-source rebuild of the game's engine.
+
+<img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/jerec-cross-fold.jpg" width="100%" alt="Kyle in third person with a blue CROSS saber and a green FOLD saber, against Jerec's red blade">
+
+**You need your own copy of the game (Steam or GOG). Game files are not included.** Buy it on [Steam](https://store.steampowered.com/app/32380/STAR_WARS_Jedi_Knight_Dark_Forces_II/) or [GOG](https://www.gog.com/game/star_wars_jedi_knight_dark_forces_ii), then copy its files to your iPhone or iPad.
+
+## Install
+
+You need an iPhone or iPad with iOS 18 or newer. The app isn't on the App Store, so you install it yourself ("sideloading"). Pick one way:
+
+- **SideStore or AltStore (easiest).** On your iPhone, tap **[Add to SideStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-sidestore)** or **[Add to AltStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-altstore)**, then install the app from there. Updates come the same way. [Step by step](https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#easiest-add-the-source-in-sidestore-or-altstore)
+- **Feather, Sideloadly or another signing tool.** Download `OpenJKDF2-iOS-unsigned.ipa` from the [latest release](https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/latest) and sign it with your tool. [Step by step](https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#download-the-ipa)
+- **The source by hand.** In SideStore, AltStore or Feather, go to *Sources*, tap **+**, and paste this address:
+
+  ```
+  https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/packaging/ios/altstore-source.json
+  ```
+
+Then copy your game files to the app: [Copy the game files](https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#3-copy-the-game-files-to-your-iphone).
+
+AltStore here means AltStore Classic; AltStore PAL can't install it. Betas and the newest test build are on the [releases page](https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases).
+
+## Mysteries of the Sith
+
+The expansion has its own app, **OpenMoTS**, in the same source and on the same release page (`OpenJKDF2-MotS-iOS-unsigned.ipa`). You need your own copy of Mysteries of the Sith too. [How to set it up](https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md#mysteries-of-the-sith)
+
+## More
+
+- **[Setup guide](https://github.com/sithewok13-dev/OpenJKDF2-iOS/blob/HEAD/docs/ios/README.md):** installing, copying your game files, every control, game controllers, keyboard and mouse, multiplayer.
+- **It's a beta.** Expect bugs, and back up your saves. Found a bug? [Report it here](https://github.com/sithewok13-dev/OpenJKDF2-iOS/issues), not to upstream OpenJKDF2.
 
 <p>
-<img src="docs/ios/screenshots/dual-sabers-touch.jpg" width="49%" alt="Two lightsabers in first person, with the touch controls">
-<img src="docs/ios/screenshots/selfie-surrender.jpg" width="49%" alt="A selfie with the camera: Kyle and two Imperials, hands up">
-<img src="docs/ios/screenshots/selfie-probes.jpg" width="49%" alt="A selfie with three probe droids">
-<img src="docs/ios/screenshots/mots-duel.jpg" width="49%" alt="Mysteries of the Sith: a lightsaber duel with Force lightning">
+<img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/mots-duel.jpg" width="49%" alt="Mysteries of the Sith: a lightsaber duel with Force lightning">
+<img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/jerec-leap.jpg" width="49%" alt="Kyle leaps over Jerec with the FOLD saber unfolded">
+<img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/maw-lightning.jpg" width="49%" alt="Force lightning in the duel with Maw; Kyle holds a purple STAFF saber">
+<img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/cross-raised.jpg" width="49%" alt="Kyle raises a green CROSS saber against a stormy sky">
+<img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/atst.jpg" width="49%" alt="Into the Dark Palace: Kyle with a lit blue CROSS saber faces an AT-ST in front of the palace">
+<img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/dual-sabers-touch.jpg" width="49%" alt="Two lightsabers in first person, with the touch controls">
+<img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/selfie-surrender.jpg" width="49%" alt="A selfie with the camera: Kyle and two Imperials, hands up">
+<img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/selfie-probes.jpg" width="49%" alt="A selfie with three probe droids">
 </p>
 
-*Screenshots from an iPhone.*
-
-### Download
-
-- **[Latest release](https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/latest)**: `OpenJKDF2-iOS-unsigned.ipa` is Jedi Knight (the OpenJKDF2 app), `OpenJKDF2-MotS-iOS-unsigned.ipa` is Mysteries of the Sith (the OpenMoTS app). Betas are on the [releases page](https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases).
-- **Easiest: add the source** in SideStore or AltStore, then install and update both apps from there: **[Add to SideStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-sidestore)** · **[Add to AltStore](https://sithewok13-dev.github.io/OpenJKDF2-iOS/#add-altstore)**
-- Or add it by hand (in the app's *Sources*, tap **+**) with this address: `https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/packaging/ios/altstore-source.json`
-
-### What you need
-
-- **Your own copy of the game**, from [GOG](https://www.gog.com/game/star_wars_jedi_knight_dark_forces_ii) or [Steam](https://store.steampowered.com/app/32380/STAR_WARS_Jedi_Knight_Dark_Forces_II/) (and of Mysteries of the Sith, for OpenMoTS). No game files are included.
-- **An iPhone or iPad with iOS 18 or newer**, and a sideloading app: SideStore, AltStore (Classic, not AltStore PAL) or Sideloadly.
-- **It's a beta.** Expect bugs, and back up your saves.
-
-**[Setup guide](docs/ios/README.md)**: installing, copying your game files, every control, multiplayer, and more. Found a bug? [Report it here](https://github.com/sithewok13-dev/OpenJKDF2-iOS/issues), not to upstream OpenJKDF2.
+*From an iPhone: the first small picture and the last three. The others come from the same game code running on a computer, so they show no touch controls.*
 
 Not affiliated with or endorsed by Lucasfilm, Disney or LucasArts, and not an official OpenJKDF2 release.
 
