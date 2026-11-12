@@ -2313,6 +2313,42 @@ void iosAutoplay_Tick(double now)
     }
 
     if (s_bDuel) s_duelSecs += dGame; // (only while it's played)
+#ifdef IOSAUTOPLAY_RIG
+    {
+        // (the rig: each fall -- 8 ft or more below where he last stood -- and
+        // what he was doing as it began)
+        static float standZ = 0.0f;
+        static int bFalling = 0;
+        static SithThing* who = NULL;
+        static rdVector3 last, lastVel, standFeet;
+        static SithSector* standSec = NULL;
+        static double tShove = -100.0;
+        static int standOn = 0; // (1 the level, 2 a thing)
+        // (a new player, or put somewhere -- placed, put back, caught: not a fall)
+        if (who != pl || ap_len(ap_sub(pl->position, last)) > FT(6.0f)) { who = pl; standZ = pl->position.z; bFalling = 0; }
+        last = pl->position;
+        // (a shove: the speed along the floor changed a lot in one tick)
+        if (ap_lenXY(ap_sub(pl->physicsParams.vel, lastVel)) > FT(20.0f)) tShove = now;
+        lastVel = pl->physicsParams.vel;
+        if (pl->attach_flags & (SITH_ATTACH_SURFACE | SITH_ATTACH_THINGFACE)) {
+            standZ = pl->position.z;
+            bFalling = 0;
+            standOn = (pl->attach_flags & SITH_ATTACH_SURFACE) ? 1 : 2;
+            apFloor fl;
+            standSec = pl->sector;
+            standFeet = pl->position;
+            if (ap_floorBelow(pl->sector, pl->position, FT(8.0f), &fl)) standFeet.z = fl.z;
+        }
+        else if (!bFalling && standZ - pl->position.z > FT(8.0f)) {
+            bFalling = 1;
+            const float vl = ap_lenXY(pl->physicsParams.vel);
+            const int bSaid = vl > FT(0.5f) && standSec ? ap_canGo(standFeet, standSec, pl->physicsParams.vel.x / vl, pl->physicsParams.vel.y / vl) : -1;
+            APLOG("fall at %.1f s: axis %.2f %.2f footwork %d power %d jump %.1f s ago evade %d target %d speed %.1f ft/s placed %.1f s ago shove %.1f s ago stood on %d edge test said ok %d\n",
+                  now - s_tStart, s_axisX, s_axisY, s_footwork, s_power, now - (s_tShowJump - 0.25), now < s_tEvade, ap_targetThing() ? 1 : 0,
+                  vl / s_ft, now - s_tScene, now - tShove, standOn, bSaid);
+        }
+    }
+#endif
     ap_autopilot(now, dt, pl);
     ap_input(now, dt);
 
