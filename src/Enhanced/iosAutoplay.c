@@ -288,10 +288,10 @@ static int ap_floorBelow(SithSector* sec, rdVector3 p, float maxDrop, apFloor* p
             bFound = 1;
             break;
         }
-        // (a thing to stand on -- a crate, a lift; never a creature, Maw's back
-        // among them, which moves off from under him)
-        if ((c->type & SITHCOLLISION_THING) && c->pThingCollided && (c->pThingCollided->flags & SITH_TF_STANDABLE)
-            && c->pThingCollided->type != SITH_THING_ACTOR && c->pThingCollided->type != SITH_THING_PLAYER) {
+        // (a thing to stand on: AP_WALK_FLAGS only finds the level's cog-moved
+        // ones, a lift; a creature -- Maw's back -- is never found, ap_edgeGuard
+        // sees to standing on one)
+        if ((c->type & SITHCOLLISION_THING) && c->pThingCollided && (c->pThingCollided->flags & SITH_TF_STANDABLE)) {
             pOut->z = p.z - c->distance;
             pOut->sector = c->pThingCollided->sector;
             pOut->bWorld = 0;
@@ -515,6 +515,10 @@ static int ap_makeGroups(apGroup* aGroups)
 // ------------------------------------------------------------ where he stands
 
 typedef struct { rdVector3 feet; SithSector* sector; float yaw; } apSpot;
+// Where a duel last had Kyle stand, known safe (its first fight, or a placing
+// near its dark Jedi since): put back there after a fall
+static apSpot s_duelSpot;
+static int s_bDuelSpot = 0;
 
 // A point off the group's anchor (dx, dy away), on a floor near its height
 static int ap_floorNear(const apGroup* g, float x, float y, float strictDrop, apFloor* pOut)
@@ -725,6 +729,7 @@ static float s_searchOff = 0.0f; // (no one in sight: turned off the way to them
 // Weapons
 static int s_aRotation[24], s_numRotation = 0;
 static int s_bDets = 0, s_bSaber = 0, s_bSaberOnly = 0;
+static int s_bGun = 0; // (a weapon that reaches far among them: not only the saber, the fists)
 static int s_weapon = 2, s_before = 2, s_thrownBin = 0;
 static double s_tSwitch = 0.0, s_tAsked = 0.0, s_tDetsNext = 0.0, s_tThrow = 0.0, s_tRelease = 0.0;
 static int s_throws = 0;
@@ -955,6 +960,8 @@ static void ap_makeRotation(void)
         if (s_numRotation == 0) s_aRotation[s_numRotation++] = ap_mots() ? 122 : 2;
     }
     s_bSaberOnly = s_bSaber && s_numRotation == 1;
+    s_bGun = 0;
+    for (int i = 0; i < s_numRotation; i++) if (!ap_isMelee(s_aRotation[i])) s_bGun = 1;
 }
 
 static void ap_save(void)
@@ -1518,6 +1525,7 @@ static void ap_startScene(double now, int bAnother)
             ap_collectFoes();
             ap_alarm(g->center, pl);
         }
+        if (bDuel) { s_duelSpot = spot; s_bDuelSpot = 1; }
         s_bHadFight = 1;
         s_stage = ST_SCENE;
         s_tScene = now;
@@ -1580,7 +1588,7 @@ static void ap_scan(rdVector3 eye, SithSector* eyeSec, double now)
         const apFoe* f = &s_foes[i];
         float d = ap_len(ap_sub(f->pos, eye));
         // (a duel's dark Jedi seen further off: Maw hovering out over the drop)
-        if (d > FT(s_bDuel && (f->thing->actorParams.flags & SITH_AF_BOSS) ? 220.0f : 100.0f)) continue;
+        if (d > FT(s_bDuel && s_bGun && (f->thing->actorParams.flags & SITH_AF_BOSS) ? 220.0f : 100.0f)) continue;
         if (!ap_sees(eyeSec, eye, f->pos) && !ap_sees(eyeSec, eye, f->head)) continue;
         s_aSeen[s_numSeen++] = i;
         if (bMelee && !ap_reachable(eye, f->pos)) d += FT(60.0f);
@@ -1920,6 +1928,9 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
                 ap_takeWeapon(AP_W_SABER);
                 s_tSwitch = now + ap_randRange(14.0f, 22.0f);
             }
+            else if (!ap_isMelee(s_weapon) && tgt && now - s_tInReach >= 3.0) {
+                s_tSwitch = now + ap_randRange(6.0f, 10.0f); // (still out of reach: the gun kept, not the saber a moment)
+            }
             else {
                 ap_pickWeapon(s_weapon);
                 s_tSwitch = now + ap_randRange(s_weapon == AP_W_SABER ? 14.0f : 6.0f, s_weapon == AP_W_SABER ? 22.0f : 10.0f);
@@ -2132,7 +2143,7 @@ static void ap_autopilot(double now, float dt, SithThing* pl)
                 if (fire && s_bBurstAlt) { fire = 0; alt = 1; }
             }
         }
-        else if (dxy < FT(s_bDuel ? 200.0f : 90.0f) && (bSettled || (now < s_tBurst && err < tol * 2.5f))) {
+        else if (dxy < FT(s_bDuel && s_bGun ? 200.0f : 90.0f) && (bSettled || (now < s_tBurst && err < tol * 2.5f))) {
             if (now >= s_tPause) {
                 s_tBurst = now + ap_randRange(0.35f, 2.0f);
                 s_tPause = s_tBurst + ap_randRange(0.15f, 0.6f);
@@ -2191,24 +2202,37 @@ static void ap_input(double now, float dt)
 // as his speed takes him before he can stop; a drop there stops the stick,
 // or turns it against the run; a jump needs room to land the way he goes.
 // Walls are left to the autopilot (a bump is no fall).
-static void ap_edgeGuard(SithThing* pl)
+static void ap_edgeGuard(SithThing* pl, double now)
 {
     s_bEdgeNear = 0;
     SithSector* sec = pl->sector;
     if (!sec || !(pl->attach_flags & (SITH_ATTACH_SURFACE | SITH_ATTACH_THINGFACE))) return; // (in the air: too late, or a jump)
     apFloor fl;
+    const float yaw = ap_yawOf(pl), sy = sinf(yaw), cy = cosf(yaw);
     if (!ap_floorBelow(sec, pl->position, FT(8.0f), &fl)) {
         if (!(pl->attach_flags & SITH_ATTACH_THINGFACE)) return; // (a steep floor: nothing to go by)
-        // (stood on a thing with nothing under it -- Maw's back over the
-        // drop: held still, no jump, till he's back over the ledge)
-        s_ctl.strafe = s_ctl.forward = 0.0f;
-        s_axisX = s_axisY = 0.0f;
+        // (stood on a thing with no floor right under him -- Maw's back over
+        // the drop, a lift's edge with his middle over the shaft: towards the
+        // nearest floor a step or two away, if there is one; else still, no
+        // jump, till what he stands on is back over it)
         s_ctl.jump = 0;
         s_bEdgeNear = 1;
+        float bx = 0.0f, by = 0.0f;
+        for (float d = FT(1.5f); d <= FT(4.6f) && bx == 0.0f && by == 0.0f; d += FT(1.5f)) {
+            for (int k = 0; k < 8; k++) {
+                const float a = (float)k * AP_PI * 0.25f;
+                const rdVector3 to = ap_v3(pl->position.x + sinf(a) * d, pl->position.y + cosf(a) * d, pl->position.z);
+                SithSector* s2 = ap_sectorAt(sec, pl->position, to);
+                apFloor f2;
+                if (s2 && ap_floorBelow(s2, to, FT(8.0f), &f2) && (!f2.bWorld || f2.bSafe)) { bx = sinf(a); by = cosf(a); break; }
+            }
+        }
+        // (forward is (sin, cos) of the heading; right is (cos, -sin))
+        s_ctl.forward = s_axisY = (bx * sy + by * cy) * 0.6f;
+        s_ctl.strafe = s_axisX = (bx * cy - by * sy) * 0.6f;
         return;
     }
     const rdVector3 feet = ap_v3(pl->position.x, pl->position.y, fl.z);
-    const float yaw = ap_yawOf(pl), sy = sinf(yaw), cy = cosf(yaw);
     const float speed = ap_lenXY(pl->physicsParams.vel);
     const float vx = speed > FT(1.0f) ? pl->physicsParams.vel.x / speed : 0.0f, vy = speed > FT(1.0f) ? pl->physicsParams.vel.y / speed : 0.0f;
     // (forward is (sin, cos) of the heading; right is (cos, -sin))
@@ -2238,9 +2262,18 @@ static void ap_edgeGuard(SithThing* pl)
         s_ctl.strafe = s_axisX = -ap_clampf(vx * cy - vy * sy, -1.0f, 1.0f);
         s_bEdgeNear = 1;
     }
-    // (a jump: the footwork's, a hop when stuck -- room to land, the way he goes or faces)
-    if (!s_bEdgeNear && ap_dropAhead(feet, sec, speed > FT(1.0f) ? vx : sy, speed > FT(1.0f) ? vy : cy, FT(14.0f))) s_bEdgeNear = 1;
-    if (s_bEdgeNear) s_ctl.jump = 0;
+    // (a jump -- the footwork's, a hop when stuck -- room to land, the way he
+    // goes or faces; a Force leap or burst of speed, far more, picked or in use)
+    const float jx = speed > FT(1.0f) ? vx : sy, jy = speed > FT(1.0f) ? vy : cy;
+    if (s_ctl.jump && (s_bEdgeNear || ap_dropAhead(feet, sec, jx, jy, FT(14.0f)))) s_ctl.jump = 0;
+    if ((s_power == 21 || s_power == 22) && (s_forceStage == FP_PICKING || s_forceStage == FP_USING)
+        && (s_bEdgeNear || ap_dropAhead(feet, sec, jx, jy, FT(36.0f)))) {
+        s_ctl.force = 0;
+        s_power = -1;
+        s_forceStage = FP_NONE;
+        s_tForceNext = now + ap_randRange(2.0f, 4.0f);
+        s_bEdgeNear = 1;
+    }
 }
 
 void iosAutoplay_GetDisplay(iosAutoplayDisplay* pOut)
@@ -2375,6 +2408,7 @@ void iosAutoplay_Tick(double now)
             s_numKin = 0;
             s_bDuel = 0;
             s_bHadFight = 0;
+            s_bDuelSpot = 0;
             s_duelSecs = 0.0;
             s_tCalled = -100.0;
             s_numFails = 0;
@@ -2461,7 +2495,7 @@ void iosAutoplay_Tick(double now)
     }
 #endif
     ap_autopilot(now, dt, pl);
-    ap_edgeGuard(pl);
+    ap_edgeGuard(pl, now);
     ap_input(now, dt);
 
 #ifdef IOSAUTOPLAY_RIG
@@ -2537,7 +2571,10 @@ void iosAutoplay_Tick(double now)
         // (a duel: the dark Jedi out of sight a while -- flown off, fled, in
         // his trance -- he's placed near him as he is now)
         if (bDuelOn) {
-            if (bNoOne && now - s_tSeen >= AP_DUEL_LOST_SECS && now >= s_tReplace) {
+            // (out of sight, or seen but out of the saber's reach 6 s with nothing
+            // else to fight him with -- LIGHTSABER only)
+            const int bAway = bNoOne ? now - s_tSeen >= AP_DUEL_LOST_SECS : (ap_isMelee(s_weapon) && now - s_tInReach >= 6.0);
+            if (bAway && now >= s_tReplace) {
                 APLOG("the duel's dark Jedi out of sight: near him again at %.1f s\n", now - s_tStart);
                 const double tScene = s_tScene;
                 ap_startScene(now, 2);
@@ -2548,12 +2585,10 @@ void iosAutoplay_Tick(double now)
                 // fallen off the ledge or gone far meanwhile, he's put back
                 // where the fight was, rather than left below it)
                 if (s_tScene == tScene) {
-                    apSpot spot;
-                    if ((s_center.z - feet.z > FT(8.0f) || ap_lenXY(ap_sub(feet, s_center)) > FT(60.0f))
-                        && (ap_findSpot(&s_group, &spot, 0) || ap_findSpot(&s_group, &spot, 1))) {
-                        APLOG("put back at %.1f s (a duel)\n", now - s_tStart);
-                        ap_place(pl, &spot);
-                        ap_resetPilot(now, spot.feet);
+                    if (s_bDuelSpot && (s_duelSpot.feet.z - feet.z > FT(8.0f) || ap_lenXY(ap_sub(feet, s_duelSpot.feet)) > FT(60.0f))) {
+                        APLOG("put back at %.1f s (a duel: where it last had him)\n", now - s_tStart);
+                        ap_place(pl, &s_duelSpot);
+                        ap_resetPilot(now, s_duelSpot.feet);
                     }
                     ap_callDuelist(pl, now);
                 }
