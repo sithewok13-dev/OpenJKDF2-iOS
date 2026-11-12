@@ -42,7 +42,7 @@ The expansion has its own app, **OpenMoTS**, in the same source and on the same 
 <img src="https://raw.githubusercontent.com/sithewok13-dev/OpenJKDF2-iOS/HEAD/docs/ios/screenshots/selfie-probes.jpg" width="49%" alt="A selfie with three probe droids">
 </p>
 
-*From an iPhone: the first small picture and the last three. The others come from the same game code running on a computer, so they show no touch controls.*
+*From an iPhone: the first small picture and the last three. The big picture at the top and the other small ones come from the same game code running on a computer, so they show no touch controls.*
 
 Not affiliated with or endorsed by Lucasfilm, Disney or LucasArts, and not an official OpenJKDF2 release.
 

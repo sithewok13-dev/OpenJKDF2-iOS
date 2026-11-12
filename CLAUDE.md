@@ -56,7 +56,10 @@ everything on a phone.
   scene leaves Kyle; it is never left while a dark Jedi lives, Kyle is placed
   near the bosses (one is called to him only when still, his script's move done,
   and not invulnerable), it lasts at most 4 min of game time, and the saber is
-  used most of the time (a pulled saber is given back). A weapon pulled away is swapped for another
+  used most of the time (a pulled saber is given back); after a fall Kyle is put
+  back where the duel last had him. In every level the autopilot checks the floor
+  as far ahead as it is moving (stick, motion, jumps, Force jump and speed) and
+  goes along an edge or stops rather than step off a drop. A weapon pulled away is swapped for another
   allowed one (re-armed at most 3 times a fight). A level with no one left goes
   to the next (PICK ONE reloads its row); MotS's opening movies are skipped.
   Double tap
