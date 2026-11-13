@@ -949,7 +949,6 @@ int iosItemIcons_BactaFlash(float level, float flash, unsigned char* pOut)
 // strictly as the icons: every size, place and channel inside the file
 #define II_DIG_W 5
 #define II_DIG_H 7
-static unsigned char ii_aDigit[10][II_DIG_H];
 static unsigned char* ii_apCount[10]; // (counts 1-9, ii_out across)
 static int ii_bDigits = 0;
 static const unsigned char ii_aLilac[3] = { 248, 196, 255 }; // (the tank's palest highlight, its caps' brightest)
@@ -1029,7 +1028,7 @@ static void ii_CountEdge(const float* al, int N, int s, unsigned char* pOut)
 {
     float* m = (float*)malloc(sizeof(float) * N * N);
     if (!m) { memset(pOut, 0, N * N * 4); return; }
-    const int r = s >= 5 ? 1 : 0;
+    const int r = s >= 4 ? 1 : 0; // (a pixel: 0.3 to 0.4 pt on both 2x and 3x screens)
     for (int y = 0; y < N; y++)
         for (int x = 0; x < N; x++) {
             float v = 0.0f;
@@ -1040,7 +1039,7 @@ static void ii_CountEdge(const float* al, int N, int s, unsigned char* pOut)
     ii_GaussPil(m, N, 1, s * 0.25f);
     ii_EdgeUnder(al, N, (int)(s * 0.6f), pOut);
     for (int i = 0; i < N * N; i++) {
-        const int a = (int)(fminf(fmaxf(m[i], 0.0f), 255.0f) * 0.8f);
+        const int a = (int)(fminf(fmaxf(m[i], 0.0f), 255.0f) * 0.9f);
         if (a > pOut[i * 4 + 3]) {
             pOut[i * 4 + 0] = (unsigned char)(0x31 * a / 255);
             pOut[i * 4 + 1] = 0;
@@ -1101,7 +1100,6 @@ int iosItemIcons_PrepareDigits(const unsigned char* pSft, int len)
     }
     free(big); free(fin); free(edge); free(rgb); free(al);
     if (!bOk) { ii_FreeDigits(); return 0; }
-    memcpy(ii_aDigit, aMask, sizeof(ii_aDigit));
     ii_bDigits = 1;
     return 1;
 }
@@ -1109,6 +1107,11 @@ int iosItemIcons_PrepareDigits(const unsigned char* pSft, int len)
 const unsigned char* iosItemIcons_Count(int count)
 {
     return (ii_bReady && ii_bDigits && count >= 1 && count <= 9) ? ii_apCount[count] : NULL;
+}
+
+void iosItemIcons_FreeCounts(void)
+{
+    ii_FreeDigits();
 }
 
 static int ii_bHudStandIn = 0;

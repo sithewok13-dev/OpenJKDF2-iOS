@@ -62,12 +62,15 @@ int iosItemIcons_PrepareFrom(const unsigned char* const aBm[3], const int aLen[3
 int iosItemIcons_ReadDigits(unsigned char aBuf[IOSITEMICONS_FILE_MAX]);
 // ...and the counts 1 to 9 drawn from it (after the pictures are made,
 // anywhere they could be: it touches nothing of the game's). 1 if done; 0
-// if the file isn't a font of ten 5 x 7 digits as the game's are (a mod's:
-// the overlay's own number then), or the pictures aren't made
+// if the file isn't a font of ten 5 x 7 digits as the game's are, or the
+// pictures aren't made (a mod's own digits are used if they are still
+// that; else the overlay's own number)
 int iosItemIcons_PrepareDigits(const unsigned char* pSft, int len);
 // A count's picture (1..9; Size x Size premultiplied RGBA, the BACTA
 // picture's own grid: laid over it), NULL if none
 const unsigned char* iosItemIcons_Count(int count);
+// ...let go of, once the overlay has its own copies (Count NULL after)
+void iosItemIcons_FreeCounts(void);
 // Both, at once (the Linux rig's; the digits too, if they can be had)
 int iosItemIcons_Prepare(int s);
 int iosItemIcons_IsReady(void);

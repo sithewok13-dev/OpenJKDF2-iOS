@@ -4771,6 +4771,7 @@ typedef struct {
             aCountPic[c] = NULL;
         }
     }
+    iosItemIcons_FreeCounts(); // (copied into the pictures: the pixels let go)
     itemPics = 1;
     bactaPicTanks = bactaPicGlow = bactaPicCount = -1;
     for (int k = 0; k < 3; k++) {
