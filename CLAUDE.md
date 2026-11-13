@@ -26,7 +26,9 @@ everything on a phone.
     wherever the game would show one; with the touch controls hidden (a
     controller, keyboard and mouse) or in AUTOPLAY with HUD ON, the lit picture
     alone, display only. The text-button fallback keeps the game's tiles.
-    BACTA's count is on its glass, from 1 up; a tap on BACTA uses a tank (one a
+    BACTA's count is on its glass, from 1 up, in the HUD's own health digits
+    (`ui\sft\HelthNum16.sft`, read like the icons; lilac, a soft dark edge;
+    else a lilac rounded number); a tap on BACTA uses a tank (one a
     tap, the liquid flashing; slid off, none), no hold.
   - QUICK SAVE / QUICK LOAD are labelled SAVE / LOAD, and a tap opens the game's
     own Save or Load screen (iOS; Android's overlay is still hold only).

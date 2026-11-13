@@ -256,22 +256,27 @@ extern int jkHud_bChatOpen;
 // LIGHT, IR and BACTA as the game's own icons (iosItemIcons), the item alone
 // over its button: 1.6 pt for each of the icon's 24 pixels (made for the
 // screen's own pixels), each item's middle at the button's (iosItemIcons_Centre),
-// a soft shadow under it. BACTA's count (1 and up) straight on its glass, its
-// middle at IOSTOUCH_BACTA_GLASS_X, _Y (the glass between the caps: the
+// a soft shadow under it. BACTA's count (1 and up) straight on its glass, in
+// the game's own HUD health digits, the tank's pale lilac with a soft dark
+// purple edge (iosItemIcons_Count: a picture on the BACTA picture's own grid,
+// laid over it; 1-9). Without them (missing, a mod's, a count of 10 and up),
+// its middle at IOSTOUCH_BACTA_GLASS_X, _Y (the glass between the caps: the
 // icon's pixels 5-15 across, 7-17 down) in the system's rounded font, heavy,
 // IOSTOUCH_BACTA_NUM_FONT pt (a figure some 12.7 pt tall, two thirds of the
-// glass), white with a dark purple edge (the game's own tile purple)
-// IOSTOUCH_BACTA_NUM_EDGE pt wide round each figure and a soft shadow, so it
-// reads over the liquid, its glow and any wall; a count too wide for that
-// across IOSTOUCH_BACTA_NUM_ROOM (edges and all: two figures, a mod's) smaller
+// glass), in the same lilac with a dark purple edge (the game's own tile
+// purple) IOSTOUCH_BACTA_NUM_EDGE pt wide round each figure and a soft
+// shadow, so it reads over the liquid, its flash and any wall; a count too
+// wide for that across IOSTOUCH_BACTA_NUM_ROOM (edges and all: two figures,
+// a mod's) smaller
 #define IOSTOUCH_ITEM_PT 1.6
 #define IOSTOUCH_BACTA_GLASS_X 10.5 // (in the icon's pixels)
 #define IOSTOUCH_BACTA_GLASS_Y 12.5
 #define IOSTOUCH_BACTA_NUM_FONT 18.0
 #define IOSTOUCH_BACTA_NUM_EDGE 1.5
 #define IOSTOUCH_BACTA_NUM_ROOM 19.0
-// (its colours, 0xRRGGBB, here alone: the figures, and their edge)
-#define IOSTOUCH_BACTA_NUM_FILL_RGB 0xFFFFFF
+// (its colours, 0xRRGGBB, here alone: the figures -- the digits' lilac,
+// iosItemIcons.c's ii_aLilac -- and their edge)
+#define IOSTOUCH_BACTA_NUM_FILL_RGB 0xF8C4FF
 #define IOSTOUCH_BACTA_NUM_EDGE_RGB 0x31005A
 // A tank BACTA asked for counts as used (a light tick) if the game takes it
 // within this long; the last one used, BACTA stays, empty, this long, then
@@ -1694,14 +1699,19 @@ typedef struct {
     CAShapeLayer* fjumpRing;  // inside FORCE: how high Force Jump will go (SMOOTH, STEPS)
     // LIGHT, IR and BACTA as the game's own icons (iosItemIcons): a picture
     // over each (the button then shows neither its round nor its name) and
-    // BACTA's count on its glass (aBactaNum: [0] its dark
-    // edge and shadow, [1] the white figures over it). itemPics: 1 in use;
+    // BACTA's count on its glass: the HUD's digits (bactaCountPic, its
+    // pictures aCountPic for 1-9 while bCountDigits), else the rounded
+    // number (aBactaNum: [0] its dark edge and shadow, [1] the lilac figures
+    // over it). itemPics: 1 in use;
     // 2 being made; -1 not to be had (the text buttons, as before); 0 not
     // tried yet. The stills (LIGHT, IR off and on) made once; BACTA drawn
     // again as its tanks or its tap's flash change (in 20ths). The last tank
     // used: BACTA shown empty a moment, then faded out (bactaGoneAt: when)
     CALayer* aItemPic[3];
     UILabel* aBactaNum[2];
+    CALayer* bactaCountPic;
+    CGImageRef aCountPic[10];
+    int bCountDigits;
     // LIGHT and IR standing in for the game's own tiles for them (-standsIn:),
     // as last laid into the pad mask: 1 LIGHT, 2 IR
     int standInMask;
@@ -2320,6 +2330,11 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
                 aBactaNum[k] = l;
                 [aButtonViews[BTN_BACTA] addSubview:l];
             }
+            // (the digits' picture: BACTA's picture's own place, over it and the labels)
+            bactaCountPic = [CALayer layer];
+            bactaCountPic.frame = aItemPic[IOSITEMICONS_BACTA].frame;
+            bactaCountPic.hidden = YES;
+            [aButtonViews[BTN_BACTA].layer addSublayer:bactaCountPic];
         }
         bactaPicTanks = bactaPicGlow = bactaPicCount = -1;
         // sithewok's own uses of JUMP and ACT (held), named small under
@@ -4688,7 +4703,8 @@ static void IOSTouch_SetDot(UIView* dot, UILabel* name, int id, CGRect dotFrame)
 // new level, say)
 typedef struct {
     unsigned char aBuf[3][IOSITEMICONS_FILE_MAX];
-    int aLen[3], s, px, bOk;
+    unsigned char aSft[IOSITEMICONS_FILE_MAX]; // (BACTA's count's digits, the HUD's: iosItemIcons_ReadDigits)
+    int aLen[3], s, px, bOk, sftLen, bDigits;
 } iosTouchItemPicJob;
 
 - (void)prepareItemPics
@@ -4706,12 +4722,15 @@ typedef struct {
         free(job);
         return;
     }
+    job->sftLen = iosItemIcons_ReadDigits(job->aSft); // (0: none -- the rounded number)
     itemPics = 2;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         const unsigned char* aBm[3] = { job->aBuf[0], job->aBuf[1], job->aBuf[2] };
         job->bOk = iosItemIcons_PrepareFromSized(aBm, job->aLen, job->s, job->px);
+        job->bDigits = job->bOk && job->sftLen > 0 && iosItemIcons_PrepareDigits(job->aSft, job->sftLen);
         dispatch_async(dispatch_get_main_queue(), ^{
             const int bOk = job->bOk;
+            bCountDigits = job->bDigits;
             free(job);
             [self itemPicsMade:bOk];
         });
@@ -4739,6 +4758,18 @@ typedef struct {
             aItemStill[i] = NULL;
         }
         return;
+    }
+    // BACTA's count's pictures, if its digits were had (else the rounded number)
+    for (int c = 1; c <= 9 && bCountDigits; c++) {
+        if (aCountPic[c]) CGImageRelease(aCountPic[c]);
+        aCountPic[c] = IOSTouch_ImageFromRGBA(iosItemIcons_Count(c), n);
+        if (!aCountPic[c]) bCountDigits = 0;
+    }
+    if (!bCountDigits) {
+        for (int c = 0; c < 10; c++) {
+            if (aCountPic[c]) CGImageRelease(aCountPic[c]);
+            aCountPic[c] = NULL;
+        }
     }
     itemPics = 1;
     bactaPicTanks = bactaPicGlow = bactaPicCount = -1;
@@ -4775,13 +4806,18 @@ static UIFont* IOSTouch_RoundedFont(CGFloat size, UIFontWeight weight)
     return d ? [UIFont fontWithDescriptor:d size:size] : f;
 }
 
-// BACTA's count on its glass (-refreshItemPics): the figures white over
-// their dark purple edge, a stroke as wide as two edges round each (half of
-// it under the white), at full size or as big as fits its room
+// BACTA's count on its glass (-refreshItemPics): the HUD's own digits'
+// picture where they were had (1-9); else the rounded number, the lilac
+// figures over their dark purple edge, a stroke as wide as two edges round
+// each (half of it under the lilac), at full size or as big as fits its room
 - (void)setBactaCount:(int)count
 {
-    for (int k = 0; k < 2; k++) aBactaNum[k].hidden = count <= 0;
-    if (count <= 0) return;
+    // (the HUD's digits, 1-9, where they were had)
+    const int bDigits = bCountDigits && count >= 1 && count <= 9 && aCountPic[count];
+    bactaCountPic.hidden = !bDigits;
+    if (bDigits) bactaCountPic.contents = (__bridge id)aCountPic[count];
+    for (int k = 0; k < 2; k++) aBactaNum[k].hidden = count <= 0 || bDigits;
+    if (count <= 0 || bDigits) return;
     NSString* t = [NSString stringWithFormat:@"%d", count];
     CGFloat size = IOSTOUCH_BACTA_NUM_FONT;
     const CGFloat w = [t sizeWithAttributes:@{ NSFontAttributeName: IOSTouch_RoundedFont(size, UIFontWeightHeavy) }].width;

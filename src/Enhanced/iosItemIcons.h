@@ -19,8 +19,13 @@
 //     carried, the whole liquid flashing brighter on a tap
 //     (iosItemIcons_BactaFlash; the rig's iosItemIcons_Bacta: a glow rising
 //     through it, as a hold once had it).
+// BACTA's count is drawn on its glass in the game's own HUD health digits
+// (ui\sft\HelthNum16.sft, the same file in both games, read the same way),
+// their lit pixels in the tank's pale lilac on the icons' own grid, made big
+// as the icons are, with a soft dark purple edge (iosItemIcons_Count).
 // Plain C (the overlay makes its pictures from these pixels). With anything
-// missing or not as expected, nothing: the overlay keeps its text buttons.
+// missing or not as expected, nothing: the overlay keeps its text buttons
+// (or, without the digits, its own rounded number in the same lilac).
 
 #ifdef JK_ENHANCED
 
@@ -51,7 +56,19 @@ int iosItemIcons_ReadFiles(unsigned char aBuf[3][IOSITEMICONS_FILE_MAX], int aLe
 // here is used.
 int iosItemIcons_PrepareFromSized(const unsigned char* const aBm[3], const int aLen[3], int s, int outPx);
 int iosItemIcons_PrepareFrom(const unsigned char* const aBm[3], const int aLen[3], int s); // (outPx 24 s)
-// Both, at once (the Linux rig's)
+// BACTA's count's digits: the HUD's health number font read through the
+// game's file system (its thread), into aBuf: its length, 0 if missing (or
+// too big to be the game's)
+int iosItemIcons_ReadDigits(unsigned char aBuf[IOSITEMICONS_FILE_MAX]);
+// ...and the counts 1 to 9 drawn from it (after the pictures are made,
+// anywhere they could be: it touches nothing of the game's). 1 if done; 0
+// if the file isn't a font of ten 5 x 7 digits as the game's are (a mod's:
+// the overlay's own number then), or the pictures aren't made
+int iosItemIcons_PrepareDigits(const unsigned char* pSft, int len);
+// A count's picture (1..9; Size x Size premultiplied RGBA, the BACTA
+// picture's own grid: laid over it), NULL if none
+const unsigned char* iosItemIcons_Count(int count);
+// Both, at once (the Linux rig's; the digits too, if they can be had)
 int iosItemIcons_Prepare(int s);
 int iosItemIcons_IsReady(void);
 void iosItemIcons_Free(void);

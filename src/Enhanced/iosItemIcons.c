@@ -725,8 +725,10 @@ static void ii_IrOn(const unsigned char* orig, int s, float* rgb, float* al)
     free(m);
 }
 
+static void ii_FreeDigits(void);
 static void ii_FreeAll(void)
 {
+    ii_FreeDigits();
     for (int i = 0; i < IOSITEMICON_NUM_STILL; i++) { free(ii_apStill[i]); ii_apStill[i] = NULL; }
     free(ii_pBactaRgb); free(ii_pBactaAl); free(ii_pGlass); free(ii_pBactaEdge);
     ii_pBactaRgb = ii_pBactaAl = ii_pGlass = NULL;
@@ -935,6 +937,180 @@ int iosItemIcons_BactaFlash(float level, float flash, unsigned char* pOut)
     return ii_DrawBacta(level, flash > 0.0f ? 1.0f : 0.0f, 0.8f * flash, 1, pOut);
 }
 
+// ------------------------------------------------------------ BACTA's count
+
+// The game's HUD health digits (ui\sft\HelthNum16.sft): an SFNT font -- a
+// 40-byte header ("SFNT", version 10, its charsets), each charset's first
+// and last character and an 8-byte place for each (x in the sheet, width),
+// then the sheet itself, a 16-bit .bm as the icons are. The game's has the
+// digits 0-9 (and a colon) 5 pixels wide on a sheet 7 high, each lit in
+// bright red over its dim unlit segments. A digit's lit pixels as a mask,
+// a row a byte (bit 4 its leftmost pixel); 0 unless it is that, checked as
+// strictly as the icons: every size, place and channel inside the file
+#define II_DIG_W 5
+#define II_DIG_H 7
+static unsigned char ii_aDigit[10][II_DIG_H];
+static unsigned char* ii_apCount[10]; // (counts 1-9, ii_out across)
+static int ii_bDigits = 0;
+static const unsigned char ii_aLilac[3] = { 248, 196, 255 }; // (the tank's palest highlight, its caps' brightest)
+
+static void ii_FreeDigits(void)
+{
+    for (int i = 0; i < 10; i++) { free(ii_apCount[i]); ii_apCount[i] = NULL; }
+    ii_bDigits = 0;
+}
+
+static int ii_ParseDigits(const unsigned char* d, int len, unsigned char aOut[10][II_DIG_H])
+{
+#define II_U16(o) ((unsigned int)d[(o)] | ((unsigned int)d[(o) + 1] << 8))
+#define II_U32(o) ((unsigned int)d[(o)] | ((unsigned int)d[(o) + 1] << 8) | ((unsigned int)d[(o) + 2] << 16) | ((unsigned int)d[(o) + 3] << 24))
+    if (!d || len < 40 || len > IOSITEMICONS_FILE_MAX || memcmp(d, "SFNT", 4) || II_U32(4) != 10) return 0;
+    const unsigned int numSets = II_U32(20);
+    if (numSets < 1 || numSets > 8) return 0;
+    long off = 40, digits = -1;
+    unsigned int first0 = 0;
+    for (unsigned int k = 0; k < numSets; k++) {
+        if (off + 4 > len) return 0;
+        const unsigned int first = II_U16(off), last = II_U16(off + 2);
+        if (last < first || last - first > 255) return 0;
+        off += 4;
+        const long n = (long)(last - first + 1);
+        if (off + n * 8 > len) return 0;
+        if (first <= '0' && last >= '9' && digits < 0) { digits = off; first0 = first; }
+        off += n * 8;
+    }
+    if (digits < 0 || off + 0x88 > len) return 0;
+    // the sheet: a 16-bit .bm, 7 high, its pixels all inside the file
+    const unsigned char* b = d + off;
+    const long blen = len - off;
+    if (memcmp(b, "BM  ", 4)) return 0;
+#undef II_U32
+#define II_U32(o) ((unsigned int)b[(o)] | ((unsigned int)b[(o) + 1] << 8) | ((unsigned int)b[(o) + 2] << 16) | ((unsigned int)b[(o) + 3] << 24))
+    const unsigned int key = II_U32(0x1C), is16 = II_U32(0x20), bpp = II_U32(0x24);
+    const unsigned int rb = II_U32(0x28), gb = II_U32(0x2C), bb = II_U32(0x30), rs = II_U32(0x34), gs = II_U32(0x38), bs = II_U32(0x3C);
+    const unsigned int W = II_U32(0x80), H = II_U32(0x84);
+    if (is16 != 1 || bpp != 16 || H != II_DIG_H || W < 10 * II_DIG_W || W > 1024 || !rb || !gb || !bb || rb > 8 || gb > 8 || bb > 8) return 0;
+    if (rs > 15 || gs > 15 || bs > 15 || rs + rb > 16 || gs + gb > 16 || bs + bb > 16) return 0;
+    if (0x88 + (long)W * H * 2 > blen) return 0;
+#undef II_U32
+#define II_S32(o) ((int)((unsigned int)d[(o)] | ((unsigned int)d[(o) + 1] << 8) | ((unsigned int)d[(o) + 2] << 16) | ((unsigned int)d[(o) + 3] << 24)))
+    const unsigned int mr = (1u << rb) - 1, mg = (1u << gb) - 1, mb = (1u << bb) - 1;
+    for (int k = 0; k < 10; k++) {
+        const long e = digits + (long)('0' + k - (int)first0) * 8;
+        const int x0 = II_S32(e), w = II_S32(e + 4);
+        if (w != II_DIG_W || x0 < 0 || x0 > (int)W - II_DIG_W) return 0;
+        int lit = 0, rows = 0;
+        for (int y = 0; y < II_DIG_H; y++) {
+            unsigned char row = 0;
+            for (int x = 0; x < II_DIG_W; x++) {
+                const long o = 0x88 + ((long)y * W + x0 + x) * 2;
+                const unsigned int v = b[o] | (b[o + 1] << 8);
+                if (v == (key & 0xFFFF)) continue;
+                const unsigned int r = ((v >> rs) & mr) * 255 / mr, g = ((v >> gs) & mg) * 255 / mg, bl = ((v >> bs) & mb) * 255 / mb;
+                const unsigned int hi = r > g ? (r > bl ? r : bl) : (g > bl ? g : bl);
+                if (hi >= 160) { row |= (unsigned char)(0x10 >> x); lit++; } // (a lit segment's pixel; the dim unlit ones dropped)
+            }
+            aOut[k][y] = row;
+            rows += row != 0;
+        }
+        if (lit < 5 || lit > 30 || rows < 5) return 0; // (a digit: some of its 35 pixels, down most of its height)
+    }
+    for (int i = 0; i < 10; i++) // (ten different shapes)
+        for (int j = i + 1; j < 10; j++)
+            if (!memcmp(aOut[i], aOut[j], II_DIG_H)) return 0;
+    return 1;
+#undef II_S32
+#undef II_U16
+}
+
+// A soft dark purple edge round the count: the icons' own faint one, and
+// round it a little more, blurred, so it holds on the pink liquid
+static void ii_CountEdge(const float* al, int N, int s, unsigned char* pOut)
+{
+    float* m = (float*)malloc(sizeof(float) * N * N);
+    if (!m) { memset(pOut, 0, N * N * 4); return; }
+    const int r = s >= 5 ? 1 : 0;
+    for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++) {
+            float v = 0.0f;
+            for (int j = -r; j <= r; j++)
+                for (int i = -r; i <= r; i++) v = fmaxf(v, al[ii_ClampI(y + j, N) * N + ii_ClampI(x + i, N)]);
+            m[y * N + x] = v;
+        }
+    ii_GaussPil(m, N, 1, s * 0.25f);
+    ii_EdgeUnder(al, N, (int)(s * 0.6f), pOut);
+    for (int i = 0; i < N * N; i++) {
+        const int a = (int)(fminf(fmaxf(m[i], 0.0f), 255.0f) * 0.8f);
+        if (a > pOut[i * 4 + 3]) {
+            pOut[i * 4 + 0] = (unsigned char)(0x31 * a / 255);
+            pOut[i * 4 + 1] = 0;
+            pOut[i * 4 + 2] = (unsigned char)(0x5a * a / 255);
+            pOut[i * 4 + 3] = (unsigned char)a;
+        }
+    }
+    free(m);
+}
+
+int iosItemIcons_PrepareDigits(const unsigned char* pSft, int len)
+{
+    ii_FreeDigits();
+    unsigned char aMask[10][II_DIG_H];
+    if (!ii_bReady || !ii_ParseDigits(pSft, len, aMask)) return 0;
+    const int s = ii_s, N = II_N * s;
+    unsigned char* big = (unsigned char*)malloc(N * N * 4);
+    unsigned char* fin = (unsigned char*)malloc(N * N * 4);
+    unsigned char* edge = (unsigned char*)malloc(N * N * 4);
+    float* rgb = (float*)malloc(sizeof(float) * N * N * 3);
+    float* al = (float*)malloc(sizeof(float) * N * N);
+    int bOk = big && fin && edge && rgb && al;
+    for (int c = 1; c <= 9 && bOk; c++) {
+        // the digit's lit pixels on the icons' grid, the middle of its lit
+        // columns the glass's (10.5 across; rows 9-15, 12.5 down), made big
+        // as the icons are -- a half pixel's shift, where its lit columns
+        // are an even number, made in the big picture's pixels
+        int c0 = II_DIG_W, c1 = -1;
+        for (int y = 0; y < II_DIG_H; y++)
+            for (int x = 0; x < II_DIG_W; x++)
+                if (aMask[c][y] & (0x10 >> x)) { if (x < c0) c0 = x; if (x > c1) c1 = x; }
+        const float want = 10.5f - (c0 + c1 + 1) * 0.5f; // (the cell's left column)
+        const int x0 = (int)floorf(want), shift = (int)lroundf((want - x0) * s);
+        unsigned char src[II_N * II_N * 4];
+        memset(src, 0, sizeof(src));
+        for (int y = 0; y < II_DIG_H; y++)
+            for (int x = 0; x < II_DIG_W; x++)
+                if (aMask[c][y] & (0x10 >> x)) {
+                    unsigned char* p = src + ((9 + y) * II_N + x0 + x) * 4;
+                    p[0] = ii_aLilac[0]; p[1] = ii_aLilac[1]; p[2] = ii_aLilac[2]; p[3] = 255;
+                }
+        ii_Upscale(src, s, big);
+        if (shift > 0)
+            for (int y = 0; y < N; y++) {
+                memmove(big + ((size_t)y * N + shift) * 4, big + (size_t)y * N * 4, (size_t)(N - shift) * 4);
+                memset(big + (size_t)y * N * 4, 0, (size_t)shift * 4);
+            }
+        for (int i = 0; i < N * N; i++) {
+            for (int k = 0; k < 3; k++) rgb[i * 3 + k] = big[i * 4 + k];
+            al[i] = big[i * 4 + 3];
+        }
+        ii_CountEdge(al, N, s, edge);
+        ii_Finish(rgb, al, edge, N, fin);
+        ii_apCount[c] = (unsigned char*)malloc((size_t)ii_out * ii_out * 4);
+        if (!ii_apCount[c]) { bOk = 0; break; }
+        if (ii_out == N) memcpy(ii_apCount[c], fin, (size_t)N * N * 4);
+        else ii_Shrink(fin, N, ii_apCount[c], ii_out);
+    }
+    free(big); free(fin); free(edge); free(rgb); free(al);
+    if (!bOk) { ii_FreeDigits(); return 0; }
+    memcpy(ii_aDigit, aMask, sizeof(ii_aDigit));
+    ii_bDigits = 1;
+    return 1;
+}
+
+const unsigned char* iosItemIcons_Count(int count)
+{
+    return (ii_bReady && ii_bDigits && count >= 1 && count <= 9) ? ii_apCount[count] : NULL;
+}
+
 static int ii_bHudStandIn = 0;
 
 void iosItemIcons_SetHudStandIn(int bOn)
@@ -1022,14 +1198,29 @@ int iosItemIcons_ReadFiles(unsigned char aBuf[3][IOSITEMICONS_FILE_MAX], int aLe
     return 1;
 }
 
+// The HUD's health digits, read as the icons are (the game reads the same
+// file for its own HUD)
+int iosItemIcons_ReadDigits(unsigned char aBuf[IOSITEMICONS_FILE_MAX])
+{
+    if (!aBuf || !std_g_pHS || !std_g_pHS->fileOpen) return 0;
+    stdFile_t f = std_g_pHS->fileOpen("ui\\sft\\HelthNum16.sft", "rb");
+    if (!f) return 0;
+    const int len = (int)std_g_pHS->fileRead(f, aBuf, IOSITEMICONS_FILE_MAX);
+    std_g_pHS->fileClose(f);
+    return len > 0 && len < IOSITEMICONS_FILE_MAX ? len : 0;
+}
+
 int iosItemIcons_Prepare(int s)
 {
-    static unsigned char aBuf[3][IOSITEMICONS_FILE_MAX];
+    static unsigned char aBuf[3][IOSITEMICONS_FILE_MAX], aSft[IOSITEMICONS_FILE_MAX];
     int aLen[3] = { 0, 0, 0 };
     const unsigned char* aBm[3] = { aBuf[0], aBuf[1], aBuf[2] };
     if (ii_bReady && ii_s == s && ii_out == II_N * s) return 1;
     if (!iosItemIcons_ReadFiles(aBuf, aLen)) return 0;
-    return iosItemIcons_PrepareFrom(aBm, aLen, s);
+    if (!iosItemIcons_PrepareFrom(aBm, aLen, s)) return 0;
+    const int n = iosItemIcons_ReadDigits(aSft);
+    if (n > 0) iosItemIcons_PrepareDigits(aSft, n);
+    return 1;
 }
 #endif
 
