@@ -128,16 +128,16 @@ int iosSaberShape_ByName(const char* name)
 #define IOSSABERSHAPE_SET_BACK 0.001f
 
 // How strong each glow is: a held blade's, and a thrown saber's (its blade a model, a little brighter of its own);
-// CROSS's, held and thrown (a CROSS is drawn with the softer one, GAIN_CROSS_PAIR, however it is held: below; its
-// thrown one as much softer: as the pair's held one, 0.95, is to the 1.35 a single CROSS had)
+// a bright one for a CROSS's sparks (with FILM) as they fly, and CROSS's thrown (as much softer than the held one,
+// GAIN_CROSS, as the held one is than that bright one)
 // (FILM's at three strengths, its shimmer; and the beam's core, FILM's own blade: not a glow)
-// (and CROSS's softer one, held: once only two crossguards drawn together's; and two dimmer strengths of CROSS's,
-// for its sparks fading)
-// (also seen: a CROSS alone, or beside another hilt, held at GAIN_CROSS, 1.35, and every CROSS thrown at 1.15)
+// (and CROSS's, held, however it is held: its sparks' too, as they fade; and two dimmer strengths of the sparks)
+// (also seen: a CROSS alone, or beside another hilt, held at the sparks' bright strength, 1.35, and only two
+// crossguards drawn together at 0.95; every CROSS thrown at 1.15)
 // (and FILM's three, soft; and a thrown one's, soft)
 // (and the beam's core's white middle alone, two sabers' in first person: iosSaberShape_BeginPovPair)
-enum { IOSSABERSHAPE_GAIN_BLADE = 0, IOSSABERSHAPE_GAIN_THROWN, IOSSABERSHAPE_GAIN_CROSS, IOSSABERSHAPE_GAIN_CROSS_THROWN,
-       IOSSABERSHAPE_GAIN_BLADE_DIM, IOSSABERSHAPE_GAIN_BLADE_BRIGHT, IOSSABERSHAPE_GAIN_CORE, IOSSABERSHAPE_GAIN_CROSS_PAIR,
+enum { IOSSABERSHAPE_GAIN_BLADE = 0, IOSSABERSHAPE_GAIN_THROWN, IOSSABERSHAPE_GAIN_SPARK_BRIGHT, IOSSABERSHAPE_GAIN_CROSS_THROWN,
+       IOSSABERSHAPE_GAIN_BLADE_DIM, IOSSABERSHAPE_GAIN_BLADE_BRIGHT, IOSSABERSHAPE_GAIN_CORE, IOSSABERSHAPE_GAIN_CROSS,
        IOSSABERSHAPE_GAIN_SPARK_DIM, IOSSABERSHAPE_GAIN_SPARK_FAINT,
        IOSSABERSHAPE_GAIN_SOFT, IOSSABERSHAPE_GAIN_SOFT_DIM, IOSSABERSHAPE_GAIN_SOFT_BRIGHT, IOSSABERSHAPE_GAIN_SOFT_THROWN,
        IOSSABERSHAPE_GAIN_CORE_MID, IOSSABERSHAPE_NUM_GAINS };
@@ -1205,7 +1205,7 @@ static uint32_t iosSaberShape_crossId = 0;
 // without, so a CROSS looks the same however it is held; with FILM, its own wider glow, IOSSABERSHAPE_FCROSS_GLOW,
 // taken with this)
 // (also seen: this only for each of two crossguards drawn together, IOSSABERSHAPE_FORM_CROSS_PAIR, so where the two
-// crossed they didn't wash together; a CROSS alone, beside another hilt or thrown, at 1, and held at GAIN_CROSS: its
+// crossed they didn't wash together; a CROSS alone, beside another hilt or thrown, at 1, and held at 1.35: its
 // glow wider and brighter, with FILM 1.25 of FILM's)
 #define IOSSABERSHAPE_CROSS_GLOW_K 0.72f
 
@@ -1251,7 +1251,7 @@ void iosSaberShape_BeginBlade(SithThing* pThing, rdThing* pLine, const unsigned 
             iosSaberShape_savedTip = l->tipRadius;
             l->tipRadius = 0;
             iosSaberShape_bCross = 1;
-            iosSaberShape_pGlow = rgb ? iosSaberShape_Glow(rgb, IOSSABERSHAPE_GAIN_CROSS_PAIR) : NULL; // (also seen: GAIN_CROSS, alone)
+            iosSaberShape_pGlow = rgb ? iosSaberShape_Glow(rgb, IOSSABERSHAPE_GAIN_CROSS) : NULL; // (also seen: the sparks' bright strength, alone)
             return;
         }
         // CROSS with FILM: FILM's beam, as below, but unstable (iosSaberShape_DrawFilmCross)
@@ -2390,7 +2390,7 @@ static void iosSaberShape_Spit(rdThing* pLine, rdTexMode_t texMode, const unsign
             iosSaberShape_Across(&head, &tail, &c, &sn);
             // (shrinking to half and dimming away: CROSS's glow, then fainter, to about a fifth of it by the end)
             const flex_t rs = r * size * (1 - (flex_t)0.5 * age);
-            const int gain = age < (flex_t)0.3 ? IOSSABERSHAPE_GAIN_CROSS : age < (flex_t)0.55 ? IOSSABERSHAPE_GAIN_CROSS_PAIR
+            const int gain = age < (flex_t)0.3 ? IOSSABERSHAPE_GAIN_SPARK_BRIGHT : age < (flex_t)0.55 ? IOSSABERSHAPE_GAIN_CROSS
                            : age < (flex_t)0.8 ? IOSSABERSHAPE_GAIN_SPARK_DIM : IOSSABERSHAPE_GAIN_SPARK_FAINT;
             const iosSaberShapeGlow* pLook = iosSaberShape_Glow(rgb, gain);
             if (pLook)
@@ -2670,7 +2670,9 @@ void iosSaberShape_DrawThrownGlow(SithThing* pThing, const rdMaterial* pBlade, c
     for (uint32_t n = 0; n < m->numHNodes && node < 0; n++)
         if ((int)m->aHierarchyNodes[n].meshIdx == mesh) node = (int)n;
     if (node < 0) return;
-    const iosSaberShapeGlow* g = iosSaberShape_Glow(rgb, bCross ? IOSSABERSHAPE_GAIN_CROSS_THROWN : thrownGain);
+    // (a CROSS's own glow without FILM; with FILM it takes FILM's thrown one, below)
+    const iosSaberShapeGlow* g = bCross && iosSaberShape_shape == IOSSABERSHAPE_BEAM ? NULL
+                                 : iosSaberShape_Glow(rgb, bCross ? IOSSABERSHAPE_GAIN_CROSS_THROWN : thrownGain);
     if (!g && !bCross && !bFold) return;
     // (the mesh's space to the camera's)
     rdMatrix34 toCam;

@@ -95,6 +95,7 @@ static const iosSaberStancePov iosSaberStance_aPov[2] = {
 // (also seen: { 0, 0, 0, -0.005, 0.033 }, the arm moved up a little and out ahead (further from the eye), so
 // the staff showed both its blades, the back one clear of the arm: it raised the right forearm mid-screen,
 // its cut-off end showing, a sleeve floating there)
+// (all zero, but kept, not NULL: its guard's weight still runs, and iosSaberStaff turns the staff across with it)
 static const iosSaberStancePov iosSaberStance_staffPov = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 
 // ------------------------------------------------------------ the weights

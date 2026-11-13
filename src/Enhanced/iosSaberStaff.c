@@ -1500,9 +1500,11 @@ int iosSaberStaff_DrawPovBlades(SithThing* pActor, rdThing* pLine, const rdModel
 void iosSaberStaff_PovDepths(SithThing* pThing, float* pRight, float* pLeft)
 {
     *pRight = *pLeft = 0.0f;
+#ifndef IOSDEPTH_COMPARE
+    (void)pThing; // (off: nothing to work out; a compare build can turn it on, below)
+#else
     if (!pThing || !iosSaber_HasSecondBlade(pThing)) return;
     float further = IOSSABERSTAFF_POV_FURTHER, nearer = IOSSABERSTAFF_POV_NEARER;
-#ifdef IOSDEPTH_COMPARE
     // (a compare build: RIG_DEPTH_B="<further> <nearer>", thousandths, instead: "12 4", B as it was)
     const char* e = getenv("RIG_DEPTH_B");
     float f = 0.0f, n = 0.0f;
@@ -1510,7 +1512,6 @@ void iosSaberStaff_PovDepths(SithThing* pThing, float* pRight, float* pLeft)
         further = f * 0.001f;
         nearer = n * 0.001f;
     }
-#endif
     float a[2] = { 0.0f, 0.0f }; // (how far each is turned across the view)
     for (int hand = 0; hand < 2; hand++) {
         const int hilt = iosSaberStaff_HiltOf(pThing, hand);
@@ -1520,6 +1521,7 @@ void iosSaberStaff_PovDepths(SithThing* pThing, float* pRight, float* pLeft)
     const float d = a[0] - a[1]; // (+: the right one across)
     *pRight = d > 0.0f ? further * d : nearer * d;
     *pLeft = d < 0.0f ? -further * d : -nearer * d;
+#endif
 }
 
 // ------------------------------------------------------------ third person: the left arm
