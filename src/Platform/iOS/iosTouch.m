@@ -280,10 +280,11 @@ extern int jkHud_bChatOpen;
 #define IOSTOUCH_BACTA_NUM_EDGE_RGB 0x31005A
 // A tank BACTA asked for counts as used (a light tick) if the game takes it
 // within this long; the last one used, BACTA stays, empty, this long, then
-// fades out over IOSTOUCH_BACTA_FADE
+// fades out over IOSTOUCH_BACTA_FADE: gone some 0.55 s after, its tap's
+// flash (IOSTOUCH_BACTA_FLASH) seen first
 #define IOSTOUCH_BACTA_TAKEN 1.0
-#define IOSTOUCH_BACTA_EMPTY 1.0
-#define IOSTOUCH_BACTA_FADE 0.4
+#define IOSTOUCH_BACTA_EMPTY 0.3
+#define IOSTOUCH_BACTA_FADE 0.25
 // (the saber wheel's choices: "iosTouchSaber" + each name iosSaberWheel keeps, loadSaberChoices;
 // builds before kept iosTouchSaberStyle, iosTouchSaberHilt, iosTouchSaberColour.<style>.<blade>)
 #define IOSTOUCH_SABERLOOK_DEFAULTS_KEY @"iosTouchSaberLook" // (by its name: CLASSIC, REFORGED)
