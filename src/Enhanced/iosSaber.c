@@ -1030,10 +1030,10 @@ void iosSaber_BeginBlade(SithThing* pThing, rdThing* pLine, int blade)
     const unsigned char* rgb = aMat ? iosSaber_GlowOf(iosSaber_Row(iosSaber_look, id)) : iosSaber_SwatchOf(pLine->polyline->face.material);
     // (FOLD's blades a little ragged, each its own way; no other's)
     iosSaberShape_SetJag(pLine, iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_FOLD ? ((unsigned int)pThing->idx + 1u) * 4u + (unsigned int)blade * 2u + (unsigned int)sub : 0u);
-    // (the hand's hilt's; two crossguards drawn together, each a little softer)
-    int form = IOSSABERSHAPE_FORM_CHOSEN;
-    if (iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_CROSS)
-        form = (iosSaber_HasSecondBlade(pThing) && iosSaber_HandHilt(pThing, !blade) == IOSSABER_HILT_CROSS) ? IOSSABERSHAPE_FORM_CROSS_PAIR : IOSSABERSHAPE_FORM_CROSS;
+    // (the hand's hilt's: CROSS's one look, however it is held)
+    // (also seen: two crossguards drawn together each a little softer, IOSSABERSHAPE_FORM_CROSS_PAIR, and any
+    // other CROSS brighter and wider)
+    const int form = iosSaber_HandHilt(pThing, blade) == IOSSABER_HILT_CROSS ? IOSSABERSHAPE_FORM_CROSS : IOSSABERSHAPE_FORM_CHOSEN;
     iosSaberShape_SetSoftGlow(aMat && rgb != iosSaber_Row(iosSaber_look, id)->edge); // (WHITE's own with FILM: softer)
     iosSaberShape_SetGuardKey(saber); // (a crossguard's side blades lighting after it, this saber's)
     iosSaberShape_BeginBlade(pThing, pLine, rgb ? rgb : iosSaber_aColours[IOSSABER_COLOUR_GAME].edge, aMat ? iosSaber_Row(iosSaber_look, id)->core : NULL,

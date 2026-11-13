@@ -72,11 +72,13 @@ struct rdThing;
 struct rdVector3;
 struct rdMaterial;
 // The blade's own form, its hilt's (iosSaber): the shape chosen above, or
-// CROSS's (with FILM, its own FILM look); CROSS_PAIR, one of two crossguards drawn together
-// (two sabers): its glows a little softer and closer, so where the two cross
-// they don't wash together
+// CROSS's (with FILM, its own FILM look): its glows a little softer and closer,
+// the same however it is held (one saber or two, either hand, first or third
+// person, thrown), so where two cross they don't wash together
+// (also seen: CROSS_PAIR, that softer look only for one of two crossguards
+// drawn together; a CROSS alone, or beside another hilt, brighter and wider)
 // (FOLD: a thrown one's, its blade drawn ragged, iosSaberShape_DrawThrownGlow)
-enum { IOSSABERSHAPE_FORM_CHOSEN = 0, IOSSABERSHAPE_FORM_CROSS, IOSSABERSHAPE_FORM_CROSS_PAIR, IOSSABERSHAPE_FORM_FOLD };
+enum { IOSSABERSHAPE_FORM_CHOSEN = 0, IOSSABERSHAPE_FORM_CROSS, IOSSABERSHAPE_FORM_FOLD };
 // Round one blade's drawing (iosSaber_BeginBlade/EndBlade): with FILM, the
 // blade made even, to the films' proportions, white hot with its glow put on
 // (rgb: the blade's colour; core: its middle's, NULL or none: white; pThing:

@@ -1194,8 +1194,12 @@ hand's colours and has its own **HILT** button.
   two-saber stance. Only CROSS crackles.
 - **The CROSS hilt:** a jagged blade that crackles and comes to a point,
   two short blades coming out of two small dark metal vents either side of
-  the top of the hilt, and a strong glow in the blade's colour (on a bright
-  wall it only tints). It works with every colour, in both CLASSIC and
+  the top of the hilt, and a glow in the blade's colour (on a bright wall
+  it only tints). A CROSS looks the same however you hold it: on its own,
+  beside another hilt, as one of two CROSS sabers, in either hand, and
+  thrown. (Before, only two CROSS sabers had this softer, slightly narrower
+  glow, so they don't wash together where they cross; a CROSS on its own
+  glowed wider and brighter.) It works with every colour, in both CLASSIC and
   REFORGED, and shows in first and third person and in Action Freeze. With
   two sabers you can hold two of them, one in each hand. A thrown CROSS saber (Saber Throw in Mysteries
   of the Sith, SABER THROW in Jedi Knight, each of the two with two sabers) gets the
