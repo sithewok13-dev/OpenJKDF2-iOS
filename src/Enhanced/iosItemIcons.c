@@ -920,11 +920,13 @@ static int ii_DrawBacta(float level, float front, float strength, int bWhole, un
     return 1;
 }
 
+#if defined(IOSITEMICONS_STANDALONE) || defined(IOSAUTOPLAY_RIG)
 int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut)
 {
     glow = ii_Clamp01(glow);
     return ii_DrawBacta(level, glow, 0.45f + 0.35f * glow, 0, pOut);
 }
+#endif
 
 int iosItemIcons_BactaFlash(float level, float flash, unsigned char* pOut)
 {
