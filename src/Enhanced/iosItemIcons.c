@@ -50,7 +50,7 @@
 #endif
 
 #define II_N 24
-#define II_LAMP_R 9.2f // (LIGHT's circle: its radius, about (12, 10), in the art's pixels; made 8% bigger after, about (12, 12))
+#define II_LAMP_R 9.2f // (LIGHT's circle: its radius, about (12, 10), in the art's pixels; made 15% bigger after, about (12, 12))
 
 // ------------------------------------------------------------ the originals
 
@@ -1141,9 +1141,9 @@ int iosItemIcons_PrepareFromSized(const unsigned char* const aBm[3], const int a
         if (i == IOSITEMICON_LIGHT_OFF || i == IOSITEMICON_LIGHT_ON) ii_Light(aOrig[0], i == IOSITEMICON_LIGHT_ON, s, rgb, al);
         else if (i == IOSITEMICON_IR_OFF) ii_IrOff(aOrig[1], s, rgb, al);
         else ii_IrOn(aOrig[1], s, rgb, al);
-        // (the lamp 8% bigger, its circle's middle, (12, 10), moved to the
+        // (the lamp 15% bigger, its circle's middle, (12, 10), moved to the
         // picture's; the goggles a little smaller, about their middle)
-        if (i == IOSITEMICON_LIGHT_OFF || i == IOSITEMICON_LIGHT_ON) ii_ScaleTo(rgb, al, N, 12.0f * s, 10.0f * s, 12.0f * s, 12.0f * s, 1.08f);
+        if (i == IOSITEMICON_LIGHT_OFF || i == IOSITEMICON_LIGHT_ON) ii_ScaleTo(rgb, al, N, 12.0f * s, 10.0f * s, 12.0f * s, 12.0f * s, 1.15f);
         else ii_ScaleTo(rgb, al, N, 12.0f * s, 11.9f * s, 12.0f * s, 11.9f * s, 0.92f);
         ii_EdgeUnder(al, N, s, edge);
         ii_Finish(rgb, al, edge, N, big);
@@ -1518,7 +1518,7 @@ void iosItemIcons_Centre(int item, float* pX, float* pY)
     // (each picture's middle, measured -- what shows of it, its edge too,
     // off and on, at 2x and 3x -- to within 0.3 pt: the three level and
     // centred across; the tank's count, placed from it, moves with it)
-    static const float a[3][2] = { { 12.2f, 12.2f }, { 12.0f, 11.9f }, { 11.0f, 12.0f } };
+    static const float a[3][2] = { { 12.1f, 12.1f }, { 12.0f, 11.9f }, { 11.0f, 12.0f } };
     if (item < 0 || item > 2) item = 0;
     if (pX) *pX = a[item][0];
     if (pY) *pY = a[item][1];
