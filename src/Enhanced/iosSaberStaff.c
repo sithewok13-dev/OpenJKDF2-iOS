@@ -1488,17 +1488,22 @@ int iosSaberStaff_DrawPovBlades(SithThing* pActor, rdThing* pLine, const rdModel
 // Two sabers in first person, but in a swing (iosStance): the one turned across the view (STAFF; FOLD as far as it is
 // open) held IOSSABERSTAFF_POV_FURTHER further out, the other IOSSABERSTAFF_POV_NEARER nearer, so where their
 // blades cross they read as apart in depth; as much less as both are across, none with neither (two NORMALs) or
-// both (two STAFFs). (also seen: 0.024 and 0.008, clearer but the STAFF small; and the FOLD turned in the hand,
-// 20 or 40 degrees round its blade, which only closed its blades up and left their tips uneven: RIG_DEPTH_A)
-#define IOSSABERSTAFF_POV_FURTHER 0.012f
-#define IOSSABERSTAFF_POV_NEARER 0.004f
+// both (two STAFFs). Off: both arms where they are at rest (a STAFF's where a NORMAL saber's is, iosSaberStance),
+// the blades' depth told by their glows fading further off (iosSaberShape). Kept for a compare build to try again
+// (RIG_DEPTH_B, below).
+// (also seen, the depth change "B": 0.012 and 0.004, which carried the STAFF's arm, with its forearm's cut-off end,
+// further out into view, and brought the other arm to the near plane; 0.024 and 0.008, clearer but the STAFF
+// small; and the FOLD turned in the hand, 20 or 40 degrees round its blade, which only closed its blades up and
+// left their tips uneven: RIG_DEPTH_A)
+#define IOSSABERSTAFF_POV_FURTHER 0.0f
+#define IOSSABERSTAFF_POV_NEARER 0.0f
 void iosSaberStaff_PovDepths(SithThing* pThing, float* pRight, float* pLeft)
 {
     *pRight = *pLeft = 0.0f;
     if (!pThing || !iosSaber_HasSecondBlade(pThing)) return;
     float further = IOSSABERSTAFF_POV_FURTHER, nearer = IOSSABERSTAFF_POV_NEARER;
 #ifdef IOSDEPTH_COMPARE
-    // (a compare build: RIG_DEPTH_B="<further> <nearer>", thousandths, instead)
+    // (a compare build: RIG_DEPTH_B="<further> <nearer>", thousandths, instead: "12 4", B as it was)
     const char* e = getenv("RIG_DEPTH_B");
     float f = 0.0f, n = 0.0f;
     if (e && sscanf(e, "%f %f", &f, &n) == 2) {

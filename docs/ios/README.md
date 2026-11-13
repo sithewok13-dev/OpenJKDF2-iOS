@@ -1254,12 +1254,12 @@ hand's colours and has its own **HILT** button.
   never the same as the last three, and any swing, block, weapon change,
   run, jump or Saber Throw takes over at once. A faint shimmer plays on each blade. Kyle has no new animations, so in his
   two-handed swings the blades come from nearly the same place.
-  With a STAFF (or an opened FOLD), held across the view, in one hand and
-  a one-blade saber or a folded FOLD in the other, the STAFF is held a
-  little further out and the other saber a little nearer, except while you
-  swing, so where the blades cross they look apart rather than tangled.
-  The hands ease back for a swing and out again after it, so swings look
-  as before.
+  With a STAFF (or an opened FOLD) in one hand and another saber in the
+  other, that arm stays where it holds any saber at rest, coming up from
+  its bottom corner of the view, and only the STAFF turns in your hand to
+  lie across the view (before, the arm was raised mid-screen and the
+  cut-off end of its sleeve showed). The STAFF turns back for a swing and
+  across again after it, so swings look as before.
 - **Only the look changes,** and only in your own single-player game: the
   saber's damage, your saves and the levels are untouched. The colours show
   in first and third person, in selfies and in Action Freeze. The app

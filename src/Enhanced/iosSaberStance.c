@@ -89,10 +89,13 @@ static const iosSaberStancePov iosSaberStance_aPov[2] = {
     { 16.0f, 5.0f, 0.004f, 0.0f, 0.0f },
     { 11.0f, 6.0f, 0.010f, -0.003f, 0.0f },
 };
-// ...a STAFF or FOLD (open) as one of two: the arm moved up a little and out ahead (further from the
-// eye), so the staff, turned across the view in the hand (iosSaberStaff), shows both its blades, the
-// back one clear of the arm
-static const iosSaberStancePov iosSaberStance_staffPov = { 0.0f, 0.0f, 0.0f, -0.005f, 0.033f };
+// ...a STAFF or FOLD (open) as one of two: the arm where a NORMAL saber's is at rest, coming up from the
+// bottom right, the staff alone turned across the view in its hand (iosSaberStaff); the guard kept, none
+// of it moving the arm, for its weight, the staff's turn in and out as ever
+// (also seen: { 0, 0, 0, -0.005, 0.033 }, the arm moved up a little and out ahead (further from the eye), so
+// the staff showed both its blades, the back one clear of the arm: it raised the right forearm mid-screen,
+// its cut-off end showing, a sleeve floating there)
+static const iosSaberStancePov iosSaberStance_staffPov = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 
 // ------------------------------------------------------------ the weights
 
