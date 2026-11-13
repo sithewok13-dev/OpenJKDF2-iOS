@@ -38,6 +38,24 @@ void jkEpisode_Shutdown()
 #endif
 }
 
+#ifdef JK_ENHANCED
+// Added: the game's own episode (JK1, JKM) first, then the others by their
+// names, case aside (jkEpisode_LoadVerify)
+static int jkEpisode_IsMain(const char* pName)
+{
+    return !__strnicmp(pName, "JK1", 0x20u) || !__strnicmp(pName, "JKM", 0x20u);
+}
+
+static int jkEpisode_CompareNames(const void* a, const void* b)
+{
+    const char* pA = ((const jkEpisode*)a)->name;
+    const char* pB = ((const jkEpisode*)b)->name;
+    const int bMainA = jkEpisode_IsMain(pA), bMainB = jkEpisode_IsMain(pB);
+    if (bMainA != bMainB) return bMainB - bMainA;
+    return __strnicmp(pA, pB, 0x20u);
+}
+#endif
+
 int jkEpisode_LoadVerify()
 {
     stdFileSearch *v0; // ebp
@@ -169,6 +187,13 @@ LABEL_30:
         }
         stdFileUtil_DisposeFind(v10);
     }
+#ifdef JK_ENHANCED
+    // Added: the list in a set order. Folders were listed before GOB files,
+    // each in the order the file system gives, so OpenMoTS's "MotS Secret
+    // Level" (a folder: iosSecretLevel) came before Mysteries of the Sith
+    if (jkEpisode_var2 > 1)
+        _qsort(jkEpisode_aEpisodes, jkEpisode_var2, sizeof(jkEpisode), jkEpisode_CompareNames);
+#endif
     jkRes_HookHS();
     result = jkEpisode_var2;
     v28 = 0;
