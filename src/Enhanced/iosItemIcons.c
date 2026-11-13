@@ -854,7 +854,10 @@ const unsigned char* iosItemIcons_Still(int which)
     return (ii_bReady && which >= 0 && which < IOSITEMICON_NUM_STILL) ? ii_apStill[which] : NULL;
 }
 
-int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut)
+// BACTA drawn: the liquid at level, brighter below its glow's front (front:
+// the share of the liquid's height from the bottom; strength: how much;
+// bWhole: the whole liquid, its meniscus too)
+static int ii_DrawBacta(float level, float front, float strength, int bWhole, unsigned char* pOut)
 {
     static const ii_Stop aStops[3] = { { 0.0f, { 255, 200, 255 } }, { 0.45f, { 229, 125, 237 } }, { 1.0f, { 164, 64, 180 } } };
     if (!ii_bReady || !pOut) return 0;
@@ -868,13 +871,13 @@ int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut)
     }
     memcpy(rgb, ii_pBactaRgb, sizeof(float) * N * N * 3);
     level = ii_Clamp01(level);
-    glow = ii_Clamp01(glow);
+    front = ii_Clamp01(front);
     if (level > 0.0f) {
         // the liquid: its top level of the way up the glass (rows 7 to 18),
-        // a meniscus, three bubbles; held, a glow rising through it from the
-        // bottom to its top as the hold fills
+        // a meniscus, three bubbles; a glow through it from the bottom up to
+        // its front (the whole liquid, and its meniscus, at 1)
         const float top = 7.0f + 11.0f * (1.0f - level), h = fmaxf(18.0f - top, 1e-3f);
-        const float glowTop = 18.0f - glow * h;
+        const float glowTop = bWhole ? top - 1.5f : 18.0f - front * h;
         static const float aB[3][3] = { { 8.2f, 0.62f, 0.55f }, { 10.6f, 0.32f, 0.4f }, { 7.0f, 0.3f, 0.3f } };
         for (int y = 0; y < N; y++)
             for (int x = 0; x < N; x++) {
@@ -893,9 +896,9 @@ int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut)
                 }
                 const float men = ii_Clamp01(1.0f - fabsf(yy - top - 0.15f) * s / 0.9f) * g;
                 for (int c = 0; c < 3; c++) liq[c] = liq[c] * (1.0f - men) + 255.0f * men;
-                if (glow > 0.0f) {
+                if (front > 0.0f && strength > 0.0f) {
                     // (below the glow's front, brighter; the front itself soft)
-                    const float gl = ii_Clamp01((yy - glowTop) * s / 1.2f) * (0.45f + 0.35f * glow);
+                    const float gl = ii_Clamp01((yy - glowTop) * s / 1.2f) * strength;
                     liq[0] = ii_Screen(liq[0], 255.0f * gl);
                     liq[1] = ii_Screen(liq[1], 215.0f * gl);
                     liq[2] = ii_Screen(liq[2], 255.0f * gl);
@@ -915,6 +918,19 @@ int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut)
     }
     free(rgb);
     return 1;
+}
+
+int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut)
+{
+    glow = ii_Clamp01(glow);
+    return ii_DrawBacta(level, glow, 0.45f + 0.35f * glow, 0, pOut);
+}
+
+int iosItemIcons_BactaFlash(float level, float flash, unsigned char* pOut)
+{
+    // (the whole liquid at once, as bright at its start as a full hold's glow)
+    flash = ii_Clamp01(flash);
+    return ii_DrawBacta(level, flash > 0.0f ? 1.0f : 0.0f, 0.8f * flash, 1, pOut);
 }
 
 static int ii_bHudStandIn = 0;

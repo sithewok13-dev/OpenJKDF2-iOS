@@ -16,7 +16,8 @@
 //   - LIGHT off (dimmed) and on (lit, a glow from its bright core), IR off
 //     (dimmed) and on (its two lens cutouts lit red-pink, brighter in the
 //     middle, a little bloom), BACTA with liquid in its glass for the tanks
-//     carried and a glow rising through it while held (iosItemIcons_Bacta).
+//     carried and a glow rising through it while held (iosItemIcons_Bacta),
+//     or the whole liquid flashing brighter (iosItemIcons_BactaFlash).
 // Plain C (the overlay makes its pictures from these pixels). With anything
 // missing or not as expected, nothing: the overlay keeps its text buttons.
 
@@ -63,6 +64,8 @@ const unsigned char* iosItemIcons_Still(int which);
 // glass at level (0..1: the tanks carried out of 5; 0 empty) glowing from
 // the bottom up as glow goes 0..1 (the hold). 0 if not ready.
 int iosItemIcons_Bacta(float level, float glow, unsigned char* pOut);
+// ...or with the whole liquid brighter by flash (0..1: a tap's flash, fading)
+int iosItemIcons_BactaFlash(float level, float flash, unsigned char* pOut);
 
 // Where each item's picture sits: the grid point (in the originals' pixels)
 // put at the middle of its button

@@ -244,10 +244,10 @@ extern int jkHud_bChatOpen;
 #define IOSTOUCH_VIEW_DEFAULTS_KEY @"iosTouchShowView"
 #define IOSTOUCH_THIRDPERSON_DEFAULTS_KEY @"iosTouchThirdPerson"
 #define IOSTOUCH_CHEAT_HOLD 0.5
-// BACTA uses a bacta tank only once held this long (a tap does nothing;
-// lifted or slid off sooner, nothing); one a press, its ring filling meanwhile
-// -- with its picture, the liquid in its glass glowing up from the bottom
-#define IOSTOUCH_BACTA_HOLD 0.3
+// BACTA: a tap (lifted on it, never slid off it, however long it was down)
+// uses a bacta tank, one a tap, two quick taps two; with its picture, the
+// liquid in its glass flashes brighter and fades over IOSTOUCH_BACTA_FLASH
+#define IOSTOUCH_BACTA_FLASH 0.25
 // LIGHT, IR and BACTA as the game's own icons (iosItemIcons), the item alone
 // over its button: 1.6 pt for each of the icon's 24 pixels (made for the
 // screen's own pixels), each item's middle at the button's (iosItemIcons_Centre),
@@ -1687,14 +1687,13 @@ typedef struct {
     CAShapeLayer* saberRing;  // SABER's
     CAShapeLayer* cheatRing;  // CHEAT's hold progress
     CAShapeLayer* fjumpRing;  // inside FORCE: how high Force Jump will go (SMOOTH, STEPS)
-    CAShapeLayer* bactaRing;  // BACTA's
     // LIGHT, IR and BACTA as the game's own icons (iosItemIcons): a picture
-    // over each (the button then shows neither its round nor its name, nor
-    // BACTA its ring) and BACTA's count on its glass (aBactaNum: [0] its dark
+    // over each (the button then shows neither its round nor its name) and
+    // BACTA's count on its glass (aBactaNum: [0] its dark
     // edge and shadow, [1] the white figures over it). itemPics: 1 in use;
     // 2 being made; -1 not to be had (the text buttons, as before); 0 not
     // tried yet. The stills (LIGHT, IR off and on) made once; BACTA drawn
-    // again as its tanks or its hold's glow change (in 20ths). The last tank
+    // again as its tanks or its tap's flash change (in 20ths). The last tank
     // used: BACTA shown empty a moment, then faded out (bactaGoneAt: when)
     CALayer* aItemPic[3];
     UILabel* aBactaNum[2];
@@ -1705,11 +1704,13 @@ typedef struct {
     int itemPics, bactaPicTanks, bactaPicGlow, bactaPicCount;
     CGFloat bactaGlow;
     CFTimeInterval bactaGoneAt;
-    // A tank asked for (BACTA held): the tanks then, and how long the game
-    // has to take one -- the tick only once it has (at full health the game
-    // uses none)
+    // BACTA tapped: the taps waiting for the use key (one press each, in
+    // turn); the presses made (bactaAsked) with the tanks then
+    // (bactaUseFrom) and how long the game has to take them -- a tick for
+    // each tank it does use (at full health it uses none); the tap's flash
+    int bactaTaps, bactaAsked;
     int bactaUseFrom;
-    CFTimeInterval bactaUseUntil;
+    CFTimeInterval bactaUseUntil, bactaFlashAt;
     UILabel* aCheatSub[2];    // under JUMP and ACT while sithewok is on: FLY, NOCLIP
     CAShapeLayer* cheatEmblem; // CHEAT's Sith emblem (red, with its edge, while the cheat is on)
     // The saber's picture on SABER: each saber in its hilt's shape, each
@@ -2272,9 +2273,6 @@ static void IOSTouch_AddStar(UIBezierPath* p, CGPoint c, CGFloat k)
             cheatEmblem.fillColor = [UIColor colorWithWhite:1.0 alpha:0.85].CGColor;
             [aButtonViews[BTN_CHEAT].layer addSublayer:cheatEmblem];
         }
-        // BACTA's hold ring
-        bactaRing = IOSTouch_MakeHoldRing(iosTouch_aButtons[BTN_BACTA].radius);
-        [aButtonViews[BTN_BACTA].layer addSublayer:bactaRing];
         // LIGHT's, IR's and BACTA's pictures, and BACTA's badge (hidden until
         // the pictures are made: -prepareItemPics, at the first tick)
         for (int k = 0; k < 3; k++) {
@@ -4715,8 +4713,8 @@ typedef struct {
 }
 
 // ...made (bOk) or not: put up, the buttons then the items alone -- no
-// round, edge, name or ring, and nothing cut off at their round (BACTA's
-// badge, the shadows, LIGHT's glow); the touch areas as they were
+// round, edge or name, and nothing cut off at their round (BACTA's count,
+// the shadows, LIGHT's glow); the touch areas as they were
 - (void)itemPicsMade:(int)bOk
 {
     if (itemPics != 2) return;
@@ -4747,7 +4745,6 @@ typedef struct {
         aItemPic[k].shouldRasterize = YES; // (its shadow drawn once, not each frame)
         aItemPic[k].rasterizationScale = scale;
     }
-    bactaRing.hidden = YES;
     [self refreshItemPics];
     [self refreshButtonLooks];
 }
@@ -4795,8 +4792,8 @@ static UIFont* IOSTouch_RoundedFont(CGFloat size, UIFontWeight weight)
 }
 
 // The pictures as the items are: LIGHT and IR off or on; BACTA's liquid
-// for the tanks carried (a fifth each, five full) glowing up from the bottom
-// while held (bactaGlow), its count on its glass (1 and up)
+// for the tanks carried (a fifth each, five full), flashing brighter on a tap
+// (bactaGlow), its count on its glass (1 and up)
 - (void)refreshItemPics
 {
     if (itemPics != 1) return;
@@ -4811,7 +4808,7 @@ static UIFont* IOSTouch_RoundedFont(CGFloat size, UIFontWeight weight)
     if (tanks != bactaPicTanks || glow != bactaPicGlow) {
         const int n = iosItemIcons_Size();
         unsigned char* px = (unsigned char*)malloc((size_t)n * n * 4);
-        if (px && iosItemIcons_Bacta(tanks / 5.0f, glow / 20.0f, px)) {
+        if (px && iosItemIcons_BactaFlash(tanks / 5.0f, glow / 20.0f, px)) {
             CGImageRef img = IOSTouch_ImageFromRGBA(px, n);
             if (img) {
                 aItemPic[IOSITEMICONS_BACTA].contents = (__bridge id)img;
@@ -6660,7 +6657,14 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                 // only go off later.
                 int bWhileTyping = b->kind == KIND_MENU || iosTouch_IsTrayButton(s->button) || iosTouch_IsOptButton(s->button);
                 if (!bCancelled && !bNoTap && [self isPoint:p onButton:s->button] && (!jkHud_bChatOpen || bWhileTyping)) {
-                    if (b->kind == KIND_ITEM && s->button != BTN_BACTA && !aButtonViews[s->button].hidden
+                    if (s->button == BTN_BACTA) {
+                        // BACTA: a tap uses a tank (one a tap; not slid off it)
+                        if (!s->bFlyDone && !aButtonViews[BTN_BACTA].hidden && aItemAmount[BTN_BACTA] > 0) {
+                            bactaTaps++;
+                            bactaFlashAt = CACurrentMediaTime();
+                        }
+                    }
+                    else if (b->kind == KIND_ITEM && !aButtonViews[s->button].hidden
                              // one item at a time: the use key acts on whichever item is selected when it is read
                              && !iosTouch_aPulseQueue[b->scancode] && !iosTouch_aPulseReads[b->scancode]
                              && !iosTouch_aPulseGap[b->scancode]) {
@@ -6724,7 +6728,6 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
                     if (iosTouch_IsTrayButton(tb)) [self useTrayButton:tb];
                 }
                 if (s->button == BTN_QUICKSAVE) [self setRing:saveRing progress:0.0];
-                if (s->button == BTN_BACTA) [self setRing:bactaRing progress:0.0];
                 if (s->button == BTN_QUICKLOAD) [self setRing:loadRing progress:0.0];
                 if (s->button == BTN_MENU) [self setRing:menuRing progress:0.0];
                 if (s->button == BTN_TRAYCAM) [self setRing:camOptRing progress:0.0];
@@ -6831,13 +6834,22 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
             *pLooks = 1;
         }
     }
-    // (a tank asked for and taken: the light tick; not taken in time, none)
+    // (a tank asked for and taken: the light tick, one for each tank used;
+    // not taken in time -- full health -- none)
     if (bactaUseUntil > 0.0) {
         if (aItemAmount[BTN_BACTA] < bactaUseFrom) {
             [cameraTap impactOccurred];
+            bactaAsked -= bactaUseFrom - aItemAmount[BTN_BACTA];
+            bactaUseFrom = aItemAmount[BTN_BACTA];
+            if (bactaAsked <= 0) {
+                bactaAsked = 0;
+                bactaUseUntil = 0.0;
+            }
+        }
+        else if (now > bactaUseUntil) {
+            bactaAsked = 0;
             bactaUseUntil = 0.0;
         }
-        else if (now > bactaUseUntil) bactaUseUntil = 0.0;
     }
     [self refreshItemPics];
     return bItemsChanged;
@@ -7124,37 +7136,39 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     }
     [self setRing:cheatRing progress:cheatProgress];
 
-    // BACTA held IOSTOUCH_BACTA_HOLD on it: a bacta tank used, once per press
-    // (as a tap on another item: selected, then the use key), waiting if the
-    // use key is still busy; lifted or slid off sooner, or typing, nothing
-    CGFloat bactaProgress = 0.0;
+    // BACTA under a finger: slid off it, or it gone, typing, or a wheel or
+    // the photos taking over -- that press is no tap any more (the lift uses
+    // nothing)
     for (int i = 0; i < IOSTOUCH_MAX_TOUCHES; i++) {
         iosTouchSlot* s = &iosTouch_aSlots[i];
         if (!s->touch || s->role != ROLE_BUTTON || s->button != BTN_BACTA || s->bFlyDone) continue;
-        iosTouchButton* b = &iosTouch_aButtons[BTN_BACTA];
         if (![self isPoint:[s->touch locationInView:self] onButton:BTN_BACTA] || aButtonViews[BTN_BACTA].hidden || aItemAmount[BTN_BACTA] <= 0 || jkHud_bChatOpen
-            || iosTouch_bWheelOpen || iosTouch_bFreezing || iosTouch_bCinema || iosTouch_selfieStage != IOSTOUCH_SELFIE_NONE) {
-            s->bFlyDone = 1; // (slid off, gone, typing, or a wheel or the photos took over)
-            continue;
-        }
-        if (known - s->tDown >= IOSTOUCH_BACTA_HOLD) {
-            if (iosTouch_aPulseQueue[b->scancode] || iosTouch_aPulseReads[b->scancode] || iosTouch_aPulseGap[b->scancode]) {
-                bactaProgress = 1.0; // (the use key busy: in a moment)
-                continue;
-            }
+            || iosTouch_bWheelOpen || iosTouch_bFreezing || iosTouch_bCinema || iosTouch_selfieStage != IOSTOUCH_SELFIE_NONE)
             s->bFlyDone = 1;
+    }
+    // BACTA's taps, a bacta tank each, in turn (as a tap on another item:
+    // selected, then the use key -- once that key is free, so another item's
+    // press still being read isn't turned into this one, and each tap is a
+    // press of its own); the tick once the game has used a tank (-tickItems)
+    if (bactaTaps > 0) {
+        iosTouchButton* b = &iosTouch_aButtons[BTN_BACTA];
+        if (aButtonViews[BTN_BACTA].hidden || aItemAmount[BTN_BACTA] <= 0 || jkHud_bChatOpen)
+            bactaTaps = 0; // (none left, or typing: nothing more)
+        else if (!iosTouch_aPulseQueue[b->scancode] && !iosTouch_aPulseReads[b->scancode] && !iosTouch_aPulseGap[b->scancode]) {
+            bactaTaps--;
             iosGame_SelectItem(b->bin);
             iosTouch_QueuePress(b->scancode);
-            // (the tick once the game has used a tank: -tick's items, below)
-            bactaUseFrom = aItemAmount[BTN_BACTA];
+            if (bactaAsked <= 0) bactaUseFrom = aItemAmount[BTN_BACTA];
+            bactaAsked++;
             bactaUseUntil = now + IOSTOUCH_BACTA_TAKEN;
-            continue;
         }
-        bactaProgress = MAX(bactaProgress, MIN((CGFloat)((now - s->tDown) / IOSTOUCH_BACTA_HOLD), 1.0));
     }
-    // (with its picture, the liquid glows instead of the ring: -refreshItemPics, below)
-    bactaGlow = itemPics == 1 ? bactaProgress : 0.0;
-    [self setRing:bactaRing progress:(itemPics == 1 ? 0.0 : bactaProgress)];
+    // (with its picture, the liquid flashes on a tap and fades: -refreshItemPics)
+    {
+        const CGFloat flash = bactaFlashAt > 0.0 ? 1.0 - (now - bactaFlashAt) / IOSTOUCH_BACTA_FLASH : 0.0;
+        if (flash <= 0.0) bactaFlashAt = 0.0;
+        bactaGlow = itemPics == 1 ? MAX(0.0, MIN(1.0, flash)) : 0.0;
+    }
 
     // FORCE held with Force Jump selected (SMOOTH or STEPS): how high it will
     // go when lifted, as iosGame_ForceJumpHeld will make it, filling the gold
@@ -7474,6 +7488,8 @@ static NSSet* iosTouch_PointerTouchesPassed(NSSet<UITouch*>* touches)
     iosTouch_bQuickLoadDue = 0;
     bactaGoneAt = 0.0;
     bactaUseUntil = 0.0;
+    bactaTaps = bactaAsked = 0;
+    bactaFlashAt = 0.0;
     [self setRing:loadRing progress:0.0];
     [self setRing:menuRing progress:0.0];
     [self setRing:camOptRing progress:0.0];
