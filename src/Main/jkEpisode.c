@@ -190,7 +190,14 @@ LABEL_30:
 #ifdef JK_ENHANCED
     // Added: the list in a set order. Folders were listed before GOB files,
     // each in the order the file system gives, so OpenMoTS's "MotS Secret
-    // Level" (a folder: iosSecretLevel) came before Mysteries of the Sith
+    // Level" (a folder: iosSecretLevel) came before Mysteries of the Sith.
+    // Each entry's title and type cleared first, as on the first call: below,
+    // one without a usable episode.jk keeps them, and once sorted its slot
+    // held another episode last time (a stray folder listed as that one's type)
+    for (unsigned int k = 0; k < jkEpisode_var2; k++) {
+        jkEpisode_aEpisodes[k].unistr[0] = 0;
+        jkEpisode_aEpisodes[k].type = 0;
+    }
     if (jkEpisode_var2 > 1)
         _qsort(jkEpisode_aEpisodes, jkEpisode_var2, sizeof(jkEpisode), jkEpisode_CompareNames);
 #endif
