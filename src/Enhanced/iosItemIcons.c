@@ -1512,12 +1512,10 @@ void iosItemIcons_DrawStandIns(unsigned char* pRgba, int w, int h)
 
 void iosItemIcons_Centre(int item, float* pX, float* pY)
 {
-    // (the lamp's and the goggles': their pictures' middles, measured --
-    // what shows of them, their edges too, off and on, at 2x and 3x -- to
-    // within 0.3 pt, so they sit level with the tank; the tank's as the
-    // mock-ups had it, left of the grid's middle as it is drawn, its count
-    // placed from it)
-    static const float a[3][2] = { { 12.1f, 10.1f }, { 12.0f, 11.9f }, { 10.5f, 12.0f } };
+    // (each picture's middle, measured -- what shows of it, its edge too,
+    // off and on, at 2x and 3x -- to within 0.3 pt: the three level and
+    // centred across; the tank's count, placed from it, moves with it)
+    static const float a[3][2] = { { 12.1f, 10.1f }, { 12.0f, 11.9f }, { 11.0f, 12.0f } };
     if (item < 0 || item > 2) item = 0;
     if (pX) *pX = a[item][0];
     if (pY) *pY = a[item][1];
