@@ -34,7 +34,7 @@
 // edges against the transparency stay clean. The rest -- the clean-up (an
 // edge-keeping bilateral filter, a light unsharp mask), the masks of the parts
 // that light up, the lighting, the dark edge -- is this port's own, made to
-// match the mock-ups the owner picked (round 3, "C").
+// match the mock-ups the owner picked (round 3, "C", and its clean-up, "K").
 
 #include "Enhanced/iosItemIcons.h"
 
@@ -50,6 +50,7 @@
 #endif
 
 #define II_N 24
+#define II_LAMP_R 9.2f // (LIGHT's circle: its radius, about (12, 10), in the art's pixels)
 
 // ------------------------------------------------------------ the originals
 
@@ -133,6 +134,9 @@ static void ii_FillHoles(unsigned char* m)
 }
 
 static int ii_DarkTile(const unsigned char* p) { return ii_Is(p, 0x31, 0x00, 0x5a); }
+
+// A dark pixel of an item's rim: its darkest purples, or near black
+static int ii_RimDark(const unsigned char* p) { return ii_Dark(p) || (p[0] < 70 && p[1] < 70 && p[2] < 70); }
 
 // The item alone: its tile made transparent (0 LIGHT, 1 IR, 2 BACTA)
 static void ii_ItemAlone(int item, unsigned char* a)
@@ -573,9 +577,9 @@ static unsigned char* ii_apStill[IOSITEMICON_NUM_STILL];
 static float *ii_pBactaRgb = NULL, *ii_pBactaAl = NULL, *ii_pGlass = NULL;
 static unsigned char* ii_pBactaEdge = NULL;
 
-// The dark edge (premultiplied RGBA under the item): its alpha grown px
-// pixels, softened, at 0.6, the tile's darkest purple
-static void ii_EdgeUnder(const float* al, int N, int px, unsigned char* pOut)
+// A dark edge (premultiplied RGBA under a picture): its alpha grown px
+// pixels, softened, at strength k, in the purple (r, 0, b)
+static void ii_Edge(const float* al, int N, int px, float k, int r, int b, unsigned char* pOut)
 {
     float* m = (float*)malloc(sizeof(float) * N * N);
     if (!m) { memset(pOut, 0, N * N * 4); return; }
@@ -588,13 +592,21 @@ static void ii_EdgeUnder(const float* al, int N, int px, unsigned char* pOut)
         }
     ii_GaussPil(m, N, 1, px * 0.35f);
     for (int i = 0; i < N * N; i++) {
-        const int a = (int)((int)(m[i] + 0.5f) * 0.6f);
-        pOut[i * 4 + 0] = (unsigned char)(20 * a / 255);
+        const int a = (int)((int)(m[i] + 0.5f) * k);
+        pOut[i * 4 + 0] = (unsigned char)(r * a / 255);
         pOut[i * 4 + 1] = 0;
-        pOut[i * 4 + 2] = (unsigned char)(31 * a / 255);
+        pOut[i * 4 + 2] = (unsigned char)(b * a / 255);
         pOut[i * 4 + 3] = (unsigned char)a;
     }
     free(m);
+}
+
+// The items' own edge: grown two thirds of 0.6 s pixels (at least one), at
+// 0.55, the tile's dark purple: a thin soft line round each
+static void ii_EdgeUnder(const float* al, int N, int s, unsigned char* pOut)
+{
+    const int px = (int)(s * 0.6f) * 2 / 3;
+    ii_Edge(al, N, px > 1 ? px : 1, 0.55f, 0x31, 0x5a, pOut);
 }
 
 // The item (straight colour 0..255, alpha 0..255) over its dark edge, premultiplied RGBA
@@ -610,17 +622,206 @@ static void ii_Finish(const float* rgb, const float* al, const unsigned char* ed
     }
 }
 
-// An item's picture made big, as floats: straight colour (0..255) and alpha (0..255)
+// Off: darker (LIGHT more so)
+static const float ii_aLightOff[3] = { 0.62f, 0.5f, 0.68f }, ii_aIrOff[3] = { 0.8f, 0.74f, 0.82f };
+
+// IR: its lone dark specks (a dark pixel with five or more lighter
+// neighbours and at most one dark one) given their neighbours' colour
+static void ii_ClearSpecks(unsigned char* src)
+{
+    unsigned char cp[II_N * II_N * 4];
+    memcpy(cp, src, sizeof(cp));
+    for (int y = 1; y < II_N - 1; y++)
+        for (int x = 1; x < II_N - 1; x++) {
+            const unsigned char* p = cp + (y * II_N + x) * 4;
+            if (!p[3] || !ii_RimDark(p)) continue;
+            int n = 0, nd = 0, acc[3] = { 0, 0, 0 };
+            for (int j = -1; j <= 1; j++)
+                for (int i = -1; i <= 1; i++) {
+                    if (!i && !j) continue;
+                    const unsigned char* q = cp + ((y + j) * II_N + x + i) * 4;
+                    if (!q[3]) continue;
+                    if (ii_RimDark(q)) { nd++; continue; }
+                    for (int c = 0; c < 3; c++) acc[c] += q[c];
+                    n++;
+                }
+            if (n >= 5 && nd <= 1)
+                for (int c = 0; c < 3; c++) src[(y * II_N + x) * 4 + c] = (unsigned char)(acc[c] / n);
+        }
+}
+
+// IR and BACTA: the dark rim round their outlines (drawn for the dark
+// tile; on the buttons, black corners) given its lighter neighbours'
+// colour, a little darker, or left out where it has none
+static void ii_CleanRim(unsigned char* src)
+{
+    unsigned char cp[II_N * II_N * 4];
+    memcpy(cp, src, sizeof(cp));
+    for (int y = 0; y < II_N; y++)
+        for (int x = 0; x < II_N; x++) {
+            const unsigned char* p = cp + (y * II_N + x) * 4;
+            if (!p[3] || !ii_RimDark(p)) continue;
+            int edge = 0, n = 0, acc[3] = { 0, 0, 0 };
+            for (int j = -1; j <= 1; j++)
+                for (int i = -1; i <= 1; i++) {
+                    const int xx = x + i, yy = y + j;
+                    if (xx < 0 || yy < 0 || xx >= II_N || yy >= II_N) { edge = 1; continue; }
+                    const unsigned char* q = cp + (yy * II_N + xx) * 4;
+                    if (!q[3]) { edge = 1; continue; }
+                    if (ii_RimDark(q)) continue;
+                    for (int c = 0; c < 3; c++) acc[c] += q[c];
+                    n++;
+                }
+            if (!edge) continue;
+            unsigned char* d = src + (y * II_N + x) * 4;
+            if (n)
+                for (int c = 0; c < 3; c++) d[c] = (unsigned char)(acc[c] / n * 0.85f);
+            else
+                d[3] = 0;
+        }
+}
+
+// LIGHT: the dark and empty pixels near its circle's edge (the art's rim
+// and the gaps in it), but not those of the lamp's stand, filled in from
+// their lighter neighbours, a ring at a time
+static void ii_FillLampRing(unsigned char* src)
+{
+    unsigned char todo[II_N * II_N], nxt[II_N * II_N];
+    for (int y = 0; y < II_N; y++)
+        for (int x = 0; x < II_N; x++) {
+            const unsigned char* p = src + (y * II_N + x) * 4;
+            const float d = hypotf(x + 0.5f - 12.0f, y + 0.5f - 10.0f);
+            const int bStand = x >= 8 && x <= 15 && y >= 11;
+            todo[y * II_N + x] = !bStand && d >= II_LAMP_R - 2.5f && (ii_RimDark(p) || !p[3]);
+        }
+    for (int pass = 0; pass < 8; pass++) {
+        int left = 0;
+        memcpy(nxt, todo, sizeof(nxt));
+        for (int y = 0; y < II_N; y++)
+            for (int x = 0; x < II_N; x++) {
+                if (!todo[y * II_N + x]) continue;
+                int n = 0, acc[3] = { 0, 0, 0 };
+                for (int j = -1; j <= 1; j++)
+                    for (int i = -1; i <= 1; i++) {
+                        const int xx = x + i, yy = y + j;
+                        if (xx < 0 || yy < 0 || xx >= II_N || yy >= II_N || todo[yy * II_N + xx]) continue;
+                        const unsigned char* q = src + (yy * II_N + xx) * 4;
+                        if (!q[3] || ii_RimDark(q)) continue;
+                        for (int c = 0; c < 3; c++) acc[c] += q[c];
+                        n++;
+                    }
+                if (!n) { left++; continue; }
+                unsigned char* d = src + (y * II_N + x) * 4;
+                for (int c = 0; c < 3; c++) d[c] = (unsigned char)(acc[c] / n);
+                d[3] = 255;
+                nxt[y * II_N + x] = 0;
+            }
+        memcpy(todo, nxt, sizeof(todo));
+        if (!left) break;
+    }
+}
+
+// LIGHT: the art's outer two rows and columns taken from the art just
+// inside them, so the circle, cut through them, has art on both sides
+static void ii_FillBorder(unsigned char* src)
+{
+    for (int y = 0; y < II_N; y++)
+        for (int x = 0; x < II_N; x++) {
+            const int sx = x < 2 ? 2 : (x > II_N - 3 ? II_N - 3 : x), sy = y < 2 ? 2 : (y > II_N - 3 ? II_N - 3 : y);
+            if (sx == x && sy == y) continue;
+            memcpy(src + (y * II_N + x) * 4, src + (sy * II_N + sx) * 4, 3);
+            src[(y * II_N + x) * 4 + 3] = 255;
+        }
+}
+
+// A point's distance to a line of points (the art's pixels), and which
+// side of it (*pSide above 0: below or right)
+static float ii_DistPoly(const float (*p)[2], int n, float u, float v, float* pSide)
+{
+    float best = 1e9f, side = 0.0f;
+    for (int k = 0; k + 1 < n; k++) {
+        const float ax = p[k][0], ay = p[k][1], bx = p[k + 1][0], by = p[k + 1][1];
+        const float dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+        float t = ((u - ax) * dx + (v - ay) * dy) / l2;
+        t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+        const float d = hypotf(u - (ax + t * dx), v - (ay + t * dy));
+        if (d < best) { best = d; side = dx * (v - ay) - dy * (u - ax); }
+    }
+    if (pSide) *pSide = side;
+    return best;
+}
+
+// IR: its strap redrawn smooth (the art's is stepped): the purple band
+// between two lines, a light ridge along each, darker when off
+static void ii_IrStrap(float* rgb, const float* al, int s, int bOff)
+{
+    static const float aA[2][2] = { { 1.6f, 13.2f }, { 15.4f, 6.7f } };
+    static const float aB[6][2] = { { 2.2f, 14.6f }, { 6.5f, 13.6f }, { 9.8f, 12.4f }, { 12.7f, 10.8f }, { 15.3f, 8.9f }, { 17.6f, 6.9f } };
+    static const float aBand[3] = { 128.0f, 38.0f, 153.0f }, aRidgeA[3] = { 222.0f, 125.0f, 230.0f }, aRidgeB[3] = { 197.0f, 93.0f, 205.0f };
+    const int N = II_N * s;
+    for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++) {
+            const int i = y * N + x;
+            if (al[i] <= 0.0f) continue;
+            const float u = (x + 0.5f) / s, v = (y + 0.5f) / s;
+            float sA, sB;
+            const float dA = ii_DistPoly(aA, 2, u, v, &sA), dB = ii_DistPoly(aB, 6, u, v, &sB);
+            // (the band: below A, above B, soft at both)
+            const float inA = ii_Clamp01((sA > 0 ? dA : -dA) * s / 1.5f + 0.5f), inB = ii_Clamp01((sB < 0 ? dB : -dB) * s / 1.5f + 0.5f);
+            const float rA = ii_Clamp01((0.55f - dA) * s / 1.2f + 0.5f), rB = ii_Clamp01((0.5f - dB) * s / 1.2f + 0.5f);
+            const float w = fmaxf(inA * inB, fmaxf(rA, rB));
+            if (w <= 0.0f) continue;
+            for (int c = 0; c < 3; c++) {
+                float v2 = aBand[c] * (1.0f - rA) + aRidgeA[c] * rA;
+                v2 = v2 * (1.0f - rB) + aRidgeB[c] * rB;
+                if (bOff) v2 *= ii_aIrOff[c];
+                rgb[i * 3 + c] = rgb[i * 3 + c] * (1.0f - w) + v2 * w;
+            }
+        }
+}
+
+// IR: its outline smoothed: the picture blurred (premultiplied) and its
+// alpha cut again at the half, softly; where it grows, the blur's colour
+static void ii_SmoothOutline(float* rgb, float* al, int s)
+{
+    const int N = II_N * s;
+    const float sigma = s * 0.9f;
+    float* b = (float*)malloc(sizeof(float) * N * N * 4);
+    if (!b) return;
+    for (int i = 0; i < N * N; i++) {
+        const float a = al[i] / 255.0f;
+        for (int c = 0; c < 3; c++) b[i * 4 + c] = rgb[i * 3 + c] * a;
+        b[i * 4 + 3] = a;
+    }
+    ii_Gauss(b, N, 4, sigma);
+    for (int i = 0; i < N * N; i++) {
+        const float t = ii_Clamp01((b[i * 4 + 3] - 0.5f) / (0.5f / sigma) + 0.5f);
+        const float na = t * t * (3.0f - 2.0f * t);
+        if (al[i] < 128.0f && na > 0.0f && b[i * 4 + 3] > 1e-3f)
+            for (int c = 0; c < 3; c++) rgb[i * 3 + c] = b[i * 4 + c] / b[i * 4 + 3];
+        al[i] = na * 255.0f;
+    }
+    free(b);
+}
+
+// An item's picture made big, as floats: straight colour (0..255) and
+// alpha (0..255); cleaned first, at the art's own size, and the goggles'
+// strap and outline after
 static void ii_Big(const unsigned char* orig, int item, int bOff, int s, float* rgb, float* al)
 {
     const int N = II_N * s;
     unsigned char src[II_N * II_N * 4];
     memcpy(src, orig, sizeof(src));
     ii_ItemAlone(item, src);
+    if (item == IOSITEMICONS_IR) ii_ClearSpecks(src);
+    if (item == IOSITEMICONS_LIGHT) {
+        ii_FillLampRing(src);
+        ii_FillBorder(src);
+    }
+    else
+        ii_CleanRim(src);
     if (bOff) {
-        // off: darker (LIGHT more so)
-        static const float aLight[3] = { 0.62f, 0.5f, 0.68f }, aIr[3] = { 0.8f, 0.74f, 0.82f };
-        const float* k = item == IOSITEMICONS_LIGHT ? aLight : aIr;
+        const float* k = item == IOSITEMICONS_LIGHT ? ii_aLightOff : ii_aIrOff;
         for (int i = 0; i < II_N * II_N; i++)
             for (int c = 0; c < 3; c++) src[i * 4 + c] = (unsigned char)fminf(src[i * 4 + c] * k[c], 255.0f);
     }
@@ -632,10 +833,47 @@ static void ii_Big(const unsigned char* orig, int item, int bOff, int s, float* 
         al[i] = big[i * 4 + 3];
     }
     free(big);
+    if (item == IOSITEMICONS_IR) {
+        ii_IrStrap(rgb, al, s, bOff);
+        ii_SmoothOutline(rgb, al, s);
+    }
+}
+
+// A picture scaled by k about (cx, cy), in its own pixels (bilinear, premultiplied)
+static void ii_ScaleAbout(float* rgb, float* al, int N, float cx, float cy, float k)
+{
+    float* r2 = (float*)malloc(sizeof(float) * N * N * 4);
+    if (!r2) return;
+    for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++) {
+            const float sx = (x + 0.5f - cx) / k + cx - 0.5f, sy = (y + 0.5f - cy) / k + cy - 0.5f;
+            const int x0 = (int)floorf(sx), y0 = (int)floorf(sy);
+            const float fx = sx - x0, fy = sy - y0;
+            float acc[4] = { 0, 0, 0, 0 };
+            for (int j = 0; j < 2; j++)
+                for (int i = 0; i < 2; i++) {
+                    const int xx = x0 + i, yy = y0 + j;
+                    const float w = (i ? fx : 1.0f - fx) * (j ? fy : 1.0f - fy);
+                    if (xx < 0 || yy < 0 || xx >= N || yy >= N) continue;
+                    const float a = al[yy * N + xx];
+                    for (int c = 0; c < 3; c++) acc[c] += w * a * rgb[(yy * N + xx) * 3 + c];
+                    acc[3] += w * a;
+                }
+            float* o = r2 + (y * N + x) * 4;
+            o[3] = acc[3];
+            for (int c = 0; c < 3; c++) o[c] = acc[3] > 1e-3f ? acc[c] / acc[3] : 0.0f;
+        }
+    for (int i = 0; i < N * N; i++) {
+        for (int c = 0; c < 3; c++) rgb[i * 3 + c] = r2[i * 4 + c];
+        al[i] = r2[i * 4 + 3];
+    }
+    free(r2);
 }
 
 // LIGHT: off, its core unlit; on, brighter, its core white with a glow round
-// it; the picture faded out round its head and kept over its lamp
+// it; its head alone, cut to a crisp circle (II_LAMP_R about (12, 10)),
+// and the circle's outer ring one smooth purple: the lighter purples just
+// inside it, averaged
 static void ii_Light(const unsigned char* orig, int bOn, int s, float* rgb, float* al)
 {
     const int N = II_N * s;
@@ -652,10 +890,10 @@ static void ii_Light(const unsigned char* orig, int bOn, int s, float* rgb, floa
         ii_Gauss(b1, N, 1, s * 1.4f);
         ii_Gauss(b2, N, 1, s * 3.5f);
     }
+    // (the lamp's neck, inside the circle: left out of the ring's smoothing)
     for (int y = 0; y < N; y++)
         for (int x = 0; x < N; x++) lamp[y * N + x] = (x / (float)s > 8.2f && x / (float)s < 15.8f && y / (float)s > 11.6f && y / (float)s < 22.2f) ? 1.0f : 0.0f;
     ii_Gauss(lamp, N, 1, s * 0.15f);
-    const float r0 = bOn ? 8.0f : 7.0f, r1 = bOn ? 12.0f : 11.0f;
     for (int y = 0; y < N; y++)
         for (int x = 0; x < N; x++) {
             const int i = y * N + x;
@@ -672,25 +910,121 @@ static void ii_Light(const unsigned char* orig, int bOn, int s, float* rgb, floa
             else
                 for (int c = 0; c < 3; c++) p[c] *= 1.0f - 0.3f * cm[i];
             const float d = hypotf(x / (float)s - 12.0f, y / (float)s - 10.0f);
-            const float fade = ii_Clamp01(1.0f - (d - r0) / (r1 - r0));
-            al[i] *= fmaxf(fade, lamp[i]);
+            al[i] *= ii_Clamp01((II_LAMP_R - d) / 0.7f);
         }
+    float acc[3] = { 0, 0, 0 }, n = 0.0f;
+    for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++) {
+            const float d = hypotf((x + 0.5f) / s - 12.0f, (y + 0.5f) / s - 10.0f);
+            const float* p = rgb + (y * N + x) * 3;
+            if (d < II_LAMP_R - 4.0f || d > II_LAMP_R - 2.0f || lamp[y * N + x] > 0.0f) continue;
+            if (p[0] * 0.3f + p[1] * 0.6f + p[2] * 0.1f < 90.0f * (bOn ? 1.2f : 0.8f)) continue;
+            for (int c = 0; c < 3; c++) acc[c] += p[c];
+            n += 1.0f;
+        }
+    if (n > 0.0f)
+        for (int y = 0; y < N; y++)
+            for (int x = 0; x < N; x++) {
+                const float d = hypotf((x + 0.5f) / s - 12.0f, (y + 0.5f) / s - 10.0f);
+                const float w = ii_Clamp01((d - (II_LAMP_R - 3.4f)) / 1.6f) * (1.0f - lamp[y * N + x]) * 0.92f;
+                if (w <= 0.0f) continue;
+                float* p = rgb + (y * N + x) * 3;
+                for (int c = 0; c < 3; c++) p[c] = p[c] * (1.0f - w) + acc[c] / n * w;
+            }
     free(m);
 }
 
-// IR on: its two lens openings (the originals' own shapes) lit, red-pink,
-// brighter towards their middles, with a little bloom
+// IR's two lens openings, as masks (0 the near one, 1 the far): the
+// originals' own dark glass, its holes filled, its gaps closed (a pixel
+// with two of its four neighbours in), and grown twice into the dark
+// pixels touching it, corners too: what was left dark beside the glass
+static void ii_IrLenses(const unsigned char* orig, unsigned char aM[2][II_N * II_N])
+{
+    memset(aM, 0, sizeof(unsigned char) * 2 * II_N * II_N);
+    ii_Flood(orig, 11, 16, 5, 12, 14, 19, ii_Dark, aM[0]);
+    ii_Flood(orig, 20, 9, 18, 6, 21, 12, ii_Dark, aM[1]);
+    for (int k = 0; k < 2; k++) {
+        unsigned char* m = aM[k];
+        unsigned char t[II_N * II_N];
+        ii_FillHoles(m);
+        memcpy(t, m, sizeof(t));
+        for (int y = 1; y < II_N - 1; y++)
+            for (int x = 1; x < II_N - 1; x++) {
+                if (m[y * II_N + x]) continue;
+                const int nb = m[y * II_N + x - 1] + m[y * II_N + x + 1] + m[(y - 1) * II_N + x] + m[(y + 1) * II_N + x];
+                if (nb >= 2 && ii_Dark(orig + (y * II_N + x) * 4)) t[y * II_N + x] = 1;
+            }
+        memcpy(m, t, sizeof(t));
+        for (int it = 0; it < 2; it++) {
+            memcpy(t, m, sizeof(t));
+            for (int y = 1; y < II_N - 1; y++)
+                for (int x = 1; x < II_N - 1; x++) {
+                    const unsigned char* p = orig + (y * II_N + x) * 4;
+                    if (m[y * II_N + x] || !p[3] || !ii_Dark(p)) continue;
+                    int nb = 0;
+                    for (int j = -1; j <= 1; j++)
+                        for (int i = -1; i <= 1; i++) nb += m[(y + j) * II_N + x + i];
+                    if (nb) t[y * II_N + x] = 1;
+                }
+            memcpy(m, t, sizeof(t));
+        }
+    }
+}
+
+// A lens's mask made big, softened, and cut again at its half (softly):
+// a smooth outline
+static void ii_LensBig(const unsigned char* m, int s, float* u)
+{
+    const int N = II_N * s;
+    ii_UpscaleMask(m, s, u);
+    ii_Gauss(u, N, 1, s * 0.75f);
+    for (int i = 0; i < N * N; i++) {
+        const float t = ii_Clamp01((u[i] - 0.5f) * 6.0f + 0.5f);
+        u[i] = t * t * (3.0f - 2.0f * t);
+    }
+}
+
+// IR off: its two lens openings dark glass, lighter towards their middles,
+// with a soft shine up and left of them
+static void ii_IrOff(const unsigned char* orig, int s, float* rgb, float* al)
+{
+    const int N = II_N * s;
+    unsigned char aM[2][II_N * II_N];
+    ii_Big(orig, IOSITEMICONS_IR, 1, s, rgb, al);
+    ii_IrLenses(orig, aM);
+    float* u = (float*)malloc(sizeof(float) * N * N * 2);
+    if (!u) return;
+    float* dist = u + N * N;
+    for (int k = 0; k < 2; k++) {
+        ii_LensBig(aM[k], s, u);
+        ii_Distance(u, N, dist);
+        float dmax = 1.0f, cx = 0.0f, cy = 0.0f, n = 0.0f;
+        for (int i = 0; i < N * N; i++) {
+            dmax = fmaxf(dmax, dist[i]);
+            if (u[i] > 0.5f) { cx += i % N; cy += i / N; n++; }
+        }
+        if (n > 0.0f) { cx /= n; cy /= n; }
+        for (int i = 0; i < N * N; i++) {
+            if (u[i] <= 0.0f) continue;
+            const float t = powf(dist[i] / dmax, 0.7f);
+            const float sx = (i % N - (cx - dmax * 0.45f)) / (dmax * 0.55f), sy = (i / N - (cy - dmax * 0.5f)) / (dmax * 0.35f);
+            const float sh = ii_Clamp01(1.0f - (sx * sx + sy * sy)) * 0.35f;
+            const float col[3] = { 40.0f + 34.0f * t, 2.0f + 8.0f * t, 72.0f + 36.0f * t };
+            for (int c = 0; c < 3; c++) rgb[i * 3 + c] = rgb[i * 3 + c] * (1.0f - u[i]) + (col[c] * (1.0f - sh) + 230.0f * sh) * u[i];
+            al[i] = fmaxf(al[i], u[i] * 255.0f);
+        }
+    }
+    free(u);
+}
+
+// IR on: its two lens openings lit, red-pink, brighter towards their
+// middles, with a little bloom
 static void ii_IrOn(const unsigned char* orig, int s, float* rgb, float* al)
 {
     static const ii_Stop aStops[4] = { { 0.0f, { 214, 20, 92 } }, { 0.35f, { 255, 70, 140 } }, { 0.75f, { 255, 170, 205 } }, { 1.0f, { 255, 236, 244 } } };
     const int N = II_N * s;
-    unsigned char near_[II_N * II_N], far_[II_N * II_N];
-    memset(near_, 0, sizeof(near_));
-    memset(far_, 0, sizeof(far_));
-    ii_Flood(orig, 11, 16, 5, 12, 14, 19, ii_Dark, near_);
-    ii_Flood(orig, 20, 9, 18, 6, 21, 12, ii_Dark, far_);
-    ii_FillHoles(near_);
-    ii_FillHoles(far_);
+    unsigned char aM[2][II_N * II_N];
+    ii_IrLenses(orig, aM);
     ii_Big(orig, IOSITEMICONS_IR, 0, s, rgb, al);
     float* m = (float*)malloc(sizeof(float) * N * N * 7);
     if (!m) return;
@@ -699,7 +1033,7 @@ static void ii_IrOn(const unsigned char* orig, int s, float* rgb, float* al)
     memset(mm, 0, sizeof(float) * N * N);
     memset(lit, 0, sizeof(float) * N * N * 3);
     for (int k = 0; k < 2; k++) {
-        ii_UpscaleMask(k ? far_ : near_, s, u);
+        ii_LensBig(aM[k], s, u);
         ii_Distance(u, N, dist);
         float dmax = 1.0f;
         for (int i = 0; i < N * N; i++) dmax = fmaxf(dmax, dist[i]);
@@ -793,7 +1127,7 @@ int iosItemIcons_PrepareFromSized(const unsigned char* const aBm[3], const int a
     for (int k = 0; k < 3; k++)
         if (!aBm[k] || !ii_DecodeBm(aBm[k], aLen[k], aOrig[k])) return 0;
     if (!ii_LooksRight(aOrig)) return 0;
-    const int N = II_N * s, px = (int)(s * 0.6f);
+    const int N = II_N * s;
     float* rgb = (float*)malloc(sizeof(float) * N * N * 3);
     float* al = (float*)malloc(sizeof(float) * N * N);
     unsigned char* edge = (unsigned char*)malloc(N * N * 4);
@@ -804,9 +1138,11 @@ int iosItemIcons_PrepareFromSized(const unsigned char* const aBm[3], const int a
         ii_apStill[i] = (unsigned char*)malloc(outPx * outPx * 4);
         if (!ii_apStill[i]) { bOk = 0; break; }
         if (i == IOSITEMICON_LIGHT_OFF || i == IOSITEMICON_LIGHT_ON) ii_Light(aOrig[0], i == IOSITEMICON_LIGHT_ON, s, rgb, al);
-        else if (i == IOSITEMICON_IR_OFF) ii_Big(aOrig[1], IOSITEMICONS_IR, 1, s, rgb, al);
+        else if (i == IOSITEMICON_IR_OFF) ii_IrOff(aOrig[1], s, rgb, al);
         else ii_IrOn(aOrig[1], s, rgb, al);
-        ii_EdgeUnder(al, N, px, edge);
+        // (the goggles a little smaller, about their middle)
+        if (i == IOSITEMICON_IR_OFF || i == IOSITEMICON_IR_ON) ii_ScaleAbout(rgb, al, N, 12.0f * s, 11.9f * s, 0.92f);
+        ii_EdgeUnder(al, N, s, edge);
         ii_Finish(rgb, al, edge, N, big);
         ii_Shrink(big, N, ii_apStill[i], outPx);
     }
@@ -828,7 +1164,7 @@ int iosItemIcons_PrepareFromSized(const unsigned char* const aBm[3], const int a
                 }
             ii_Big(aOrig[2], IOSITEMICONS_BACTA, 0, s, ii_pBactaRgb, ii_pBactaAl);
             ii_UpscaleMask(glass, s, ii_pGlass);
-            ii_EdgeUnder(ii_pBactaAl, N, px, ii_pBactaEdge);
+            ii_EdgeUnder(ii_pBactaAl, N, s, ii_pBactaEdge);
         }
     }
     free(rgb);
@@ -1022,8 +1358,9 @@ static int ii_ParseDigits(const unsigned char* d, int len, unsigned char aOut[10
 #undef II_U16
 }
 
-// A soft dark purple edge round the count: the icons' own faint one, and
-// round it a little more, blurred, so it holds on the pink liquid
+// A soft dark purple edge round the count: a faint one (at 0.6, grown 0.6 s
+// pixels), and round it a little more, blurred, so it holds on the pink
+// liquid
 static void ii_CountEdge(const float* al, int N, int s, unsigned char* pOut)
 {
     float* m = (float*)malloc(sizeof(float) * N * N);
@@ -1037,7 +1374,7 @@ static void ii_CountEdge(const float* al, int N, int s, unsigned char* pOut)
             m[y * N + x] = v;
         }
     ii_GaussPil(m, N, 1, s * 0.25f);
-    ii_EdgeUnder(al, N, (int)(s * 0.6f), pOut);
+    ii_Edge(al, N, (int)(s * 0.6f), 0.6f, 20, 31, pOut);
     for (int i = 0; i < N * N; i++) {
         const int a = (int)(fminf(fmaxf(m[i], 0.0f), 255.0f) * 0.9f);
         if (a > pOut[i * 4 + 3]) {
@@ -1175,11 +1512,12 @@ void iosItemIcons_DrawStandIns(unsigned char* pRgba, int w, int h)
 
 void iosItemIcons_Centre(int item, float* pX, float* pY)
 {
-    // (the mock-ups', but the lamp: its head (and its glow, lit) level with
-    // the goggles' and the tank's middles -- it was 4 to 5 pt above them --
-    // so its stand reaches a little lower; 5 pt lower than the mock-ups'
-    // 12.6, at the overlay's 1.6 pt a pixel; the tank left of the middle)
-    static const float a[3][2] = { { 12.0f, 9.475f }, { 11.9f, 11.9f }, { 10.5f, 12.0f } };
+    // (the lamp's and the goggles': their pictures' middles, measured --
+    // what shows of them, their edges too, off and on, at 2x and 3x -- to
+    // within 0.3 pt, so they sit level with the tank; the tank's as the
+    // mock-ups had it, left of the grid's middle as it is drawn, its count
+    // placed from it)
+    static const float a[3][2] = { { 12.1f, 10.1f }, { 12.0f, 11.9f }, { 10.5f, 12.0f } };
     if (item < 0 || item > 2) item = 0;
     if (pX) *pX = a[item][0];
     if (pY) *pY = a[item][1];

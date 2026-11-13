@@ -9,13 +9,15 @@
 // phone's screen once, when the overlay first wants them (off the game's
 // thread: iosItemIcons_ReadFiles there, iosItemIcons_PrepareFromSized
 // anywhere), at the screen's own pixels:
-//   - the item alone: its purple tile cut away, with a faint dark edge round
-//     it so it reads on a bright wall;
+//   - the item alone: its purple tile cut away, and the dark rim drawn for
+//     that tile cleaned off (LIGHT: its lamp's head alone, a crisp circle;
+//     IR: its strap and outline smoothed, a little smaller), with a thin
+//     soft dark edge round it so it reads on a bright wall;
 //   - upscaled with Hyllian's xBR-lv2 (MIT licence: iosItemIcons.c), then an
 //     edge-keeping smooth (a bilateral filter) and a light sharpen;
 //   - LIGHT off (dimmed) and on (lit, a glow from its bright core), IR off
-//     (dimmed) and on (its two lens cutouts lit red-pink, brighter in the
-//     middle, a little bloom), BACTA with liquid in its glass for the tanks
+//     (dimmed, its two lens cutouts dark glass with a soft shine) and on
+//     (lit red-pink, brighter in the middle, a little bloom), BACTA with liquid in its glass for the tanks
 //     carried, the whole liquid flashing brighter on a tap
 //     (iosItemIcons_BactaFlash; the rig's iosItemIcons_Bacta: a glow rising
 //     through it, as a hold once had it).
