@@ -50,7 +50,7 @@
 #endif
 
 #define II_N 24
-#define II_LAMP_R 9.2f // (LIGHT's circle: its radius, about (12, 10), in the art's pixels)
+#define II_LAMP_R 9.2f // (LIGHT's circle: its radius, about (12, 10), in the art's pixels; made 8% bigger after, about (12, 12))
 
 // ------------------------------------------------------------ the originals
 
@@ -839,14 +839,15 @@ static void ii_Big(const unsigned char* orig, int item, int bOff, int s, float* 
     }
 }
 
-// A picture scaled by k about (cx, cy), in its own pixels (bilinear, premultiplied)
-static void ii_ScaleAbout(float* rgb, float* al, int N, float cx, float cy, float k)
+// A picture scaled by k, its point (cx, cy) moved to (tx, ty), in its own
+// pixels (bilinear, premultiplied; what comes from outside it, clear)
+static void ii_ScaleTo(float* rgb, float* al, int N, float cx, float cy, float tx, float ty, float k)
 {
     float* r2 = (float*)malloc(sizeof(float) * N * N * 4);
     if (!r2) return;
     for (int y = 0; y < N; y++)
         for (int x = 0; x < N; x++) {
-            const float sx = (x + 0.5f - cx) / k + cx - 0.5f, sy = (y + 0.5f - cy) / k + cy - 0.5f;
+            const float sx = (x + 0.5f - tx) / k + cx - 0.5f, sy = (y + 0.5f - ty) / k + cy - 0.5f;
             const int x0 = (int)floorf(sx), y0 = (int)floorf(sy);
             const float fx = sx - x0, fy = sy - y0;
             float acc[4] = { 0, 0, 0, 0 };
@@ -1140,8 +1141,10 @@ int iosItemIcons_PrepareFromSized(const unsigned char* const aBm[3], const int a
         if (i == IOSITEMICON_LIGHT_OFF || i == IOSITEMICON_LIGHT_ON) ii_Light(aOrig[0], i == IOSITEMICON_LIGHT_ON, s, rgb, al);
         else if (i == IOSITEMICON_IR_OFF) ii_IrOff(aOrig[1], s, rgb, al);
         else ii_IrOn(aOrig[1], s, rgb, al);
-        // (the goggles a little smaller, about their middle)
-        if (i == IOSITEMICON_IR_OFF || i == IOSITEMICON_IR_ON) ii_ScaleAbout(rgb, al, N, 12.0f * s, 11.9f * s, 0.92f);
+        // (the lamp 8% bigger, its circle's middle, (12, 10), moved to the
+        // picture's; the goggles a little smaller, about their middle)
+        if (i == IOSITEMICON_LIGHT_OFF || i == IOSITEMICON_LIGHT_ON) ii_ScaleTo(rgb, al, N, 12.0f * s, 10.0f * s, 12.0f * s, 12.0f * s, 1.08f);
+        else ii_ScaleTo(rgb, al, N, 12.0f * s, 11.9f * s, 12.0f * s, 11.9f * s, 0.92f);
         ii_EdgeUnder(al, N, s, edge);
         ii_Finish(rgb, al, edge, N, big);
         ii_Shrink(big, N, ii_apStill[i], outPx);
@@ -1515,7 +1518,7 @@ void iosItemIcons_Centre(int item, float* pX, float* pY)
     // (each picture's middle, measured -- what shows of it, its edge too,
     // off and on, at 2x and 3x -- to within 0.3 pt: the three level and
     // centred across; the tank's count, placed from it, moves with it)
-    static const float a[3][2] = { { 12.1f, 10.1f }, { 12.0f, 11.9f }, { 11.0f, 12.0f } };
+    static const float a[3][2] = { { 12.2f, 12.2f }, { 12.0f, 11.9f }, { 11.0f, 12.0f } };
     if (item < 0 || item > 2) item = 0;
     if (pX) *pX = a[item][0];
     if (pY) *pY = a[item][1];
