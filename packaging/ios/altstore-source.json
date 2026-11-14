@@ -36,6 +36,17 @@
       "versions": [
         {
           "version": "0.9.9",
+          "buildVersion": "145",
+          "marketingVersion": "v0.9-beta3",
+          "date": "2026-11-14T00:02:08Z",
+          "localizedDescription": "New since v0.9-beta2:\n- BACTA on a tap\n- BACTA's number in the game's own HUD digits\n- LIGHT, IR and BACTA cleaned up\n- After your last bacta tank,\n- Mysteries of the Sith comes first in New Game\n- A CROSS looks the same however you hold it\n- A STAFF or an open FOLD next to another saber\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta3",
+          "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta3/OpenJKDF2-iOS-unsigned.ipa",
+          "size": 5503999,
+          "sha256": "0db2b0e47d156d73197f702d62a4337d71cf4899d4e602bee45498b6a69b8806",
+          "minOSVersion": "18.0"
+        },
+        {
+          "version": "0.9.9",
           "buildVersion": "139",
           "marketingVersion": "v0.9-beta2",
           "date": "2026-11-12T05:38:26Z",
@@ -77,10 +88,10 @@
         }
       },
       "version": "0.9.9",
-      "versionDate": "2026-11-12T05:38:26Z",
-      "versionDescription": "New since v0.9-beta1:\n- AUTO PLAY, a self-playing show\n- AUTO PLAY fights with the lightsaber\n- Tap to skip a level's own scenes\n- SAVE and LOAD\n- LAST WPN\n- POWERS\n- FORCE shows just the power's name\n- LIGHT, IR and BACTA look like the items themselves\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta2",
-      "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta2/OpenJKDF2-iOS-unsigned.ipa",
-      "size": 5492765
+      "versionDate": "2026-11-14T00:02:08Z",
+      "versionDescription": "New since v0.9-beta2:\n- BACTA on a tap\n- BACTA's number in the game's own HUD digits\n- LIGHT, IR and BACTA cleaned up\n- After your last bacta tank,\n- Mysteries of the Sith comes first in New Game\n- A CROSS looks the same however you hold it\n- A STAFF or an open FOLD next to another saber\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta3",
+      "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta3/OpenJKDF2-iOS-unsigned.ipa",
+      "size": 5503999
     },
     {
       "name": "OpenMoTS",
@@ -104,6 +115,17 @@
         }
       ],
       "versions": [
+        {
+          "version": "0.9.9",
+          "buildVersion": "145",
+          "marketingVersion": "v0.9-beta3",
+          "date": "2026-11-14T00:02:08Z",
+          "localizedDescription": "New since v0.9-beta2:\n- BACTA on a tap\n- BACTA's number in the game's own HUD digits\n- LIGHT, IR and BACTA cleaned up\n- After your last bacta tank,\n- Mysteries of the Sith comes first in New Game\n- A CROSS looks the same however you hold it\n- A STAFF or an open FOLD next to another saber\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta3",
+          "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta3/OpenJKDF2-MotS-iOS-unsigned.ipa",
+          "size": 5490725,
+          "sha256": "9ecc4ac970a9d585bb4d7d417a6ad9e976c6581f4ba3ff6c1c5576cf8e608786",
+          "minOSVersion": "18.0"
+        },
         {
           "version": "0.9.9",
           "buildVersion": "139",
@@ -147,10 +169,10 @@
         }
       },
       "version": "0.9.9",
-      "versionDate": "2026-11-12T05:38:26Z",
-      "versionDescription": "New since v0.9-beta1:\n- AUTO PLAY, a self-playing show\n- AUTO PLAY fights with the lightsaber\n- Tap to skip a level's own scenes\n- SAVE and LOAD\n- LAST WPN\n- POWERS\n- FORCE shows just the power's name\n- LIGHT, IR and BACTA look like the items themselves\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta2",
-      "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta2/OpenJKDF2-MotS-iOS-unsigned.ipa",
-      "size": 5479498
+      "versionDate": "2026-11-14T00:02:08Z",
+      "versionDescription": "New since v0.9-beta2:\n- BACTA on a tap\n- BACTA's number in the game's own HUD digits\n- LIGHT, IR and BACTA cleaned up\n- After your last bacta tank,\n- Mysteries of the Sith comes first in New Game\n- A CROSS looks the same however you hold it\n- A STAFF or an open FOLD next to another saber\n\nFull notes: https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/tag/v0.9-beta3",
+      "downloadURL": "https://github.com/sithewok13-dev/OpenJKDF2-iOS/releases/download/v0.9-beta3/OpenJKDF2-MotS-iOS-unsigned.ipa",
+      "size": 5490725
     }
   ],
   "news": []
